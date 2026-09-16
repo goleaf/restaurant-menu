@@ -34,6 +34,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
+/** @property-read Paginator<int, Branch> $branches */
 class Index extends Component
 {
     use WithFileUploads;
@@ -391,7 +392,7 @@ class Index extends Component
     #[Computed]
     public function branchSetupGuides(): array
     {
-        return $this->branches()
+        return $this->branches
             ->getCollection()
             ->map(fn (Branch $branch): array => [
                 'branch' => [
@@ -425,13 +426,23 @@ class Index extends Component
 
     public function render(): View
     {
-        $branches = $this->branches();
+        $branches = $this->branches;
+
+        if ($branches->isEmpty() && $branches->currentPage() > 1) {
+            $this->resetPage(pageName: 'branchesPage');
+            unset($this->branches);
+            $branches = $this->branches;
+        }
 
         return view('livewire.organizations.brands.branches.index', [
             'branchSetupGuides' => $this->branchSetupGuides(),
             'branchesPaginator' => $branches,
-            'brandsUrl' => route('organizations.brands.index', $this->organization),
-            'contextLabel' => $this->organization->name.' / '.$this->brand->name,
+            'visibleCount' => $branches->count(),
+            'breadcrumbs' => [
+                ['label' => 'navigation.organizations', 'translate' => true, 'href' => route('organizations.index')],
+                ['label' => $this->organization->name, 'href' => route('organizations.brands.index', $this->organization)],
+                ['label' => $this->brand->name, 'current' => true],
+            ],
         ])->title(__('navigation.branches'));
     }
 

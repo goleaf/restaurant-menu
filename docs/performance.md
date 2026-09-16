@@ -4,6 +4,27 @@
 
 # Performance
 
+## Flux component-system continuation — 2026-09-16
+
+This stage compares the copied production build from clean `76932c7` with the final current build. Each response is compressed independently with Node gzip level 9 and Brotli quality 11; these are local inventories, not measured server compression settings. The reference-only rich editor remains outside product-page delivery.
+
+| Inventory | Before raw / gzip / Brotli bytes | After raw / gzip / Brotli bytes |
+| --- | --- | --- |
+| Framework CSS | 339,640 / 44,253 / 33,149 | 338,500 / 44,110 / 32,997 |
+| Product SCSS output | 26,952 / 5,447 / 4,695 | 29,304 / 5,844 / 5,056 |
+| All CSS including QR print | 370,396 / 50,805 / 38,772 | 371,608 / 51,059 / 38,981 |
+| Common JS including Livewire/Alpine | 324,426 / 101,420 / 88,457 | 325,157 / 101,624 / 88,621 |
+| All Vite JS including lazy WebAuthn | 333,383 / 104,324 / 90,917 | 334,114 / 104,528 / 91,081 |
+| All three local font subsets | 223,860 / 223,768 / 223,843 | unchanged |
+| Separate production Flux runtime | 303,925 / 67,567 / 54,812 | unchanged |
+| Complete Vite manifest, eight files | 927,639 / 378,897 / 353,532 | 929,582 / 379,355 / 353,905 |
+
+CSS grows by 254 gzip bytes and JS by 204. The total CSS gate remains **376,600 raw /51,900 gzip bytes**; framework/SCSS entry allowances are redistributed with an unchanged combined ceiling. New semantic controls and keyboard behavior are a maintainability/usability trade-off, not a speed claim. No chunk is relabelled as lazy savings. The same no-image six-page fixture is used for HTTP comparison; image pipeline bytes are unchanged by this stage.
+
+The new actual browser network regression observes a single closed-counter Livewire refresh in each six-second sampling window, before and after ten navigation transitions and Back/Forward, including an open mobile sidebar. Both responses must be 200 with one component and no rendered message HTML. This is a regression contract; the baseline already consolidated the poller, so no new request-count reduction is claimed.
+
+Detailed matched HTTP results are recorded after the final suites finish, avoiding concurrent test load. No matched browser scripting/layout improvement is claimed.
+
 ## SCSS / Alpine migration — matched build inventory, 2026-09-16
 
 Baseline production assets were copied before edits from the mixed local main at `7376b20`; current assets use the migrated runtime. Every file is compressed separately using Node gzip level 9 and Brotli quality 11. These are reproducible local byte inventories, not server compression settings or an assertion that every declared font is requested by every browser.

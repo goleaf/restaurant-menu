@@ -53,7 +53,7 @@
                                 <flux:button
                                     variant="primary" color="red"
                                     wire:click="disable"
-                                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                                    class="rm-action-danger"
                                 >
                                     {{ __('ui.settings.security.disable_2fa') }}
                                 </flux:button>
@@ -316,7 +316,7 @@
                     <flux:button
                         variant="primary" color="red"
                         wire:click="deletePasskey"
-                        class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                        class="rm-action-danger"
                     >
                         {{ __('ui.actions.delete') }}
                     </flux:button>

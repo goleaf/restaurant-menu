@@ -11,7 +11,7 @@ const distribution = join(root, 'packages/livewire/flux-pro');
 
 test('the checked-in local runtime and provenance are reproducible', () => {
     const result = execFileSync(process.execPath, [join(distribution, 'build-runtime.mjs'), '--check'], { encoding: 'utf8' });
-    assert.match(result, /Verified local Flux runtime: 140 files; 6 patches; 1 local addition\./);
+    assert.match(result, /Verified local Flux runtime: 140 files; 10 patches; 1 local addition\./);
 });
 
 for (const stale of ['flux.js', 'flux.min.js', 'manifest.json']) {

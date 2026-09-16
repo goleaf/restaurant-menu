@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WaiterCall;
 use App\Notifications\WaiterCalledNotification;
 use Database\Seeders\SystemPermissionsSeeder;
+use Pest\Browser\Api\PendingAwaitablePage;
 
 test('notification bell views messages without reading and keeps local close and scoped reading accessible', function (): void {
     $this->withVite();
@@ -198,3 +199,68 @@ test('notification history keeps bounded pages and discards a late response afte
         ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     expect($user->unreadNotifications()->count())->toBe(26);
 });
+
+test('mobile sidebar and repeated Livewire navigation retain exactly one notification polling request', function (): void {
+    $this->withVite();
+    $this->seed(SystemPermissionsSeeder::class);
+    $user = User::factory()->create(['email' => 'notification-polling@example.test', 'password' => 'password']);
+    $page = visit(route('login', absolute: false));
+    $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->resize(390, 844)->navigate(route('dashboard', absolute: false));
+    $page->script(<<<'JS'
+        (() => {
+            const original = window.fetch;
+            window.notificationPolling = { document: 'same-document', requests: [] };
+            window.fetch = async (...args) => {
+                let observation;
+                if (String(args[0]).includes('/livewire') && typeof args[1]?.body === 'string') {
+                    const payload = JSON.parse(args[1].body);
+                    const calls = (payload.components ?? []).flatMap(component =>
+                        JSON.parse(component.snapshot).memo.name === 'notifications.unread-count'
+                            ? component.calls.filter(call => call.method === 'refreshUnreadCount') : []);
+                    if (calls.length) {
+                        observation = { calls: calls.length, status: null, renders: null };
+                        window.notificationPolling.requests.push(observation);
+                    }
+                }
+                const response = await original(...args);
+                if (observation) {
+                    observation.status = response.status;
+                    const payload = await response.clone().json();
+                    observation.renders = payload.components.some(component => Boolean(component.effects.html));
+                }
+                return response;
+            };
+        })()
+        JS);
+    $page->click('[data-flux-sidebar-toggle]')
+        ->assertAttributeMissing('[data-flux-sidebar]', 'data-flux-sidebar-collapsed-mobile');
+    assertNotificationPollingWindow($page);
+
+    foreach (range(1, 10) as $visit) {
+        $destination = route($visit % 2 === 0 ? 'dashboard' : 'organizations.index', absolute: false);
+        $page->script('Livewire.navigate('.json_encode($destination, JSON_THROW_ON_ERROR).');');
+        $page->assertPathIs($destination)
+            ->assertScript('window.notificationPolling.document', 'same-document')
+            ->assertScript('document.querySelectorAll("[data-component=notifications-unread-count]").length', 1);
+    }
+    $page->script('history.back();');
+    $page->assertPathIs(route('organizations.index', absolute: false));
+    $page->script('history.forward();');
+    $page->assertPathIs(route('dashboard', absolute: false));
+    $page->click('[data-flux-sidebar-toggle]')
+        ->assertAttributeMissing('[data-flux-sidebar]', 'data-flux-sidebar-collapsed-mobile');
+    assertNotificationPollingWindow($page);
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
+
+function assertNotificationPollingWindow(PendingAwaitablePage $page): void
+{
+    $page->script('window.notificationPolling.requests = [];');
+    $page->assertScript('window.notificationPolling.requests.some(request => request.status === 200 && request.renders !== null)');
+    $page->script('window.notificationPolling.requests = [];');
+    $page->wait(6);
+    $page->assertScript('window.notificationPolling.requests.length', 1)
+        ->assertScript('window.notificationPolling.requests.every(request => request.calls === 1 && request.status === 200 && request.renders === false)')
+        ->assertMissing('[data-notification-item]');
+}

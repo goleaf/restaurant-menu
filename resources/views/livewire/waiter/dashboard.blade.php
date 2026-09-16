@@ -309,7 +309,7 @@
 
                                                 @if ($session['can_close'])
                                                     <flux:button
-                                                        class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! min-h-operational-touch lg:hidden"
+                                                        class="rm-action-danger min-h-operational-touch lg:hidden"
                                                         size="sm"
                                                         variant="primary" color="red"
                                                         :href="$session['detail_url'].'#close-table'"
@@ -434,7 +434,7 @@
                         </flux:button>
 
                         @if ($selectedTable['session']['can_close'])
-                            <flux:button class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! min-h-operational-touch" variant="primary" color="red" :href="$selectedTable['session']['detail_url'].'#close-table'" wire:navigate>
+                            <flux:button class="rm-action-danger min-h-operational-touch" variant="primary" color="red" :href="$selectedTable['session']['detail_url'].'#close-table'" wire:navigate>
                                 {{ __('ui.waiter.dashboard.close_table') }}
                             </flux:button>
                         @endif

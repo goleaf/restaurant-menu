@@ -7,65 +7,56 @@
 ])
 
 <div {{ $attributes->class('grid gap-4') }}>
-    <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-        <legend class="px-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {{ __('menu.allergens.title') }}
-        </legend>
-        <p id="{{ $idPrefix }}-allergens-help" class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            {{ __('menu.allergens.help') }}
-        </p>
-
-        <div class="mt-3 grid gap-2 sm:grid-cols-2">
-            @foreach ($allergenOptions as $option)
-                <label wire:key="{{ $idPrefix }}-allergen-{{ $option['value'] }}" class="flex min-h-touch cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
-                    <input
-                        type="checkbox"
-                        wire:model="{{ $allergensModel }}"
-                        value="{{ $option['value'] }}"
-                        aria-describedby="{{ $idPrefix }}-allergens-help"
-                        class="size-4 rounded border-zinc-300 text-red-600 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-950"
-                    >
-                    <span>{{ $option['label'] }}</span>
-                </label>
-            @endforeach
-        </div>
-
-        @error($allergensModel)
-            <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
-        @enderror
-        @error($allergensModel.'.*')
-            <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
-        @enderror
+    <fieldset class="rm-menu-labels">
+        <legend class="rm-menu-labels__legend">{{ __('menu.allergens.title') }}</legend>
+        <flux:description id="{{ $idPrefix }}-allergens-help">{{ __('menu.allergens.help') }}</flux:description>
+        <flux:checkbox.group
+            variant="buttons"
+            wire:model="{{ $allergensModel }}"
+            aria-describedby="{{ $idPrefix }}-allergens-help {{ $idPrefix }}-allergens-error"
+            :aria-invalid="$errors->has($allergensModel) || $errors->has($allergensModel.'.*') ? 'true' : 'false'"
+            class="rm-menu-labels__options"
+        >
+            @forelse ($allergenOptions as $option)
+                <flux:checkbox
+                    wire:key="{{ $idPrefix }}-allergens-{{ $option['value'] }}"
+                    :value="$option['value']"
+                    :label="$option['label']"
+                    icon="check"
+                    icon:class="opacity-0 in-data-checked:opacity-100"
+                    aria-describedby="{{ $idPrefix }}-allergens-help {{ $idPrefix }}-allergens-error"
+                    :aria-invalid="$errors->has($allergensModel) || $errors->has($allergensModel.'.*') ? 'true' : 'false'"
+                    class="rm-menu-labels__option"
+                />
+            @empty
+            @endforelse
+        </flux:checkbox.group>
+        <flux:error :name="$allergensModel" id="{{ $idPrefix }}-allergens-error" class="text-danger!" />
     </fieldset>
-
-    <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-        <legend class="px-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {{ __('menu.dietary_labels.title') }}
-        </legend>
-        <p id="{{ $idPrefix }}-dietary-help" class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            {{ __('menu.dietary_labels.help') }}
-        </p>
-
-        <div class="mt-3 grid gap-2 sm:grid-cols-2">
-            @foreach ($dietaryLabelOptions as $option)
-                <label wire:key="{{ $idPrefix }}-dietary-{{ $option['value'] }}" class="flex min-h-touch cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
-                    <input
-                        type="checkbox"
-                        wire:model="{{ $dietaryLabelsModel }}"
-                        value="{{ $option['value'] }}"
-                        aria-describedby="{{ $idPrefix }}-dietary-help"
-                        class="size-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
-                    >
-                    <span>{{ $option['label'] }}</span>
-                </label>
-            @endforeach
-        </div>
-
-        @error($dietaryLabelsModel)
-            <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
-        @enderror
-        @error($dietaryLabelsModel.'.*')
-            <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
-        @enderror
+    <fieldset class="rm-menu-labels">
+        <legend class="rm-menu-labels__legend">{{ __('menu.dietary_labels.title') }}</legend>
+        <flux:description id="{{ $idPrefix }}-dietary-help">{{ __('menu.dietary_labels.help') }}</flux:description>
+        <flux:checkbox.group
+            variant="buttons"
+            wire:model="{{ $dietaryLabelsModel }}"
+            aria-describedby="{{ $idPrefix }}-dietary-help {{ $idPrefix }}-dietary-error"
+            :aria-invalid="$errors->has($dietaryLabelsModel) || $errors->has($dietaryLabelsModel.'.*') ? 'true' : 'false'"
+            class="rm-menu-labels__options"
+        >
+            @forelse ($dietaryLabelOptions as $option)
+                <flux:checkbox
+                    wire:key="{{ $idPrefix }}-dietary-{{ $option['value'] }}"
+                    :value="$option['value']"
+                    :label="$option['label']"
+                    icon="check"
+                    icon:class="opacity-0 in-data-checked:opacity-100"
+                    aria-describedby="{{ $idPrefix }}-dietary-help {{ $idPrefix }}-dietary-error"
+                    :aria-invalid="$errors->has($dietaryLabelsModel) || $errors->has($dietaryLabelsModel.'.*') ? 'true' : 'false'"
+                    class="rm-menu-labels__option"
+                />
+            @empty
+            @endforelse
+        </flux:checkbox.group>
+        <flux:error :name="$dietaryLabelsModel" id="{{ $idPrefix }}-dietary-error" class="text-danger!" />
     </fieldset>
 </div>

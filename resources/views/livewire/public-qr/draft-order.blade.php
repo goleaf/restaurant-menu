@@ -234,7 +234,7 @@
                                             wire:target="deleteItem({{ $item['id'] }})"
                                             variant="primary" color="red"
                                             size="sm"
-                                            class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
+                                            class="rm-action-danger h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
                                         >
                                             {{ __('guest.cart.remove_item') }}
                                         </flux:button>
@@ -467,7 +467,7 @@
                     wire:loading.attr="disabled"
                     wire:target="deleteItem({{ $editingItemId }})"
                     variant="primary" color="red"
-                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
+                    class="rm-action-danger h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
                 >
                     {{ __('guest.cart.remove_item') }}
                 </flux:button>

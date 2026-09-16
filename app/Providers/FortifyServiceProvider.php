@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Auth\BuildLocalLoginDirectoryAction;
 use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -46,7 +47,18 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => view('livewire.auth.login', $this->authViewData($request)));
+        Fortify::loginView(function (Request $request) {
+            $localUsers = $this->app->make(BuildLocalLoginDirectoryAction::class)->handle($request);
+
+            return response()->view('livewire.auth.login', [
+                ...$this->authViewData($request),
+                'localUsers' => $localUsers,
+            ])->withHeaders($localUsers === null ? [] : [
+                'Cache-Control' => 'no-store, private',
+                'Referrer-Policy' => 'no-referrer',
+                'X-Robots-Tag' => 'noindex, nofollow',
+            ]);
+        });
         Fortify::verifyEmailView(fn (Request $request) => view('livewire.auth.verify-email', [
             ...$this->authViewData($request),
             'verificationLinkSent' => $request->session()->get('status') === 'verification-link-sent',

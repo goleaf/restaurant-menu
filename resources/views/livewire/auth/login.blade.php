@@ -1,5 +1,5 @@
-<x-layouts::auth :title="__('ui.auth.login.log_in')">
-    <div class="flex flex-col gap-6">
+<x-layouts::auth.simple :title="__('ui.auth.login.log_in')" :wide="$localUsers !== null">
+    <div class="rm-login-form flex flex-col gap-6">
         <x-auth-header :title="__('ui.auth.login.log_in_to_your_account')" :description="__('ui.auth.login.enter_your_email_and_password_below_to_log_in')" />
 
         <!-- Session Status -->
@@ -50,4 +50,7 @@
             {{ __('invitations.account.invite_only') }}
         </div>
     </div>
-</x-layouts::auth>
+    @if ($localUsers !== null)
+        <x-auth.local-user-directory :users="$localUsers" />
+    @endif
+</x-layouts::auth.simple>

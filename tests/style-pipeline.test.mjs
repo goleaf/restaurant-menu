@@ -79,9 +79,10 @@ test('repeated product compositions preserve controls, palette roles and respons
     const expectedClasses = new Map([
         ['vendor/livewire/simple-tailwind', ['rm-pagination__control', 'rm-pagination__disabled']],
         ['vendor/livewire/tailwind', ['rm-pagination__current', 'rm-pagination__page']],
-        ['livewire/organizations/index', ['rm-structure-toolbar', 'rm-structure-avatar', 'rm-structure-error']],
-        ['livewire/organizations/brands/index', ['rm-structure-toolbar', 'rm-structure-avatar']],
-        ['livewire/organizations/brands/branches/index', ['rm-structure-toolbar', 'rm-branch-shortcut']],
+        ['components/structure/list-toolbar', ['rm-structure-toolbar']],
+        ['livewire/organizations/index', ['<x-structure.list-toolbar', 'rm-structure-avatar', 'rm-structure-error']],
+        ['livewire/organizations/brands/index', ['<x-structure.list-toolbar', 'rm-structure-avatar']],
+        ['livewire/organizations/brands/branches/index', ['<x-structure.list-toolbar', 'rm-structure-avatar', 'rm-branch-shortcut']],
         ['livewire/public-qr/draft-order', ['rm-draft-notice', 'rm-draft-notice--error']],
         ['livewire/public-qr/guest-entry', ['rm-guest-contact-link']],
         ['livewire/organizations/brands/branches/menu/catalog', ['rm-menu-empty']],

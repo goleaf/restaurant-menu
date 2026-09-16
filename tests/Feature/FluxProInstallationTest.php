@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 test('Composer installs the local Flux Pro release as a physical vendor package', function (): void {
     expect(InstalledVersions::isInstalled('livewire/flux-pro'))->toBeTrue()
-        ->and(InstalledVersions::getPrettyVersion('livewire/flux-pro'))->toBe('0.1.0')
+        ->and(InstalledVersions::getPrettyVersion('livewire/flux-pro'))->toBe('0.1.1')
         ->and(InstalledVersions::getVersion('livewire/flux'))->toBe('2.17.0.0');
 
     $directory = InstalledVersions::getInstallPath('livewire/flux-pro');

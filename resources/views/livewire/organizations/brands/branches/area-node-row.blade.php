@@ -77,7 +77,7 @@
                     {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                 </flux:button>
 
-                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $node['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $node['id'] }})" class="rm-action-danger">
                     {{ __('structure.actions.archive') }}
                 </flux:button>
             @endif
@@ -90,7 +90,7 @@
                         <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                         <div class="flex flex-wrap gap-2">
-                            <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                            <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="rm-action-danger">
                                 {{ __('structure.actions.archive') }}
                             </flux:button>
 

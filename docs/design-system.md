@@ -28,25 +28,31 @@ Preserve the existing product tokens and semantic compositions. Searchable selec
 Use one shared header/account menu above product workspaces. Official Flux sidebar collapse, modal, input, radio cards and buttons own generic interaction; native branch details retains useful offline/focus behavior. Navigation search and notification viewing are product compositions, not new generic widget frameworks. Keep one notification host per shell and distinguish opening, reading and completing restaurant work. The restricted local component reference demonstrates actual Free controls and semantic state panels with fictional data.
 
 
+## Shared control contract — 2026-09-16
+
+Danger actions use the explicit `rm-action-danger` class on Flux buttons. Its few important declarations live in `resources/scss/components/_controls.scss`, use the canonical danger/inverse tokens and retain system colors under forced colors; they do not target unrelated red utilities or every button. The same module owns the native image picker, file-selector target, invalid/disabled states and semantic helper/error association. The local reference demonstrates normal, disabled, loading and 56px operational danger controls.
+
+Menu label selections use installed Flux checkbox buttons in `rm-menu-labels` groups. The bounded unlayered grid selector intentionally overrides Flux's own flex layout, without changing other checkbox groups. Labels wrap, check icons remain visible for selected values and server bindings are deferred. Structure list toolbars are a product composition with one filter set and loaded-row count, rather than another generic field abstraction.
+
 ## Flux and utility ownership — 2026-09-15
 
 Use documented Flux props, classes and slots for controls; the sidebar heading slot owns heading presentation and `workspace-nav-item` is the reusable product navigation utility. Native details/summary, language tabs, checkbox forms and domain status panels remain where their semantics and behavior already fit. Do not replace them solely to increase the Flux tag count.
 
-Primary actions use Flux `variant="primary"`, normal secondary actions outline/default, lower-emphasis actions ghost/subtle and destructive actions `variant="primary" color="red"`. Success/warning colors are reserved for operational meaning. The installed primary red/green palette needs semantic background classes and dark inverse text to retain contrast; there is no global red-button patch. Direct button classes preserve wrapping and 44-pixel targets; department actions retain 56 pixels. Generic Button/Alert/form-field wrappers are forbidden by the architecture test.
+Primary actions use Flux `variant="primary"`, normal secondary actions outline/default, lower-emphasis actions ghost/subtle and destructive actions `variant="primary" color="red"`. Success/warning colors are reserved for operational meaning. The installed primary red/green palette needs semantic product styling and dark inverse text to retain contrast; dangerous actions now use the shared class above, with no global red-button patch. Direct button classes preserve wrapping and 44-pixel targets; department actions retain 56 pixels. Generic Button/Alert/form-field wrappers are forbidden by the architecture test.
 
-Only the light orange badge contrast correction and coarse-pointer control/button/sidebar-item minimum sizes still depend on Flux data attributes. Installed 2.17 exposes no global public minimum-target prop. `callout-contrast` sets Flux's callout heading/text variables to the existing semantic text token: default green/yellow headings fail small-text contrast in light mode. The browser regression measures rendered callout contrast against actual composited backgrounds. These integrations are rechecked on upgrades; surface/header/menu/label/field navigation appearance uses supported classes and slots.
+The light orange badge contrast correction, coarse-pointer minimum sizes and the narrow product control integrations above use stable Flux data attributes. Installed 2.17 exposes no global public minimum-target prop. `callout-contrast` sets Flux's callout heading/text variables to the existing semantic text token: default green/yellow headings fail small-text contrast in light mode. The browser regression measures rendered callout contrast against actual composited backgrounds. These integrations are rechecked on upgrades; surface/header/menu/label/field navigation appearance uses supported classes and slots.
 
 Theme utilities use Tailwind's real namespaces: `--transition-duration-state` and `--z-index-*`. Noto Sans Variable remains local with Latin, Latin-ext and Cyrillic subsets, `font-display: swap`, and the existing weight range. There are no duplicate font imports or remote font requests.
 
 ## Current shared product surfaces
 
-The font stack is local Noto Sans Variable with Latin, Latin-ext and Cyrillic subsets. Shared navigation, buttons, fields, focus rings and state panels use semantic tokens from app.css. Catalogue filters reflow by available width; locale tabs preserve state and reveal validation errors. Gallery controls, progress/retry and destructive confirmations use existing Blade/Flux primitives. The guest modal traps and restores focus; small cards stack photos below 360 pixels. See DESIGN.md for intent and testing.md for observed browser coverage.
+The font stack is local Noto Sans Variable with Latin, Latin-ext and Cyrillic subsets. Shared navigation, buttons, fields, focus rings and state panels use semantic tokens from the canonical Sass settings map. Catalogue filters reflow by available width; locale tabs preserve state and reveal validation errors. Gallery controls, progress/retry and destructive confirmations use existing Blade/Flux primitives. The guest modal traps and restores focus; small cards stack photos below 360 pixels. See DESIGN.md for intent and testing.md for observed browser coverage.
 
-The interface uses a restrained restaurant operations identity: high-legibility neutral surfaces, warm brand accents, direct status language, compact operational density on staff screens, and calmer public-menu presentation. Flux UI Free supplies accessible control primitives where available.
+The interface uses a restrained restaurant operations identity: high-legibility neutral surfaces, warm brand accents, direct status language, compact operational density on staff screens, and calmer public-menu presentation. Installed Flux Free and the maintained local Pro adaptation supply accessible control primitives where their APIs fit the product.
 
 ## Token contract
 
-`resources/css/app.css` is the source of truth for semantic tokens:
+`resources/scss/settings/_tokens.scss` is the source of truth for semantic tokens; the CSS bridge aliases them for Tailwind:
 
 - brand and accent;
 - canvas, surface, elevated surface and border;

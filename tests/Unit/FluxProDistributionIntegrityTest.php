@@ -51,6 +51,10 @@ test('the local Flux Pro fork accounts for every source file and accepted patch'
         'dist/flux.module.js',
         'dist/manifest.json',
         'src/FluxProServiceProvider.php',
+        'stubs/resources/views/flux/calendar/index.blade.php',
+        'stubs/resources/views/flux/date-picker/index.blade.php',
+        'stubs/resources/views/flux/pillbox/search.blade.php',
+        'stubs/resources/views/flux/select/search.blade.php',
     ])->and(array_column($additions, 'path'))->toBe(['build-runtime.mjs']);
 
     foreach ($sourceFiles as $source) {
@@ -110,7 +114,7 @@ test('the local Flux Pro release preserves its license and truthful upstream ide
 
     expect($package['name'])->toBe('livewire/flux-pro')
         ->and($package['license'])->toBe('proprietary')
-        ->and($package['version'] ?? null)->toBe('0.1.0')
+        ->and($package['version'] ?? null)->toBe('0.1.1')
         ->and($package['description'])->toContain('local fork')
         ->and($package['require']['livewire/flux'])->toBe('2.17.0')
         ->and($package)->not->toHaveKeys(['provide', 'replace'])
@@ -122,11 +126,11 @@ test('the local Flux Pro release preserves its license and truthful upstream ide
         ->and($provenance['status'])->toBe('local-fork')
         ->and($provenance['upstream_version'])->toBeNull()
         ->and($provenance['upstream_pristine_verified'])->toBeFalse()
-        ->and($provenance['local_release']['version'])->toBe('0.1.0')
+        ->and($provenance['local_release']['version'])->toBe('0.1.1')
         ->and($provenance['local_release']['version_scope'])->toBe('project-local; not an upstream release')
         ->and($provenance['compatibility']['original_flux_requirement'])->toBe('2.13.1|dev-main')
         ->and($provenance['compatibility']['local_flux_requirement'])->toBe('2.17.0')
-        ->and($application['require']['livewire/flux-pro'] ?? null)->toBe('0.1.0')
+        ->and($application['require']['livewire/flux-pro'] ?? null)->toBe('0.1.1')
         ->and($application['minimum-stability'])->toBe('stable')
         ->and($application['prefer-stable'])->toBeTrue()
         ->and($application['repositories'])->toBe([

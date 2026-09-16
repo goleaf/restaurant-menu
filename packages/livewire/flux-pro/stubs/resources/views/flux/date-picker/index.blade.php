@@ -48,7 +48,7 @@ $months = $months ?? ($mode === 'range' ? 2 : 1);
 
 $range = $mode === 'range';
 
-$placeholder = $placeholder ?? ($range ? __('Select a date range') : __('Select a date'));
+$placeholder = $placeholder ?? ($range ? __('ui.date.select_range') : __('ui.date.select_date'));
 
 // Mark it invalid if the property or any of it's nested attributes have errors...
 $invalid ??= ($name && ($errors->has($name) || $errors->has($name . '.*')));
@@ -133,8 +133,8 @@ if (isset($unavailable)) {
                     <ui-calendar-inputs class="flex items-center p-2 border-b border-zinc-200 dark:border-white/10">
                         <?php if ($range): ?>
                             <div class="sm:px-2 flex items-center gap-4">
-                                <div class="flex items-center gap-2"><span class="max-sm:hidden text-sm font-medium text-zinc-800 dark:text-white">{{ __('Start') }}</span> <flux:input type="date" class="w-[full] sm:w-[11.25rem]" /></div>
-                                <div class="flex items-center gap-2"><span class="max-sm:hidden text-sm font-medium text-zinc-800 dark:text-white">{{ __('End') }}</span> <flux:input type="date" class="w-[full] sm:w-[11.25rem]" /></div>
+                                <div class="flex items-center gap-2"><span class="max-sm:hidden text-sm font-medium text-zinc-800 dark:text-white">{{ __('ui.date.start') }}</span> <flux:input type="date" class="w-[full] sm:w-[11.25rem]" /></div>
+                                <div class="flex items-center gap-2"><span class="max-sm:hidden text-sm font-medium text-zinc-800 dark:text-white">{{ __('ui.date.end') }}</span> <flux:input type="date" class="w-[full] sm:w-[11.25rem]" /></div>
                             </div>
                         <?php else: ?>
                             <flux:input type="date" class="w-full sm:w-[11.25rem]" />
@@ -171,7 +171,7 @@ if (isset($unavailable)) {
 
                             <div class="flex items-center">
                                 <?php if ($withToday): ?>
-                                    <ui-calendar-today class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none" aria-label="Previous month">
+                                    <ui-calendar-today class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none" aria-label="{{ __('ui.accessibility.today') }}">
                                         <div class="relative">
                                             <template name="today">
                                                 <div class="cursor-default absolute inset-0 mt-[3px] flex items-center justify-center text-[.5625rem] font-semibold"><slot></slot></div>
@@ -184,12 +184,12 @@ if (isset($unavailable)) {
                                     </ui-calendar-today>
                                 <?php endif; ?>
 
-                                <ui-calendar-previous class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none" aria-label="Previous month">
+                                <ui-calendar-previous class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none" aria-label="{{ __('ui.accessibility.previous_month') }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 rtl:hidden"> <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /> </svg>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 hidden rtl:block"> <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /> </svg>
                                 </ui-calendar-previous>
 
-                                <ui-calendar-next class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none [&[disabled]_&]:text-zinc-400" aria-label="Next month">
+                                <ui-calendar-next class="size-10 sm:size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/5 dark:hover:text-white [&[disabled]]:opacity-50 [&[disabled]]:pointer-events-none [&[disabled]_&]:text-zinc-400" aria-label="{{ __('ui.accessibility.next_month') }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 rtl:hidden"> <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /> </svg>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 hidden rtl:block"> <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /> </svg>
                                 </ui-calendar-next>
@@ -275,7 +275,7 @@ if (isset($unavailable)) {
                 <?php if ($presets): ?>
                     <ui-calendar-presets class="block sm:hidden px-4">
                         <select class="appearance-none w-full ps-3 pe-10 block h-10 py-2 text-sm rounded-lg shadow-2xs border bg-white dark:bg-white/10 dark:disabled:bg-white/[9%] text-zinc-700 dark:text-zinc-300 has-[option.placeholder:checked]:text-zinc-400 dark:has-[option.placeholder:checked]:text-zinc-400 disabled:shadow-none border border-zinc-200 border-b-zinc-300/80 dark:border-white/10" data-flux-control="" data-flux-select-native="" data-flux-group-target="">
-                            <option value="" disabled="" selected="" class="placeholder">{{ __('Choose predefined range...') }}</option>
+                            <option value="" disabled="" selected="" class="placeholder">{{ __('ui.date.predefined_range') }}</option>
                             @foreach ($presetArray as $preset)
                                 <option value="{{ $preset->value }}">{{ $preset->label() }}</option>
                             @endforeach
@@ -285,15 +285,15 @@ if (isset($unavailable)) {
 
                 <div class="@unless ($withConfirmation) sm:hidden @endunless p-4 sm:p-2 flex justify-end gap-2">
                     <ui-close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                        <flux:button variant="ghost">{{ __('ui.actions.cancel') }}</flux:button>
                     </ui-close>
 
                     <ui-date-picker-select>
                         <flux:button variant="primary">
                             <?php if ($range): ?>
-                                {{ __('Select range') }}
+                                {{ __('ui.date.select_range') }}
                             <?php else: ?>
-                                {{ __('Select date') }}
+                                {{ __('ui.date.select_date') }}
                             <?php endif; ?>
                         </flux:button>
                     </ui-date-picker-select>

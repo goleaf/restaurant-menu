@@ -5,6 +5,7 @@ use App\Livewire\Local\ComponentReference;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Dom\HTMLDocument;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -89,3 +90,21 @@ test('the restricted reference exposes installed Pro controls with the applicati
     expect($html)->toContain('locale="'.$locale.'"', 'time-format="24-hour"')
         ->not->toContain('ui.reference.pro.');
 })->with(['en', 'lt', 'ru']);
+
+test('reference uses the production upload control and demonstrates dangerous action states', function (): void {
+    $this->actingAs(componentReferenceAdministrator());
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.Livewire::test(ComponentReference::class)->html().'</body></html>', LIBXML_NOERROR);
+    $upload = $document->getElementById('reference-image-upload');
+
+    expect($upload)->not->toBeNull()
+        ->and($upload->getAttribute('type'))->toBe('file')
+        ->and($upload->getAttribute('aria-describedby'))->toContain('reference-image-upload-help')
+        ->and($document->querySelector('[data-reference-danger="disabled"]')->hasAttribute('disabled'))->toBeTrue()
+        ->and($document->querySelector('[data-reference-danger="loading"]')->getAttribute('aria-busy'))->toBe('true')
+        ->and($document->querySelector('[data-reference-danger="operational"]')->getAttribute('class'))->toContain('min-h-operational-touch');
+
+    foreach ($document->querySelectorAll('[data-reference-danger]') as $button) {
+        expect($button->getAttribute('class'))->toContain('rm-action-danger')
+            ->and($button->hasAttribute('data-flux-button'))->toBeTrue();
+    }
+});

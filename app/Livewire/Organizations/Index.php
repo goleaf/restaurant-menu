@@ -28,6 +28,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
+/** @property-read Paginator<int, Organization> $organizations */
 class Index extends Component
 {
     use WithFileUploads;
@@ -238,7 +239,7 @@ class Index extends Component
     #[Computed]
     public function staffManageableOrganizationIds(): array
     {
-        return $this->organizations()
+        return $this->organizations
             ->getCollection()
             ->filter(fn (Organization $organization): bool => Gate::forUser($this->currentUser())->allows('manageStaff', $organization))
             ->pluck('id')
@@ -247,8 +248,15 @@ class Index extends Component
 
     public function render(): View
     {
+        $organizations = $this->organizations;
+
+        if ($organizations->isEmpty() && $organizations->currentPage() > 1) {
+            $this->resetPage(pageName: 'organizationsPage');
+            unset($this->organizations);
+            $organizations = $this->organizations;
+        }
+
         $manageableOrganizationIds = $this->staffManageableOrganizationIds();
-        $organizations = $this->organizations();
 
         return view('livewire.organizations.index', [
             'organizationRows' => $organizations
@@ -266,6 +274,7 @@ class Index extends Component
                 ])
                 ->all(),
             'organizationsPaginator' => $organizations,
+            'visibleCount' => $organizations->count(),
         ])->title(__('navigation.organizations'));
     }
 

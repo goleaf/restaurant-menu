@@ -5,7 +5,7 @@
     </div>
 
     <flux:modal.trigger name="confirm-user-deletion">
-        <flux:button variant="primary" color="red" x-data="" x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+        <flux:button variant="primary" color="red" x-data="" x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')" class="rm-action-danger">
             {{ __('ui.settings.delete_user_form.delete_account') }}
         </flux:button>
     </flux:modal.trigger>
@@ -29,7 +29,7 @@
                     <flux:button variant="filled">{{ __('ui.actions.cancel') }}</flux:button>
                 </flux:modal.close>
 
-                <flux:button variant="primary" color="red" type="submit" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.settings.delete_user_form.delete_account') }}</flux:button>
+                <flux:button variant="primary" color="red" type="submit" class="rm-action-danger">{{ __('ui.settings.delete_user_form.delete_account') }}</flux:button>
             </div>
         </form>
     </flux:modal>

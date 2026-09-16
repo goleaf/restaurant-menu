@@ -38,6 +38,10 @@ return [
     */
 
     'guards' => [
+        'restaurant-mcp' => [
+            'driver' => 'restaurant-mcp',
+            'provider' => 'users',
+        ],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',

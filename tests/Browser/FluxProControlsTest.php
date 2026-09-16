@@ -53,6 +53,31 @@ test('the installed Pro reference supports real selection keyboard and editor in
         ->assertScript('document.querySelectorAll("script[src*=\"/flux/editor\"]").length', 1)
         ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 
+    $page->click('[data-pro-reference="command"] input')
+        ->keys('[data-pro-reference="command"] input', 'ArrowDown')
+        ->keys('[data-pro-reference="command"] input', 'Enter')
+        ->assertVisible('dialog[data-modal="component-reference-edit"]');
+    $page->click('dialog[data-modal="component-reference-edit"] button[autofocus]')
+        ->assertMissing('dialog[data-modal="component-reference-edit"][open]');
+    $page->click('[data-pro-reference="command"] ui-option')
+        ->assertVisible('dialog[data-modal="component-reference-edit"]')
+        ->click('dialog[data-modal="component-reference-edit"] button[autofocus]')
+        ->assertMissing('dialog[data-modal="component-reference-edit"][open]');
+
+    foreach (['lt', 'ru'] as $locale) {
+        $page->navigate(route('local.components', ['lang' => $locale], false));
+        $page->assertAttribute('[data-pro-reference="calendar"] ui-calendar-previous', 'aria-label', __('ui.accessibility.previous_month', [], $locale))
+            ->assertAttribute('[data-pro-reference="calendar"] ui-calendar-next', 'aria-label', __('ui.accessibility.next_month', [], $locale));
+        $page->click('[data-pro-reference="calendar"] ui-calendar-next')
+            ->click('[data-pro-reference="calendar"] ui-calendar-previous');
+        $page->click('[data-pro-reference="select"] button[role="combobox"]')
+            ->fill('[data-pro-reference="select"] [data-flux-select-search] input', 'zzzz');
+        $page->click('[data-pro-reference="select"] [data-flux-select-search] button')
+            ->assertValue('[data-pro-reference="select"] [data-flux-select-search] input', '')
+            ->assertAttribute('[data-pro-reference="select"] [data-flux-select-search] button', 'aria-label', __('ui.accessibility.clear_search', [], $locale))
+            ->keys('[data-pro-reference="select"] [data-flux-select-search] input', 'Escape');
+    }
+
     $page->navigate(route('profile.edit', absolute: false))
         ->navigate(route('local.components', absolute: false))
         ->assertPresent('[data-pro-reference="editor"] [contenteditable="true"]')

@@ -405,3 +405,37 @@
         @include tokens.type('sm');
     }
 }
+
+@layer components {
+    .rm-menu-labels {
+        padding: 0.75rem;
+        border: 1px solid var(--rm-border-subtle);
+        border-radius: var(--rm-radius-control);
+    }
+
+    .rm-menu-labels__legend {
+        padding-inline: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--rm-text-primary);
+    }
+
+    .rm-menu-labels__options {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+        margin-block-start: 0.75rem;
+    }
+}
+
+// Flux choice groups supply a flex utility; this product composition needs a wrapping grid.
+.rm-menu-labels__options[data-flux-checkbox-group-buttons] {
+    display: grid;
+}
+
+.rm-menu-labels__option[data-flux-checkbox-buttons] {
+    height: auto;
+    min-block-size: var(--rm-spacing-touch);
+    justify-content: flex-start;
+    white-space: normal;
+    text-align: start;
+    padding-block: tokens.space(2);
+}

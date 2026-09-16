@@ -3,16 +3,16 @@
     "assetBase": "/build/",
     "entries": {
         "resources/css/app.css": {
-            "raw": 344300,
-            "gzip": 45100
+            "raw": 343100,
+            "gzip": 44700
         },
         "resources/js/app.js": {
             "raw": 348100,
             "gzip": 109000
         },
         "resources/scss/app.scss": {
-            "raw": 28400,
-            "gzip": 5600
+            "raw": 31000,
+            "gzip": 6300
         },
         "resources/scss/qr-print.scss": {
             "raw": 4000,

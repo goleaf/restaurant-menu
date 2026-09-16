@@ -4,6 +4,10 @@
 
 # Current version baseline
 
+## Current component-system patch — 2026-09-16
+
+Flux Free 2.17.0 / Livewire 4.4.1 remain installed. Local Pro is now 0.1.1, a project-local release with unknown upstream version: four template translation patches on the previously verified runtime. Composer updated only this local path record; proprietary license and original 139-file inventory remain unchanged. Runtime compatibility and final evidence are tracked in the current implementation ledger. Earlier installation checkpoints below are historical.
+
 ## Flux Pro preparation — 2026-09-15
 
 Installed packages are Flux Free 2.17.0, local Flux Pro 0.1.0 and Livewire 4.4.1. Pro is an explicitly identified local adaptation, with unknown upstream version, installed offline from `packages/livewire/flux-pro/` through a physical Composer mirror. The original 139-file inventory remains recorded; two foundation patches correct local metadata/aliases and the provider namespace. All 178 previously locked package records remain unchanged. Composer validation, platform requirements, installation/integrity tests, 18-family server rendering and five asset endpoints pass. JavaScript and workflow compatibility remain under implementation; consult `IMPLEMENTATION_PLAN.md`.

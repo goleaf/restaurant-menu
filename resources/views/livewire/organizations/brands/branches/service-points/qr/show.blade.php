@@ -90,7 +90,7 @@
                     confirmation-help="qr.confirmations.reissue.confirmation_help"
                 >
                     <x-slot:trigger>
-                        <flux:button icon="exclamation-triangle" variant="primary" color="red" type="button" wire:click="confirmReissue" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                        <flux:button icon="exclamation-triangle" variant="primary" color="red" type="button" wire:click="confirmReissue" class="rm-action-danger">
                             {{ __('qr.actions.reissue') }}
                         </flux:button>
                     </x-slot:trigger>

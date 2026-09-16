@@ -6,6 +6,8 @@ namespace App\Enums;
 
 enum AuditLogAction: string
 {
+    case McpTokenIssued = 'mcp_token_issued';
+    case McpTokenRevoked = 'mcp_token_revoked';
     case MenuPriceChanged = 'menu_price_changed';
     case MenuAvailabilityChanged = 'menu_availability_changed';
     case MenuItemDeleted = 'menu_item_deleted';
@@ -43,6 +45,8 @@ enum AuditLogAction: string
     public function label(): string
     {
         return match ($this) {
+            self::McpTokenIssued => __('mcp.audit.token_issued'),
+            self::McpTokenRevoked => __('mcp.audit.token_revoked'),
             self::MenuPriceChanged => 'Price changed',
             self::MenuAvailabilityChanged => 'Dish availability changed',
             self::MenuItemDeleted => 'Dish deleted',

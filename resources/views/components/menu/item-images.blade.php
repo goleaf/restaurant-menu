@@ -32,7 +32,7 @@
             :class="dragging ? 'outline-2 outline-focus' : ''"
         >
             <label for="item-images-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.editor.drop_or_choose') }}</label>
-            <x-ui.image-upload-input id="item-images-{{ $item['id'] }}" x-ref="files" @change.capture="preview($event)" x-bind:disabled="busy" wire:model="itemImageUploads.{{ $item['id'] }}" multiple :aria-label="__('uploads.labels.multiple_images')" />
+            <x-ui.image-upload-input id="item-images-{{ $item['id'] }}" aria-describedby="item-images-{{ $item['id'] }}-files-errors" x-ref="files" @change.capture="preview($event)" x-bind:disabled="busy" wire:model="itemImageUploads.{{ $item['id'] }}" multiple :aria-label="__('uploads.labels.multiple_images')" />
             <p class="text-xs text-text-muted">{{ __('uploads.labels.up_to_images', ['count' => $item['remaining_image_slots']]) }}</p>
             <div x-show="uploading" class="grid gap-1" role="status">
                 <span class="text-xs text-text-muted">{{ __('uploads.editor.uploading') }} <span x-text="progress + '%'"></span></span>
@@ -54,19 +54,21 @@
         </div>
     @endif
 
-    @error('itemImageUploads.'.$item['id'])
-        <p role="alert" class="text-sm font-medium text-danger">{{ $message }}</p>
-    @enderror
+    @if ($item['remaining_image_slots'] === 0 || $presentationContext !== [])
+        <flux:error :name="'itemImageUploads.'.$item['id']" :deep="false" class="text-danger!" />
+    @endif
     @error('catalogOperation')
         <p role="alert" class="text-sm font-medium text-danger">{{ $message }}</p>
         <flux:button type="button" wire:click="resumeCatalogOperation" wire:loading.attr="disabled" icon="arrow-path">{{ __('menu.operations.resume') }}</flux:button>
     @enderror
+    <div id="item-images-{{ $item['id'] }}-files-errors" class="grid gap-1">
     @forelse ($pendingUploads as $uploadIndex => $pendingUpload)
         @error('itemImageUploads.'.$item['id'].'.'.$uploadIndex)
             <p role="alert" class="text-sm text-danger">{{ __('uploads.editor.file_number', ['number' => $uploadIndex + 1]) }}: {{ $message }}</p>
         @enderror
     @empty
     @endforelse
+    </div>
 
     @if ($presentationContext !== [] && $presentationContext['item_id'] === $item['id'])
         <div
@@ -97,13 +99,13 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label for="image-focal-x-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.presentation.horizontal') }} <output x-text="focalX + '%'" class="tabular-nums"></output></label>
-                    <input id="image-focal-x-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalX" wire:model="imagePresentationForm.focal_x" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
-                    @error('imagePresentationForm.focal_x')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger">{{ $message }}</p>@enderror
+                    <input id="image-focal-x-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalX" wire:model="imagePresentationForm.focal_x" aria-describedby="image-focal-x-{{ $item['id'] }}-error" aria-invalid="{{ $errors->has('imagePresentationForm.focal_x') ? 'true' : 'false' }}" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
+                    @error('imagePresentationForm.focal_x')<flux:error name="imagePresentationForm.focal_x" id="image-focal-x-{{ $item['id'] }}-error" tabindex="-1" data-image-error class="text-danger!" />@enderror
                 </div>
                 <div>
                     <label for="image-focal-y-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.presentation.vertical') }} <output x-text="focalY + '%'" class="tabular-nums"></output></label>
-                    <input id="image-focal-y-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalY" wire:model="imagePresentationForm.focal_y" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
-                    @error('imagePresentationForm.focal_y')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger">{{ $message }}</p>@enderror
+                    <input id="image-focal-y-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalY" wire:model="imagePresentationForm.focal_y" aria-describedby="image-focal-y-{{ $item['id'] }}-error" aria-invalid="{{ $errors->has('imagePresentationForm.focal_y') ? 'true' : 'false' }}" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
+                    @error('imagePresentationForm.focal_y')<flux:error name="imagePresentationForm.focal_y" id="image-focal-y-{{ $item['id'] }}-error" tabindex="-1" data-image-error class="text-danger!" />@enderror
                 </div>
             </div>
             <fieldset class="min-w-0">
@@ -147,7 +149,7 @@
                         </div>
                     @endif
                     <x-dangerous-action-confirmation name="remove-menu-item-image-{{ $item['id'] }}-{{ $image['key'] }}" action="delete_media_file" :confirm-action="$image['remove_action']" confirm-label="ui.actions.confirm" loading-label="ui.actions.removing">
-                        <x-slot:trigger><flux:button type="button" variant="primary" color="red" icon="trash" :disabled="$presentationContext !== []" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('uploads.actions.remove') }}</flux:button></x-slot:trigger>
+                        <x-slot:trigger><flux:button type="button" variant="primary" color="red" icon="trash" :disabled="$presentationContext !== []" class="rm-action-danger">{{ __('uploads.actions.remove') }}</flux:button></x-slot:trigger>
                     </x-dangerous-action-confirmation>
                 </figcaption>
             </figure>

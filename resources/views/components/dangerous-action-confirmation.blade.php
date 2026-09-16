@@ -51,7 +51,7 @@
             </flux:modal.close>
 
             @if ($confirmHref)
-                <flux:button icon="exclamation-triangle" variant="primary" color="red" :href="$confirmHref" class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                <flux:button icon="exclamation-triangle" variant="primary" color="red" :href="$confirmHref" class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 rm-action-danger">
                     {{ __($confirmLabel) }}
                 </flux:button>
             @elseif ($confirmAction)
@@ -63,7 +63,7 @@
                         wire:click="{{ $confirmAction }}"
                         wire:offline.attr="disabled" wire:loading.attr="disabled"
                         wire:target="{{ $submitTarget }}"
-                        class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                        class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 rm-action-danger"
                     >
                         <span wire:loading.remove wire:target="{{ $submitTarget }}">{{ __($confirmLabel) }}</span>
                         <span wire:loading wire:target="{{ $submitTarget }}">{{ __($loadingLabel) }}</span>
@@ -75,7 +75,7 @@
                         type="button"
                         wire:click="{{ $confirmAction }}"
                         wire:offline.attr="disabled" wire:loading.attr="disabled"
-                        class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                        class="max-w-full h-auto! min-h-touch whitespace-normal! wrap-anywhere py-2 rm-action-danger"
                     >
                         {{ __($confirmLabel) }}
                     </flux:button>

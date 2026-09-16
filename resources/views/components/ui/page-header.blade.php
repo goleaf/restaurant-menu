@@ -22,11 +22,11 @@
 
                             @if (($breadcrumb['href'] ?? null) !== null && ! ($breadcrumb['current'] ?? false))
                                 <a href="{{ $breadcrumb['href'] }}" class="rm-page-header__link" wire:navigate>
-                                    {{ __($breadcrumb['label']) }}
+                                    {{ ($breadcrumb['translate'] ?? false) ? __($breadcrumb['label']) : $breadcrumb['label'] }}
                                 </a>
                             @else
                                 <span @if ($breadcrumb['current'] ?? false) aria-current="page" @endif class="min-w-0 text-pretty text-text-primary">
-                                    {{ __($breadcrumb['label']) }}
+                                    {{ ($breadcrumb['translate'] ?? false) ? __($breadcrumb['label']) : $breadcrumb['label'] }}
                                 </span>
                             @endif
                         </li>

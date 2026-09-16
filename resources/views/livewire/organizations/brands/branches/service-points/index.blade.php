@@ -610,7 +610,7 @@
                                     confirm-label="service_points.actions.delete"
                                 >
                                     <x-slot:trigger>
-                                        <flux:button icon="trash" variant="primary" color="red" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 rm-action-danger">
                                             {{ __('structure.actions.archive') }}
                                         </flux:button>
                                     </x-slot:trigger>

@@ -4,6 +4,12 @@
 
 # Restaurant Menu completion progress
 
+## 2026-09-16 — Flux component-system continuation (verification in progress)
+
+Started from clean `76932c7`, following the delivered SCSS/Alpine migration. Independent navigation/forms/theme agents implemented bounded changes; a separate reviewer caught the initial grid cascade conflict and breadcrumb translation defect before final verification. Both have explicit regressions. Changes cover keyboard navigation, the three structure lists, semantic danger controls, menu label selection, shared upload/focal errors and localized nested Pro search/date labels. Notification business behavior is preserved and a new browser case observes actual polling after ten navigation transitions and history.
+
+The first integration build exposed the SCSS entry allocation and menu HTML budget. The aggregate and HTML ceilings remain unchanged; implementation/entry allocation are being corrected before the final aggregate. Current test counts, visual proof and delivery will be recorded after the frozen-source run, not inferred from the earlier migration results.
+
 ## SCSS / Alpine / Livewire migration — implemented and verified, 2026-09-16
 
 Independent Sass entries, canonical/generated tokens, PDF/emergency artifacts, 26 named Alpine factories/four bindings, one Livewire ESM bootstrap and removal of twelve obsolete root modules are connected. All 30 existing class-based product page routes retain their server Actions and explicit HTTP exceptions. No schema, working data or APP_KEY changed.

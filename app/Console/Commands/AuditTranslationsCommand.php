@@ -518,6 +518,10 @@ class AuditTranslationsCommand extends Command
             resource_path('views'),
             resource_path('js'),
             base_path('routes'),
+            base_path('packages/livewire/flux-pro/stubs/resources/views/flux/calendar/index.blade.php'),
+            base_path('packages/livewire/flux-pro/stubs/resources/views/flux/date-picker/index.blade.php'),
+            base_path('packages/livewire/flux-pro/stubs/resources/views/flux/select/search.blade.php'),
+            base_path('packages/livewire/flux-pro/stubs/resources/views/flux/pillbox/search.blade.php'),
         ];
     }
 

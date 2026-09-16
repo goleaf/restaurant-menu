@@ -19,7 +19,7 @@ Quality entrypoint: `npm run verify:migration` executes manifest validation, arc
 
 ## Internal Flux Pro distribution — 2026-09-15
 
-`packages/livewire/flux-pro/` is the maintained local distribution boundary. Adjacent `flux-pro.provenance.json` and `flux-pro.sha256` retain the original source inventory and explicit local patches. Root Composer installs the truthful local release `0.1.0` through a path repository with `symlink: false`; ordinary discovery loads a physical vendor mirror. The upstream version remains unknown. Installed Free 2.17.0 supplies the tested PHP compatibility target; browser compatibility is a separate acceptance gate.
+`packages/livewire/flux-pro/` is the maintained local distribution boundary. Adjacent `flux-pro.provenance.json` and `flux-pro.sha256` retain the original source inventory and explicit local patches. Root Composer installs the truthful local release `0.1.1` through a path repository with `symlink: false`; ordinary discovery loads a physical vendor mirror. The upstream version remains unknown. Installed Free 2.17.0 supplies the tested PHP compatibility target; browser compatibility is a separate acceptance gate.
 
 Keep first-party adapters in `app/` and `resources/`; the package's vendor Blade idioms do not relax first-party architecture rules. Domain reads remain scoped read services/models, mutations remain authorized Actions and Forms, and widgets receive prepared values. Free and Pro templates/PHP/compiled assets must belong to one accepted compatible pair. Integrity checks can run without the original root directory; application independence must additionally be proved before its deletion. See `ui-flux-pro-001` and the [execution ledger](IMPLEMENTATION_PLAN.md).
 
@@ -88,7 +88,7 @@ KitchenDepartments preserves original editable transport values until validation
 
 ## System shape
 
-Restaurant Menu is a single Laravel application deployed as server-rendered HTML. Laravel routes and Fortify provide HTTP/authentication boundaries; class-based Livewire components own interactive page state; Blade and Flux UI Free render presentation; Actions coordinate domain writes; Eloquent models own persistence and entity-local behavior. SQLite, local files, and database-backed cache, sessions, and queues are the supported shared-hosting baseline.
+Restaurant Menu is a single Laravel application deployed as server-rendered HTML. Laravel routes and Fortify provide HTTP/authentication boundaries; class-based Livewire components own interactive page state; Blade and installed Flux Free/local Pro components render presentation; Actions coordinate domain writes; Eloquent models own persistence and entity-local behavior. SQLite, local files, and database-backed cache, sessions, and queues are the supported shared-hosting baseline.
 
 ```text
 HTTP route / Livewire action

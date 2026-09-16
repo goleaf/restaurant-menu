@@ -4,6 +4,16 @@
 
 # Frontend architecture
 
+## 2026-09-16 — Current component system continuation
+
+The organization → brand → branch lists share `components/structure/list-toolbar` with Flux search, filters, visible-row count, loading/offline and explicit clear search. The existing simple paginator remains accessible and recovers from an empty late page after archive/restore without clearing filters. Breadcrumb labels are literal by default; static translation keys opt in explicitly.
+
+The authorized navigation search remains a Flux modal with real links and named Alpine keyboard behavior. Up/Down and Home/End move among visible links; Enter and modified clicks retain browser semantics. A cancelled shortcut, text input, IME composition or another open dialog cannot launch search. One notification component/poller remains: opening the bell never marks messages read, closed polling only refreshes the count, and restaurant tasks remain independent of notification read state.
+
+The shared image picker keeps the existing native file input and Livewire upload. Its help and field error have stable IDs; caller descriptions merge without duplicate IDs, modifiers/events/keys remain forwarded, and detailed per-file errors stay with the gallery. Focal controls retain native ranges with linked validation errors. Danger styling is centralized in SCSS; normal/disabled/loading/operational controls are shown on the restricted reference page.
+
+Local Pro 0.1.1 contains four documented translation patches; its upstream version remains unknown. No vendor files are edited manually. `node packages/livewire/flux-pro/build-runtime.mjs --check` verifies the inventory and unchanged runtime, and Composer installs the local path normally. The original snapshot remains until the separate complete Pro clean-release/rollback acceptance.
+
 ## Current SCSS / Alpine boundary — 2026-09-16
 
 The accepted migration supersedes earlier native-CSS-only and page-script decisions for first-party code. `resources/css/app.css` is only the Tailwind/installed Flux bridge. `resources/scss/app.scss` owns product tokens, light/dark variables, fonts, base accessibility and semantic compositions; `qr-print.scss` is a print-only entry. `pdf-qr.scss`, `pdf-report.scss` and `emergency.scss` compile into fixed committed `resources/views/generated/styles/*.blade.php` artifacts, so emergency/PDF rendering never needs a Vite manifest or runtime Node. `resources/build/styles.js` generates token aliases and concrete breakpoints automatically in both Vite build and dev/HMR; `npm run styles:check` detects drift. Do not edit generated CSS.
@@ -43,6 +53,8 @@ Branch selection retains native details for local dismissal and focus, with Flux
 
 `/local/components` is available only in local/testing to an authenticated superadmin, with authorization repeated on hydration. Its fictional examples exercise controls, states, lists, modal validation and independent drafts without changing restaurant records. The component is unavailable in production even with cached routes. Existing menu/media, QR print and guest native-dialog contracts are preserved.
 
+
+The reference Command demonstrates its supported action API by opening the existing named example editor; it does not pretend that `command.item` supports `href`. Real product navigation remains anchor-based. Optional upstream clearable/closable variants in date/time/select/pillbox/command still contain untranslated fallback labels but are not enabled by current product views or the reference. Enabling those variants requires a localized, provenance-recorded patch and a rendered regression; they are not evidence of completed all-family Pro localization.
 
 ## Flux Free modernization — 2026-09-15
 

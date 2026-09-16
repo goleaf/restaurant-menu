@@ -11,6 +11,25 @@ afterEach(function () {
     File::deleteDirectory(translationScanFixturePath());
 });
 
+test('default translation scan records exactly the maintained Pro source files with complete catalogs', function (): void {
+    Artisan::call('translations:scan', ['--json' => true]);
+    $report = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+    $packageFiles = collect($report['usages'])->flatten()
+        ->map(fn (string $location): string => explode(':', $location)[0])
+        ->filter(fn (string $path): bool => str_starts_with($path, 'packages/livewire/flux-pro/'))
+        ->unique()->sort()->values()->all();
+
+    expect($packageFiles)->toBe([
+        'packages/livewire/flux-pro/stubs/resources/views/flux/calendar/index.blade.php',
+        'packages/livewire/flux-pro/stubs/resources/views/flux/date-picker/index.blade.php',
+        'packages/livewire/flux-pro/stubs/resources/views/flux/pillbox/search.blade.php',
+        'packages/livewire/flux-pro/stubs/resources/views/flux/select/search.blade.php',
+    ])
+        ->and($report['missing_keys'])->toBe([])
+        ->and($report['unused_json_keys'])->toBe([])
+        ->and($report['legacy_phrase_keys'])->toBe([]);
+});
+
 test('translation scanner reports used missing unused and legacy keys', function () {
     $langDir = translationScanFixturePath('report/lang');
     $scanDir = translationScanFixturePath('report/app');

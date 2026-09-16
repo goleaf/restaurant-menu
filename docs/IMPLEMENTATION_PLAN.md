@@ -4,6 +4,25 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-16 — Unified Flux component system continuation
+
+Baseline is clean local `main` at `76932c7b5f59f646fb9652616ff55c0034f98789`. Installed and locked versions: Flux Free 2.17.0, the accepted local Pro adaptation 0.1.0 (unknown upstream version), Livewire 4.4.1, Laravel 13.26.1. Baseline source hashes and built assets are retained in the owned temporary `restaurant-flux-system-v_19zc_y` directory. Earlier delivered desktop collapse, notification flyout/read actions, branch picker, named confirmation dialogs and SCSS/Alpine runtime remain the baseline, not new claims.
+
+| Work / owned files | Owner | Status | Acceptance |
+| --- | --- | --- | --- |
+| Installed compatibility, overrides, clean baseline and measurements | Root + read-only agents | in_progress | Local package/API evidence; no prohibited downloads; comparable production fixtures |
+| Navigation search keyboard contract; sidebar, navigation-search factory and its tests | Navigation agent | in_progress | Authorized real links, arrows/Enter, guarded shortcut, no duplicate handlers |
+| Notification network regressions; NotificationsPanel browser suite | Navigation agent | in_progress | One poller with mobile sidebar and repeated navigation; explicit read operations unchanged |
+| Organization/brand/branch lists; three Index classes/views, structure toolbar and tests | Forms agent | in_progress | Consistent Flux filters/states, filter retention and last-page recovery after archive/restore |
+| Danger semantic SCSS, shared image-upload input, component reference and tests | Theme agent | in_progress | Stable helper/error associations, attribute forwarding, all control states, 44/56px |
+| Menu label selection/media errors; semantic class adoption; translations and entrypoints | Root | in_progress | Existing Livewire contracts preserved, nested validation announced, no duplicated UI state |
+| Production screens, five widths/themes, keyboard/offline, real screenshots and performance | Root | todo | Full actual browser scenarios plus visual inspection, comparable bytes/requests/payloads |
+| Full local gates, independent diff review, docs, scoped commit and ordinary push | Root + reviewer | todo | Fresh observed results, accurate limitations, no workflow/secret/unrelated changes |
+
+Primary new/reused boundaries: `components/structure/list-toolbar.blade.php` composes the three existing structure Index views; `resources/scss/components/_controls.scss` owns shared danger/upload styles; `ImageUploadInput` prepares identity and error associations; `navigation-search.js` owns only local keyboard behavior. Four maintained Pro source patches (`calendar/index`, `date-picker/index`, `select/search`, `pillbox/search`) carry semantic translations and corresponding provenance. Existing domain Actions and routes are unchanged.
+
+Preserve the existing component reference and canonical plan. No second theme store, generic control wrapper, upload endpoint or notification subsystem. Keep supported native file/range inputs and accessible existing simple pagination where a mechanical Flux replacement would regress their contracts. Root alone owns common entrypoints, manifests, JSON translations and documentation; agents do not run shared builds or full suites concurrently.
+
 ## 2026-09-16 — SCSS / Alpine / Livewire migration (implemented, verified and pushed)
 
 User-authorized implementation supersedes earlier native-CSS-only decisions for first-party styles. Preserve framework CSS and the installed local Flux adaptation; do not rewrite vendor code. Architecture: independent Vite CSS/SCSS entries, generated Tailwind aliases from one Sass map, named Alpine factories registered before a single Livewire ESM start, Livewire state and domain Actions. Existing Node test runner remains the single JS runner.

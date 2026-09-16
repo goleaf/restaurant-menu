@@ -4,6 +4,14 @@
 
 # Changelog
 
+## 2026-09-16 — Consistent Flux controls and structure lists
+
+- Add full keyboard navigation to authorized section search while preserving native links and guarded shortcuts.
+- Unify organization, brand and branch filters, breadcrumbs, counts and empty states; recover empty pagination without losing filters or editor input.
+- Share semantic danger control styling, accessible file guidance/errors and Flux menu label selection; retain Livewire uploads and domain Actions.
+- Correct nested EN/LT/RU search/calendar labels in the maintained local Pro 0.1.1 adaptation, with per-file provenance and ordinary offline Composer installation.
+- Extend real browser regressions for mobile/desktop controls, structure mutations, keyboard focus and single notification polling after navigation. Keep production assets within the existing total budgets.
+
 ## 2026-09-16 — SCSS and Alpine architecture migration (verification in progress)
 
 - Separate the minimal Tailwind/Flux CSS bridge from canonical product Sass modules and generated PDF/error styles; preserve light/dark, fonts, print sizes and operational targets.

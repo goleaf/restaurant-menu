@@ -96,7 +96,7 @@
                     confirmation-help="ui.confirmations.typed_confirmation_help"
                 >
                     <x-slot:trigger>
-                        <flux:button icon="arrow-path" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                        <flux:button icon="arrow-path" variant="primary" color="red" type="button" class="rm-action-danger">
                             {{ __('ui.superadmin.dashboard.restore_sqlite') }}
                         </flux:button>
                     </x-slot:trigger>
@@ -255,7 +255,7 @@
                                                 type="button"
                                                 size="sm"
                                                 variant="primary" color="red"
-                                                class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                                                class="rm-action-danger"
                                             >
                                                 {{ __('ui.actions.suspend') }}
                                             </flux:button>

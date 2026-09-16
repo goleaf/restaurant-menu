@@ -221,3 +221,29 @@ test('the open photo editor reads legacy image dimensions without rewriting its 
         ->assertSet('imagePresentationContext.height', 360);
     expect(Storage::disk('public')->get($this->item->image))->toBe($file->getContent());
 });
+
+test('photo focal validation associates native range errors and preserves the other draft fields', function (): void {
+    $component = Livewire::actingAs($this->actor)->test(Catalog::class, [
+        'organizationId' => $this->branch->organization_id, 'brandId' => $this->branch->brand_id, 'branchId' => $this->branch->id,
+    ])->call('startEditingItem', $this->item->id)
+        ->call('editItemImagePresentation', $this->item->id, null, hash('sha256', $this->item->image))
+        ->set('imagePresentationForm.focal_x', 101)
+        ->set('imagePresentationForm.focal_y', -1)
+        ->set('imagePresentationForm.translations.lt.caption', 'Išsaugoti įvestą tekstą')
+        ->call('saveItemImagePresentation')
+        ->assertHasErrors(['imagePresentationForm.focal_x', 'imagePresentationForm.focal_y'])
+        ->assertSet('imagePresentationForm.translations.lt.caption', 'Išsaugoti įvestą tekstą');
+
+    $document = new DOMDocument;
+    @$document->loadHTML(mb_convert_encoding($component->html(), 'HTML-ENTITIES', 'UTF-8'));
+    $xpath = new DOMXPath($document);
+    foreach (['x', 'y'] as $axis) {
+        $id = 'image-focal-'.$axis.'-'.$this->item->id;
+        $input = $xpath->query('//*[@id="'.$id.'"]')->item(0);
+        expect($input?->getAttribute('aria-describedby'))->toBe($id.'-error')
+            ->and($input?->getAttribute('aria-invalid'))->toBe('true');
+        expect($xpath->query('//*[@id="'.$id.'-error"]')->item(0)?->textContent)->not->toBeEmpty();
+    }
+    expect($this->item->fresh()->image_presentation)->toBeNull()
+        ->and(Storage::disk('public')->get($this->item->image))->toBe('Original primary bytes');
+});

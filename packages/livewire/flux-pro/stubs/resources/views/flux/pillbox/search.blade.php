@@ -50,7 +50,7 @@ if ($loading) {
         type="text"
         {{ $attributes->class($classes) }}
         @if ($invalid) aria-invalid="true" data-invalid @endif
-        placeholder="{{ $placeholder ?? __('Search...') }}"
+        placeholder="{{ $placeholder ?? __('layout.search') }}"
         data-flux-pillbox-input
         autofocus
     />
@@ -64,14 +64,14 @@ if ($loading) {
     <?php if ($closable): ?>
         <div class="[[data-flux-pillbox-search]:has([data-flux-loading])_&]:opacity-0 transition-opacity absolute top-0 bottom-0 flex items-center justify-center pe-1 end-0">
             <ui-close>
-                <flux:button square variant="subtle" size="sm" aria-label="Clear search input">
+                <flux:button square variant="subtle" size="sm" :aria-label="__('ui.accessibility.close_search')">
                     <flux:icon.x-mark variant="micro" />
                 </flux:button>
             </ui-close>
         </div>
     <?php elseif ($clearable): ?>
         <div class="[[data-flux-pillbox-search]:has([data-flux-loading])_&]:opacity-0 transition-opacity absolute top-0 bottom-0 flex items-center justify-center pe-1 end-0 [[data-flux-pillbox-search]:has(input:placeholder-shown)_&]:hidden">
-            <flux:button square variant="subtle" size="sm" tabindex="-1" aria-label="Clear command input"
+            <flux:button square variant="subtle" size="sm" tabindex="-1" :aria-label="__('ui.accessibility.clear_search')"
                 x-data="fluxPillboxSearchClearable"
                 x-on:click="clear()"
             >

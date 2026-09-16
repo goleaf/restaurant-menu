@@ -4,6 +4,18 @@
 
 # Testing and quality gates
 
+## Flux component-system continuation — 2026-09-16
+
+This stage starts from clean `76932c7`; earlier migration totals below are historical. The same `npm run verify:migration` coordinator now additionally writes Clover line coverage to its owned artifact directory. It does not enable or claim global PHP branch/path coverage.
+
+Targeted regressions cover literal breadcrumb names, empty last-page recovery, retained invalid forms, tenant/permission denial, image-control attributes and nested errors, focal-point rejection without persistence, menu label binding, all nested Pro translations and runtime/provenance reproducibility. Browser additions cover real structure archive/restore requests, keyboard navigation with native links, five widths in both themes, translated control states and one closed notification poller after ten visits plus Back/Forward. Existing guest/order/auth/invitation/branch/media journeys remain in the complete inventory.
+
+Independent local checks: Composer and npm audits report zero advisories/vulnerabilities. Clean installs from existing caches with network disabled pass in a temporary copy; npm reports three optional native install scripts as unapproved, and the actual production build nevertheless passes without approving them. Package discovery, config/route/view cache, route listing and platform requirements all exit 0 in that copy. SCSS dev/HMR requests return 200, changing the owned copy emits an HMR update and the served CSS contains the changed rule; the temporary source is restored and its Vite process is closed.
+
+Separate disposable Chrome MCP checks load the real RU Herd login with the two ordered style entries and only the common module plus Flux script; no horizontal overflow or console errors/warnings appear at 390px dark. A temporary native-button probe using the production danger class measures 6.35:1 normal light, 5.51:1 hover light and 6.57:1 hover dark, all at 44px; it is removed after measurement. An isolated compiled-CSS fixture in sandboxed Chrome emulates forced colors and reduced motion in both root themes: system foreground/background, 21:1 normal contrast, distinct disabled text, visible 2–3px focus outline, 44px button/62px upload, reduced animation and no 390px overflow pass. This fixture is CSS evidence, not a substitute for the real Flux/Livewire workflows.
+
+The final aggregate result and exact coverage are recorded here after completion. Artifacts and failures are retained; no failure is converted into a successful check. Current CSS/JS measurements are in `performance.md`.
+
 ## SCSS / Alpine migration verification — 2026-09-16
 
 Run `npm run verify:migration` from the repository root after sources are stable. It creates owned temporary storage/cache paths, uses SQLite `:memory:`, compares full backend discovery with JUnit execution, rejects skips/incomplete/risky/warnings, and preserves every subprocess exit code. Timeouts first signal the process group so the browser runner can clean its separate child session, then escalate within a bounded grace period; regression tests exercise real detached children. Logs and summary JSON are printed under the system temporary directory, not production storage.

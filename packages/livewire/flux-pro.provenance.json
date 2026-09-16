@@ -52,7 +52,7 @@
     {
       "path": "composer.json",
       "bytes": 1589,
-      "sha256": "d45d1f0c230b45ba2a1c82aed547dad0d0404aef8c5ad69a3306aed4670ca989"
+      "sha256": "98eb36a2ca17d34d9965876aa336957f0dbcb9193eae5c26009fc92ed679f141"
     },
     {
       "path": "dist/editor.css",
@@ -156,8 +156,8 @@
     },
     {
       "path": "stubs/resources/views/flux/calendar/index.blade.php",
-      "bytes": 20153,
-      "sha256": "2dfcc13e6fd0cbda91b278741f84ce42795f14ac77733855c3455d798ba1184e"
+      "bytes": 20247,
+      "sha256": "511ef64d62ef8cc1f1e2d0f77b1b3feadbfba6df9efb496c40e4c7459751c0ca"
     },
     {
       "path": "stubs/resources/views/flux/chart/area.blade.php",
@@ -321,8 +321,8 @@
     },
     {
       "path": "stubs/resources/views/flux/date-picker/index.blade.php",
-      "bytes": 25935,
-      "sha256": "f7511e8d501068a5390d87acb09a86597805049de13a7c73b50486f6521f6dcf"
+      "bytes": 26061,
+      "sha256": "655c0c15a914724ffa76d4e307ab7a3122c021ef620be8e55d11b7876c0f7074"
     },
     {
       "path": "stubs/resources/views/flux/date-picker/input.blade.php",
@@ -551,8 +551,8 @@
     },
     {
       "path": "stubs/resources/views/flux/pillbox/search.blade.php",
-      "bytes": 3349,
-      "sha256": "9382339958a1fc68129c66967fcd95d76e08915b6061329f9912b7b2b24ed215"
+      "bytes": 3388,
+      "sha256": "9d8898e52e3a6ac29c68ce2730c52f1bd511c3d5bcfd001ec026b5b277001a61"
     },
     {
       "path": "stubs/resources/views/flux/pillbox/selected.blade.php",
@@ -636,8 +636,8 @@
     },
     {
       "path": "stubs/resources/views/flux/select/search.blade.php",
-      "bytes": 3249,
-      "sha256": "124645a118764953cfbf763570cb3a6ffd95fdff48cf73266171ae986e8eca5f"
+      "bytes": 3288,
+      "sha256": "ff7b925ca294da024ac96305d8df338b997cdd517b1a7973b0d0d138a09bae16"
     },
     {
       "path": "stubs/resources/views/flux/select/selected.blade.php",
@@ -1438,7 +1438,7 @@
     }
   ],
   "local_release": {
-    "version": "0.1.0",
+    "version": "0.1.1",
     "version_scope": "project-local; not an upstream release",
     "basis": "User-authorized adaptation of the existing local snapshot only; no external package or credentials.",
     "changed_files": [
@@ -1447,15 +1447,19 @@
       "dist/flux.min.js",
       "dist/flux.module.js",
       "dist/manifest.json",
-      "src/FluxProServiceProvider.php"
+      "src/FluxProServiceProvider.php",
+      "stubs/resources/views/flux/calendar/index.blade.php",
+      "stubs/resources/views/flux/date-picker/index.blade.php",
+      "stubs/resources/views/flux/pillbox/search.blade.php",
+      "stubs/resources/views/flux/select/search.blade.php"
     ]
   },
   "local_patches": [
     {
       "path": "composer.json",
       "original_sha256": "c07f944664216e94e0eb7ac1d11f69330c188b51792e01445ce0446934e09b45",
-      "local_sha256": "d45d1f0c230b45ba2a1c82aed547dad0d0404aef8c5ad69a3306aed4670ca989",
-      "reason": "Assign truthful project-local release 0.1.0 with unknown upstream version, target installed Free 2.17.0 exactly, and preserve the Free Flux facade by declaring the distinct FluxPro alias."
+      "local_sha256": "98eb36a2ca17d34d9965876aa336957f0dbcb9193eae5c26009fc92ed679f141",
+      "reason": "Assign truthful project-local release 0.1.1 with unknown upstream version, target installed Free 2.17.0 exactly, and preserve the Free Flux facade by declaring the distinct FluxPro alias."
     },
     {
       "path": "dist/flux.js",
@@ -1486,12 +1490,36 @@
       "original_sha256": "e61b7889e1c4bcb9416da23de17a1a4da7cf31056c0228fc24cf4c5ce10ff053",
       "local_sha256": "0eaf5e9945ec7f5a9d85f0044fec9bebd3b351f109b531bc1934367fefe0f016",
       "reason": "Remove the nonexistent Flux\\FluxPro import so the provider aliases the existing FluxPro\\FluxPro facade in its own namespace."
+    },
+    {
+      "path": "stubs/resources/views/flux/calendar/index.blade.php",
+      "original_sha256": "2dfcc13e6fd0cbda91b278741f84ce42795f14ac77733855c3455d798ba1184e",
+      "local_sha256": "511ef64d62ef8cc1f1e2d0f77b1b3feadbfba6df9efb496c40e4c7459751c0ca",
+      "reason": "Use application semantic JSON translations for calendar navigation, Today, range inputs, date placeholders and confirmation controls; correct Today accessible name; preserve date protocol."
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/index.blade.php",
+      "original_sha256": "f7511e8d501068a5390d87acb09a86597805049de13a7c73b50486f6521f6dcf",
+      "local_sha256": "655c0c15a914724ffa76d4e307ab7a3122c021ef620be8e55d11b7876c0f7074",
+      "reason": "Use application semantic JSON translations for calendar navigation, Today, range inputs, date placeholders and confirmation controls; correct Today accessible name; preserve date protocol."
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/search.blade.php",
+      "original_sha256": "9382339958a1fc68129c66967fcd95d76e08915b6061329f9912b7b2b24ed215",
+      "local_sha256": "9d8898e52e3a6ac29c68ce2730c52f1bd511c3d5bcfd001ec026b5b277001a61",
+      "reason": "Translate search placeholder and distinguish Clear search from Close search accessible names using application semantic JSON keys; preserve input and popup behavior."
+    },
+    {
+      "path": "stubs/resources/views/flux/select/search.blade.php",
+      "original_sha256": "124645a118764953cfbf763570cb3a6ffd95fdff48cf73266171ae986e8eca5f",
+      "local_sha256": "ff7b925ca294da024ac96305d8df338b997cdd517b1a7973b0d0d138a09bae16",
+      "reason": "Translate search placeholder and distinguish Clear search from Close search accessible names using application semantic JSON keys; preserve input and popup behavior."
     }
   ],
   "internal_snapshot": {
     "file_count": 140,
-    "total_bytes": 3345445,
-    "inventory_sha256": "d346ca27020503f1a4d0afbf41675a34ad61ddc8066c002f48e7efe67385caad",
+    "total_bytes": 3345743,
+    "inventory_sha256": "bb352cb569800244aaa5a27b19e87b18b3feb9d6280288df4be68a7ac2566bda",
     "inventory_format": "UTF-8; bytewise full-path order; path TAB bytes TAB sha256 LF"
   },
   "local_additions": [

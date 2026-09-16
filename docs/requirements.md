@@ -4,6 +4,12 @@
 
 # Canonical requirements catalogue
 
+## Unified Flux component-system behavior — 2026-09-16
+
+The continuation refines `blade-001`, `livewire-001`, `i18n-001`, `ui-accessibility-001`, `ui-responsive-001`, `sys-tenant-001` and `ui-flux-pro-001`. Organization/brand/branch lists share labelled search, lifecycle, sort, visible-row count, explicit empty/search states and filter-preserving recovery when a page becomes empty. Navigation search uses the same authorized real links as the sidebar and supports arrows, Home/End and native Enter without intercepting text entry, composition or another open dialog. Breadcrumb domain names remain literal even when they match translation keys.
+
+Danger controls share semantic styling and explicit disabled/loading/operational states. Media controls preserve native file selection and Livewire uploads while associating guidance, field errors and detailed file errors. Menu allergens and dietary labels retain server validation and deferred state through accessible Flux checkbox groups. Nested installed search/date controls use the same EN/LT/RU catalogue as the product. Notification viewing and reading remain separate from restaurant task completion; closed-panel polling must not duplicate components or reload message bodies after mobile sidebar use and navigation.
+
 ## Accepted Flux Pro integration — 2026-09-15
 
 `ui-flux-pro-001` is the user-authorized extension of the existing interface requirements. Its implementation sequence and component/file mapping are in the [Flux Pro plan](superpowers/plans/2026-09-15-flux-pro-integration.md); execution status belongs in `IMPLEMENTATION_PLAN.md`. Earlier completion counts describe their dated scope and do not include this new requirement.

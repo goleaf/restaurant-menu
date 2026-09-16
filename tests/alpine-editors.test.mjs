@@ -283,7 +283,7 @@ test('navigation search uses accents and permitted DOM results, ignoring typing 
     assert.equal(instance.hasMatches, false);
     instance.focusFirstResult(); instance.visitFirstResult();
     const target = new Element();
-    for (const mods of [{ key: 'x' }, { ctrlKey: false }, { altKey: true }, { shiftKey: true }, { repeat: true }, { isComposing: true }]) {
+    for (const mods of [{ key: 'x' }, { ctrlKey: false }, { altKey: true }, { shiftKey: true }, { repeat: true }, { isComposing: true }, { defaultPrevented: true }]) {
         const keypress = event({ key: 'k', ctrlKey: true, target, ...mods });
         instance.handleShortcut(keypress);
         assert.equal(keypress.prevented, false);
@@ -303,6 +303,61 @@ test('navigation search uses accents and permitted DOM results, ignoring typing 
     assert.equal(keypress.prevented, true);
     assert.equal(opened, 1); assert.equal(search.focused, 1); assert.equal(trigger.focused, 1);
     assert.equal(instance.query, '');
+});
+
+test('navigation result keys traverse only matching links while preserving native link activation', t => {
+    const app = browser(t), instance = app.component(workspaceNavigation), search = new Element();
+    const rows = ['Šiauliai Kitchen', 'Settings', 'Šiauliai Waiter'].map(label => {
+        const row = new Element(), link = new Element();
+        row.dataset.searchLabel = label;
+        row.children.set('a', [link]);
+        link.selector = '[data-navigation-search-key]';
+        return row;
+    });
+    const [first, unrelated, last] = rows.map(row => row.querySelector('a'));
+    instance.$el.children.set('[data-search-label]', rows);
+    instance.$el.children.set('[data-workspace-search-input]', [search]);
+    instance.init(); instance.query = 'siauliai';
+    const down = event({ key: 'ArrowDown', target: search });
+    instance.handleSearchKeydown(down);
+    assert.equal(down.prevented, true); assert.equal(first.focused, 1);
+    instance.handleSearchKeydown(event({ key: 'ArrowUp', target: search }));
+    assert.equal(last.focused, 1);
+    instance.handleResultsKeydown(event({ key: 'ArrowDown', target: first }));
+    assert.equal(last.focused, 2);
+    instance.handleResultsKeydown(event({ key: 'ArrowDown', target: last }));
+    assert.equal(first.focused, 2);
+    instance.handleResultsKeydown(event({ key: 'ArrowUp', target: first }));
+    assert.equal(last.focused, 3);
+    instance.handleResultsKeydown(event({ key: 'Home', target: last }));
+    assert.equal(first.focused, 3);
+    instance.handleResultsKeydown(event({ key: 'End', target: first }));
+    assert.equal(last.focused, 4); assert.equal(unrelated.focused, 0);
+    const nativeEnter = event({ key: 'Enter', target: first });
+    instance.handleResultsKeydown(nativeEnter);
+    assert.equal(nativeEnter.prevented, false); assert.equal(first.clicks, 0);
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { shiftKey: true }, { isComposing: true }, { defaultPrevented: true }]) {
+        const keypress = event({ key: 'Enter', target: search, ...modifiers });
+        instance.handleSearchKeydown(keypress);
+        assert.equal(keypress.prevented, false);
+        const arrow = event({ key: 'ArrowDown', target: first, ...modifiers });
+        instance.handleResultsKeydown(arrow);
+        assert.equal(arrow.prevented, false);
+    }
+    const enter = event({ key: 'Enter', target: search });
+    instance.handleSearchKeydown(enter);
+    assert.equal(enter.prevented, true); assert.equal(first.clicks, 1);
+    for (const key of ['Home', 'End', 'a']) {
+        const keypress = event({ key, target: search });
+        instance.handleSearchKeydown(keypress); assert.equal(keypress.prevented, false);
+    }
+    const outside = event({ key: 'ArrowDown', target: new Element() });
+    instance.handleResultsKeydown(outside); assert.equal(outside.prevented, false);
+    instance.query = 'no results';
+    const empty = event({ key: 'ArrowDown', target: first });
+    instance.handleResultsKeydown(empty); assert.equal(empty.prevented, false);
+    instance.handleSearchKeydown(event({ key: 'Enter', target: search }));
+    assert.equal(first.clicks, 1);
 });
 
 test('destroy cancels its pending image upload and ignores late save/removal callbacks', async t => {

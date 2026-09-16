@@ -29,6 +29,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
+/** @property-read Paginator<int, Brand> $brands */
 class Index extends Component
 {
     use WithFileUploads;
@@ -256,10 +257,15 @@ class Index extends Component
 
     public function render(): View
     {
-        $brands = $this->brands();
+        $brands = $this->brands;
+
+        if ($brands->isEmpty() && $brands->currentPage() > 1) {
+            $this->resetPage(pageName: 'brandsPage');
+            unset($this->brands);
+            $brands = $this->brands;
+        }
 
         return view('livewire.organizations.brands.index', [
-            'organizationName' => $this->organization->name,
             'brandRows' => $brands
                 ->getCollection()
                 ->map(fn (Brand $brand): array => [
@@ -275,6 +281,11 @@ class Index extends Component
                 ])
                 ->all(),
             'brandsPaginator' => $brands,
+            'visibleCount' => $brands->count(),
+            'breadcrumbs' => [
+                ['label' => 'navigation.organizations', 'translate' => true, 'href' => route('organizations.index')],
+                ['label' => $this->organization->name, 'current' => true],
+            ],
         ])->title(__('navigation.brands'));
     }
 

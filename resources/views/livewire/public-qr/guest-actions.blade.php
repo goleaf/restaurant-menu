@@ -134,7 +134,7 @@
                 loading-label="guest.table.leaving"
             >
                 <x-slot:trigger>
-                    <flux:button type="button" variant="primary" color="red" icon="arrow-right-start-on-rectangle" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
+                    <flux:button type="button" variant="primary" color="red" icon="arrow-right-start-on-rectangle" class="rm-action-danger h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                         {{ __('guest.table.leave_action') }}
                     </flux:button>
                 </x-slot:trigger>

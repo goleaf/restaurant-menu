@@ -4,6 +4,14 @@
 
 # Restaurant Menu completion decisions
 
+## 2026-09-16 — Cohesive Flux controls and local accessibility patch
+
+- Preserve the installed Free 2.17.0 / Livewire 4.4.1 pair. Packagist metadata advertises Free 2.20.0, whose distribution URL is GitHub; no archive request is allowed. Local Pro 0.1.1 is a project patch release, not an upstream version. Four maintained templates now use semantic JSON labels for dates/search; original inventory/license/runtime bytes remain preserved. Normal offline Composer path installation provides the mirror.
+- Keep navigation destinations as real authorized anchors in the existing Flux modal. Installed Command items are action-only `ui-option` elements without a link/as API; wrapping/forwarding clicks would compromise native link behavior. The named Alpine controller adds ArrowUp/Down, Home/End while preserving Enter, modified clicks, IME and dialog/input shortcut guards.
+- Organization/brand/branch lists share a product toolbar. Count only already loaded visible rows; retain accessible simple pagination and URL filters. An empty late page returns to page one with one bounded reread; populated pages stay put. Breadcrumbs distinguish literal domain names from explicitly translated static labels.
+- Danger buttons use one narrow `.rm-action-danger` SCSS integration, replacing repeated important utilities. The important declarations are limited to this explicit product class because installed Flux variants own utility colors; forced-colors retains system colors. Native upload/range controls preserve browser/Livewire contracts; Flux descriptions/errors and stable IDs provide associations.
+- Translation scans include exactly the four locally patched template sources. They retain normal phrase/missing/unused checks; vendor and the unmodified distribution are not treated as first-party translation sources.
+
 ## 2026-09-16 — One browser runtime and canonical SCSS sources
 
 - Keep Tailwind/Flux in a separate CSS pipeline. Dart Sass compiles first-party product, print and fallback styles using modules; one map emits runtime variables and deterministic Tailwind aliases/breakpoints. Generated PDF/error includes are fixed deployment artifacts, independent of Vite at request time.

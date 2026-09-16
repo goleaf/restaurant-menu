@@ -28,4 +28,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Onboarding/**, app/Livewire/Forms/Onboarding/**, app/Support/RestaurantSetupOptions.php | .ai/rules/onboarding-support.md |
 | app/Livewire/PublicQr/** | .ai/rules/public-qr.md |
 | resources/{scss,css,build}/** | .ai/rules/scsscssbuild.md |
-| resources/views/components/ui/** | .ai/rules/ui.md |
+| resources/views/components/ui/**, resources/views/components/ui/page-header.blade.php | .ai/rules/ui.md |

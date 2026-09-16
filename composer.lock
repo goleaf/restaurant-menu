@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7a221a7184bda5d8a5005ec97961155f",
+    "content-hash": "750a999cb0722340ca9ff966f8030076",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2537,11 +2537,11 @@
         },
         {
             "name": "livewire/flux-pro",
-            "version": "0.1.0",
+            "version": "0.1.1",
             "dist": {
                 "type": "path",
                 "url": "packages/livewire/flux-pro",
-                "reference": "50e8a51583c94196c8d5c5514166a8740f7f98e0"
+                "reference": "aa16f3a6a62c5501c5a5bb78ea60f04f97f6a30d"
             },
             "require": {
                 "illuminate/console": "^10.0|^11.0|^12.0|^13.0",

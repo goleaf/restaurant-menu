@@ -1,7 +1,7 @@
 {
     "name": "livewire/flux-pro",
     "description": "Project-local fork of the user-provided Flux Pro snapshot; upstream version unknown.",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "keywords": ["flux", "laravel", "livewire", "components", "ui"],
     "license": "proprietary",
     "authors": [

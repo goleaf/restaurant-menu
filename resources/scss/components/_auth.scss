@@ -1,3 +1,4 @@
+@use 'sass:map';
 @use '../settings/tokens';
 @use '../settings/breakpoints';
 
@@ -47,6 +48,82 @@
         &--card {
             max-width: tokens.space(112);
             gap: tokens.space(6);
+        }
+    }
+
+    .rm-login-form {
+        width: 100%;
+        max-width: tokens.space(96);
+        margin-inline: auto;
+    }
+
+    .rm-login-directory {
+        margin-block-start: tokens.space(8);
+        overflow-wrap: anywhere;
+
+        &__table {
+            width: 100%;
+            margin-block: tokens.space(4);
+            border-collapse: collapse;
+            table-layout: fixed;
+            @include tokens.type('sm');
+
+            th,
+            td {
+                padding: tokens.space(3);
+                border-block-end: 1px solid var(--rm-border-subtle);
+                text-align: start;
+                vertical-align: top;
+            }
+
+            td > span,
+            td > strong {
+                display: block;
+            }
+
+            summary {
+                min-height: tokens.space(11);
+                cursor: pointer;
+                color: var(--rm-text-primary);
+            }
+
+            details p,
+            details ul {
+                margin-block: tokens.space(3);
+            }
+
+            @media (width < map.get(breakpoints.$values, 'md')) {
+                thead {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    overflow: hidden;
+                    clip-path: inset(50%);
+                }
+
+                tbody,
+                tr,
+                td {
+                    display: block;
+                    width: 100%;
+                }
+
+                tr {
+                    padding-block: tokens.space(3);
+                    border-block-end: 1px solid var(--rm-border-subtle);
+                }
+
+                td {
+                    border: 0;
+
+                    &::before {
+                        display: block;
+                        margin-block-end: tokens.space(1);
+                        font-weight: 600;
+                        content: attr(data-label);
+                    }
+                }
+            }
         }
     }
 }

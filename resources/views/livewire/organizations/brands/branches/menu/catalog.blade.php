@@ -178,7 +178,7 @@
                                     </flux:button>
 
                                     <x-dangerous-action-confirmation name="delete-menu-{{ $menu['id'] }}" action="delete_menu" confirm-action="deleteMenu({{ $menu['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                        <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.organizations.brands.branches.menu.index.delete_menu') }}</flux:button></x-slot:trigger>
+                                        <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="rm-action-danger">{{ __('ui.organizations.brands.branches.menu.index.delete_menu') }}</flux:button></x-slot:trigger>
                                     </x-dangerous-action-confirmation>
                                 </div>
                             </div>
@@ -231,7 +231,7 @@
                                                 <flux:button icon="pencil" type="button" wire:click="startEditingMenuSchedule({{ $schedule['id'] }})">
                                                     {{ __('menu.schedules.actions.edit') }}
                                                 </flux:button>
-                                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})" class="rm-action-danger">
                                                     {{ __('ui.actions.delete') }}
                                                 </flux:button>
                                             </div>
@@ -342,7 +342,7 @@
                                                         </flux:button>
 
                                                         <x-dangerous-action-confirmation name="delete-menu-category-{{ $category['id'] }}" action="delete_menu_category" confirm-action="deleteCategory({{ $category['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
+                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="rm-action-danger">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
                                                         </x-dangerous-action-confirmation>
                                                     </div>
                                                 </div>
@@ -415,7 +415,7 @@
                                                         @endif
                                                         <flux:button icon="document-duplicate" type="button" wire:click="duplicateItem({{ $item['id'] }})" wire:loading.attr="disabled" :disabled="$activeCatalogOperationId !== ''">{{ __('menu.operations.duplicate') }}</flux:button>
                                                         <x-dangerous-action-confirmation name="delete-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="deleteItem({{ $item['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
+                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" class="rm-action-danger">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
                                                         </x-dangerous-action-confirmation>
                                                     </div>
                                                 </div>

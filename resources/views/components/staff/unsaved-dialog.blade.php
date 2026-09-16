@@ -8,7 +8,7 @@
         </div>
         <div class="flex flex-wrap justify-end gap-3">
             <flux:button type="button" @click="cancelNavigation">{{ __('staff.workspace.keep_editing') }}</flux:button>
-            <flux:button type="button" variant="primary" color="red" @click="discardAndNavigate" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('staff.workspace.discard_continue') }}</flux:button>
+            <flux:button type="button" variant="primary" color="red" @click="discardAndNavigate" class="rm-action-danger">{{ __('staff.workspace.discard_continue') }}</flux:button>
         </div>
     </div>
 </flux:modal>

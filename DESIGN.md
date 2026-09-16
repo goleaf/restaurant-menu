@@ -116,6 +116,12 @@ components:
 
 # Design System: Restaurant Menu
 
+## 2026-09-16 — Consistent daily controls
+
+Keep the warm palette and local Noto Sans. Structure lists use the same compact toolbar, explicit visible-row count, contextual breadcrumbs and readable empty/loading/offline states. Archive/restore must not strand the user on an empty page. User-supplied names are displayed literally, even if they resemble translation keys.
+
+Navigation search preserves normal links and supports the full keyboard route through results. Destructive controls share one semantic danger treatment; a confirmation remains distinct from a normal brand action. Menu labels use visible selection indicators and wrapping groups, including long LT/RU labels. Native upload and focal controls remain where their established browser behavior is useful; labels, help and validation belong to the same accessible field contract.
+
 ## Current SCSS / Alpine boundary — 2026-09-16
 
 The accepted migration supersedes earlier native-CSS-only and page-script decisions for first-party code. `resources/css/app.css` is only the Tailwind/installed Flux bridge. `resources/scss/app.scss` owns product tokens, light/dark variables, fonts, base accessibility and semantic compositions; `qr-print.scss` is a print-only entry. `pdf-qr.scss`, `pdf-report.scss` and `emergency.scss` compile into fixed committed `resources/views/generated/styles/*.blade.php` artifacts, so emergency/PDF rendering never needs a Vite manifest or runtime Node. `resources/build/styles.js` generates token aliases and concrete breakpoints automatically in both Vite build and dev/HMR; `npm run styles:check` detects drift. Do not edit generated CSS.
@@ -170,7 +176,7 @@ The interface behaves like a well-run service pass: scope, urgency and the next 
 
 The system has three deliberate densities. Guest screens breathe and explain. Management screens use compact, structured lists with persistent Organization → Brand → Branch context. Operational screens prioritize age, table, state and one next valid action, with larger targets and less decorative framing. Desktop staff workspaces use queue plus detail; mobile moves from list to a normal detail page instead of shrinking a desktop board.
 
-The product rejects generic SaaS card galleries, theme-restaurant decoration, stock food imagery, neon control-room styling and mobile layouts that merely compress desktop tables. `resources/css/app.css` is the runtime source of truth; this document defines how its semantic tokens and components are applied.
+The product rejects generic SaaS card galleries, theme-restaurant decoration, stock food imagery, neon control-room styling and mobile layouts that merely compress desktop tables. `resources/scss/settings/_tokens.scss` owns the tokens emitted as runtime CSS properties; this document defines how they and the components are applied.
 
 **Key Characteristics:**
 

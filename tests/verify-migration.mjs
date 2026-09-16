@@ -47,7 +47,7 @@ try {
     const actual = (readFileSync(junit, 'utf8').match(/<testcase\s/g) ?? []).length;
     if (expected === 0 || expected !== actual) throw new Error(`Backend discovery mismatch: ${expected} discovered, ${actual} executed`);
     await run('js-tests-coverage', ['npm', 'run', 'test:js:coverage']);
-    await run('php-coverage', ['composer', 'test:coverage', '--', '-d', 'memory_limit=4G', '--fail-on-skipped', '--fail-on-incomplete', '--fail-on-risky', '--fail-on-warning'], { timeout: 1_800_000 });
+    await run('php-coverage', ['composer', 'test:coverage', '--', '-d', 'memory_limit=4G', '--coverage-clover', join(artifacts, 'php-coverage.xml'), '--fail-on-skipped', '--fail-on-incomplete', '--fail-on-risky', '--fail-on-warning'], { timeout: 1_800_000 });
     await run('browser', ['composer', 'test:browser'], { timeout: 3_600_000 });
     await run('translations-audit', ['php', 'artisan', 'translations:audit', '--no-interaction']);
     await run('translations-scan', ['php', 'artisan', 'translations:scan', '--no-interaction']);

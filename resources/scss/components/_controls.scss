@@ -1,0 +1,83 @@
+@use '../settings/tokens';
+
+@layer components {
+    // The explicit product class replaces repeated overrides of Flux's red variant.
+    .rm-action-danger[data-flux-button] {
+        background-color: var(--rm-danger) !important;
+        color: var(--rm-text-inverse) !important;
+
+        @media (hover: hover) and (forced-colors: none) {
+            &:not(:disabled, [disabled], [aria-disabled='true']):hover {
+                background-color: color-mix(in oklab, var(--rm-danger) 90%, transparent) !important;
+            }
+        }
+
+        @media (forced-colors: active) {
+            border-color: ButtonText;
+            background-color: ButtonFace !important;
+            color: ButtonText !important;
+
+            &:is(:disabled, [disabled], [aria-disabled='true']) {
+                border-color: GrayText;
+                color: GrayText !important;
+            }
+        }
+    }
+
+    .rm-image-upload {
+        display: block;
+        width: 100%;
+        min-block-size: var(--rm-spacing-touch);
+        min-inline-size: 0;
+        border: 1px solid var(--rm-border-subtle);
+        border-radius: var(--rm-radius-control);
+        background: var(--rm-surface);
+        padding: tokens.space(2) tokens.space(3);
+        color: var(--rm-text-primary);
+        @include tokens.type('sm');
+        box-shadow: var(--rm-shadow-card);
+
+        &::file-selector-button {
+            min-block-size: var(--rm-spacing-touch);
+            margin-inline-end: tokens.space(3);
+            border: 1px solid var(--rm-border-subtle);
+            border-radius: var(--rm-radius-control);
+            background: var(--rm-surface-muted);
+            padding-inline: tokens.space(3);
+            color: var(--rm-text-primary);
+            font: inherit;
+            font-weight: 600;
+        }
+
+        &[aria-invalid='true'] {
+            border-color: var(--rm-danger);
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        @media (hover: hover) and (forced-colors: none) {
+            &:not(:disabled)::file-selector-button:hover {
+                background: var(--rm-control-hover);
+            }
+        }
+
+        @media (forced-colors: active) {
+            border-color: ButtonText;
+            color: CanvasText;
+
+            &::file-selector-button {
+                border-color: ButtonText;
+                background: ButtonFace;
+                color: ButtonText;
+            }
+
+            &:disabled {
+                color: GrayText;
+                opacity: 1;
+            }
+        }
+    }
+}

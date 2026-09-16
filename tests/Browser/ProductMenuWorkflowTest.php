@@ -49,6 +49,21 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
     $prefix = '#edit-menu-item-'.$item->id;
+    $allergens = '[data-flux-checkbox-group-buttons][wire\\:model="editingItemAllergens"]';
+    foreach ([320, 390, 768, 1024, 1440] as $width) {
+        $page->resize($width, 900);
+        expect($page->script("getComputedStyle(document.querySelector('[data-flux-checkbox-group-buttons]')).display"))->toBe('grid');
+        expect($page->script('document.documentElement.scrollWidth <= innerWidth'))->toBeTrue();
+        if (in_array($width, [320, 390, 1440], true)) {
+            $page->script("[...document.forms].find(form => form.getAttribute('wire:submit') === 'updateItem').querySelector('.rm-menu-labels').scrollIntoView({ block: 'start' })");
+            $page->script($width === 390 ? "window.Flux.appearance = 'dark'" : "window.Flux.appearance = 'light'");
+            $page->screenshot(false, "product-menu-labels-{$width}");
+            $page->script("window.Flux.appearance = 'light'");
+        }
+    }
+    $milkWasSelected = in_array('milk', $item->allergens ?? [], true);
+    $page->click($allergens.' ui-checkbox[value="milk"]');
+
     $page->assertAttribute($prefix.'-tab-en', 'aria-selected', 'true')
         ->keys($prefix.'-tab-en', 'ArrowRight')->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true')
         ->keys($prefix.'-tab-lt', 'ArrowRight')->assertAttribute($prefix.'-tab-ru', 'aria-selected', 'true');
@@ -77,6 +92,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
     $page->wait(1);
     $item->refresh();
+    expect(in_array('milk', $item->allergens ?? [], true))->toBe(! $milkWasSelected);
     expect($item->name)->toBe('Browser dish')->and($item->description)->toBe("First line\nSecond line")
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Naršyklės patiekalas')
         ->and($item->translations()->where('language_code', 'ru')->value('name'))->toBe('Браузерное блюдо');

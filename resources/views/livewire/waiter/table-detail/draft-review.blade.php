@@ -56,7 +56,7 @@
                                 @if (data_get($draftReview, 'draft.can_edit'))
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <flux:button size="sm" icon="pencil" type="button" wire:click="editDraftItem({{ $item['id'] }})">{{ __('guest.cart.edit_item') }}</flux:button>
-                                        <flux:button size="sm" icon="trash" variant="primary" color="red" type="button" wire:click="deleteDraftItem({{ $item['id'] }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $item['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button>
+                                        <flux:button size="sm" icon="trash" variant="primary" color="red" type="button" wire:click="deleteDraftItem({{ $item['id'] }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $item['id'] }})" class="rm-action-danger">{{ __('ui.actions.delete') }}</flux:button>
                                     </div>
                                 @endif
                             </article>
@@ -176,7 +176,7 @@
         @if (data_get($draftReview, 'draft.can_reject'))
             <div class="mt-4 space-y-3">
                 <flux:textarea label="{{ __('ui.waiter.table_detail.rejection_reason') }}" id="waiter-draft-rejection-reason" name="rejectionReason" wire:model="rejectionReason" rows="4" maxlength="500" class="min-h-touch" placeholder="{{ __('ui.waiter.table_detail.tell_guests_what_needs_to_change') }}"></flux:textarea>
-                <flux:button icon="x-mark" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! w-full" wire:click="rejectDraft" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="rejectDraft">
+                <flux:button icon="x-mark" variant="primary" color="red" type="button" class="rm-action-danger w-full" wire:click="rejectDraft" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="rejectDraft">
                     <span wire:loading.remove wire:target="rejectDraft">{{ __('ui.waiter.table_detail.reject_draft') }}</span>
                     <span wire:loading wire:target="rejectDraft">{{ __('ui.waiter.table_detail.rejecting') }}</span>
                 </flux:button>
@@ -266,7 +266,7 @@
                         <span wire:loading.remove wire:target="updateDraftItem">{{ __('ui.actions.save') }} · {{ $editingItemTotalLabel }}</span>
                         <span wire:loading wire:target="updateDraftItem">{{ __('guest.table.saving') }}</span>
                     </flux:button>
-                    <flux:button icon="trash" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! w-full" wire:click="deleteDraftItem({{ $editingItemId }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $editingItemId }})">{{ __('ui.waiter.table_detail.delete_position') }}</flux:button>
+                    <flux:button icon="trash" variant="primary" color="red" type="button" class="rm-action-danger w-full" wire:click="deleteDraftItem({{ $editingItemId }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $editingItemId }})">{{ __('ui.waiter.table_detail.delete_position') }}</flux:button>
                 </div>
             </div>
         </div>

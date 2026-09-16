@@ -45,9 +45,6 @@
                             <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.logo') }}</div>
                         @endif
                         <x-ui.image-upload-input wire:model="form.publicLogo" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" />
-                        @error('form.publicLogo')
-                            <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
-                        @enderror
                     </label>
 
                     <label class="grid gap-2 text-sm">
@@ -58,9 +55,6 @@
                             <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.image') }}</div>
                         @endif
                         <x-ui.image-upload-input wire:model="form.coverImage" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" />
-                        @error('form.coverImage')
-                            <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
-                        @enderror
                     </label>
                 </div>
             </section>
@@ -149,7 +143,7 @@
                                                     icon="trash"
                                                     variant="primary" color="red"
                                                     wire:click="removeOpeningInterval({{ $day['day_of_week'] }}, {{ $intervalIndex }})"
-                                                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
+                                                    class="rm-action-danger"
                                                 >
                                                     {{ __('guest.cart.remove_item') }}
                                                 </flux:button>

@@ -10,6 +10,12 @@ afterEach(function () {
     File::deleteDirectory(translationAuditFixturePath());
 });
 
+test('default translation audit includes the maintained Pro template boundary without unused keys', function (): void {
+    $this->artisan('translations:audit')
+        ->expectsOutputToContain('Critical issues: 0')
+        ->assertSuccessful();
+});
+
 test('translation audit passes for aligned semantic json keys and clean code scan', function () {
     $langDir = translationAuditFixturePath('clean/lang');
     $scanDir = translationAuditFixturePath('clean/app');

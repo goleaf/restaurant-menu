@@ -54,7 +54,7 @@
                 <flux:button :href="route('superadmin.dashboard')" icon="arrow-left" wire:navigate>
                     {{ __('ui.actions.cancel') }}
                 </flux:button>
-                <flux:button type="submit" variant="primary" color="red" icon="arrow-path" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                <flux:button type="submit" variant="primary" color="red" icon="arrow-path" class="rm-action-danger">
                     {{ __('ui.superadmin.backup_restore.submit') }}
                 </flux:button>
             </div>

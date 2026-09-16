@@ -1,6 +1,7 @@
 ---
 paths:
   - 'resources/views/components/ui/**'
+  - resources/views/components/ui/page-header.blade.php
 ---
 
 <!-- BEGIN GITHUB_PUSH_ONLY -->
@@ -17,3 +18,6 @@ Flux 2.17 forwards aria-label/aria-labelledby on flux:modal to ui-modal rather t
 
 ## Associate Flux errors and use semantic error contrast
 Installed Flux 2.17 does not automatically associate every error/help node with its field. Changed forms use explicit description:id/error:id plus aria-describedby (or full field composition). For normal-size error text use text-danger! via class or the documented error:class attribute: upstream light red-500 measured only 3.81:1 on white. WorkspaceComponentsTest checks rendered contrast >=4.5. Avoid a global vendor selector override.
+
+## Keep domain breadcrumb names literal
+Breadcrumb labels are literal by default because organization, brand and branch names are untrusted user text, not translation keys. Static keys must explicitly set translate=true. Keep regression cases named navigation.organizations and validation; passing arbitrary names through __() can change their text or return a translation array.

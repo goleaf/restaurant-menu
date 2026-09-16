@@ -5,7 +5,10 @@
         <div class="flex flex-wrap gap-3">
             <flux:button variant="primary" class="min-h-touch" icon="check">{{ __('ui.actions.save') }}</flux:button>
             <flux:button variant="outline" class="min-h-touch">{{ __('ui.actions.cancel') }}</flux:button>
-            <flux:button variant="primary" color="red" class="min-h-touch bg-danger! hover:bg-danger/90! dark:text-text-inverse!" icon="trash">{{ __('ui.actions.delete') }}</flux:button>
+            <flux:button variant="primary" color="red" class="min-h-touch rm-action-danger" icon="trash" data-reference-danger="normal">{{ __('ui.actions.delete') }}</flux:button>
+            <flux:button variant="primary" color="red" class="h-auto min-h-touch max-w-full whitespace-normal! py-2 rm-action-danger" icon="trash" disabled data-reference-danger="disabled">{{ __('ui.reference.disabled') }}</flux:button>
+            <flux:button variant="primary" color="red" class="h-auto min-h-touch max-w-full whitespace-normal! py-2 rm-action-danger" loading disabled aria-busy="true" data-reference-danger="loading">{{ __('ui.reference.loading') }}</flux:button>
+            <flux:button variant="primary" color="red" class="min-h-operational-touch rm-action-danger" icon="trash" data-reference-danger="operational">{{ __('ui.actions.delete') }}</flux:button>
             <flux:button variant="ghost" class="h-auto min-h-touch min-w-0 max-w-full py-2" disabled><span class="whitespace-normal wrap-anywhere">{{ __('ui.reference.disabled') }}</span></flux:button>
             <flux:button type="submit" variant="filled" class="min-h-touch" loading disabled aria-busy="true">{{ __('ui.reference.loading') }}</flux:button>
             <flux:modal.trigger name="component-reference-edit">
@@ -28,6 +31,10 @@
                     <flux:input id="reference-invalid" :placeholder="__('guest.table.enter_name')" name="reference-invalid" invalid aria-describedby="reference-invalid-error" />
                     <flux:error id="reference-invalid-error" :message="__('ui.reference.name_required')" class="text-danger!" />
                 </flux:field>
+                <div class="space-y-2">
+                    <flux:label for="reference-image-upload">{{ __('uploads.labels.image') }}</flux:label>
+                    <x-ui.image-upload-input id="reference-image-upload" :aria-label="__('uploads.labels.image')" />
+                </div>
             </div>
         </x-ui.card>
         <x-ui.card heading="ui.reference.states">

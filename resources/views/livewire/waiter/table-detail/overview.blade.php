@@ -210,7 +210,7 @@
                             submit-target="removeGuest({{ $participant['id'] }})"
                         >
                             <x-slot:trigger>
-                                <flux:button type="button" size="sm" variant="primary" color="red" icon="user-minus" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                <flux:button type="button" size="sm" variant="primary" color="red" icon="user-minus" class="rm-action-danger">
                                     {{ __('ui.waiter.table_detail.remove_guest') }}
                                 </flux:button>
                             </x-slot:trigger>

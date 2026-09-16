@@ -1,18 +1,5 @@
 <section data-page="brand-branches" class="flex h-full w-full flex-1 flex-col gap-6">
-    <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="$brandsUrl" wire:navigate>
-            {{ __('ui.organizations.brands.branches.index.brendy') }}
-            <span class="sr-only">{{ __('navigation.brands') }}</span>
-        </flux:button>
-
-        <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
-            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
-                {{ __('ui.organizations.brands.branches.areas.filialy') }}
-                <span class="sr-only">{{ __('navigation.branches') }}</span>
-            </h1>
-        </div>
-    </header>
+    <x-ui.page-header title="navigation.branches" :breadcrumbs="$breadcrumbs" icon="map-pin" />
 
     @if ($canManageBranches && $lifecycle === 'active')
         <form wire:submit="create" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -51,25 +38,7 @@
     @endif
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="rm-structure-toolbar">
-            <flux:heading size="lg">
-                {{ __('ui.organizations.brands.branches.index.filialy_brenda') }}
-                <span class="sr-only">{{ __('ui.organizations.brands.branches.index.branches_in_this_brand') }}</span>
-            </flux:heading>
-            <div class="grid gap-3 sm:grid-cols-3">
-                <flux:input wire:model.live.debounce.300ms="search" :label="__('layout.search')" type="search" autocomplete="off" />
-                <flux:select wire:model.live="lifecycle" :label="__('structure.filters.lifecycle')">
-                    <flux:select.option value="active">{{ __('structure.filters.active') }}</flux:select.option>
-                    <flux:select.option value="archived">{{ __('structure.filters.archived') }}</flux:select.option>
-                </flux:select>
-                <flux:select wire:model.live="sort" :label="__('structure.filters.sort')">
-                    <flux:select.option value="name_asc">{{ __('structure.sort.name_asc') }}</flux:select.option>
-                    <flux:select.option value="name_desc">{{ __('structure.sort.name_desc') }}</flux:select.option>
-                    <flux:select.option value="newest">{{ __('structure.sort.newest') }}</flux:select.option>
-                    <flux:select.option value="oldest">{{ __('structure.sort.oldest') }}</flux:select.option>
-                </flux:select>
-            </div>
-        </div>
+        <x-structure.list-toolbar heading="ui.organizations.brands.branches.index.branches_in_this_brand" id-prefix="branches" :visible-count="$visibleCount" :search="$search" />
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @error('structureDeletion')
@@ -187,17 +156,13 @@
                                                 loading-label="ui.actions.removing"
                                             >
                                                 <x-slot:trigger>
-                                                    <flux:button icon="trash" type="button" variant="primary" color="red" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                                    <flux:button icon="trash" type="button" variant="primary" color="red" class="rm-action-danger">
                                                         {{ __('uploads.actions.remove') }}
                                                     </flux:button>
                                                 </x-slot:trigger>
                                             </x-dangerous-action-confirmation>
                                         @endif
                                     </div>
-
-                                    @error('branchLogos.'.$branch['id'])
-                                        <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                    @enderror
                                 </form>
                             @endif
                         </div>
@@ -336,7 +301,7 @@
                                         {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                     </flux:button>
 
-                                    <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $branch['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                    <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $branch['id'] }})" class="rm-action-danger">
                                         {{ __('structure.actions.archive') }}
                                     </flux:button>
                                 @endif
@@ -349,7 +314,7 @@
                                     <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
-                                        <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="rm-action-danger">
                                             {{ __('structure.actions.archive') }}
                                         </flux:button>
 
@@ -363,9 +328,14 @@
                     @endif
                 </div>
             @empty
-                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ $search !== '' ? __('ui.empty.no_results') : ($lifecycle === 'archived' ? __('structure.empty.archived') : __('ui.organizations.brands.branches.index.filialov_poka_net_sozdaite_pervyi_fi')) }}
-                    <span class="sr-only">{{ __('ui.empty.no_branches') }}</span>
+                <div class="p-4" data-structure-empty="{{ $search !== '' ? 'search' : 'collection' }}">
+                    <x-ui.empty-state :heading="$search !== '' ? 'ui.empty.no_results' : ($lifecycle === 'archived' ? 'structure.empty.archived' : 'ui.empty.no_branches')" :icon="$search !== '' ? 'magnifying-glass' : 'inbox'">
+                        @if ($search !== '')
+                            <x-slot:actions>
+                                <flux:button type="button" icon="x-mark" wire:click="$set('search', '')" wire:offline.attr="disabled">{{ __('structure.list.clear_search') }}</flux:button>
+                            </x-slot:actions>
+                        @endif
+                    </x-ui.empty-state>
                 </div>
             @endforelse
         </div>

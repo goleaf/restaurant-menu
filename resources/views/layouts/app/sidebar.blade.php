@@ -105,10 +105,9 @@
                 autocomplete="off"
                 autofocus
                 x-on:keydown.escape.stop.prevent="$flux.modal('workspace-navigation').close()"
-                x-on:keydown.arrow-down.prevent="focusFirstResult()"
-                x-on:keydown.enter.prevent="visitFirstResult()"
+                x-on:keydown="handleSearchKeydown($event)"
             />
-            <nav aria-label="{{ __('navigation.workspaces') }}" class="max-h-[60dvh] overflow-y-auto">
+            <nav aria-label="{{ __('navigation.workspaces') }}" class="max-h-[60dvh] overflow-y-auto" x-on:keydown="handleResultsKeydown($event)">
                 <ul class="space-y-1">
                     @foreach ($navigationItems as $item)
                         <li x-show="matches($el.dataset.searchLabel)" data-search-label="{{ $item['label'] }}">

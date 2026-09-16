@@ -63,7 +63,7 @@
                 <flux:command data-pro-reference="command">
                     <flux:command.input :aria-label="__('layout.search')" :placeholder="__('layout.search')" />
                     <flux:command.items>
-                        <flux:command.item :href="route('profile.edit')">{{ __('ui.reference.example_name') }}</flux:command.item>
+                        <flux:command.item x-on:click="$flux.modal('component-reference-edit').show()">{{ __('ui.reference.edit') }}</flux:command.item>
                         <flux:command.empty>{{ __('ui.empty.no_results') }}</flux:command.empty>
                     </flux:command.items>
                 </flux:command>

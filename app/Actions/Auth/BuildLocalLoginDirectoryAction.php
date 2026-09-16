@@ -73,7 +73,8 @@ final class BuildLocalLoginDirectoryAction
             'name' => $user->name,
             'email' => $user->email,
             'password' => $this->demoPassword($user),
-            'roles' => $user->roles->map(fn (Role $role): string => $role->code->localizedLabel())->values()->all(),
+            'roles' => $user->roles->concat($user->organizationMemberships->pluck('role'))
+                ->map(fn (Role $role): string => $role->code->localizedLabel())->unique()->values()->all(),
             'companies' => $companies->values()->all(),
             'grants' => $grants->values()->all(),
             'overrides' => $user->permissionOverrideRecords->map(fn (PermissionUserOverride $override): array => [
@@ -103,8 +104,9 @@ final class BuildLocalLoginDirectoryAction
             return null;
         }
 
-        foreach (DemoAccountCatalog::accounts() as $identity) {
-            if ($user->email === $identity['email'] && $user->hasSystemRole($identity['role'])) {
+        foreach (DemoAccountCatalog::directoryAccounts() as $identity) {
+            if ($user->email === $identity['email'] && ($user->hasSystemRole($identity['role'])
+                || $user->organizationMemberships->contains(fn (OrganizationUser $membership): bool => $membership->role->code === $identity['role']))) {
                 return Hash::check($password, $user->password) ? $password : null;
             }
         }

@@ -38,6 +38,23 @@ final class DemoAccountCatalog
     }
 
     /**
+     * Include the fixed lifecycle and tenant fixtures without expanding role-switch login.
+     *
+     * @return list<array{role: SystemRole, name: string, email: string}>
+     */
+    public static function directoryAccounts(): array
+    {
+        return [
+            ...self::accounts(),
+            ['role' => SystemRole::Waiter, 'name' => 'CRUD Suspended Waiter', 'email' => 'suspended.staff@demo.test'],
+            ['role' => SystemRole::Waiter, 'name' => 'CRUD Removed Waiter', 'email' => 'removed.staff@demo.test'],
+            ['role' => SystemRole::Waiter, 'name' => 'CRUD Permission Analyst', 'email' => 'permission.staff@demo.test'],
+            ['role' => SystemRole::Owner, 'name' => 'Demo Baltic Owner', 'email' => 'owner.baltic@demo.test'],
+            ['role' => SystemRole::Owner, 'name' => 'Demo Garden Owner', 'email' => 'owner.garden@demo.test'],
+        ];
+    }
+
+    /**
      * @return array{role: SystemRole, name: string, email: string}
      */
     public static function forRole(SystemRole $role): array

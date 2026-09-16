@@ -120,6 +120,26 @@ test('empty directory shows an empty state without creating users on a get reque
     expect(User::query()->exists())->toBeFalse();
 });
 
+test('portfolio demo passwords require the exact seeded identity and company role', function (string $email, SystemRole $systemRole): void {
+    $this->seed(SystemPermissionsSeeder::class);
+    $user = User::factory()->create(['email' => $email, 'password' => config('demo-login.password')]);
+    $request = Request::create('https://restaurant-menu.test/login');
+    $action = app(BuildLocalLoginDirectoryAction::class);
+    expect($action->handle($request)->items()[0]['password'])->toBeNull();
+
+    $role = Role::query()->where('code', $systemRole)->firstOrFail();
+    OrganizationUser::factory()->for($user)->for($role)->create();
+    $row = $action->handle($request)->items()[0];
+    expect($row['password'])->toBe(config('demo-login.password'))
+        ->and($row['roles'])->toContain($systemRole->localizedLabel());
+})->with([
+    ['owner.baltic@demo.test', SystemRole::Owner],
+    ['owner.garden@demo.test', SystemRole::Owner],
+    ['suspended.staff@demo.test', SystemRole::Waiter],
+    ['removed.staff@demo.test', SystemRole::Waiter],
+    ['permission.staff@demo.test', SystemRole::Waiter],
+]);
+
 test('canonical demo accounts can use their displayed password through normal Fortify login', function (SystemRole $systemRole): void {
     $this->seed(SystemPermissionsSeeder::class);
     $identity = DemoAccountCatalog::forRole($systemRole);

@@ -49,7 +49,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
     $prefix = '#edit-menu-item-'.$item->id;
-    $allergens = '[data-flux-checkbox-group-buttons][wire\\:model="editingItemAllergens"]';
+    $allergens = '[data-flux-checkbox-group-buttons][wire\\:model="editingItemForm.itemAllergens"]';
     foreach ([320, 390, 768, 1024, 1440] as $width) {
         $page->resize($width, 900);
         expect($page->script("getComputedStyle(document.querySelector('[data-flux-checkbox-group-buttons]')).display"))->toBe('grid');
@@ -170,6 +170,13 @@ test('owner manages accumulated pending photos without losing image identity', f
     $this->withVite();
     productMenuEnableMultipartFixtures();
     FileUploadConfiguration::storage();
+    $fixtureDirectoryName = 'browser-fixtures/'.bin2hex(random_bytes(8));
+    $fixtureDirectory = public_path($fixtureDirectoryName);
+    File::ensureDirectoryExists($fixtureDirectory);
+    $this->beforeApplicationDestroyed(fn () => File::deleteDirectory($fixtureDirectory));
+    config()->set('filesystems.disks.public.root', $fixtureDirectory);
+    config()->set('filesystems.disks.public.url', '/'.$fixtureDirectoryName);
+    Storage::forgetDisk('public');
     config()->set('demo-login.enabled', true);
     config()->set('demo-login.allowed_hosts', ['restaurant-menu.test', '127.0.0.1', 'localhost']);
     $this->seed(DemoRestaurantSeeder::class);
@@ -215,6 +222,7 @@ test('owner manages accumulated pending photos without losing image identity', f
     $unchangedPath = $item->fresh()->image;
     productMenuClick($page, 'button[wire\\:click^="editItemImagePresentation"]');
     $page->assertPresent('[data-image-presentation-editor]');
+    productMenuAssertImagesLoaded($page, '[data-image-presentation-editor] img', 2);
     $page->keys('#image-focal-x-'.$item->id, 'Home')->keys('#image-focal-x-'.$item->id, 'ArrowRight');
     $page->keys('#image-focal-y-'.$item->id, 'End');
     foreach (['en' => 'Fresh dish photo', 'lt' => 'Šviežio patiekalo nuotrauka', 'ru' => 'Фото свежего блюда'] as $locale => $alt) {
@@ -233,6 +241,8 @@ test('owner manages accumulated pending photos without losing image identity', f
         ->and($item->fresh()->image_presentation['focal_x'])->toBe(1)
         ->and($item->fresh()->image_presentation['focal_y'])->toBe(100)
         ->and($item->fresh()->image_presentation['translations']['ru']['alt'])->toBe('Фото свежего блюда');
+    $page->script("document.querySelector('{$picker} .rm-media-gallery').scrollIntoView({ block: 'start' })");
+    productMenuAssertImagesLoaded($page, $picker.' .rm-media-gallery img', $initialImageCount + 2);
 
     productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
     $page->wait(1);
@@ -657,6 +667,7 @@ function productMenuAttachPng(PendingAwaitablePage $page, string $selector, stri
 function productMenuAssertNoOverflow(PendingAwaitablePage $page, int $width, int $height): void
 {
     $page->resize($width, $height);
+    $page->script('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
     $state = $page->script(<<<'JAVASCRIPT'
         (() => {
             const root = document.documentElement;
@@ -758,4 +769,29 @@ function productMenuAttachCsv(PendingAwaitablePage $page, string $contents): voi
             return true;
         })()
     JAVASCRIPT))->toBeTrue();
+}
+
+function productMenuAssertImagesLoaded(PendingAwaitablePage $page, string $selector, int $expectedCount): void
+{
+    $encodedSelector = json_encode($selector, JSON_THROW_ON_ERROR);
+    $page->assertScript(<<<JAVASCRIPT
+        (async () => {
+            const images = [...document.querySelectorAll({$encodedSelector})];
+            if (images.length !== {$expectedCount}) return false;
+            const loaded = await Promise.all(images.map(image => new Promise(resolve => {
+                if (image.complete) return resolve(image.naturalWidth > 0 && image.naturalHeight > 0);
+                let timeout;
+                const finish = () => {
+                    clearTimeout(timeout);
+                    image.removeEventListener('load', finish);
+                    image.removeEventListener('error', finish);
+                    resolve(image.complete && image.naturalWidth > 0 && image.naturalHeight > 0);
+                };
+                image.addEventListener('load', finish, { once: true });
+                image.addEventListener('error', finish, { once: true });
+                timeout = setTimeout(finish, 5000);
+            })));
+            return loaded.every(Boolean);
+        })()
+    JAVASCRIPT);
 }

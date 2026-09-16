@@ -3,7 +3,28 @@ import { accessSync, chmodSync, constants, existsSync, mkdirSync, mkdtempSync, r
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { composerCommand, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolvePhpRuntime, sourceInventory } from './Support/platform-verification.mjs';
+import { composerCommand, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolveJavaScriptRuntime, resolvePhpRuntime, sourceInventory } from './Support/platform-verification.mjs';
+
+test('JavaScript preflight verifies the selected npm CLI against manifest engines', async t => {
+    const root = fixture(t);
+    const npmBinary = put(root, 'npm-cli.js', 'console.log("12.0.2");');
+    const engines = { node: `>=${process.versions.node} <${Number(process.versions.node.split('.')[0])+1}`, npm: '>=12.0.2 <13' };
+    const runtime = await resolveJavaScriptRuntime({ npmBinary, engines });
+    assert.equal(runtime.nodeVersion, process.versions.node);
+    assert.equal(runtime.nodeBinary, realpathSync(process.execPath));
+    assert.equal(runtime.npmVersion, '12.0.2');
+    assert.equal(runtime.npmBinary, realpathSync(npmBinary));
+    put(root, 'npm-cli.js', 'console.log("11.19.0");');
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines }), /npm 11\.19\.0.*>=12\.0\.2 <13/);
+    put(root, 'npm-cli.js', 'console.log("13.0.0");');
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines }), /npm 13\.0\.0/);
+    put(root, 'npm-cli.js', 'console.log("12.0.2-beta.1");');
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines }), /invalid npm version/i);
+    put(root, 'npm-cli.js', 'process.exit(2);');
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines }), /npm.*failed/i);
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines: { ...engines, node: '>=99.0.0 <100' } }), /Node.*99/);
+    await assert.rejects(resolveJavaScriptRuntime({ npmBinary, engines: { ...engines, npm: '*' } }), /engine range/i);
+});
 
 function fixture(t) {
     const root = mkdtempSync(join(tmpdir(), 'restaurant-platform-test-'));

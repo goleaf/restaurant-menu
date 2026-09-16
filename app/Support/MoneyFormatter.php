@@ -63,7 +63,7 @@ final class MoneyFormatter
             return $amount * 100;
         }
 
-        $normalized = trim((string) $amount);
+        $normalized = trim($amount, " \n\r\t\v\0");
 
         if (preg_match('/^[+-]?\d+(?:[.,]\d{1,2})?$/', $normalized) !== 1) {
             throw new InvalidArgumentException('Money must be a decimal number with no more than two fraction digits.');

@@ -4,6 +4,24 @@
 
 # Restaurant Menu completion progress
 
+## Prompt 1 — stable acceptance; PHP 8.6 application blocked — 2026-09-16
+
+Continuation baseline is clean local `main` at `ce187c8`, two commits after the user's `73f783d` reference. Dependency updates already in that HEAD are prerequisites, not new manifest/lock changes of this continuation. The supported production range remains PHP 8.5; neither production nor the pre-existing Herd selection was changed. Prompt 1 is **partially delivered**, not a completed PHP 8.6 migration.
+
+The full canonical `verify:migration` run on PHP 8.5.10, Node 24.21.0 and npm 12.0.2 passes all **22 steps**, with no failed command or timeout. Snapshot A is `f2551f19dc66e58ec6c82aedd10011f36e3f879bd58945251eaa9640c240fde9`. Backend discovery equals execution: **3,550 tests / 69,018 assertions**, zero failures/errors/skips (405.27 seconds). The same backend inventory passes canonical Xdebug coverage at **94.0% PHP line coverage** (unchanged 90% threshold; 1,769.68 seconds for tests). All **196 JavaScript tests** pass: **100% lines / 95.26% branches / 98.32% functions** for the included sources. Composer/platform/audits, architecture, SCSS/JS lint, Pint, Larastan, build, generated-style drift, translations and asset budgets pass. Translation audit checks 8,646 translation entries across EN/LT/RU with no critical, missing, unused or legacy phrase keys.
+
+Snapshot A's browser run passes 42 cases / 3,061 assertions. Reviewing its real screenshots exposed a verification gap: valid seeded/uploaded images were outside Pest's static public root. A subsequent **test-only** change uses the existing isolated public-fixture pattern and checks actual image completion and dimensions. RED fails with 45 assertions; GREEN retains the prior 87 and adds two image-load assertions. The complete canonical browser stage on snapshot B `389fb605828f9078d25278a0109e4026035c024903ebaa866396bbfbc6e80ec7` passes **42 cases / 3,063 assertions**, no failures/timeouts, in 285.31 seconds. A/B differ only in `tests/Browser/ProductMenuWorkflowTest.php`; application, Unit/Feature tests, runtime helpers and dependencies are identical. The exact tested file (SHA-256 `762e58c6305ec9bf9db6e254a779ffd9cc147f8bcfc4aaf748f5c4f514a028f6`) is integrated after A completed. Final documentation edits do not change the measured application. Coverage A is not presented as execution of the later browser assertions.
+
+Confirmed repairs: PHP 8.6 monetary whitespace compatibility; actual Node/npm engine validation; bounded owned-process cleanup; accurate screenshot attribution; stable Boost launcher; three stale traceability references; the old allergen Form locator; explicit 512M browser-child test budgets; render-frame synchronization before strict overflow assertions; and isolated browser media delivery. No production image guard, route, schema, controller or workflow is changed.
+
+Independent evidence also includes clean offline Composer and registry-only npm lock installation, 95 migrations up/reset/reapply, repeated seeds, cache builds, SCSS HMR events with explicit temporary polling, and matched asset/request measurements. The separate four-process backend run passes 3,549 tests / 69,014 assertions on its earlier snapshot; the later added test only verifies browser-child memory settings. That parallel result is not relabelled as the final 3,550-test run. The 48-request alternating performance follow-up has no SQL/payload growth; overlapping timing ranges do not establish a speed improvement.
+
+Official-source PHP **8.6.0beta3** runs 47 native capability checks and 26 monetary checks successfully; first-party syntax and changed-file checks pass. Actual Composer platform checks still reject the root and Nette Schema/Utils, Sabberworm and ParaTest requirements. Composer 2.10.3's Oniguruma deprecation is recorded. No full application, browser, coverage or performance acceptance on PHP 8.6 is claimed, and the root range is not widened.
+
+Limits: current application-browser evidence is isolated WebKit with real PHP 8.5.10 HTTP identity. Chrome DevTools/Playwright MCP navigation to the existing Herd URL fails TLS common-name validation; no TLS bypass is used. Five viewport widths, locale/theme/keyboard cases and 200% text scaling are covered; physical mobile keyboards, actual browser zoom across engines and real hardware passkey ceremonies are not certified. SCSS middleware/HMR messages pass with temporary polling; native temporary-directory FSEvents and browser DOM HMR are not claimed as passed.
+
+Independent reviews found no open P1/P2 issues. All 186 first-party Markdown files retain the exact push-only block. Owned evidence, failed attempts and final reports are preserved under ignored `storage/app/private/platform-2026-09-16/continuation-ce187c8/`; Git delivery is separate from runtime acceptance and is recorded by the resulting commit/push output. Earlier entries below retain their historical snapshots and do not override this result.
+
 ## Platform execution checkpoint — 2026-09-16
 
 This execution started at `2255449`, preserving earlier staged platform preparation. Working artifacts: `/private/tmp/restaurant-platform-stage1/`; initial index/worktree evidence: system temporary `restaurant-platform-root-motmqk6a`. Main branch, Herd selection, global binaries, working database/storage and application key are unchanged.
@@ -15,6 +33,10 @@ PHP 8.6.0beta3 built from hash-verified official source; extension/codecs and112
 ## Platform foundation / prompt 1 of 14 — 2026-09-16 (in progress)
 
 Current stage starts at `73f783d`, with pre-existing staged/unstaged MCP and domain/UI changes preserved in a private baseline inventory. Runtime, frontend and verification-infrastructure research is delegated with disjoint ownership; root owns manifests, locks, common entrypoints and canonical documents. No dependency upgrade or PHP 8.6 compatibility pass is claimed yet. The existing unfinished MCP feature work remains distinct. Execution follows the P1.1–P1.7 checklist in IMPLEMENTATION_PLAN.md.
+
+## 2026-09-16 — Superseded pre-acceptance checkpoint
+
+The frozen `feb94fa04c52c04080750289d872946899fe8f0de67ff7d4d930b74059be32cd` snapshot passes sequential and four-process backend: 3,549 tests / 69,014 assertions, zero failures/errors/skips. All 196 JavaScript tests pass with 100% lines, 95.26% branches and 98.32% functions. The same full Xdebug run reaches its 30-minute deadline before finishing/reporting and returns 124; no PHP coverage percentage is accepted. CPU sampling and renewed progress show active PHP/Xdebug execution rather than a blocked socket/database. The coordinator deadline is now a bounded 45 minutes; final full acceptance remains pending.
 
 ## 2026-09-16 — Flux component-system continuation (verification in progress)
 

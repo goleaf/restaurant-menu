@@ -12,6 +12,20 @@ Supported production remains stable PHP 8.5; the isolated PHP 8.6.0beta3 build i
 
 New application interfaces must use class-based Livewire plus existing Actions/read services/Policies/Rules/Forms. Existing controller transports are preserved for prompt 2's explicit disposition; their historical allowlist is not blanket permission to retain application MVC screens. No server-side category of Flux controllers exists. Current SCSS and responsive contracts are in requirements.md; historical native-CSS and controller inventories below retain their dated scope.
 
+## Prompt 2 controller handoff — current inventory, 2026-09-16
+
+There are 14 concrete first-party controllers plus the abstract base Controller. None is migrated or removed by prompt 1. Existing Policies, Actions, requests, session/credential and download contracts must be retained when prompt 2 makes each decision.
+
+| Controllers under `app/Http/Controllers` | Current purpose | Required prompt 2 decision |
+| --- | --- | --- |
+| Auth/ShowDemoLogin, LoginAsDemoRole, LoginAsLocalUser | Local/demo identity page and authentication actions | Migrate page/action coordination to Livewire with existing non-production guards and session lifecycle |
+| Invitations/ShowInvitation, RegisterInvitation, AcceptInvitation, SwitchInvitationAccount | Credential entry, invitation page, registration, consent and account switching | Separate secure token-to-session transport from Livewire page/forms/actions; retain expiry/replay/email binding |
+| Superadmin/ShowSqliteBackupRestore, RestoreSqliteBackup | Restore form and exclusive database replacement | Migrate UI; demonstrate whether the pre-session-lock mutation requires a narrow transport exception |
+| Superadmin/DownloadSqliteBackup, DownloadMediaBackup | Binary file responses, deletion after send | Measure memory/streaming and authorize any retained transport explicitly |
+| Restaurant/DownloadBranchCsvExport, DownloadBranchPdfReport, Organizations/DownloadBranchQrPdf | Streaming CSV and in-memory PDF downloads | Decide each individually; a download name alone does not justify an exception |
+
+Every listed class name has the `Controller` suffix; sibling names share the preceding directory. The actual class list and routes remain authoritative. Framework/Fortify/Livewire vendor endpoints are outside this application-controller inventory.
+
 ## Profile settings consolidation — 2026-09-16
 
 Appearance is a presentation section of the existing Profile Livewire screen. The legacy `appearance.edit` route uses Laravel's authenticated redirect boundary; `LivewireInteractionBoundaryTest` now inventories 29 class-based page routes and 18 ordinary HTTP boundaries. The original migration counts below describe the earlier source. No database, profile Action, authentication or theme-storage contract changes.

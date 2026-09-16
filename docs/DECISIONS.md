@@ -4,9 +4,18 @@
 
 # Restaurant Menu completion decisions
 
+## Prompt 1 verified compatibility boundaries — 2026-09-16
+
+- Keep the monetary parser's PHP8.5 boundary-whitespace contract explicit. PHP8.6 Beta3 expands default trim(); the26-case native red/green probe and stable Feature datasets justify one explicit character set, not scattered PHP version checks.
+- Verify actual Node/npm versions against bounded manifest engines before making expensive snapshots. Do not label npm11 as the selected npm12 environment merely because a removed temporary prefix once held it.
+- A command is finished only after its owned descendant group is stopped and output drained. Screenshot artifacts must belong to the case that produced them; preserve existing source captures and exclude symlinks.
+- Keep browser PHP children at an explicit 512M test-only budget, consistent with the backend runner. The measured image failure is memory pressure from the combined Pest/application process; never disable the production image-memory guard. Wait two render frames after browser resize before strict layout measurements, and keep test selectors aligned with the existing Livewire Form binding.
+- Browser media fixtures must be served from an owned public directory with a relative URL and bounded real-image load assertions; filesystem persistence alone is not a visual acceptance test. A later test-only correction is verified on its exact full-browser snapshot, without attributing earlier coverage to unexecuted browser assertions.
+- The pre-existing Herd8.6 selection is outside the isolated experiment; do not silently change it. Use explicit stable PHP binaries for application tests and Boost. Production support remains PHP8.5 until actual dependency/application acceptance permits widening.
+
 ## Platform MCP launcher — 2026-09-16
 
-Local Boost now launches as `herd php artisan boost:mcp`, which uses the current site's stable PHP selection. The pre-existing global `php` alias pointed to an incompatible PHP 8.6 prerelease. An actual stdio MCP initialize, tools/list and get-absolute-url call passed after the change. No global runtime, MCP write capability or token permission changed.
+Current continuation pins local Boost to `php85 artisan boost:mcp`. Both `php` and `herd php` now resolve to the pre-existing PHP 8.6.0beta2 site selection and fail the application platform gate. An actual stdio MCP initialize and get-absolute-url call passes with `php85` (8.5.8). No global/site runtime, MCP capability or token permission changes. The earlier `herd php` launcher was valid only for its earlier site selection.
 
 ## 2026-09-16 — Stable platform plus honest PHP 8.6 experiment
 

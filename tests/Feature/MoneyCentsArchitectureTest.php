@@ -102,6 +102,33 @@ test('decimal input and percentage calculations are exact without floating point
         ->and(fn (): int => MoneyFormatter::roundedDivide(PHP_INT_MAX, 2))->toThrow(OverflowException::class);
 });
 
+test('decimal input preserves the established boundary whitespace contract', function (string $whitespace): void {
+    $amount = $whitespace.'12.50'.$whitespace;
+
+    expect(MoneyFormatter::decimalToCents($amount))->toBe(1250)
+        ->and(MoneyFormatter::decimalToBasisPoints($amount))->toBe(1250);
+})->with([
+    'space' => ' ',
+    'tab' => "\t",
+    'newline' => "\n",
+    'carriage return' => "\r",
+    'vertical tab' => "\v",
+    'null byte' => "\0",
+]);
+
+test('decimal input rejects form feeds and unsupported unicode whitespace', function (string $amount): void {
+    expect(fn (): int => MoneyFormatter::decimalToCents($amount))->toThrow(InvalidArgumentException::class)
+        ->and(fn (): int => MoneyFormatter::decimalToBasisPoints($amount))->toThrow(InvalidArgumentException::class);
+})->with([
+    'leading form feed' => "\f12.50",
+    'trailing form feed' => "12.50\f",
+    'surrounding form feeds' => "\f12.50\f",
+    'form feeds inside allowed whitespace' => " \t\f12.50\f\r\n",
+    'internal form feed' => "12.\f50",
+    'non-breaking spaces' => "\u{00A0}12.50\u{00A0}",
+    'em spaces' => "\u{2003}12.50\u{2003}",
+]);
+
 test('money implementation and blade presentation do not use floating point', function (): void {
     $moneyTerms = '/(?:price|amount|subtotal|total|money|cent|tip|service.?charge)/i';
     $floatOperations = '/(?:\(float\)|\bfloat\b|randomFloat\s*\(|number_format\s*\(|\bround\s*\()/i';

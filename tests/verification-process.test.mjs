@@ -43,3 +43,65 @@ test('timeout escalates when the owned command ignores graceful termination', as
     assert.equal(result.timedOut, true);
     assert.ok(Date.now() - started < 3_000);
 });
+
+for (const exitCode of [0, 7]) {
+    test(`exit ${exitCode} cleans an owned descendant before reporting the command result`, async t => {
+        let descendant;
+        t.after(() => {
+            if (descendant) {
+                try { process.kill(descendant, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+            }
+        });
+        const result = await execute(`
+            const {spawn}=require('node:child_process');
+            const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});process.send("ready");setInterval(()=>{},1000)'],{stdio:['ignore','ignore','ignore','ipc']});
+            child.once('message',()=>{console.log(child.pid);child.disconnect();child.unref();process.exit(${exitCode});});
+        `, { grace: 100 });
+        descendant = Number(result.output.trim());
+        assert.ok(Number.isInteger(descendant) && descendant > 0);
+        assert.equal(result.code, exitCode);
+        assert.equal(result.timedOut, false);
+        assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+    });
+}
+
+test('timeout still cleans descendants after their launcher exits during the grace period', async t => {
+    let descendant;
+    t.after(() => {
+        if (descendant) {
+            try { process.kill(descendant, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+        }
+    });
+    const result = await execute(`
+        const {spawn}=require('node:child_process');
+        const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});process.send("ready");setInterval(()=>{},1000)'],{stdio:['ignore','ignore','ignore','ipc']});
+        child.once('message',()=>{console.log(child.pid);child.disconnect();child.unref();});
+        process.on('SIGTERM',()=>process.exit(0));
+        setInterval(()=>{},1000);
+    `, { timeout: 500, grace: 100 });
+    descendant = Number(result.output.trim());
+    assert.ok(Number.isInteger(descendant) && descendant > 0);
+    assert.equal(result.code, 124);
+    assert.equal(result.timedOut, true);
+    assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+});
+
+test('successful launcher exit cleans descendants retaining output pipes without inventing a timeout', async t => {
+    let descendant;
+    t.after(() => {
+        if (descendant) {
+            try { process.kill(descendant, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+        }
+    });
+    const result = await execute(`
+        const {spawn}=require('node:child_process');
+        const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>console.log("descendant-cleanup"));process.send("ready");setInterval(()=>{},1000)'],{stdio:['ignore','inherit','inherit','ipc']});
+        child.once('message',()=>{console.log(child.pid);child.disconnect();child.unref();process.exit(0);});
+    `, { timeout: 1000, grace: 100 });
+    descendant = Number(result.output.split('\n')[0]);
+    assert.ok(Number.isInteger(descendant) && descendant > 0);
+    assert.equal(result.code, 0);
+    assert.equal(result.timedOut, false);
+    assert.match(result.output, /descendant-cleanup/);
+    assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+});

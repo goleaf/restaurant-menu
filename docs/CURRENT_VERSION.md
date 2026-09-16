@@ -4,7 +4,23 @@
 
 # Current version baseline
 
-## Platform selection — checked 2026-09-16; acceptance in progress
+## Current continuation at ce187c8 — checked 2026-09-16
+
+This continuation starts from a clean `main` after the earlier dependency updates were committed. The installed versions in the tables below are reverified against both lock files (179 Composer /255 npm package locations); the current continuation makes no further dependency or lock changes. Packagist/npm metadata still supports the listed latest/selected differences and GitHub-only missing-archive limitations. PHP support remains `>=8.5.0 <8.6.0`, stable minimum stability and no platform emulation.
+
+The previous temporary prefix no longer exists. Current stable verification selects `/opt/homebrew/opt/php/bin/php` **8.5.10**. The running Node is the pre-existing Herd NVM **24.21.0 LTS**; its default npm **11.19.0** violates engines. A hash-verified npm **12.0.2** package is prepared under `/private/tmp/restaurant-platform-p1-root-100b_i_e/npm/`, selected explicitly by the coordinator. Matching Playwright1.63 WebKit2359 is installed in that prefix and actual launch/render smoke passes. One FFmpeg CDN TLS failure fell back to Microsoft's official CDN without relaxing TLS checks. Xdebug3.5.0 from the existing Herd application loads successfully only in the stable coverage child.
+
+The existing `restaurant-menu.test` Herd selection and `herd php` already resolve to **8.6.0beta2**; this differs from the earlier recorded selection and was not changed. The supported test environment is the explicit8.5.10 snapshot, not a claim about the working site's PHP. Local Boost now uses `php85` **8.5.8** and a real stdio initialize/get-absolute-url request succeeds.
+
+Owned experimental **8.6.0beta3** was rebuilt from the official archive with the SHA-256 below at `/private/tmp/restaurant-platform-prompt1-php86-e4hg0fvg/runtime/bin/php`. Native extension/codec probes pass47 checks on8.5.10 and Beta3, and Beta3 syntax checks pass1121 first-party PHP files. Real Composer platform checks fail on Beta3: root, Nette Schema/Utils, Sabberworm and ParaTest constraints remain. The tool also emits an Oniguruma-constant deprecation from Composer2.10.3; it is recorded, not suppressed. No application, browser, coverage or performance acceptance on8.6 is claimed.
+
+Beta3 UPGRADING adds form-feed to default trim(). The monetary parser now supplies the PHP8.5 whitespace set explicitly, preserving the established rejection of form-feed/Unicode whitespace. A native26-check probe reproduced8 failures before the fix on Beta3 and passes all26 afterward on both versions. The stable Feature regression passes18 tests/102 assertions. No8.6-only syntax, vendor patch, ignored platform requirement or production requirement expansion is introduced.
+
+Clean lock installation is newly verified in `/private/tmp/restaurant-p1-clean-YjeTbU`: Composer179 packages from178 CRC/path-checked cached ZIPs plus the local Pro package, no scripts/plugins and OS-enforced network denial; npm12 installs255 packages with scripts disabled. Exact dependency metadata matches the working installation. Production build, budgets, generated styles, Pro provenance,95 migrations up/reset/reapply, double seed and cache builds pass. Two existing PSR-4 notices concern test-only stream-filter helpers; no application warning is hidden. Final stable acceptance is recorded in PROGRESS.md: 22 aggregate steps, 3,550 backend tests, PHP coverage 94.0%, JS 196 with 100% lines, and the separately integrated browser follow-up 42 / 3,063. All run on the selected actual runtimes above. PHP86 application compatibility remains blocked.
+
+## Earlier execution version selection — checked 2026-09-16; historical runtime locations
+
+The package version tables below remain applicable and were rechecked in the continuation above. Runtime paths, site selection and initial worktree observations in this earlier execution are historical; the current continuation section supersedes them.
 
 Current execution began on local `main` at `225544923fde6a5a04c28ddcf706be340e8d00f0`, after the prompt's reference `73f783d`. The initial platform helper/tests and plan/progress changes were pre-existing and are not attributed to this execution. The shared index also changed concurrently; final delivery must preserve ownership.
 

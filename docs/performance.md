@@ -4,6 +4,46 @@
 
 # Performance
 
+## Platform prompt 1 — matched dependency measurements, 2026-09-16
+
+These measurements compare the exact `73f783d` lock graph with the selected installed graph on identical current application source, production assets and deterministic disposable fixtures (30 menu items, 12 staff). PHP is 8.5.10 on both sides, CLI OPcache and coverage are disabled. Each sample starts a new PHP process and measures the Laravel HTTP kernel, including query logging but excluding network/web-server latency and login. “Warm” means reusable application/view-cache artifacts, not a resident warmed PHP process. This is not a PHP 8.5-versus-8.6 comparison.
+
+| Warm endpoint (three samples each) | Before median [min–max], ms | Selected median [min–max], ms | SQL before → selected | Livewire snapshot bytes before → selected |
+| --- | --- | --- | --- | --- |
+| Dashboard | 96.89 [96.88–100.65] | 98.16 [98.08–101.56] | 153 → 153 | 1,618 → 1,618 |
+| Menu | 384.34 [382.86–393.11] | 398.25 [390.95–446.03] | 191 → 191 | 5,561 → 5,561 |
+| Staff | 107.92 [107.89–122.61] | 116.08 [112.03–127.85] | 95 → 95 | 2,354 → 2,354 |
+
+All 24 cold/warm responses are HTTP 200. Selected medians are 1.31%, 3.62% and 7.57% slower in this small initial sample; overlapping ranges do not establish either a speed improvement or equivalence. Peak used memory changes from 42.55/46.50/42.40 MiB to 42.56/46.58/42.44 MiB; HTML grows by two bytes per endpoint. A separately authenticated real Livewire filter request uses the response snapshot/checksum and returns HTTP 200 with the expected single row: both graphs use 5,154 request bytes, 295,220 response bytes, 4,269 snapshot bytes, 280,817 rendered HTML-effect bytes and 47 SQL queries. All 30 fixture records remain present. No response-time comparison is drawn from this single mutation-free filter request.
+
+A follow-up uses four fixed pairs in AB/BA/BA/AB order, with fresh processes for every request and explicit cold cache/view cleanup followed by warm artifacts. All 48 requests return200; all48 commands exit0 without retries (23.23seconds total). The same PHP 8.5.10 runtime has OPcache CLI/coverage disabled. Operating-system disk caches are not flushed. These follow-up samples are a separate run, not pooled with the earlier three-sample results.
+
+| Endpoint/cache | Before median [min–max], ms | Selected median [min–max], ms | Median change | Median of paired changes |
+| --- | --- | --- | --- | --- |
+| Dashboard cold | 193.65 [190.97–241.47] | 210.54 [187.55–241.50] | +8.72% | -0.59% |
+| Dashboard warm | 102.83 [102.36–106.45] | 103.22 [102.22–120.62] | +0.37% | +0.23% |
+| Menu cold | 488.72 [487.27–494.67] | 495.81 [484.12–514.76] | +1.45% | +1.45% |
+| Menu warm | 367.71 [366.65–369.20] | 369.30 [367.72–378.13] | +0.43% | +0.61% |
+| Staff cold | 183.03 [175.60–188.66] | 178.87 [175.01–180.00] | -2.27% | -2.12% |
+| Staff warm | 101.73 [100.37–109.55] | 101.95 [101.34–102.09] | +0.21% | -0.04% |
+
+The earlier staff timing increase does not reproduce in the alternating pairs. Cold dashboard variance remains visible and prevents a claim of a reliable speed change. Per-pair SQL, snapshot sizes and HTML differences remain equal to the corresponding other graph; dashboard query counts in this separate run are167 cold/155 warm, menu191 and staff95. The paired warm peak-used memory is42.62→42.63,46.58→46.59 and42.41→42.45MiB. The sample sizes support neither universal performance guarantees nor a PHP8.6 comparison. Exact commands, all48 observations and the original-report hash are in `performance-followup-abba.json` under the preserved evidence directory.
+
+The frontend comparison installs the exact old npm lock with lifecycle scripts disabled, then builds identical current source/PHP vendor under network denial. Both builds pass existing budgets. Sizes are per-file raw/gzip level 9/Brotli quality 11; this is a static asset inventory, not observed transfer time.
+
+| Asset inventory | Before raw / gzip / Brotli bytes | Selected raw / gzip / Brotli bytes |
+| --- | --- | --- |
+| All eight Vite assets | 930,837 / 379,611 / 354,134 | 935,001 / 380,405 / 354,811 |
+| Three CSS assets including print | 372,863 / 51,315 / 39,210 | unchanged |
+| Common JS with Livewire/Alpine | 325,157 / 101,624 / 88,621 | 325,154 / 101,639 / 88,595 |
+| Lazy passkeys module | 8,957 / 2,904 / 2,460 | 13,124 / 3,683 / 3,163 |
+| Three local fonts | 223,860 / 223,768 / 223,843 | unchanged |
+| Ordinary page entry closure (six assets) | 918,076 / 375,602 / 350,746 | 918,073 / 375,617 / 350,720 |
+
+The total increases by 4,164 raw /794 gzip /677 Brotli bytes, principally the SimpleWebAuthn14 module. Separately served Flux runtime (303,925 /67,567 /54,812), optional editor JS (332,263 /104,275 /88,990) and editor CSS (3,956 /956 /773) are unchanged. There is no CSS size reduction claim.
+
+Reproducible local evidence is preserved under ignored `storage/app/private/platform-2026-09-16/continuation-ce187c8/` (`performance` and `frontend` subdirectories). The original owned runs are `/private/tmp/restaurant-performance-yGphsN/` and `/private/tmp/restaurant-p1-frontend-baseline-9Kn5Kt/`. They contain fixtures, graph hashes, individual samples and exact commands; no production data is used.
+
 ## Flux component-system continuation — 2026-09-16
 
 This stage compares the copied production build from clean `76932c7` with the final current build. Each response is compressed independently with Node gzip level 9 and Brotli quality 11; these are local inventories, not measured server compression settings. The reference-only rich editor remains outside product-page delivery.

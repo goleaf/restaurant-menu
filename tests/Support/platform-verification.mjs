@@ -27,6 +27,39 @@ function absoluteFile(path, executable = false) {
     return resolved;
 }
 
+function engineMinimum(range) {
+    const match = typeof range === 'string' ? range.match(/^>=(\d+)\.(\d+)\.(\d+) <(\d+)$/) : null;
+    if (!match) throw new Error('Tool engine range must declare a stable minimum and exclusive major ceiling.');
+    return match.slice(1).map(Number);
+}
+
+function assertEngine(name, version, range) {
+    const [major, minor, patch, ceiling] = engineMinimum(range);
+    const actual = version.split('.').map(Number);
+    const minimum = [major, minor, patch];
+    const difference = actual.findIndex((value, index) => value !== minimum[index]);
+    if (actual[0] >= ceiling || (difference !== -1 && actual[difference] < minimum[difference])) {
+        throw new Error(`${name} ${version} does not satisfy ${range}.`);
+    }
+}
+
+export async function resolveJavaScriptRuntime({ npmBinary, engines, env = process.env }) {
+    engineMinimum(engines?.node);
+    engineMinimum(engines?.npm);
+    if (!/^\d+\.\d+\.\d+$/.test(process.versions.node)) throw new Error('Node must be a stable release.');
+    assertEngine('Node', process.versions.node, engines.node);
+    const nodeBinary = absoluteFile(process.execPath, true);
+    const npmPath = absoluteFile(npmBinary);
+    const probe = await runVerificationProcess([nodeBinary, npmPath, '--version'], {
+        env: inheritedEnvironment(env), timeout: 15_000,
+    });
+    if (probe.code !== 0) throw new Error('The selected npm CLI probe failed.');
+    const npmVersion = probe.output.trim();
+    if (!/^\d+\.\d+\.\d+$/.test(npmVersion)) throw new Error('The selected npm CLI returned an invalid npm version.');
+    assertEngine('npm', npmVersion, engines.npm);
+    return Object.freeze({ nodeBinary, nodeVersion: process.versions.node, npmBinary: npmPath, npmVersion });
+}
+
 export async function resolvePhpRuntime({ label, binary, expectedVersion, composerBinary, allowPrerelease = false, env = process.env }) {
     if (typeof label !== 'string' || !/^[a-z][a-z0-9-]*$/.test(label)) throw new Error('A runtime label is required.');
     if (typeof expectedVersion !== 'string' || !/^\d+\.\d+$/.test(expectedVersion)) throw new Error('Expected PHP must be an explicit major.minor version.');

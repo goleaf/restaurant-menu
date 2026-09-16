@@ -4,6 +4,15 @@
 
 # Changelog
 
+## 2026-09-16 — Verified stable platform continuation; PHP 8.6 application blocked
+
+- Preserve PHP 8.5 monetary whitespace validation on real PHP 8.6.0beta3 by making the accepted trim characters explicit; native and application regressions retain form-feed and Unicode-space rejection.
+- Validate the actual selected Node/npm engines before aggregate execution; bound owned subprocess cleanup and attribute browser screenshots to the case that wrote them.
+- Pin the local Boost launcher to the installed stable `php85` binary; the pre-existing Herd beta2 selection is unchanged.
+- Repair the stale allergen Livewire Form selector and synchronize responsive browser measurements with two render frames. Give discovery and actual PHP browser children the existing backend test budget of512M; preserve production image-memory rejection.
+- Repair three stale requirement traceability references. Retain the unchanged 90% PHP and 100% JavaScript line-coverage gates; the first full Xdebug attempt timed out and the bounded deadline is now 45 minutes.
+- Reverify clean lock installation, native PHP codecs/extensions, migrations/seeds/caches and matched dependency performance. Fix isolated browser media delivery and require actual image loading. Stable gates pass: 3,550 backend tests, PHP 94.0%, JS 196/100% lines and final browser 42 / 3,063. PHP8.6 application compatibility and full-stage completion remain blocked by dependency constraints.
+
 ## 2026-09-16 — Platform stage 1, implementation awaiting aggregate acceptance
 
 - Update available cached stable Composer packages: Laravel 13.31.0, Fortify 1.39.0, Larastan 3.11.0, PHPStan 2.2.13, Pint 1.31.1 and Pao 1.1.5. Keep local Flux Pro 0.1.1 provenance and current Free/Livewire pair.

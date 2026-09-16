@@ -1,7 +1,7 @@
 import { runVerificationProcess } from './Support/verification-process.mjs';
 import { assertDependencyIntegrity } from './Support/dependency-integrity.mjs';
-import { composerCommand, coverageEnvironment, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolvePhpRuntime, sourceInventory } from './Support/platform-verification.mjs';
-import { constants, copyFileSync, cpSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { composerCommand, coverageEnvironment, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolveJavaScriptRuntime, resolvePhpRuntime, sourceInventory } from './Support/platform-verification.mjs';
+import { constants, copyFileSync, cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -16,18 +16,23 @@ try {
     } });
     if (!values.php || !values.composer) throw new Error('Explicit --php /absolute/php and --composer /absolute/composer paths are required.');
     if (!['8.5', '8.6'].includes(values['expected-php'])) throw new Error('Expected PHP must be 8.5 (stable) or 8.6 (experimental).');
+    const javascript = await resolveJavaScriptRuntime({
+        npmBinary: values.npm ?? process.env.npm_execpath ?? join(dirname(process.execPath), 'npm'),
+        engines: JSON.parse(readFileSync('package.json', 'utf8')).engines,
+    });
     const experimental = values['expected-php'] === '8.6';
     const runtime = await resolvePhpRuntime({ label: experimental ? 'experimental' : 'stable', binary: values.php,
         composerBinary: values.composer, expectedVersion: values['expected-php'], allowPrerelease: experimental });
     artifacts = mkdtempSync(join(tmpdir(), 'restaurant-migration-verification-'));
     summary.runtime = runtime;
     summary.node = process.version;
+    summary.javascript = javascript;
     const sourceRoot = process.cwd();
     summary.dependencies = assertDependencyIntegrity(sourceRoot);
     const workspace = join(artifacts, 'source');
     summary.source = createSourceSnapshot({ sourceRoot, destination: workspace });
     const environment = createVerificationEnvironment({ runtime, artifacts: join(artifacts, 'runtime') });
-    const npmBinary = realpathSync(values.npm ?? process.env.npm_execpath ?? join(dirname(process.execPath), 'npm'));
+    const npmBinary = javascript.npmBinary;
     // Nested package scripts inherit the exact selected Node, npm and PHP executables.
     symlinkSync(process.execPath, join(artifacts, 'runtime/bin/node'));
     symlinkSync(npmBinary, join(artifacts, 'runtime/bin/npm'));
@@ -76,13 +81,13 @@ try {
         if (expected === 0 || expected !== actual) throw new Error(`Backend discovery mismatch: ${expected} discovered, ${actual} executed`);
         summary.backend = { discovered: expected, executed: actual };
         await run('js-tests-coverage', ['npm', 'run', 'test:js:coverage']);
+        await run('browser', php(['tests/browser.php']), { timeout: 3_600_000 });
         if (!experimental) {
             const coverage = values['coverage-extension'] ? coverageEnvironment(environment, artifacts, values['coverage-extension']) : {};
-            await run('php-coverage', composer(['test:coverage', '--', '-d', 'memory_limit=4G', '--coverage-clover', join(artifacts, 'php-coverage.xml'), ...strict]), { timeout: 1_800_000, env: coverage });
+            await run('php-coverage', composer(['test:coverage', '--', '-d', 'memory_limit=4G', '--coverage-clover', join(artifacts, 'php-coverage.xml'), ...strict]), { timeout: 2_700_000, env: coverage });
         } else {
             summary.coverage = 'Not measured on experimental PHP; the stable runtime must independently pass the unchanged 90% gate.';
         }
-        await run('browser', php(['tests/browser.php']), { timeout: 3_600_000 });
         await run('translations-audit', php(['artisan', 'translations:audit', '--no-interaction']));
         await run('translations-scan', php(['artisan', 'translations:scan', '--no-interaction']));
         await run('asset-budgets', ['npm', 'run', 'build:check']);

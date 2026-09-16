@@ -108,7 +108,7 @@ final class BrowserSuiteRunner
         $discoveryPath = $this->artifacts.'/discovery.xml';
         $namesPath = $this->artifacts.'/test-names.json';
         $environment['RESTAURANT_BROWSER_NAMES'] = $namesPath;
-        $discovery = $this->runProcess([PHP_BINARY, 'tests/browser-discover.php', 'tests/Browser', '--browser', $browser, '--list-tests-xml', $discoveryPath], $environment, 60);
+        $discovery = $this->runProcess([PHP_BINARY, '-d', 'memory_limit=512M', 'tests/browser-discover.php', 'tests/Browser', '--browser', $browser, '--list-tests-xml', $discoveryPath], $environment, 60);
         if ($discovery['exit_code'] !== 0 || ! is_file($discoveryPath) || ! is_file($namesPath)) {
             fwrite(STDERR, "Browser discovery failed.\n".$discovery['output']);
 
@@ -123,7 +123,8 @@ final class BrowserSuiteRunner
             $case = 'case-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
             $junit = $this->artifacts.'/'.$case.'.xml';
             fwrite(STDOUT, '['.$number.'/'.count($tests).'] '.$id."\n");
-            $result = $this->runProcess([PHP_BINARY, 'vendor/bin/pest', 'tests/Browser', '--browser', $browser, '--compact', '--fail-on-all-issues', '--display-all-issues', '--filter', self::filterFor($id, $names), '--log-junit', $junit], $this->environment($case), $timeout);
+            $previousScreenshots = $this->screenshotFingerprints();
+            $result = $this->runProcess([PHP_BINARY, '-d', 'memory_limit=512M', 'vendor/bin/pest', 'tests/Browser', '--browser', $browser, '--compact', '--fail-on-all-issues', '--display-all-issues', '--filter', self::filterFor($id, $names), '--log-junit', $junit], $this->environment($case), $timeout);
             file_put_contents($this->artifacts.'/'.$case.'.log', $result['output']);
             $caseResult = self::caseResult(is_file($junit) ? (string) file_get_contents($junit) : '');
             $assertions += $caseResult['assertions'];
@@ -134,9 +135,10 @@ final class BrowserSuiteRunner
             if (! $passed) {
                 fwrite(STDOUT, $result['output']);
             }
-            foreach (glob($this->root.'/tests/Browser/Screenshots/*') ?: [] as $screenshot) {
-                if (is_file($screenshot)) {
-                    copy($screenshot, $this->artifacts.'/'.$case.'-'.basename($screenshot));
+            foreach ($this->screenshotFingerprints() as $screenshot => $fingerprint) {
+                if (($previousScreenshots[$screenshot] ?? null) !== $fingerprint
+                    && ! copy($screenshot, $this->artifacts.'/'.$case.'-'.basename($screenshot))) {
+                    throw new RuntimeException('Cannot preserve browser screenshot evidence.');
                 }
             }
         }
@@ -153,6 +155,38 @@ final class BrowserSuiteRunner
         fwrite(STDOUT, sprintf("Browser suite: %d cases, %d assertions, %d failures/timeouts. Artifacts: %s\n", count($tests), $assertions, $failed, $this->artifacts));
 
         return $failed === 0 ? 0 : 1;
+    }
+
+    /** @return array<string,string> */
+    private function screenshotFingerprints(): array
+    {
+        // PHP stat timestamps omit subsecond writes; Node is already required by the browser runner.
+        $process = new Process(['node', '-e', <<<'JS'
+            const {createHash}=require('node:crypto');
+            const {constants,closeSync,existsSync,fstatSync,lstatSync,openSync,readdirSync,readFileSync}=require('node:fs');
+            const {join}=require('node:path');
+            const directory=process.argv[1], fingerprints={};
+            if(existsSync(directory)) {
+                if(lstatSync(directory).isSymbolicLink()) throw new Error('Screenshot directory must not be a symbolic link.');
+                for(const name of readdirSync(directory)) {
+                    if(name.startsWith('.')) continue;
+                    const path=join(directory,name), info=lstatSync(path);
+                    if(!info.isFile() || info.isSymbolicLink()) continue;
+                    const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW);
+                    try {
+                        const stat=fstatSync(fd,{bigint:true});
+                        fingerprints[path]=[stat.dev,stat.ino,stat.mtimeNs,stat.ctimeNs,createHash('sha256').update(readFileSync(fd)).digest('hex')].join(':');
+                    } finally { closeSync(fd); }
+                }
+            }
+            console.log(JSON.stringify(fingerprints));
+            JS, $this->root.'/tests/Browser/Screenshots'], $this->root, timeout: 5);
+        $process->mustRun();
+
+        /** @var array<string,string> $fingerprints */
+        $fingerprints = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+
+        return $fingerprints;
     }
 
     /** @return array<string,string> */

@@ -51,12 +51,17 @@ test('login lists local identities memberships role grants and scoped overrides 
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 
     expect($other->refresh()->password)->toBe($originalHash);
+    expect(countDatabaseQueries(fn () => app(BuildLocalLoginDirectoryAction::class)
+        ->handle(Request::create('https://restaurant-menu.test/login'))))->toBe(11);
 });
 
 test('login directory is absent outside its explicit local environment and host', function (string $environment, string $configuredEnvironment, bool $enabled, string $host): void {
     $this->app->detectEnvironment(fn (): string => $environment);
     config()->set(['app.env' => $configuredEnvironment, 'demo-login.enabled' => $enabled]);
     $user = User::factory()->create();
+
+    expect(countDatabaseQueries(fn () => app(BuildLocalLoginDirectoryAction::class)
+        ->handle(Request::create('https://'.$host.'/login'))))->toBe(0);
 
     $this->get('https://'.$host.'/login')->assertOk()
         ->assertDontSeeText($user->email)->assertDontSeeText(__('local_login.title'))
@@ -103,7 +108,7 @@ test('local directory is paginated and its query count does not grow per user', 
     $addUsers(30);
     $large = countDatabaseQueries(fn () => $action->handle($request));
 
-    expect($large)->toBe($small)->toBeLessThanOrEqual(12)
+    expect($large)->toBe($small)->toBe(9)
         ->and($action->handle($request)->items())->toHaveCount(25)
         ->and($action->handle($request)->hasMorePages())->toBeTrue();
     $this->get('https://restaurant-menu.test/login?users_page=2')->assertOk()

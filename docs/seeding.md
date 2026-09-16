@@ -82,3 +82,7 @@ This code change does not repair or reseed an existing application database. In 
 - Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data. Demo and onboarding QR files are written only after their core database transactions commit; failed outer transactions leave no orphan SVGs, and a failed filesystem write raises an exception instead of silently reporting a complete seed.
 
 `KitchenTicketItemFactory` resolves the source order-item snapshot once per generated model. Its cache is local to one `definition()` invocation; reusing the factory after a source edit loads the new values, while explicit states still override defaults. The two-item regression reduces source reads from 18 to 2 and checks ownership and snapshot values.
+
+## Local account inventory — 2026-09-16
+
+The local login directory never seeds on GET. This installation already contained all 17 users and 12 canonical demo identities, so no new users or restaurant graph were created. At explicit user request, only the 12 canonical demo passwords were rotated to the local `DEMO_LOGIN_PASSWORD` value; the other five accounts were preserved. Default factories and repeated seed behavior remain random-on-create and preserve-on-repeat. The configured local display is conditional on the current hash and does not turn the demo seeder into a password reset operation.

@@ -199,3 +199,7 @@ No worker, cron, Redis, WebSocket, S3, Docker or SSH-only runtime capability is 
 | Image manipulation additions | Not needed: logos and dish galleries retain validated JPG/PNG/WebP source content without server transforms | media/menu Actions | upload, gallery and rollback tests |
 
 Important long-lived architecture choices are recorded in [`decisions/`](decisions/); completion-audit choices are summarized in [`DECISIONS.md`](DECISIONS.md). The compact requirement status is in [`compliance-matrix.md`](compliance-matrix.md), and the concrete route-to-database relationship is in [`REQUIREMENTS_TRACEABILITY.md`](REQUIREMENTS_TRACEABILITY.md).
+
+## Local login directory — 2026-09-16
+
+Fortify prepares `/login` through `BuildLocalLoginDirectoryAction`. It returns null before querying unless both resolved and configured environments are local, demo mode is enabled and the host is allowlisted. Otherwise it selects 25 users per page and eagerly loads roles, company memberships, ownership, role grants and scoped overrides; only prepared arrays reach the anonymous `auth.local-user-directory` Blade component. The password column checks the canonical demo email, exact role and configured password against the current hash. GET does not seed or change users. Role defaults and individual exceptions are labelled separately; resource policies remain authoritative.

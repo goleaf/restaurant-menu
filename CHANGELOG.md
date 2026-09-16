@@ -317,3 +317,7 @@ This file records shipped milestones, not active requirements or future work. Se
 - Added waiter/bill requests, database notifications, service modes, opening hours, menu schedules and availability, restaurant profile, onboarding, reports, analytics, audit history, exports, subscriptions, backup download, and superadmin controls.
 - Introduced localization, design-system and accessibility foundations, responsive guest/waiter/kitchen interfaces, SQLite/query guardrails, cache invalidation, soft deletes, security audits, dangerous confirmations, and print-friendly department tickets.
 - Historical prompt-by-prompt detail remains available in Git history; current behaviour is defined only by the requirement catalogue and tests.
+
+## 2026-09-16 — Local login user directory
+
+Added a guarded, localized `/login` table of local usernames/email, password availability, roles, companies, role grants and scoped permission overrides. The operator-configured demo password is shown only after canonical identity/role/current-hash verification. Existing ordinary accounts are preserved; no users are created on page load. Responsive SCSS adds a wide desktop table and labelled mobile rows; the measured product CSS is 30,559 raw / 6,100 gzip bytes, with its entry budget adjusted to 31,000 / 6,300 bytes and unchanged aggregate limits.

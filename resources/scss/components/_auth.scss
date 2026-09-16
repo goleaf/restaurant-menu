@@ -45,6 +45,10 @@
             max-width: tokens.space(224);
         }
 
+        &--directory {
+            max-width: tokens.space(320);
+        }
+
         &--card {
             max-width: tokens.space(112);
             gap: tokens.space(6);
@@ -115,13 +119,13 @@
 
                 td {
                     border: 0;
+                }
 
-                    &::before {
-                        display: block;
-                        margin-block-end: tokens.space(1);
-                        font-weight: 600;
-                        content: attr(data-label);
-                    }
+                td::before {
+                    display: block;
+                    margin-block-end: tokens.space(1);
+                    font-weight: 600;
+                    content: attr(data-label);
                 }
             }
         }

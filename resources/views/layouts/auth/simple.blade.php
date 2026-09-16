@@ -1,6 +1,7 @@
 @props([
     'title' => null,
     'wide' => false,
+    'directory' => false,
 ])
 
 <!DOCTYPE html>
@@ -17,6 +18,7 @@
             <div @class([
                 'rm-auth-stack',
                 'rm-auth-stack--wide' => $wide,
+                'rm-auth-stack--directory' => $directory,
             ])>
                 <a href="{{ route('home') }}" class="flex min-h-11 flex-col items-center gap-2 font-medium" wire:navigate>
                     <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">

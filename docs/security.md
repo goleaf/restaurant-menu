@@ -151,3 +151,7 @@ Guest/waiter draft-item creation uses a non-secret locked UUID attempt key and a
 - Dependency or environment exceptions are documented with an exact advisory/blocker and affected requirement ID.
 
 Security regression coverage is mapped under the `sec-*` requirements in [`compliance-matrix.md`](compliance-matrix.md).
+
+## Explicit local demo password display — 2026-09-16
+
+The user-authorized local `/login` directory is an exception to the password-free demo presentation below. Both application environment checks must equal `local`, demo mode must be enabled and the request host must be allowlisted. `DEMO_LOGIN_PASSWORD` is an optional local operator value in the ignored `.env`; there is no default credential. It is displayed only for an exact canonical demo email/role whose current hash verifies. Ordinary accounts, changed demo passwords, production, staging and foreign hosts never disclose it. Hashes, tokens and other authentication material are not projected. Responses are private/no-store/noindex with no-referrer. The existing `/demo-login` route keeps its original password-free and CSRF/throttle/session contract.

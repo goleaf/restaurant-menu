@@ -86,3 +86,7 @@ Copy only key names/default-safe examples from `.env.example`; secrets stay in t
 Rollback code/assets to the previous compatible release. Schema rollback is used only when the migration explicitly proves it is safe and no new data would be destroyed; otherwise roll forward. Forward data migrations document compatibility and verification in the migration/ADR.
 
 This file is the canonical deployment contract; operational recovery procedures are in [`operations.md`](operations.md).
+
+## Local directory configuration — 2026-09-16
+
+`DEMO_LOGIN_PASSWORD` is blank in `.env.example` and belongs only in an explicitly enabled local demo installation. Do not set it for deployed environments. The local inventory requires resolved/configured `APP_ENV=local`, `DEMO_LOGIN_ENABLED=true` and an allowlisted `DEMO_LOGIN_HOSTS` request host. The user-selected `restaurant-menu.test` host was added only to this installation's ignored `.env`; production and staging do not render the inventory even when the flag is set.

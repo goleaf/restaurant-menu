@@ -89,7 +89,7 @@ class Index extends Component
 
         $createBrand->handle($this->organization, [
             'name' => $validated['name'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->reset('name');
         unset($this->brands);
@@ -129,7 +129,7 @@ class Index extends Component
 
         $updateBrand->handle($this->findOrganizationBrand($this->editingBrandId), [
             'name' => $validated['editingName'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->cancelEditing();
         unset($this->brands);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\Navigation\BuildApplicationNavigationAction;
+use App\Services\Navigation\ApplicationNavigationPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
@@ -26,7 +26,7 @@ class ViewServiceProvider extends ServiceProvider
      */
     public function boot(
         Request $request,
-        BuildApplicationNavigationAction $buildApplicationNavigation,
+        ApplicationNavigationPresenter $buildApplicationNavigation,
     ): void {
         Blade::componentNamespace('App\\View\\Components\\Layouts', 'layouts');
 

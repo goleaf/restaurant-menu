@@ -13,9 +13,23 @@ use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Organization;
+use App\Enums\OrganizationUserStatus;
+use App\Enums\SystemRole;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
+
+test('organization owner membership fixture reuses the supplied owner and canonical role', function (): void {
+    $owner = User::factory()->create();
+    $organization = Organization::factory()->for($owner, 'owner')->withOwnerMembership()->create();
+    $membership = $organization->memberships()->sole();
+
+    expect($membership->user_id)->toBe($owner->id)
+        ->and($membership->status)->toBe(OrganizationUserStatus::Active)
+        ->and($membership->role->code)->toBe(SystemRole::Owner)
+        ->and(User::query()->count())->toBe(1);
+});
 
 test('accepted invitation fixtures bind the recipient email to the accepted account', function (bool $suppliedUser): void {
     $user = $suppliedUser ? User::factory()->create(['email' => 'recipient@example.test']) : null;

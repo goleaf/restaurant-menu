@@ -214,7 +214,7 @@ function createPrompt103Branch(bool $withOwner = true): array
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => true,
-    ]);
+    ], actor: $organization->owner);
 
     if ($withOwner) {
         return [$organization, $brand, $branch, $owner->fresh()];

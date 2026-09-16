@@ -15,6 +15,7 @@ use App\Models\MenuItem;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
+use App\Models\OrganizationSubscription;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\App;
 use Livewire\Livewire;
@@ -84,7 +85,8 @@ test('guest menu displays prices in the branch currency without converting amoun
 
 function createCurrencySettingsBranch(string $currency = 'EUR'): Branch
 {
-    $organization = Organization::factory()->create(['name' => 'Currency Group']);
+    $organization = Organization::factory()->withOwnerMembership()->create(['name' => 'Currency Group']);
+    OrganizationSubscription::factory()->for($organization)->active()->create();
     $brand = Brand::factory()->for($organization)->create(['name' => 'Currency Brand']);
 
     return app(CreateBranchAction::class)->handle($brand, [
@@ -95,7 +97,7 @@ function createCurrencySettingsBranch(string $currency = 'EUR'): Branch
         'timezone' => 'Europe/Vilnius',
         'currency' => $currency,
         'is_active' => true,
-    ]);
+    ], actor: $organization->owner);
 }
 
 function createCurrencySettingsMenuRows(Branch $branch): array

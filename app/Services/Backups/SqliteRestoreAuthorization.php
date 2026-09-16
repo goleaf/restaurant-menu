@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Backups;
+namespace App\Services\Backups;
 
 use App\Models\User;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Http\Request;
 
-final class ResolveSqliteRestoreAuthorizationAction
+final class SqliteRestoreAuthorization
 {
     public function __construct(
         private readonly CacheManager $cache,

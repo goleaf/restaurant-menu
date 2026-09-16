@@ -22,7 +22,13 @@ class RegisterInvitationRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user() === null;
+        if ($this->user() !== null) {
+            return false;
+        }
+
+        $this->invitation();
+
+        return true;
     }
 
     /**
@@ -104,7 +110,7 @@ class RegisterInvitationRequest extends FormRequest
             abort(410);
         }
 
-        $version = $this->input('invitation_version');
+        $version = $this->request->get('invitation_version');
         if (! is_string($version) || ! hash_equals($invitation->credentialVersion(), $version)) {
             abort(410);
         }
@@ -112,10 +118,16 @@ class RegisterInvitationRequest extends FormRequest
         return $this->resolvedInvitation = $invitation;
     }
 
+    /** @return array<string, mixed> */
+    public function validationData(): array
+    {
+        return array_intersect_key($this->request->all(), array_flip(['name', 'email', 'password', 'password_confirmation']));
+    }
+
     protected function prepareForValidation(): void
     {
-        $name = $this->input('name');
-        $email = $this->input('email');
+        $name = $this->request->get('name');
+        $email = $this->request->get('email');
 
         $this->merge([
             'name' => is_string($name) ? trim($name) : $name,

@@ -157,7 +157,7 @@ class Index extends Component
 
         $validated = $this->validate($this->branchRules());
 
-        $createBranch->handle($this->brand, $this->branchPayload($validated));
+        $createBranch->handle($this->brand, $this->branchPayload($validated), actor: $this->currentUser());
 
         $this->resetCreateForm();
         unset($this->branches);

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\OrganizationUserStatus;
+use App\Enums\InvitationStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
 use App\Models\BranchOpeningHour;
 use App\Models\BranchSetting;
 use App\Models\BranchUser;
+use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -123,4 +125,19 @@ test('demo permission fixtures are organization scoped and preserve foreign and 
     expect($own->fresh()->enabled)->toBeFalse()
         ->and($foreign->fresh()->enabled)->toBeTrue()
         ->and($foreign->fresh()->organization_id)->toBe($foreign->organization_id);
+});
+
+test('repeated demo seeding preserves a revoked invitation and its rotated credential', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+    $invitation = Invitation::query()->where('email', 'pending.invitation@demo.test')->firstOrFail();
+    $invitation->forceFill([
+        'status' => InvitationStatus::Cancelled,
+        'invite_token_hash' => hash('sha256', Str::random(64)),
+        'invite_code_hash' => hash('sha256', Str::random(8)),
+    ])->save();
+    $original = $invitation->getAttributes();
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect($invitation->fresh()->getAttributes())->toBe($original);
 });

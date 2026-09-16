@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Auth\BuildDemoLoginPageAction;
-use App\Actions\Auth\LoginAsDemoRoleAction;
+use App\Services\Auth\DemoRoleUserQuery;
+use App\Http\Controllers\Auth\LoginAsDemoRoleController;
 use App\Enums\SystemRole;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Models\Role;
@@ -93,9 +94,9 @@ test('every seeded demo role may be authenticated with a regenerated session', f
     $request->setLaravelSession($session);
     $previousSessionId = $session->getId();
 
-    $authenticated = app(LoginAsDemoRoleAction::class)->handle($request, $role);
+    $response = app(LoginAsDemoRoleController::class)($request, $role, app(DemoRoleUserQuery::class));
 
-    expect($authenticated)->toBeTrue()
+    expect($response->getTargetUrl())->toBe(route('dashboard'))
         ->and(Auth::guard('web')->id())->toBe($user->id)
         ->and($session->getId())->not->toBe($previousSessionId);
 })->with(SystemRole::cases());
@@ -105,14 +106,14 @@ test('missing or mismatched demo identities are not authenticated', function ():
     $session = app('session')->driver();
     $session->start();
     $request->setLaravelSession($session);
-    $loginAsDemoRole = app(LoginAsDemoRoleAction::class);
+    $demoRoleUsers = app(DemoRoleUserQuery::class);
 
-    expect($loginAsDemoRole->handle($request, SystemRole::Waiter))->toBeFalse()
+    expect($demoRoleUsers->find(SystemRole::Waiter))->toBeNull()
         ->and(Auth::guard('web')->check())->toBeFalse();
 
     createDemoLoginAccount(SystemRole::Waiter, SystemRole::Cook);
 
-    expect($loginAsDemoRole->handle($request, SystemRole::Waiter))->toBeFalse()
+    expect($demoRoleUsers->find(SystemRole::Waiter))->toBeNull()
         ->and(Auth::guard('web')->check())->toBeFalse();
 });
 

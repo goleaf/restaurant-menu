@@ -42,7 +42,7 @@ test('branch settings table has safe operational fields', function () {
 });
 
 test('creating branch creates settings with safe defaults', function () {
-    [, $brand] = createOrganizationBrandForSettings();
+    [$organization, $brand] = createOrganizationBrandForSettings();
 
     $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Bella Pizza Vilnius Old Town',
@@ -52,7 +52,7 @@ test('creating branch creates settings with safe defaults', function () {
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => true,
-    ]);
+    ], actor: $organization->owner);
 
     $settings = $branch->settings()->firstOrFail();
 
@@ -329,7 +329,7 @@ function createOrganizationBrandBranchForSettings(
             'timezone' => 'Europe/Vilnius',
             'currency' => 'EUR',
             'is_active' => true,
-        ]);
+        ], actor: $organization->owner);
     } else {
         $branch = Branch::factory()
             ->for($organization)

@@ -2,17 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Auth;
+namespace App\Services\Auth;
 
 use App\Enums\SystemRole;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-final class LoginAsDemoRoleAction
+final class DemoRoleUserQuery
 {
-    public function handle(Request $request, SystemRole $role): bool
+    public function find(SystemRole $role): ?User
     {
         $identity = DemoAccountCatalog::forRole($role);
         $user = User::query()
@@ -22,12 +20,9 @@ final class LoginAsDemoRoleAction
             ->first();
 
         if (! $user instanceof User || ! $user->hasSystemRole($role)) {
-            return false;
+            return null;
         }
 
-        Auth::guard('web')->login($user);
-        $request->session()->regenerate();
-
-        return true;
+        return $user;
     }
 }

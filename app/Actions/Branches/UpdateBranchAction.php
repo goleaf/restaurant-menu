@@ -10,6 +10,7 @@ use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class UpdateBranchAction
 {
@@ -20,9 +21,19 @@ class UpdateBranchAction
     /**
      * @param  array{name: string, address: string, city: string, country: string, timezone: string, currency: string, is_active: bool}  $data
      */
-    public function handle(Branch $branch, array $data, ?User $changedBy = null, ?string $reason = null): Branch
+    public function handle(Branch $branch, array $data, User $changedBy, ?string $reason = null): Branch
     {
         return DB::transaction(function () use ($branch, $data, $changedBy, $reason): Branch {
+            $originalBranch = $branch;
+            $branch = Branch::query()
+                ->select(['id', 'organization_id', 'brand_id', 'name', 'address', 'city', 'country', 'timezone', 'currency', 'is_active', 'created_at', 'updated_at', 'deleted_at'])
+                ->where('organization_id', $branch->getRawOriginal('organization_id'))
+                ->where('brand_id', $branch->getRawOriginal('brand_id'))
+                ->whereKey($branch->getKey())
+                ->firstOrFail();
+            Gate::forUser(User::query()->select(['id'])->whereKey($changedBy->getKey())->first())
+                ->authorize('update', $branch);
+
             $currency = SupportedCurrency::normalize($data['currency']);
             $wasActive = (bool) $branch->is_active;
 
@@ -62,7 +73,7 @@ class UpdateBranchAction
                 ->select(['id', 'branch_id', 'default_currency'])
                 ->update(['default_currency' => $currency]);
 
-            return $branch->refresh();
+            return $originalBranch->refresh();
         });
     }
 }

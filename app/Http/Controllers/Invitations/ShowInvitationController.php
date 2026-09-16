@@ -6,16 +6,14 @@ namespace App\Http\Controllers\Invitations;
 
 use App\Actions\Invitations\ResolvedInvitationAccess;
 use App\Actions\Invitations\ResolveInvitationAccessAction;
-use App\Actions\Invitations\ResolveInvitationRecipientRoleAction;
+use App\Services\Invitations\InvitationPagePresenter;
 use App\Enums\InvitationAccessState;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
-use App\Support\LocalizedDateFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rules\Password;
 
 class ShowInvitationController extends Controller
 {
@@ -25,7 +23,7 @@ class ShowInvitationController extends Controller
     public function __invoke(
         Request $request,
         ResolveInvitationAccessAction $resolveInvitation,
-        ResolveInvitationRecipientRoleAction $recipientRole,
+        InvitationPagePresenter $presenter,
         ?string $token = null,
     ): RedirectResponse|Response {
         if ($token !== null) {
@@ -59,32 +57,7 @@ class ShowInvitationController extends Controller
             $request->session()->put('url.intended', route('invitations.pending'));
         }
 
-        $invitation->loadMissing([
-            'organization:id,name',
-            'branch:id,name',
-            'brand:id,name',
-            'role:id,code,name',
-        ]);
-        $role = ($recipient instanceof User ? $recipientRole->handle($invitation, $recipient) : null)
-            ?? $invitation->role?->code;
-
-        return response()->view('invitations.show', [
-            'title' => __('invitations.title'),
-            'organizationName' => (string) $invitation->organization?->name,
-            'branchName' => $invitation->branch?->name,
-            'brandName' => $invitation->brand?->name,
-            'roleName' => $role?->localizedLabel() ?? (string) $invitation->role?->name,
-            'expiresAt' => LocalizedDateFormatter::dateTime($invitation->expires_at),
-            'isAuthenticated' => $recipient instanceof User,
-            'hasExistingAccount' => $recipient === null && User::query()->where('email', $invitation->email)->exists(),
-            'accessExplanation' => $invitation->branch_id === null ? __('invitations.access.organization') : __('invitations.access.branch'),
-            'invitationEmail' => $invitation->email,
-            'invitationVersion' => $invitation->credentialVersion(),
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-            'acceptUrl' => route('invitations.accept'),
-            'registerUrl' => route('invitations.register'),
-            'loginUrl' => route('login'),
-        ]);
+        return response()->view('invitations.show', $presenter->present($invitation, $recipient));
     }
 
     private function pendingAccess(

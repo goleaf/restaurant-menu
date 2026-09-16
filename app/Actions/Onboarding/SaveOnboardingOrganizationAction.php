@@ -40,7 +40,7 @@ final readonly class SaveOnboardingOrganizationAction
                 }
 
                 Gate::forUser($user)->authorize('update', $organization);
-                $this->updateOrganization->handle($organization, $data);
+                $this->updateOrganization->handle($organization, $data, actor: $user);
             } else {
                 Gate::forUser($user)->authorize('create', Organization::class);
                 $organization = $this->createOrganization->handle($user, $data);

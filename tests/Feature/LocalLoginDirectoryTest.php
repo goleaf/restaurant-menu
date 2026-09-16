@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Auth\BuildLocalLoginDirectoryAction;
+use App\Services\Auth\LocalLoginDirectoryQuery;
 use App\Enums\SystemRole;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -51,7 +51,7 @@ test('login lists local identities memberships role grants and scoped overrides 
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 
     expect($other->refresh()->password)->toBe($originalHash);
-    expect(countDatabaseQueries(fn () => app(BuildLocalLoginDirectoryAction::class)
+    expect(countDatabaseQueries(fn () => app(LocalLoginDirectoryQuery::class)
         ->handle(Request::create('https://restaurant-menu.test/login'))))->toBe(11);
 });
 
@@ -60,7 +60,7 @@ test('login directory is absent outside its explicit local environment and host'
     config()->set(['app.env' => $configuredEnvironment, 'demo-login.enabled' => $enabled]);
     $user = User::factory()->create();
 
-    expect(countDatabaseQueries(fn () => app(BuildLocalLoginDirectoryAction::class)
+    expect(countDatabaseQueries(fn () => app(LocalLoginDirectoryQuery::class)
         ->handle(Request::create('https://'.$host.'/login'))))->toBe(0);
 
     $this->get('https://'.$host.'/login')->assertOk()
@@ -80,7 +80,7 @@ test('password display requires canonical demo identity role and matching curren
     $user = User::factory()->create(['email' => $identity['email'], 'password' => config('demo-login.password')]);
     $role = Role::query()->where('code', SystemRole::Waiter)->firstOrFail();
     $request = Request::create('https://restaurant-menu.test/login');
-    $action = app(BuildLocalLoginDirectoryAction::class);
+    $action = app(LocalLoginDirectoryQuery::class);
 
     expect($action->handle($request)->items()[0]['password'])->toBeNull();
     $user->roles()->attach($role);
@@ -103,7 +103,7 @@ test('local directory is paginated and its query count does not grow per user', 
     };
     $addUsers(1);
     $request = Request::create('https://restaurant-menu.test/login');
-    $action = app(BuildLocalLoginDirectoryAction::class);
+    $action = app(LocalLoginDirectoryQuery::class);
     $small = countDatabaseQueries(fn () => $action->handle($request));
     $addUsers(30);
     $large = countDatabaseQueries(fn () => $action->handle($request));
@@ -124,7 +124,7 @@ test('portfolio demo passwords require the exact seeded identity and company rol
     $this->seed(SystemPermissionsSeeder::class);
     $user = User::factory()->create(['email' => $email, 'password' => config('demo-login.password')]);
     $request = Request::create('https://restaurant-menu.test/login');
-    $action = app(BuildLocalLoginDirectoryAction::class);
+    $action = app(LocalLoginDirectoryQuery::class);
     expect($action->handle($request)->items()[0]['password'])->toBeNull();
 
     $role = Role::query()->where('code', $systemRole)->firstOrFail();

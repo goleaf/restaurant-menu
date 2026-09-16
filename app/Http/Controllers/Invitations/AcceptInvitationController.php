@@ -8,11 +8,9 @@ use App\Actions\Invitations\AcceptInvitationAction;
 use App\Actions\Invitations\ResolveInvitationDestinationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invitations\AcceptInvitationRequest;
-use App\Models\Invitation;
 use App\Models\User;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Gate;
 
 class AcceptInvitationController extends Controller
 {
@@ -22,21 +20,8 @@ class AcceptInvitationController extends Controller
     public function __invoke(AcceptInvitationRequest $request, AcceptInvitationAction $acceptInvitation, ResolveInvitationDestinationAction $destination): RedirectResponse
     {
         $recipient = $request->user();
-        $invitationId = $request->session()->get('staff_invitation_id');
-        $credential = $request->session()->get('staff_invitation_credential');
-        $invitation = is_int($invitationId) ? Invitation::findAcceptableById($invitationId) : null;
-
-        if (! $recipient instanceof User || ! $invitation instanceof Invitation || ! $invitation->matchesCredential($credential)) {
-            abort(410);
-        }
-
-        if (! hash_equals($invitation->credentialVersion(), $request->validated('invitation_version'))) {
-            abort(410);
-        }
-
-        if (Gate::forUser($recipient)->denies('accept', $invitation)) {
-            abort(410);
-        }
+        abort_unless($recipient instanceof User, 403);
+        $invitation = $request->invitation();
 
         try {
             $acceptInvitation->handle($invitation, $recipient);

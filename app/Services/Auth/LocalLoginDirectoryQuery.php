@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Auth;
+namespace App\Services\Auth;
 
 use App\Enums\SystemRole;
 use App\Models\Organization;
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * @phpstan-type DirectoryRow array{name: string, email: string, password: ?string, roles: list<string>, companies: list<string>, grants: list<array{scope: string, permissions: list<string>}>, overrides: list<array{scope: string, permission: string, enabled: bool}>}
  */
-final class BuildLocalLoginDirectoryAction
+final class LocalLoginDirectoryQuery
 {
     public function __construct(
         private readonly Application $application,

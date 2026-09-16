@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Navigation\BuildApplicationNavigationAction;
+use App\Services\Navigation\ApplicationNavigationPresenter;
 use App\Enums\SystemRole;
 use App\Models\Role;
 use App\Models\User;
@@ -13,7 +13,7 @@ test('workspace navigation prepares only currently permitted destinations for bo
     $user = User::factory()->create();
     $request = Request::create(route('restaurant.dashboard'));
     $request->setRouteResolver(fn () => app('router')->getRoutes()->getByName('restaurant.dashboard'));
-    $navigation = app(BuildApplicationNavigationAction::class)->handle($user, $request);
+    $navigation = app(ApplicationNavigationPresenter::class)->handle($user, $request);
     $items = collect($navigation['navigationItems']);
 
     expect($items->pluck('key')->all())
@@ -30,7 +30,7 @@ test('workspace navigation does not retain the previous account permissions', fu
     $role = Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail();
     $superadmin->roles()->syncWithoutDetachingOrFail([$role->id]);
     $regular = User::factory()->create();
-    $navigation = app(BuildApplicationNavigationAction::class);
+    $navigation = app(ApplicationNavigationPresenter::class);
     $request = Request::create('/dashboard');
 
     expect(collect($navigation->handle($superadmin, $request)['navigationItems'])->pluck('key')->all())
@@ -76,6 +76,6 @@ test('local reference has a current navigation marker only in the local administ
     $request = Request::create('/local/components');
     $request->setRouteResolver(fn () => app('router')->getRoutes()->getByName('local.components'));
 
-    expect(collect(app(BuildApplicationNavigationAction::class)->handle($user, $request)['navigationItems'])->firstWhere('key', 'components'))
+    expect(collect(app(ApplicationNavigationPresenter::class)->handle($user, $request)['navigationItems'])->firstWhere('key', 'components'))
         ->toMatchArray(['current' => true]);
 });

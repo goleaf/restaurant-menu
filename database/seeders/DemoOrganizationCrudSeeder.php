@@ -58,9 +58,9 @@ final class DemoOrganizationCrudSeeder extends Seeder
 
     public const INACTIVE_VARIANT_NAME = 'CRUD unavailable portion';
 
-    private const INACTIVE_BRANCH_NAME = 'Coffee Bar Small Hall';
+    public const INACTIVE_BRANCH_NAME = 'Coffee Bar Small Hall';
 
-    private const TEMPORARILY_CLOSED_BRANCH_NAME = 'Bella Pizza Terrace';
+    public const TEMPORARILY_CLOSED_BRANCH_NAME = 'Bella Pizza Terrace';
 
     private const PNG_PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 

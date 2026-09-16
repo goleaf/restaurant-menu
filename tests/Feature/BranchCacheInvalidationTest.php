@@ -14,6 +14,7 @@ use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Organization;
+use App\Models\OrganizationSubscription;
 use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Events\KeyForgotten;
 use Illuminate\Cache\Repository as CacheRepository;
@@ -249,7 +250,8 @@ test('logo changes clear cache for affected branches', function () {
 
 function createPrompt93CachedBranch(): Branch
 {
-    $organization = Organization::factory()->create(['name' => 'Prompt 93 Group']);
+    $organization = Organization::factory()->withOwnerMembership()->create(['name' => 'Prompt 93 Group']);
+    OrganizationSubscription::factory()->for($organization)->active()->create();
     $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 93 Brand']);
     $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Prompt 93 Branch',
@@ -259,7 +261,7 @@ function createPrompt93CachedBranch(): Branch
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => true,
-    ]);
+    ], actor: $organization->owner);
     $menu = Menu::factory()->for($branch)->create([
         'name' => 'Prompt 93 Menu',
         'status' => MenuStatus::Active,

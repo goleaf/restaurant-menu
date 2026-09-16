@@ -2861,5 +2861,7 @@
     "validation.url": "Поле «:attribute» должно содержать корректный URL.",
     "validation.uuid": "Поле «:attribute» должно содержать корректный UUID.",
     "waiter.dashboard.no_active_tables": "Активных столов сейчас нет.",
-    "waiter.dashboard.no_available_branches": "Филиалов для просмотра заказов официантом нет."
+    "waiter.dashboard.no_available_branches": "Филиалов для просмотра заказов официантом нет.",
+    "mcp.errors.invalid_arguments": "Операцию нельзя выполнить с этими параметрами или при текущем состоянии ресторана. Проверьте данные и повторите запрос.",
+    "mcp.errors.operation_failed": "Не удалось выполнить операцию ресторана. Повторите запрос с тем же ключом."
 }

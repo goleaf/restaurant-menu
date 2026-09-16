@@ -37,8 +37,8 @@ function menuEditorTransportFixture(string $editor, bool $editing): array
     $menu = Menu::factory()->for($branch)->withTranslations()->create(['name' => 'Original menu']);
     $category = MenuCategory::factory()->for($menu)->withTranslations()->create(['name' => 'Original category']);
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->withTranslations()->create(['name' => 'Original dish', 'price_cents' => 1250]);
-    $names = ['en' => 'Transport', 'lt' => 'Transport', 'ru' => 'Transport'];
-    $descriptions = array_fill_keys(['en', 'lt', 'ru'], ['name' => 'Transport', 'description' => '']);
+    $names = ['en' => 'Transport', 'lt' => 'Patiekalo vertimas', 'ru' => 'Перевод блюда'];
+    $descriptions = array_map(fn (string $name): array => ['name' => $name, 'description' => ''], $names);
     [$componentClass, $subject, $create, $edit, $start, $values] = match ($editor) {
         'menu' => [Catalog::class, $menu, 'createMenu', 'updateMenu', 'startEditingMenu', ['menuName' => 'Transport menu', 'menuStatus' => 'draft', 'menuSortOrder' => '12', 'menuTranslations' => $names]],
         'category' => [Catalog::class, $category, 'createCategory', 'updateCategory', 'startEditingCategory', ['categoryName' => 'Transport category', 'categoryDescription' => '', 'categoryIcon' => 'bookmark', 'categoryIsActive' => '1', 'categorySortOrder' => '12', 'categoryTranslations' => $descriptions]],
@@ -53,8 +53,8 @@ function menuEditorTransportFixture(string $editor, bool $editing): array
     ])->assertOk();
     if ($editing) {
         $component->call($start, $subject->id)->assertHasNoErrors();
-        $values = collect($values)->mapWithKeys(fn (mixed $value, string $key): array => ['editing'.ucfirst($key) => $value])->all();
     }
+    $values = collect($values)->mapWithKeys(fn (mixed $value, string $key): array => [menuEditorTransportField($editor, $key, $editing) => $value])->all();
     $component->update(updates: $values)->assertOk();
 
     return [$component, $subject, $editing ? $edit : $create, $branch, $item];
@@ -62,7 +62,7 @@ function menuEditorTransportFixture(string $editor, bool $editing): array
 
 test('menu editors reject malformed original transport values without persistence', function (string $editor, string $field, mixed $value, bool $editing): void {
     [$component, $subject, $action] = menuEditorTransportFixture($editor, $editing);
-    $field = $editing ? 'editing'.ucfirst($field) : $field;
+    $field = menuEditorTransportField($editor, $field, $editing);
     $original = $subject->fresh()->getRawOriginal();
     $count = $subject::query()->count();
     try {
@@ -92,7 +92,7 @@ test('menu editors preserve valid numeric strings and translated values', functi
     expect($saved->only(array_keys($expected)))->toBe($expected);
     if ($editor !== 'schedule') {
         expect($saved->translations()->pluck('name', 'language_code')->all())
-            ->toBe(['en' => 'Transport', 'lt' => 'Transport', 'ru' => 'Transport']);
+            ->toBe(['en' => 'Transport', 'lt' => 'Patiekalo vertimas', 'ru' => 'Перевод блюда']);
     }
 })->with(['menu', 'category', 'item', 'schedule', 'group', 'option', 'variant'])->with(['create' => false, 'edit' => true]);
 
@@ -140,7 +140,7 @@ dataset('malformed menu editor input', [
 
 test('menu selections retain malformed input while dependent reads remain safe', function (string $editor, string $field, bool $editing, mixed $value): void {
     [$component, $subject, $action] = menuEditorTransportFixture($editor, $editing);
-    $field = $editing ? 'editing'.ucfirst($field) : $field;
+    $field = menuEditorTransportField($editor, $field, $editing);
     $count = $subject::query()->count();
     $original = $subject->fresh()->getRawOriginal();
     $component->update(updates: [$field => $value])->assertOk()->assertSet($field, $value)
@@ -168,3 +168,14 @@ test('modifier assignment rejects malformed selections without attaching a group
         ->call('attachModifierGroupToItem')->assertHasErrors([$field]);
     expect($item->modifierGroups()->exists())->toBeFalse();
 })->with(['modifierItemMenuId', 'modifierItemId', 'modifierItemGroupId'])->with(['array' => [['invalid']], 'boolean' => true]);
+
+function menuEditorTransportField(string $editor, string $field, bool $editing): string
+{
+    if (in_array($editor, ['menu', 'category', 'item', 'schedule'], true)) {
+        $form = $editing ? 'editing'.ucfirst($editor).'Form' : $editor.'Form';
+
+        return $form.'.'.$field;
+    }
+
+    return $editing ? 'editing'.ucfirst($field) : $field;
+}

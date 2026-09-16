@@ -9,7 +9,10 @@ use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
+use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class CreateBranchAction
 {
@@ -20,9 +23,21 @@ class CreateBranchAction
     /**
      * @param  array{name: string, address: string, city: string, country: string, timezone: string, currency: string, is_active: bool}  $data
      */
-    public function handle(Brand $brand, array $data): Branch
+    public function handle(Brand $brand, array $data, User $actor): Branch
     {
-        return DB::transaction(function () use ($brand, $data): Branch {
+        return DB::transaction(function () use ($brand, $data, $actor): Branch {
+            $brand = Brand::query()
+                ->select(['id', 'organization_id', 'deleted_at'])
+                ->where('organization_id', $brand->getRawOriginal('organization_id'))
+                ->whereKey($brand->getKey())
+                ->firstOrFail();
+            $organization = Organization::query()
+                ->select(['id', 'owner_user_id', 'deleted_at'])
+                ->whereKey($brand->organization_id)
+                ->firstOrFail();
+            Gate::forUser(User::query()->select(['id'])->whereKey($actor->getKey())->first())
+                ->authorize('create', [Branch::class, $organization]);
+
             $currency = SupportedCurrency::normalize($data['currency']);
 
             $branch = $brand->branches()->make([

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\View\Components\Layouts\App;
 
-use App\Actions\Navigation\BuildApplicationNavigationAction;
+use App\Services\Navigation\ApplicationNavigationPresenter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\View\Component;
@@ -17,7 +17,7 @@ final class Sidebar extends Component
     private readonly array $navigationContext;
 
     public function __construct(
-        BuildApplicationNavigationAction $buildApplicationNavigation,
+        ApplicationNavigationPresenter $buildApplicationNavigation,
         Request $request,
         public readonly ?string $title = null,
     ) {

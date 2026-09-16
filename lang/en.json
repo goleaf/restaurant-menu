@@ -2861,5 +2861,7 @@
     "validation.url": "The :attribute field must be a valid URL.",
     "validation.uuid": "The :attribute field must be a valid UUID.",
     "waiter.dashboard.no_active_tables": "No active tables right now.",
-    "waiter.dashboard.no_available_branches": "No branches are available for waiter order viewing."
+    "waiter.dashboard.no_available_branches": "No branches are available for waiter order viewing.",
+    "mcp.errors.invalid_arguments": "The operation could not be completed with these arguments or the current restaurant state. Review the input and retry.",
+    "mcp.errors.operation_failed": "The restaurant operation could not be completed. Try again with the same request key."
 }

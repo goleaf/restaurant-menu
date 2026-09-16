@@ -84,7 +84,7 @@ test('superadmin sees expanded organization controls and counts', function () {
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => false,
-    ]);
+    ], actor: $organization->owner);
     $firstServicePoint = ServicePoint::factory()->for($branch)->create(['name' => 'Dashboard Table 1']);
     ServicePoint::factory()->for($inactiveBranch)->create(['name' => 'Dashboard Table 2']);
     $tableSession = TableSession::factory()->forServicePoint($firstServicePoint)->active()->create();
@@ -165,7 +165,7 @@ function createPlatformRecordsForSuperadmin(): array
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => true,
-    ]);
+    ], actor: $owner);
 
     return [$organization, $brand, $branch, $owner];
 }

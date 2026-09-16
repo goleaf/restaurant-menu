@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Superadmin;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Backups\CreateMediaZipBackupAction;
-use App\Actions\Backups\ResolveMediaBackupAuthorizationAction;
+use App\Services\Backups\MediaBackupAuthorization;
 use App\Enums\AuditLogAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ final class DownloadMediaBackupController extends Controller
     public function __invoke(
         Request $request,
         CreateMediaZipBackupAction $createMediaZipBackup,
-        ResolveMediaBackupAuthorizationAction $resolveAuthorization,
+        MediaBackupAuthorization $resolveAuthorization,
         RecordAuditLogAction $recordAuditLog,
     ): BinaryFileResponse {
         $authorization = $resolveAuthorization->handle($request);

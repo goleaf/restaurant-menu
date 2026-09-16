@@ -40,10 +40,10 @@ final readonly class SaveOnboardingBrandAction
                 }
 
                 Gate::forUser($user)->authorize('update', $brand);
-                $this->updateBrand->handle($brand, $data);
+                $this->updateBrand->handle($brand, $data, actor: $user);
             } else {
                 Gate::forUser($user)->authorize('create', [Brand::class, $organization]);
-                $brand = $this->createBrand->handle($organization, $data);
+                $brand = $this->createBrand->handle($organization, $data, actor: $user);
                 $onboarding->servicePoints()->detach();
                 $onboarding->forceFill([
                     'brand_id' => $brand->id,

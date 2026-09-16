@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Navigation;
+namespace App\Services\Navigation;
 
 use App\Actions\AuditLogs\BuildAuditLogIndexAction;
 use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
@@ -17,7 +17,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 
-final class BuildApplicationNavigationAction
+final class ApplicationNavigationPresenter
 {
     public function __construct(
         private readonly BuildWaiterDashboardAction $buildWaiterDashboard,

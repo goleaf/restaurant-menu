@@ -69,7 +69,7 @@ test('first vertical slice works from authenticated owner setup to closed table 
     ]);
     $brand = app(CreateBrandAction::class)->handle($organization, [
         'name' => 'Vertical Bistro',
-    ]);
+    ], actor: $organization->owner);
     $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Vertical Bistro Old Town',
         'address' => 'Pilies 1',
@@ -78,7 +78,7 @@ test('first vertical slice works from authenticated owner setup to closed table 
         'timezone' => 'Europe/Vilnius',
         'currency' => 'EUR',
         'is_active' => true,
-    ]);
+    ], actor: $organization->owner);
     $areaNode = app(CreateAreaNodeAction::class)->handle($branch, [
         'parent_id' => null,
         'type' => AreaNodeType::Hall->value,

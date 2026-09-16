@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\Auth\BuildLocalLoginDirectoryAction;
+use App\Services\Auth\LocalLoginDirectoryQuery;
 use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -48,7 +48,7 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(function (Request $request) {
-            $localUsers = $this->app->make(BuildLocalLoginDirectoryAction::class)->handle($request);
+            $localUsers = $this->app->make(LocalLoginDirectoryQuery::class)->handle($request);
 
             return response()->view('livewire.auth.login', [
                 ...$this->authViewData($request),

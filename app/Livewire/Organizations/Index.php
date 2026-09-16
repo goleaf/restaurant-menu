@@ -117,7 +117,7 @@ class Index extends Component
 
         $updateOrganization->handle($this->findOwnedOrganization($this->editingOrganizationId), [
             'name' => $validated['editingName'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->cancelEditing();
         unset($this->organizations);

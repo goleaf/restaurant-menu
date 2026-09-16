@@ -16,7 +16,6 @@ use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuItemVariantType;
 use App\Enums\ServicePointType;
-use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -34,7 +33,6 @@ use App\Models\MenuItemVariantTranslation;
 use App\Models\MenuTranslation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
@@ -316,16 +314,15 @@ class DemoRestaurantSeeder extends Seeder
         $allBranches = array_values($branches);
 
         $assignments = [
-            [$owner, SystemRole::Owner, null, $owner, [], $allBranches],
-            [$director, SystemRole::Director, $owner, $owner, [], $allBranches],
-            [$admin, SystemRole::RestaurantAdmin, $director, $director, [], $allBranches],
-            [$manager, SystemRole::ShiftManager, $admin, $admin, [], $allBranches],
+            [$owner, SystemRole::Owner, null, $owner, $allBranches],
+            [$director, SystemRole::Director, $owner, $owner, $allBranches],
+            [$admin, SystemRole::RestaurantAdmin, $director, $director, $allBranches],
+            [$manager, SystemRole::ShiftManager, $admin, $admin, $allBranches],
             [
                 $waiter,
                 SystemRole::Waiter,
                 $manager,
                 $manager,
-                [],
                 $this->branchSubset($branches, ['bella_pizza_old_town', 'bella_pizza_terrace']),
             ],
             [
@@ -333,7 +330,6 @@ class DemoRestaurantSeeder extends Seeder
                 SystemRole::HeadChef,
                 $manager,
                 $manager,
-                [],
                 $this->branchSubset($branches, ['bella_pizza_old_town', 'bella_pizza_terrace', 'sushi_master_center']),
             ],
             [
@@ -341,7 +337,6 @@ class DemoRestaurantSeeder extends Seeder
                 SystemRole::Cook,
                 $headChef,
                 $headChef,
-                [],
                 $this->branchSubset($branches, ['bella_pizza_old_town', 'sushi_master_center']),
             ],
             [
@@ -349,7 +344,6 @@ class DemoRestaurantSeeder extends Seeder
                 SystemRole::Bartender,
                 $manager,
                 $manager,
-                [],
                 $this->branchSubset($branches, ['bella_pizza_terrace', 'coffee_bar_small_hall']),
             ],
             [
@@ -357,17 +351,15 @@ class DemoRestaurantSeeder extends Seeder
                 SystemRole::Cashier,
                 $manager,
                 $manager,
-                [],
                 $this->branchSubset($branches, ['bella_pizza_old_town', 'coffee_bar_small_hall']),
             ],
-            [$accountant, SystemRole::Accountant, $director, $director, [], $allBranches],
-            [$marketer, SystemRole::Marketer, $admin, $admin, [], $allBranches],
+            [$accountant, SystemRole::Accountant, $director, $director, $allBranches],
+            [$marketer, SystemRole::Marketer, $admin, $admin, $allBranches],
         ];
 
-        foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $permissions, $assignedBranches]) {
+        foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $assignedBranches]) {
             $this->ensureOrganizationMembership($organization, $user, $role, $invitedBy);
             $this->syncBranchAssignments($organization, $user, $role, $assignedBy, $assignedBranches);
-            $this->syncPermissions($user, $permissions);
         }
     }
 
@@ -1216,27 +1208,6 @@ class DemoRestaurantSeeder extends Seeder
             return;
         }
 
-    }
-
-    /**
-     * @param  list<SystemPermission>  $permissions
-     */
-    private function syncPermissions(User $user, array $permissions): void
-    {
-        if ($permissions === []) {
-            return;
-        }
-
-        $permissionIds = Permission::query()
-            ->whereIn('code', array_map(fn (SystemPermission $permission): string => $permission->value, $permissions))
-            ->orderBy('id')
-            ->pluck('id');
-
-        $syncRows = $permissionIds
-            ->mapWithKeys(fn (int $permissionId): array => [$permissionId => ['enabled' => true]])
-            ->all();
-
-        $user->permissionOverrides()->syncWithoutDetaching($syncRows);
     }
 
     private function role(SystemRole $role): Role

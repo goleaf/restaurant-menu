@@ -53,6 +53,24 @@ class OrganizationFactory extends Factory
         });
     }
 
+    public function withOwnerMembership(): static
+    {
+        return $this->afterCreating(function (Organization $organization): void {
+            $organization->loadMissing('owner');
+
+            if ($organization->memberships()->where('user_id', $organization->owner_user_id)->exists()) {
+                return;
+            }
+
+            OrganizationUser::factory()
+                ->forOrganization($organization)
+                ->forUser($organization->owner)
+                ->forSystemRole(SystemRole::Owner)
+                ->active()
+                ->create();
+        });
+    }
+
     public function withUsers(int $count = 1, SystemRole $role = SystemRole::Waiter): static
     {
         return $this->afterCreating(function (Organization $organization) use ($count, $role): void {

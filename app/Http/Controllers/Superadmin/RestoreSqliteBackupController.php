@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Superadmin;
 
-use App\Actions\Backups\ResolveSqliteRestoreAuthorizationAction;
+use App\Services\Backups\SqliteRestoreAuthorization;
 use App\Actions\Backups\RestoreSqliteBackupAction;
 use App\Exceptions\InvalidSqliteBackupException;
 use App\Http\Controllers\Controller;
@@ -20,7 +20,7 @@ final class RestoreSqliteBackupController extends Controller
 {
     public function __invoke(
         RestoreSqliteBackupRequest $request,
-        ResolveSqliteRestoreAuthorizationAction $resolveAuthorization,
+        SqliteRestoreAuthorization $resolveAuthorization,
         RestoreSqliteBackupAction $restoreSqliteBackup,
     ): RedirectResponse {
         $authorization = $resolveAuthorization->handle($request, consume: true);

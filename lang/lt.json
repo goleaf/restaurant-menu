@@ -2861,5 +2861,7 @@
     "validation.url": "Lauke „:attribute“ turi būti tinkamas URL.",
     "validation.uuid": "Lauke „:attribute“ turi būti tinkamas UUID.",
     "waiter.dashboard.no_active_tables": "Šiuo metu aktyvių stalų nėra.",
-    "waiter.dashboard.no_available_branches": "Padavėjo užsakymų peržiūrai filialų nėra."
+    "waiter.dashboard.no_available_branches": "Padavėjo užsakymų peržiūrai filialų nėra.",
+    "mcp.errors.invalid_arguments": "Operacijos negalima atlikti su šiais argumentais arba esama restorano būsena. Patikrinkite duomenis ir bandykite dar kartą.",
+    "mcp.errors.operation_failed": "Restorano operacijos atlikti nepavyko. Bandykite dar kartą su tuo pačiu užklausos raktu."
 }

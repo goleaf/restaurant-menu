@@ -41,7 +41,7 @@ final readonly class SaveOnboardingBranchAction
                 $this->updateBranch->handle($branch, $data, $user);
             } else {
                 Gate::forUser($user)->authorize('create', [Branch::class, $organization]);
-                $branch = $this->createBranch->handle($brand, $data);
+                $branch = $this->createBranch->handle($brand, $data, actor: $user);
                 $onboarding->forceFill(['branch_id' => $branch->id])->save();
             }
 

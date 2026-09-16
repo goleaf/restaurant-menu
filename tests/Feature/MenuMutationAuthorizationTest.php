@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Actions\Menus\CreateMenuAction;
 use App\Actions\Menus\CreateMenuCategoryAction;
+use App\Actions\Menus\CreateMenuItemAction;
 use App\Actions\Menus\UpdateMenuAction;
 use App\Actions\Menus\UpdateMenuCategoryAction;
+use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
@@ -13,10 +15,12 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use App\Models\Organization;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -68,6 +72,40 @@ test('menu updates persist only operation fields from current scoped records', f
     expect($menu->fresh()->branch_id)->toBe($branch->id)
         ->and($category->fresh()->menu_id)->toBe($menu->id);
 });
+
+test('menu item updates preserve omitted price availability and hidden deadline', function (): void {
+    [$actor, $organization, $branch, $menu, $category] = menuMutationAuthorizationContext();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create([
+        'price_cents' => 975,
+        'is_available' => false,
+        'hidden_until' => now()->addDay()->startOfHour(),
+    ]);
+    $hiddenUntil = $item->hidden_until->toIso8601String();
+
+    app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, [
+        'name' => 'Changed item', 'description' => null, 'weight' => null, 'volume' => null, 'calories' => null, 'sort_order' => 0,
+    ], preserveExistingDepartment: true);
+
+    expect($item->fresh()->price_cents)->toBe(975)
+        ->and($item->fresh()->is_available)->toBeFalse()
+        ->and($item->fresh()->hidden_until?->toIso8601String())->toBe($hiddenUntil);
+});
+
+test('menu item actions reload menu ownership before persisting', function (string $operation): void {
+    [$actor, $organization, $branch, $menu, $category] = menuMutationAuthorizationContext();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create();
+    $foreignBranch = Branch::factory()->create();
+    Menu::query()->whereKey($menu->id)->update(['branch_id' => $foreignBranch->id]);
+    $data = ['name' => 'Changed item', 'description' => null, 'weight' => null, 'volume' => null, 'calories' => null, 'sort_order' => 0];
+
+    expect(fn () => match ($operation) {
+        'create' => app(CreateMenuItemAction::class)->handle($actor, $branch, $menu, $category, null, $data),
+        'update' => app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, $data),
+    })->toThrow(ModelNotFoundException::class);
+
+    expect(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(1)
+        ->and($item->fresh()->name)->not->toBe('Changed item');
+})->with(['create', 'update']);
 
 /** @return array{User, Organization, Branch, Menu, MenuCategory} */
 function menuMutationAuthorizationContext(): array

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support\Validation\Menus;
 
 use Closure;
@@ -7,9 +9,6 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 final class ModifierGroupKeys implements ValidationRule
 {
-    /**
-     * Create a new class instance.
-     */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (! is_array($value)) {

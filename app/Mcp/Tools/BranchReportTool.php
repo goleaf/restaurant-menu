@@ -14,7 +14,7 @@ final class BranchReportTool extends RestaurantReadTool
 {
     protected string $name = 'branch_report';
 
-    protected string $description = 'Read branch-local report totals and the ten most popular items for up to 31 calendar days. Mixed currencies have no combined money total.';
+    protected string $description = 'Read branch-local report totals and the five most popular items for up to 31 calendar days. Mixed currencies have no combined money total.';
 
     protected function ability(): McpAbility
     {

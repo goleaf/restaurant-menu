@@ -167,25 +167,25 @@ trait ManagesCatalogOperations
             $this->cancelItemEditing();
         }
         $selections = $this->catalogData->survivingMenuSelections($this->branch, [
-            $this->selectionValue($this->categoryMenuId), $this->selectionValue($this->itemMenuId), $this->selectionValue($this->scheduleMenuId),
+            $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->itemForm->itemMenuId), $this->selectionValue($this->scheduleForm->scheduleMenuId),
         ]);
         $fallback = $this->catalogData->firstMenuId($this->branch);
-        if (! in_array($this->selectionValue($this->categoryMenuId), $selections, true)) {
-            $this->categoryMenuId = $fallback;
-            $this->categoryParentId = '';
+        if (! in_array($this->selectionValue($this->categoryForm->categoryMenuId), $selections, true)) {
+            $this->categoryForm->categoryMenuId = $fallback;
+            $this->categoryForm->categoryParentId = '';
         }
-        if (! in_array($this->selectionValue($this->itemMenuId), $selections, true)) {
-            $this->itemMenuId = $fallback;
-            $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $fallback);
+        if (! in_array($this->selectionValue($this->itemForm->itemMenuId), $selections, true)) {
+            $this->itemForm->itemMenuId = $fallback;
+            $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $fallback);
         }
-        if (! in_array($this->selectionValue($this->scheduleMenuId), $selections, true)) {
-            $this->scheduleMenuId = $fallback;
+        if (! in_array($this->selectionValue($this->scheduleForm->scheduleMenuId), $selections, true)) {
+            $this->scheduleForm->scheduleMenuId = $fallback;
         }
-        if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->categoryMenuId), $this->selectionValue($this->categoryParentId))) {
-            $this->categoryParentId = '';
+        if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->categoryForm->categoryParentId))) {
+            $this->categoryForm->categoryParentId = '';
         }
-        if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->itemMenuId), $this->selectionValue($this->itemCategoryId))) {
-            $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemMenuId));
+        if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->itemForm->itemMenuId), $this->selectionValue($this->itemForm->itemCategoryId))) {
+            $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemForm->itemMenuId));
         }
     }
 }

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\OrganizationUserStatus;
 use App\Enums\InvitationStatus;
+use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
@@ -21,8 +21,8 @@ use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\DemoRestaurantSeeder;
 use Database\Seeders\FirstSuperadminSeeder;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
@@ -168,5 +168,5 @@ test('scoped demo fixtures preserve an existing legacy denial during upgrade', f
     expect($legacy->fresh()->organization_id)->toBeNull()
         ->and($legacy->fresh()->enabled)->toBeFalse()
         ->and(PermissionUserOverride::query()->where('organization_id', $organization->id)
-            ->where('user_id', $user->id)->where('permission_id', $permission->id)->firstOrFail()->enabled)->toBeFalse();
+            ->where('user_id', $user->id)->where('permission_id', $permission->id)->exists())->toBeFalse();
 });

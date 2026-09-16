@@ -111,3 +111,51 @@ test('MCP mutation receipts have a valid factory and hide request fingerprints a
         ->and($receipt->branch->organization_id)->toBe($receipt->organization->id)
         ->and($receipt->toArray())->not->toHaveKeys(['idempotency_key', 'input_hash', 'result']);
 });
+
+test('MCP receipt keys are isolated per token', function (): void {
+    $action = app(ExecuteMcpMutationAction::class);
+    $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
+    $other = app(IssueMcpAccessTokenAction::class)->handle($this->user, $this->branch, 'Second fixture', ['set_ordering_pause'], 24);
+    request()->attributes->set(McpContext::class, app(McpAccess::class)->resolve($other->record->id));
+    $second = $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, fn (): array => ['second' => true]);
+    expect($second)->toBe(['second' => true]);
+    $this->assertDatabaseCount('mcp_mutation_receipts', 2);
+});
+
+test('MCP receipt cannot be replayed with another mutation ability', function (): void {
+    $this->issued->record->forceFill(['abilities' => ['set_ordering_pause', 'open_table']])->save();
+    $action = app(ExecuteMcpMutationAction::class);
+    $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
+    expect(fn () => $action->handle(McpAbility::OpenTable, $this->key, [], $this->authorize, $this->operation))->toThrow(ValidationException::class);
+});
+
+test('MCP replay checks current domain permission write gate and token ability', function (string $change): void {
+    $action = app(ExecuteMcpMutationAction::class);
+    $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
+    if ($change === 'permission') {
+        foreach ([\App\Enums\SystemPermission::ManageSettings, \App\Enums\SystemPermission::ManageBranches] as $permission) {
+            \App\Models\PermissionUserOverride::factory()->forOrganization($this->branch->organization)->create([
+                'user_id' => $this->user->id, 'enabled' => false,
+                'permission_id' => \App\Models\Permission::query()->where('code', $permission->value)->firstOrFail()->id,
+            ]);
+        }
+    } elseif ($change === 'gate') {
+        config(['restaurant-mcp.writes_enabled' => false]);
+    } else {
+        $this->issued->record->forceFill(['abilities' => ['branch_context']])->save();
+    }
+    expect(fn () => $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation))->toThrow(AuthorizationException::class);
+})->with(['permission', 'gate', 'ability']);
+
+test('MCP receipts reject a corrupted identity association', function (string $field): void {
+    $action = app(ExecuteMcpMutationAction::class);
+    $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
+    $foreign = Branch::factory()->create();
+    $value = match ($field) {
+        'user_id' => User::factory()->create()->id,
+        'organization_id' => $foreign->organization_id,
+        default => $foreign->id,
+    };
+    McpMutationReceipt::query()->where('idempotency_key', $this->key)->firstOrFail()->forceFill([$field => $value])->save();
+    expect(fn () => $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation))->toThrow(ValidationException::class);
+})->with(['user_id', 'organization_id', 'branch_id']);

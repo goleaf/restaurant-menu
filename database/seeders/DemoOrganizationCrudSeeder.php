@@ -562,7 +562,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
                     ->first();
 
                 if ($legacy instanceof PermissionUserOverride) {
-                    $factory = $factory->state(['enabled' => $legacy->enabled]);
+                    continue;
                 }
 
                 $factory->create();

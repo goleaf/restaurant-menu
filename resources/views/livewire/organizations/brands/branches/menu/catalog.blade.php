@@ -133,18 +133,18 @@
                                 <x-menu.name-translations
                                     class="md:col-span-full"
                                     id-prefix="edit-menu-{{ $menu['id'] }}"
-                                    model="editingMenuTranslations"
- base-name-model="editingMenuName"
+                                    model="editingMenuForm.menuTranslations"
+ base-name-model="editingMenuForm.menuName"
                                     :language-options="$languageOptions"
                                 />
 
-                                <flux:select wire:model="editingMenuStatus" :label="__('guest.table.status')">
+                                <flux:select wire:model="editingMenuForm.menuStatus" :label="__('guest.table.status')">
                                     @foreach ($menuStatusOptions as $value => $label)
                                         <flux:select.option wire:key="menu-status-edit-{{ $menu['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                     @endforeach
                                 </flux:select>
 
-                                <flux:input wire:model="editingMenuSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                                <flux:input wire:model="editingMenuForm.menuSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
 
                                 <div class="flex flex-wrap gap-2">
                                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateMenu">
@@ -203,14 +203,14 @@
                                     <div wire:key="menu-schedule-{{ $schedule['id'] }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
                                         @if ($editingScheduleId === $schedule['id'])
                                             <form wire:submit="updateMenuSchedule" class="grid min-w-0 flex-1 gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-                                                <flux:select wire:model="editingScheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
+                                                <flux:select wire:model="editingScheduleForm.scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
                                                     @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
                                                         <flux:select.option wire:key="editing-menu-schedule-{{ $schedule['id'] }}-day-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
                                                     @endforeach
                                                 </flux:select>
 
-                                                <flux:input wire:model="editingScheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
-                                                <flux:input wire:model="editingScheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
+                                                <flux:input wire:model="editingScheduleForm.scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
+                                                <flux:input wire:model="editingScheduleForm.scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
 
                                                 <div class="flex flex-wrap gap-2">
                                                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateMenuSchedule">
@@ -245,14 +245,14 @@
                             </div>
 
                             <form wire:submit="createMenuSchedule({{ $menu['id'] }})" class="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-                                <flux:select wire:model="scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
+                                <flux:select wire:model="scheduleForm.scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
                                     @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
                                         <flux:select.option wire:key="menu-schedule-day-{{ $menu['id'] }}-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
                                     @endforeach
                                 </flux:select>
 
-                                <flux:input wire:model="scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
-                                <flux:input wire:model="scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
+                                <flux:input wire:model="scheduleForm.scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
+                                <flux:input wire:model="scheduleForm.scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
 
                                 <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenuSchedule({{ $menu['id'] }})">
                                     {{ __('ui.organizations.brands.branches.menu.index.add_interval') }}
@@ -275,26 +275,26 @@
 
                                                     <x-menu.translation-fields
                                                         id-prefix="edit-menu-category-{{ $category['id'] }}"
-                                                        model="editingCategoryTranslations"
- base-name-model="editingCategoryName"
- base-description-model="editingCategoryDescription"
+                                                        model="editingCategoryForm.categoryTranslations"
+ base-name-model="editingCategoryForm.categoryName"
+ base-description-model="editingCategoryForm.categoryDescription"
                                                         :language-options="$languageOptions"
                                                         :name-max="160"
                                                         :description-max="1000"
                                                     />
 
                                                     <div class="grid gap-3 sm:grid-cols-2">
-                                                        <flux:select wire:model="editingCategoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
+                                                        <flux:select wire:model="editingCategoryForm.categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
                                                             @foreach ($iconOptions as $value => $label)
                                                                 <flux:select.option wire:key="category-icon-edit-{{ $category['id'] }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                                             @endforeach
                                                         </flux:select>
 
-                                                        <flux:input wire:model="editingCategorySortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                                                        <flux:input wire:model="editingCategoryForm.categorySortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
                                                     </div>
 
                                                     <div class="flex items-center justify-between gap-3">
-                                                        <flux:switch wire:model="editingCategoryIsActive" :label="__('qr.status.active')" />
+                                                        <flux:switch wire:model="editingCategoryForm.categoryIsActive" :label="__('qr.status.active')" />
 
                                                         <div class="flex flex-wrap gap-2">
                                                             <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateCategory">
@@ -459,18 +459,18 @@
 
                     <x-menu.name-translations
                         id-prefix="create-menu"
-                        model="menuTranslations"
- base-name-model="menuName"
+                        model="menuForm.menuTranslations"
+ base-name-model="menuForm.menuName"
                         :language-options="$languageOptions"
                     />
 
-                    <flux:select wire:model="menuStatus" :label="__('guest.table.status')">
+                    <flux:select wire:model="menuForm.menuStatus" :label="__('guest.table.status')">
                         @foreach ($menuStatusOptions as $value => $label)
                             <flux:select.option wire:key="menu-status-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
-                    <flux:input wire:model="menuSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                    <flux:input wire:model="menuForm.menuSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
                 </div>
             </form>
 </flux:modal>
@@ -486,7 +486,7 @@
                 </div>
 
                 <div class="mt-4 grid gap-3">
-                    <flux:select wire:model.live="categoryMenuId" :label="__('menu.guest.title')">
+                    <flux:select wire:model.live="categoryForm.categoryMenuId" :label="__('menu.guest.title')">
                         @forelse ($menuOptions as $option)
                             <flux:select.option wire:key="category-menu-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
@@ -494,7 +494,7 @@
                         @endforelse
                     </flux:select>
 
-                    <flux:select wire:model="categoryParentId" :label="__('reports.csv.parent_category')">
+                    <flux:select wire:model="categoryForm.categoryParentId" :label="__('reports.csv.parent_category')">
                         <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.areas.top_level') }}</flux:select.option>
                         @foreach ($categoryMenuOptions as $option)
                             <flux:select.option wire:key="category-parent-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
@@ -507,24 +507,24 @@
 
                     <x-menu.translation-fields
                         id-prefix="create-menu-category"
-                        model="categoryTranslations"
- base-name-model="categoryName"
- base-description-model="categoryDescription"
+                        model="categoryForm.categoryTranslations"
+ base-name-model="categoryForm.categoryName"
+ base-description-model="categoryForm.categoryDescription"
                         :language-options="$languageOptions"
                         :name-max="160"
                         :description-max="1000"
                     />
 
-                    <flux:select wire:model="categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
+                    <flux:select wire:model="categoryForm.categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
                         @foreach ($iconOptions as $value => $label)
                             <flux:select.option wire:key="category-icon-create-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
                     <div class="grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="categorySortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                        <flux:input wire:model="categoryForm.categorySortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
                         <div class="flex items-end">
-                            <flux:switch wire:model="categoryIsActive" :label="__('qr.status.active')" />
+                            <flux:switch wire:model="categoryForm.categoryIsActive" :label="__('qr.status.active')" />
                         </div>
                     </div>
                 </div>
@@ -542,7 +542,7 @@
                 </div>
 
                 <div class="mt-4 grid gap-3">
-                    <flux:select wire:model.live="itemMenuId" :label="__('menu.guest.title')">
+                    <flux:select wire:model.live="itemForm.itemMenuId" :label="__('menu.guest.title')">
                         @forelse ($menuOptions as $option)
                             <flux:select.option wire:key="item-menu-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
@@ -550,7 +550,7 @@
                         @endforelse
                     </flux:select>
 
-                    <flux:select wire:model="itemCategoryId" :label="__('ui.organizations.brands.branches.menu.index.category')">
+                    <flux:select wire:model="itemForm.itemCategoryId" :label="__('ui.organizations.brands.branches.menu.index.category')">
                         @forelse ($itemCategoryOptions as $option)
                             <flux:select.option wire:key="item-category-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
@@ -560,7 +560,7 @@
 
 
 
-                    <flux:select wire:model="itemKitchenDepartmentId" :label="__('reports.csv.kitchen_department')">
+                    <flux:select wire:model="itemForm.itemKitchenDepartmentId" :label="__('reports.csv.kitchen_department')">
                         <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:select.option>
                         @foreach ($kitchenDepartmentOptions as $option)
                             <flux:select.option wire:key="item-department-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
@@ -571,9 +571,9 @@
 
                     <x-menu.translation-fields
                         id-prefix="create-menu-item"
-                        model="itemTranslations"
- base-name-model="itemName"
- base-description-model="itemDescription"
+                        model="itemForm.itemTranslations"
+ base-name-model="itemForm.itemName"
+ base-description-model="itemForm.itemDescription"
                         :language-options="$languageOptions"
                         :name-max="180"
                         :description-max="1200"
@@ -581,30 +581,30 @@
 
                     <div class="grid gap-3 sm:grid-cols-2">
                         @if ($canChangePrices)
-                            <flux:input wire:model="itemPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
+                            <flux:input wire:model="itemForm.itemPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
                         @endif
 
-                        <flux:input wire:model="itemSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                        <flux:input wire:model="itemForm.itemSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-3">
-                        <flux:input wire:model="itemWeight" :label="__('reports.csv.weight')" type="number" min="0" step="0.01" />
-                        <flux:input wire:model="itemVolume" :label="__('reports.csv.volume')" type="number" min="0" step="0.01" />
-                        <flux:input wire:model="itemCalories" :label="__('reports.csv.calories')" type="number" min="0" max="999999" />
+                        <flux:input wire:model="itemForm.itemWeight" :label="__('reports.csv.weight')" type="number" min="0" step="0.01" />
+                        <flux:input wire:model="itemForm.itemVolume" :label="__('reports.csv.volume')" type="number" min="0" step="0.01" />
+                        <flux:input wire:model="itemForm.itemCalories" :label="__('reports.csv.calories')" type="number" min="0" max="999999" />
                     </div>
 
                     <x-menu.item-label-fields
                         id-prefix="create-menu-item"
-                        allergens-model="itemAllergens"
-                        dietary-labels-model="itemDietaryLabels"
+                        allergens-model="itemForm.itemAllergens"
+                        dietary-labels-model="itemForm.itemDietaryLabels"
                         :allergen-options="$allergenOptions"
                         :dietary-label-options="$dietaryLabelOptions"
                     />
 
                     @if ($canChangeAvailability)
                         <div class="grid gap-3 2xl:grid-cols-2">
-                            <flux:switch wire:model="itemIsAvailable" :label="__('menu.guest.available')" />
-                            <flux:input wire:model="itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
+                            <flux:switch wire:model="itemForm.itemIsAvailable" :label="__('menu.guest.available')" />
+                            <flux:input wire:model="itemForm.itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
                         </div>
                     @endif
                 </div>

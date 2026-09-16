@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools;
 
 use App\Enums\McpAbility;
+use App\Actions\Mcp\ReadRestaurantMcpAction;
 use App\Mcp\McpAccess;
 use App\Mcp\McpResponse;
 use App\Services\Mcp\McpReadQueries;
@@ -21,6 +22,7 @@ abstract class RestaurantReadTool extends Tool
         private readonly McpAccess $access,
         private readonly McpReadQueries $queries,
         private readonly McpResponse $responses,
+        private readonly ReadRestaurantMcpAction $read,
     ) {}
 
     abstract protected function ability(): McpAbility;
@@ -38,14 +40,12 @@ abstract class RestaurantReadTool extends Tool
     public function handle(Request $request): Response|ResponseFactory
     {
         return $this->responses->run(function () use ($request): array {
-            $context = $this->access->context($this->ability());
-            $this->queries->authorize($context, $this->ability());
             $rules = $this->rules();
             if (array_diff(array_keys($request->all()), array_keys($rules)) !== []) {
                 throw ValidationException::withMessages(['arguments' => __('mcp.errors.invalid_arguments')]);
             }
 
-            return $this->queries->handle($context, $this->ability(), $request->validate($rules));
+            return $this->read->handle($this->ability(), $request->validate($rules));
         });
     }
 

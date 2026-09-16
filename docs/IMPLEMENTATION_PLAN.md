@@ -4,7 +4,7 @@
 
 # Restaurant Menu completion implementation plan
 
-## 2026-09-16 — SCSS / Alpine / Livewire migration (implemented and verified; delivery authorized)
+## 2026-09-16 — SCSS / Alpine / Livewire migration (implemented, verified and pushed)
 
 User-authorized implementation supersedes earlier native-CSS-only decisions for first-party styles. Preserve framework CSS and the installed local Flux adaptation; do not rewrite vendor code. Architecture: independent Vite CSS/SCSS entries, generated Tailwind aliases from one Sass map, named Alpine factories registered before a single Livewire ESM start, Livewire state and domain Actions. Existing Node test runner remains the single JS runner.
 
@@ -19,7 +19,7 @@ Baseline: local `main` at `7376b2084f183ffe8d0d94e8f5ed4bd8650e610b`, with pre-e
 | Flux/UX and semantic composition | Flux/UX agent | done | Whole product areas, five widths, themes, keyboard/offline |
 | Architecture/lint/build/translation verification command | Root | done | Real exit codes, exact discovery, isolated runtime |
 | Full backend/browser/coverage/performance + independent diff review | Root/reviewer | done | No failures/errors/skips/timeouts, documented measured coverage |
-| Scoped local commit and ordinary push | Root | in_progress | User explicitly approved the complete reviewed 357-path candidate, including pre-existing preparation. Verified source hashes match; execute local commit and ordinary origin/main push |
+| Scoped local commit and ordinary push | Root | done | User approved the composite 357-path scope. Local implementation commit `c123b30`; ordinary `git push origin main` accepted `7376b20..c123b30 main -> main`, exit 0. No additional remote verification |
 
 ### File migration register
 
@@ -142,7 +142,7 @@ Browser coverage map: RegistrationToPaidTableClosure (onboarding→QR→guest→
 
 ### Final verification and delivery boundary
 
-All 16 coordinator stages pass on the frozen 1,347-file source inventory; exact logs, counts and coverage are recorded in `testing.md` and `PROGRESS.md`. Independent source review has no open P1/P2 findings. The first-party migration delta and all pre-existing prerequisites are inventoried separately outside the repository. Applying only the migration delta to HEAD is not a valid release: it omits imported Alpine/SCSS sources and the installed local Pro package. The original staged changes were preserved byte-for-byte through approval. The user subsequently authorized that exact composite 357-path scope, including the independent staff validation/badge fixes and historical documentation. Commit/push is now an authorized execution gate. The original `flux-pro/` tree is inherited unchanged and absent from the commit diff.
+All 16 coordinator stages pass on the frozen 1,347-file source inventory; exact logs, counts and coverage are recorded in `testing.md` and `PROGRESS.md`. Independent source review has no open P1/P2 findings. The first-party migration delta and all pre-existing prerequisites are inventoried separately outside the repository. Applying only the migration delta to HEAD is not a valid release: it omits imported Alpine/SCSS sources and the installed local Pro package. The original staged changes were preserved byte-for-byte through approval. The user subsequently authorized that exact composite 357-path scope, including the independent staff validation/badge fixes and historical documentation. The implementation was committed as `c123b30` and its ordinary push to the configured origin/main succeeded with exit 0. The final newline-only SCSS cleanup and unchanged build hashes are documented in `testing.md`. The original `flux-pro/` tree is inherited unchanged and absent from the commit diff.
 
 ## 2026-09-16 — Local-code Flux Pro adaptation (in progress)
 

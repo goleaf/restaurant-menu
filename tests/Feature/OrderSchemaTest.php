@@ -40,6 +40,22 @@ beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
+test('historical modifier snapshots contain malformed JSON scalar values safely', function (mixed $snapshot, array $expected) {
+    $legacy = [['option_id' => 1, 'option_name' => 'Historical sauce', 'price_delta_cents' => 100]];
+    $item = OrderItem::factory()->make([
+        'order_id' => 1,
+        'table_session_guest_id' => null,
+        'modifiers_snapshot' => $snapshot,
+        'selected_modifiers' => $legacy,
+    ]);
+
+    expect($item->historicalModifiers())->toBe($expected);
+})->with([
+    'scalar string' => ['malformed snapshot', []],
+    'scalar boolean' => [false, []],
+    'legacy fallback' => [null, [['option_id' => 1, 'option_name' => 'Historical sauce', 'price_delta_cents' => 100]]],
+]);
+
 test('order schema stores real order links and item snapshots', function () {
     expect(Schema::hasTable('orders'))->toBeTrue()
         ->and(Schema::hasColumns('orders', [

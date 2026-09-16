@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
-use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CancelPendingMemberInvitationsAction;
 use App\Enums\AuditLogAction;
@@ -14,6 +13,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;

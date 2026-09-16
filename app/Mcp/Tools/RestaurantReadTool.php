@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Enums\McpAbility;
 use App\Actions\Mcp\ReadRestaurantMcpAction;
+use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpResponse;
 use App\Services\Mcp\McpReadQueries;

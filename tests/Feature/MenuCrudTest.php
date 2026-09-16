@@ -1,9 +1,9 @@
 <?php
 
-use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Data\Menus\MenuItemData;
 use App\Enums\AuditLogAction;
 use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
@@ -109,7 +109,7 @@ test('menu page safely falls back from unsupported persisted category icons', fu
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('Legacy Category')
         ->call('startEditingCategory', $category->id)
-        ->assertSet('editingCategoryIcon', 'bookmark');
+        ->assertSet('editingCategoryForm.categoryIcon', 'bookmark');
 });
 
 test('dependent menu selectors never expose ids from another branch', function () {
@@ -129,8 +129,8 @@ test('dependent menu selectors never expose ids from another branch', function (
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, $parameters)
-        ->set('itemMenuId', (string) $foreignMenu->id)
-        ->assertSet('itemCategoryId', '');
+        ->set('itemForm.itemMenuId', (string) $foreignMenu->id)
+        ->assertSet('itemForm.itemCategoryId', '');
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, $parameters)
@@ -173,12 +173,12 @@ test('manager can create menu categories dishes and upload local dish photo', fu
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('No menus yet.')
-        ->set('menuName', 'Dinner Menu')
-        ->set('menuTranslations.en', 'Dinner Menu')
-        ->set('menuTranslations.lt', 'Vakarienės meniu')
-        ->set('menuTranslations.ru', 'Меню ужина')
-        ->set('menuStatus', MenuStatus::Active->value)
-        ->set('menuSortOrder', 10)
+        ->set('menuForm.menuName', 'Dinner Menu')
+        ->set('menuForm.menuTranslations.en', 'Dinner Menu')
+        ->set('menuForm.menuTranslations.lt', 'Vakarienės meniu')
+        ->set('menuForm.menuTranslations.ru', 'Меню ужина')
+        ->set('menuForm.menuStatus', MenuStatus::Active->value)
+        ->set('menuForm.menuSortOrder', 10)
         ->call('createMenu')
         ->assertHasNoErrors()
         ->assertSee('Dinner Menu');
@@ -190,14 +190,14 @@ test('manager can create menu categories dishes and upload local dish photo', fu
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('categoryMenuId', (string) $menu->id)
-        ->set('categoryName', 'Pizza')
-        ->set('categoryTranslations.en.name', 'Pizza')
-        ->set('categoryTranslations.lt.name', 'Pica')
-        ->set('categoryTranslations.ru.name', 'Пицца')
-        ->set('categoryDescription', 'Classic pizza selection')
-        ->set('categoryIcon', 'cake')
-        ->set('categorySortOrder', 20)
+        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+        ->set('categoryForm.categoryName', 'Pizza')
+        ->set('categoryForm.categoryTranslations.en.name', 'Pizza')
+        ->set('categoryForm.categoryTranslations.lt.name', 'Pica')
+        ->set('categoryForm.categoryTranslations.ru.name', 'Пицца')
+        ->set('categoryForm.categoryDescription', 'Classic pizza selection')
+        ->set('categoryForm.categoryIcon', 'cake')
+        ->set('categoryForm.categorySortOrder', 20)
         ->call('createCategory')
         ->assertHasNoErrors()
         ->assertSee('Pizza');
@@ -209,20 +209,20 @@ test('manager can create menu categories dishes and upload local dish photo', fu
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemMenuId', (string) $menu->id)
-        ->set('itemCategoryId', (string) $category->id)
-        ->set('itemName', 'Margherita')
-        ->set('itemTranslations.en.name', 'Margherita')
-        ->set('itemTranslations.lt.name', 'Margarita')
-        ->set('itemTranslations.ru.name', 'Маргарита')
-        ->set('itemDescription', 'Tomato, mozzarella, basil')
-        ->set('itemPrice', '12.50')
-        ->set('itemWeight', '450')
-        ->set('itemCalories', '720')
-        ->set('itemAllergens', ['gluten', 'milk'])
-        ->set('itemDietaryLabels', ['vegetarian'])
-        ->set('itemSortOrder', 30)
-        ->set('itemIsAvailable', true)
+        ->set('itemForm.itemMenuId', (string) $menu->id)
+        ->set('itemForm.itemCategoryId', (string) $category->id)
+        ->set('itemForm.itemName', 'Margherita')
+        ->set('itemForm.itemTranslations.en.name', 'Margherita')
+        ->set('itemForm.itemTranslations.lt.name', 'Margarita')
+        ->set('itemForm.itemTranslations.ru.name', 'Маргарита')
+        ->set('itemForm.itemDescription', 'Tomato, mozzarella, basil')
+        ->set('itemForm.itemPrice', '12.50')
+        ->set('itemForm.itemWeight', '450')
+        ->set('itemForm.itemCalories', '720')
+        ->set('itemForm.itemAllergens', ['gluten', 'milk'])
+        ->set('itemForm.itemDietaryLabels', ['vegetarian'])
+        ->set('itemForm.itemSortOrder', 30)
+        ->set('itemForm.itemIsAvailable', true)
         ->call('createItem')
         ->assertHasNoErrors()
         ->assertSee('Margherita');
@@ -236,9 +236,9 @@ test('manager can create menu categories dishes and upload local dish photo', fu
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
-        ->set('editingItemTranslations.en.name', 'Dish')
-        ->set('editingItemTranslations.lt.name', 'Patiekalas')
-        ->set('editingItemTranslations.ru.name', 'Блюдо')
+        ->set('editingItemForm.itemTranslations.en.name', 'Dish')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
         ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('margherita.jpg')->size(512)])
         ->call('saveItemImages', $item->id)
         ->assertHasNoErrors();
@@ -264,20 +264,20 @@ test('manager can create menu categories dishes and upload local dish photo', fu
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('editingItemMenuId', (string) $menu->id)
-        ->assertSet('editingItemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->assertSet('editingItemForm.itemCategoryId', (string) $category->id)
         ->call('startEditingMenu', $menu->id)
-        ->set('editingMenuName', 'Evening Menu')
-        ->set('editingMenuStatus', MenuStatus::Archived->value)
-        ->set('editingMenuSortOrder', 40)
+        ->set('editingMenuForm.menuName', 'Evening Menu')
+        ->set('editingMenuForm.menuStatus', MenuStatus::Archived->value)
+        ->set('editingMenuForm.menuSortOrder', 40)
         ->call('updateMenu')
         ->assertHasNoErrors()
         ->call('startEditingCategory', $category->id)
-        ->set('editingCategoryName', 'Italian Pizza')
-        ->set('editingCategoryDescription', 'Updated pizza selection')
-        ->set('editingCategoryIcon', 'cake')
-        ->set('editingCategorySortOrder', 50)
-        ->set('editingCategoryIsActive', false)
+        ->set('editingCategoryForm.categoryName', 'Italian Pizza')
+        ->set('editingCategoryForm.categoryDescription', 'Updated pizza selection')
+        ->set('editingCategoryForm.categoryIcon', 'cake')
+        ->set('editingCategoryForm.categorySortOrder', 50)
+        ->set('editingCategoryForm.categoryIsActive', false)
         ->call('updateCategory')
         ->assertHasNoErrors()
         ->call('removeItemImage', $item->id, hash('sha256', $imagePath), (string) Str::uuid())
@@ -525,19 +525,19 @@ test('menu item allergen and dietary selections reject unknown values and normal
         ->assertSeeText('Gluten-containing cereals')
         ->assertSeeText('Dietary labels')
         ->call('startEditingItem', $item->id)
-        ->set('editingItemTranslations.en.name', 'Dish')
-        ->set('editingItemTranslations.lt.name', 'Patiekalas')
-        ->set('editingItemTranslations.ru.name', 'Блюдо')
-        ->assertSet('editingItemAllergens', ['eggs'])
-        ->assertSet('editingItemDietaryLabels', ['vegetarian'])
-        ->set('editingItemAllergens', ['unknown-allergen'])
-        ->set('editingItemDietaryLabels', ['unknown-diet'])
+        ->set('editingItemForm.itemTranslations.en.name', 'Dish')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
+        ->assertSet('editingItemForm.itemAllergens', ['eggs'])
+        ->assertSet('editingItemForm.itemDietaryLabels', ['vegetarian'])
+        ->set('editingItemForm.itemAllergens', ['unknown-allergen'])
+        ->set('editingItemForm.itemDietaryLabels', ['unknown-diet'])
         ->call('updateItem')
-        ->assertHasErrors(['editingItemAllergens.0', 'editingItemDietaryLabels.0']);
+        ->assertHasErrors(['editingItemForm.itemAllergens.0', 'editingItemForm.itemDietaryLabels.0']);
 
     $component
-        ->set('editingItemAllergens', ['milk', 'gluten'])
-        ->set('editingItemDietaryLabels', ['vegan', 'vegetarian'])
+        ->set('editingItemForm.itemAllergens', ['milk', 'gluten'])
+        ->set('editingItemForm.itemDietaryLabels', ['vegan', 'vegetarian'])
         ->call('updateItem')
         ->assertHasNoErrors();
 
@@ -753,12 +753,12 @@ test('price and availability changes require dedicated permissions', function ()
         ->assertSet('canChangePrices', false)
         ->assertSet('canChangeAvailability', false)
         ->call('startEditingItem', $item->id)
-        ->set('editingItemTranslations.en.name', 'Soup')
-        ->set('editingItemTranslations.lt.name', 'Sriuba')
-        ->set('editingItemTranslations.ru.name', 'Суп')
-        ->set('editingItemPrice', '99.99')
-        ->set('editingItemIsAvailable', false)
-        ->set('editingItemHiddenUntil', now($branch->timezone)->addHours(2)->format('Y-m-d\TH:i'))
+        ->set('editingItemForm.itemTranslations.en.name', 'Soup')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
+        ->set('editingItemForm.itemPrice', '99.99')
+        ->set('editingItemForm.itemIsAvailable', false)
+        ->set('editingItemForm.itemHiddenUntil', now($branch->timezone)->addHours(2)->format('Y-m-d\TH:i'))
         ->call('updateItem')
         ->assertHasNoErrors();
 
@@ -784,12 +784,12 @@ test('price and availability changes require dedicated permissions', function ()
         ->assertSet('canChangePrices', true)
         ->assertSet('canChangeAvailability', true)
         ->call('startEditingItem', $item->id)
-        ->set('editingItemTranslations.en.name', 'Soup')
-        ->set('editingItemTranslations.lt.name', 'Sriuba')
-        ->set('editingItemTranslations.ru.name', 'Суп')
-        ->set('editingItemPrice', '9.50')
-        ->set('editingItemIsAvailable', false)
-        ->set('editingItemHiddenUntil', $hiddenUntil)
+        ->set('editingItemForm.itemTranslations.en.name', 'Soup')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
+        ->set('editingItemForm.itemPrice', '9.50')
+        ->set('editingItemForm.itemIsAvailable', false)
+        ->set('editingItemForm.itemHiddenUntil', $hiddenUntil)
         ->call('updateItem')
         ->assertHasNoErrors()
         ->assertSee('Unavailable')
@@ -821,16 +821,16 @@ test('menu price validation rejects incomplete decimals before saving and permit
     $component = Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
-        ->set('editingItemTranslations.en.name', 'Soup')
-        ->set('editingItemTranslations.lt.name', 'Sriuba')
-        ->set('editingItemTranslations.ru.name', 'Суп')
-        ->set('editingItemPrice', $price)
+        ->set('editingItemForm.itemTranslations.en.name', 'Soup')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
+        ->set('editingItemForm.itemPrice', $price)
         ->call('updateItem')
-        ->assertHasErrors('editingItemPrice');
+        ->assertHasErrors('editingItemForm.itemPrice');
 
     expect($item->refresh()->price_cents)->toBe(800);
 
-    $component->set('editingItemPrice', '0.29')
+    $component->set('editingItemForm.itemPrice', '0.29')
         ->call('updateItem')
         ->assertHasNoErrors();
 

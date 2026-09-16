@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Waiter\MarkWaiterCallHandledAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Waiter\MarkWaiterCallHandledAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
 use App\Mcp\McpResponse;
 use App\Mcp\McpTargets;
+use App\Models\Order;
 use Illuminate\Auth\Access\Response as AuthorizationResponse;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -47,12 +48,14 @@ final class HandleWaiterCallTool extends RestaurantMutationTool
     protected function authorize(McpContext $context, array $input): AuthorizationResponse
     {
         $this->targets->waiterCall($context, $input['waiter_call_id']);
-        return Gate::forUser($context->user)->authorize('viewAny', [\App\Models\Order::class, $context->branch]);
+
+        return Gate::forUser($context->user)->authorize('viewAny', [Order::class, $context->branch]);
     }
 
     protected function perform(McpContext $context, array $input): array
     {
         $call = $this->action->handle($this->targets->waiterCall($context, $input['waiter_call_id']), $context->user);
+
         return ['waiter_call_id' => $call->id, 'status' => $call->status->value];
     }
 }

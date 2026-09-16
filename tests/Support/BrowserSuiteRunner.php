@@ -123,7 +123,7 @@ final class BrowserSuiteRunner
             $case = 'case-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
             $junit = $this->artifacts.'/'.$case.'.xml';
             fwrite(STDOUT, '['.$number.'/'.count($tests).'] '.$id."\n");
-            $result = $this->runProcess([PHP_BINARY, 'vendor/bin/pest', 'tests/Browser', '--browser', $browser, '--compact', '--filter', self::filterFor($id, $names), '--log-junit', $junit], $this->environment($case), $timeout);
+            $result = $this->runProcess([PHP_BINARY, 'vendor/bin/pest', 'tests/Browser', '--browser', $browser, '--compact', '--fail-on-all-issues', '--display-all-issues', '--filter', self::filterFor($id, $names), '--log-junit', $junit], $this->environment($case), $timeout);
             file_put_contents($this->artifacts.'/'.$case.'.log', $result['output']);
             $caseResult = self::caseResult(is_file($junit) ? (string) file_get_contents($junit) : '');
             $assertions += $caseResult['assertions'];
@@ -141,7 +141,15 @@ final class BrowserSuiteRunner
             }
         }
         $failed = count(array_filter($results, fn (array $result): bool => ! $result['passed']));
-        file_put_contents($this->artifacts.'/summary.json', json_encode(['browser' => $browser, 'tests' => count($tests), 'assertions' => $assertions, 'failed' => $failed, 'results' => $results], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        file_put_contents($this->artifacts.'/summary.json', json_encode([
+            'browser' => $browser,
+            'coordinator_runtime' => VerificationRuntime::identity(),
+            'expected_http_runtime' => VerificationRuntime::coordinatorExpectation(),
+            'tests' => count($tests),
+            'assertions' => $assertions,
+            'failed' => $failed,
+            'results' => $results,
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         fwrite(STDOUT, sprintf("Browser suite: %d cases, %d assertions, %d failures/timeouts. Artifacts: %s\n", count($tests), $assertions, $failed, $this->artifacts));
 
         return $failed === 0 ? 0 : 1;
@@ -157,10 +165,12 @@ final class BrowserSuiteRunner
             }
         }
         copy($this->root.'/storage/app/public/.htaccess', $runtime.'/app/public/.htaccess');
+        $expectedRuntime = VerificationRuntime::coordinatorExpectation();
 
         return ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => ':memory:', 'DB_URL' => '', 'CACHE_STORE' => 'array', 'SESSION_DRIVER' => 'array',
             'LARAVEL_STORAGE_PATH' => $runtime, 'VIEW_COMPILED_PATH' => $runtime.'/framework/views',
             'APP_CONFIG_CACHE' => $runtime.'/cache/config.php', 'APP_ROUTES_CACHE' => $runtime.'/cache/routes.php', 'APP_EVENTS_CACHE' => $runtime.'/cache/events.php',
+            'RESTAURANT_EXPECTED_PHP_VERSION' => $expectedRuntime['version'], 'RESTAURANT_EXPECTED_PHP_BINARY' => $expectedRuntime['binary'],
             'PAO_DISABLE' => '1', 'COMPOSER_PROCESS_TIMEOUT' => '0'];
     }
 }

@@ -6,10 +6,10 @@ namespace App\Livewire\Forms\Menus;
 
 use App\Models\Branch;
 use App\Models\Menu;
-use App\Support\Validation\Menus\MenuRules;
-use App\Support\Validation\Menus\MenuTranslationRules;
 use App\Support\Validation\Menus\MenuFieldLabels;
+use App\Support\Validation\Menus\MenuRules;
 use App\Support\Validation\Menus\MenuScopeRules;
+use App\Support\Validation\Menus\MenuTranslationRules;
 use Livewire\Form;
 
 final class MenuForm extends Form

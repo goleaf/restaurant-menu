@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Localization\ValidationMessageCatalogue;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -380,7 +381,7 @@ class AuditTranslationsCommand extends Command
     {
         $findings = [];
         $scannedFiles = 0;
-        $usedKeys = array_values(array_intersect($catalogKeys, \App\Support\Localization\ValidationMessageCatalogue::keys()));
+        $usedKeys = array_values(array_intersect($catalogKeys, ValidationMessageCatalogue::keys()));
         $catalogLookup = array_fill_keys($catalogKeys, true);
 
         foreach ($this->scanFiles($paths) as $file) {

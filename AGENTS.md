@@ -32,6 +32,7 @@ For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend
 User-authorized `ui-flux-pro-001` targets all applicable Pro families and complete source internalization; follow `docs/IMPLEMENTATION_PLAN.md` and `docs/superpowers/plans/2026-09-15-flux-pro-integration.md`. On 2026-09-16 the user explicitly selected the existing local code instead of official repository access or another archive. Maintain it as a documented local adaptation in `packages/livewire/flux-pro/`, with an internally assigned release version, unknown upstream version, original-source inventory and per-file patch provenance. A dependency constraint may change only as part of that explicit local adaptation with compatibility tests; never present the local release as an upstream release. Use normal Composer path installation and discovery; do not alter licensing features, spoof edition detection or manually register installed packages. Preserve the proprietary license and first-party formatting boundaries. Remove the original root `flux-pro/` only after P16/P17 evidence. Installation, component/workflow migration and original-folder deletion remain distinct acceptance gates.
 
 - PHP `>=8.5.0 <8.6.0`.
+- This is the supported production range, not a permanent ban on future PHP. Prompt 1 tests an isolated PHP 8.6 prerelease without changing Herd/production; widen only after real dependency and application acceptance. Current blockers/evidence are in `docs/CURRENT_VERSION.md`.
 - Laravel 13.x and Fortify 1.x.
 - Livewire 4.x using class-based PHP components and separate Blade views.
 - Flux UI Free 2.x where an official Flux component is already the best fit.
@@ -47,6 +48,7 @@ Use the existing npm lock file. Do not introduce another JavaScript package mana
 
 - Routes declare named endpoints, middleware, constraints, and bindings only.
 - Controllers and full-page Livewire components authorize, accept validated input, invoke a focused Action, and return a response.
+- New application screens, forms, search, filters, pagination and CRUD use class-based Livewire; do not add ordinary application controllers. Prompt 2 owns existing-controller migration/removal and proof of narrow authorized transport exceptions. Flux Pro supplies UI components, not server controllers.
 - Actions represent one application operation and own transaction boundaries.
 - Models own persistence relationships, casts, cohesive entity behaviour, and reusable query scopes. Use Eloquent only.
 - Policies own model/resource authorization. Broad capabilities may use gates. Every protected Livewire mutation must authorize on the server.

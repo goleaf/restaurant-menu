@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\CreateMenuAction;
 use App\Actions\Menus\CreateMenuCategoryAction;
 use App\Actions\Menus\CreateMenuItemAction;
@@ -10,6 +9,7 @@ use App\Actions\Menus\UpdateMenuAction;
 use App\Actions\Menus\UpdateMenuCategoryAction;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Data\Menus\MenuItemData;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Models\Branch;

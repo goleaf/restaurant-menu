@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Services\Auth\DemoRoleUserQuery;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use App\Enums\SystemRole;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Auth\DemoRoleUserQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 final class LoginAsDemoRoleController extends Controller
 {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -52,6 +52,7 @@ final class SetMenuAvailabilityTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $item = $this->action->handle($context->user, $context->branch, $this->targets->menuItem($context, $input['menu_item_id']), $input['is_available']);
+
         return ['menu_item_id' => $item->id, 'is_available' => $item->is_available];
     }
 }

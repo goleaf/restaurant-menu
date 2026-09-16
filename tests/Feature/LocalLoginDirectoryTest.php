@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Services\Auth\LocalLoginDirectoryQuery;
 use App\Enums\SystemRole;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -10,6 +9,7 @@ use App\Models\Permission;
 use App\Models\PermissionUserOverride;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Auth\LocalLoginDirectoryQuery;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\Request;

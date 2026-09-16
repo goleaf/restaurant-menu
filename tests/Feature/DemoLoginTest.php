@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use App\Actions\Auth\BuildDemoLoginPageAction;
-use App\Services\Auth\DemoRoleUserQuery;
-use App\Http\Controllers\Auth\LoginAsDemoRoleController;
 use App\Enums\SystemRole;
+use App\Http\Controllers\Auth\LoginAsDemoRoleController;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Auth\DemoRoleUserQuery;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\SystemRolesSeeder;
 use Illuminate\Http\Request;

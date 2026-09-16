@@ -43,29 +43,29 @@ function catalogInputPreservationContext(): array
 function catalogUnfinishedInput(MenuItem $item): array
 {
     return [
-        'editingItemMenuId' => (string) $item->menu_id,
-        'editingItemCategoryId' => (string) $item->category_id,
-        'editingItemKitchenDepartmentId' => '',
-        'editingItemName' => 'Unfinished name',
-        'editingItemDescription' => 'Unfinished description',
-        'editingItemPrice' => '17.25',
-        'editingItemWeight' => '230',
-        'editingItemVolume' => '0.35',
-        'editingItemCalories' => '321',
-        'editingItemSortOrder' => '12',
-        'editingItemIsAvailable' => false,
-        'editingItemHiddenUntil' => '2027-01-02T10:30',
-        'editingItemAllergens' => ['milk'],
-        'editingItemDietaryLabels' => ['vegetarian'],
-        'editingItemTranslations' => [
+        'editingItemForm.itemMenuId' => (string) $item->menu_id,
+        'editingItemForm.itemCategoryId' => (string) $item->category_id,
+        'editingItemForm.itemKitchenDepartmentId' => '',
+        'editingItemForm.itemName' => 'Unfinished name',
+        'editingItemForm.itemDescription' => 'Unfinished description',
+        'editingItemForm.itemPrice' => '17.25',
+        'editingItemForm.itemWeight' => '230',
+        'editingItemForm.itemVolume' => '0.35',
+        'editingItemForm.itemCalories' => '321',
+        'editingItemForm.itemSortOrder' => '12',
+        'editingItemForm.itemIsAvailable' => false,
+        'editingItemForm.itemHiddenUntil' => '2027-01-02T10:30',
+        'editingItemForm.itemAllergens' => ['milk'],
+        'editingItemForm.itemDietaryLabels' => ['vegetarian'],
+        'editingItemForm.itemTranslations' => [
             'en' => ['name' => 'English draft', 'description' => 'English description'],
             'lt' => ['name' => 'Lietuviškas juodraštis', 'description' => 'Aprašymas'],
             'ru' => ['name' => 'Русский черновик', 'description' => 'Описание'],
         ],
-        'itemMenuId' => (string) $item->menu_id,
-        'itemCategoryId' => (string) $item->category_id,
-        'categoryMenuId' => (string) $item->menu_id,
-        'scheduleMenuId' => (string) $item->menu_id,
+        'itemForm.itemMenuId' => (string) $item->menu_id,
+        'itemForm.itemCategoryId' => (string) $item->category_id,
+        'categoryForm.categoryMenuId' => (string) $item->menu_id,
+        'scheduleForm.scheduleMenuId' => (string) $item->menu_id,
     ];
 }
 
@@ -155,12 +155,12 @@ test('category deletion reconciles vanished or out of scope selections while pre
     };
     $component = Livewire::actingAs($owner)->test(Catalog::class, [
         'organizationId' => $branch->organization_id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->set('itemMenuId', (string) $menu->id)
-        ->set('itemCategoryId', (string) $selectedId)
-        ->set('categoryMenuId', (string) $menu->id)
-        ->set('categoryParentId', (string) $selectedId)
-        ->set('itemName', 'Unfinished new dish')
-        ->set('categoryName', 'Unfinished new category')
+    ])->set('itemForm.itemMenuId', (string) $menu->id)
+        ->set('itemForm.itemCategoryId', (string) $selectedId)
+        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+        ->set('categoryForm.categoryParentId', (string) $selectedId)
+        ->set('itemForm.itemName', 'Unfinished new dish')
+        ->set('categoryForm.categoryName', 'Unfinished new category')
         ->call('deleteCategory', $deletedCategory->id)->assertHasNoErrors();
 
     for ($step = 0; $step < 15 && $component->get('activeCatalogOperationId') !== ''; $step++) {
@@ -169,10 +169,10 @@ test('category deletion reconciles vanished or out of scope selections while pre
 
     expect($deletedCategory->fresh()->trashed())->toBeTrue();
     $component->assertSet('activeCatalogOperationId', '')
-        ->assertSet('itemMenuId', (string) $menu->id)
-        ->assertSet('categoryMenuId', (string) $menu->id)
-        ->assertSet('itemCategoryId', (string) $survivingCategory->id)
-        ->assertSet('categoryParentId', $selection === 'surviving' ? (string) $survivingCategory->id : '')
-        ->assertSet('itemName', 'Unfinished new dish')
-        ->assertSet('categoryName', 'Unfinished new category');
+        ->assertSet('itemForm.itemMenuId', (string) $menu->id)
+        ->assertSet('categoryForm.categoryMenuId', (string) $menu->id)
+        ->assertSet('itemForm.itemCategoryId', (string) $survivingCategory->id)
+        ->assertSet('categoryForm.categoryParentId', $selection === 'surviving' ? (string) $survivingCategory->id : '')
+        ->assertSet('itemForm.itemName', 'Unfinished new dish')
+        ->assertSet('categoryForm.categoryName', 'Unfinished new category');
 })->with(['deleted', 'surviving', 'other menu', 'other branch']);

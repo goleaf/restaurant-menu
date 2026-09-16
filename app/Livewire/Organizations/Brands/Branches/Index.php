@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches;
 
-use App\Support\Validation\Media\ImageUploadRules;
-use App\Support\Validation\Common\AuditReasonRules;
-use App\Support\Validation\Branches\BranchProfileRules;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\RestoreBranchAction;
@@ -22,6 +19,9 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\BranchQueryService;
+use App\Support\Validation\Branches\BranchProfileRules;
+use App\Support\Validation\Common\AuditReasonRules;
+use App\Support\Validation\Media\ImageUploadRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\Paginator;

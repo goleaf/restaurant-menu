@@ -4,22 +4,26 @@ declare(strict_types=1);
 
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\Mcp\IssueMcpAccessTokenAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\McpAbility;
 use App\Enums\SystemRole;
 use App\Mcp\McpContext;
 use App\Models\Branch;
+use App\Models\KitchenDepartment;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
     config(['restaurant-mcp.enabled' => true, 'restaurant-mcp.writes_enabled' => true]);
     $this->branch = Branch::factory()->create();
-    \App\Models\KitchenDepartment::factory()->for($this->branch)->create(['type' => \App\Enums\KitchenDepartmentType::Kitchen]);
+    KitchenDepartment::factory()->for($this->branch)->create(['type' => KitchenDepartmentType::Kitchen]);
     $this->user = User::factory()->create(['locale' => 'ru']);
     OrganizationUser::factory()->forOrganization($this->branch->organization)->forUser($this->user)
         ->forSystemRole(SystemRole::Owner)->active()->create();
@@ -31,12 +35,14 @@ beforeEach(function (): void {
             ->withHeaders(['MCP-Protocol-Version' => '2026-07-28', 'Mcp-Method' => 'tools/call', 'Mcp-Name' => $name])
             ->postJson('/mcp/restaurant', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call',
                 'params' => ['name' => $name, 'arguments' => $arguments, '_meta' => $this->meta]]);
-        if ($response->baseResponse instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+        if ($response->baseResponse instanceof StreamedResponse) {
             $response->assertHeader('Cache-Control', 'no-store, private');
             preg_match_all('/^data: (.+)$/m', $response->streamedContent(), $matches);
             expect($matches[1])->not->toBeEmpty();
-            return \Illuminate\Testing\TestResponse::fromBaseResponse(response(end($matches[1]), $response->getStatusCode(), ['Content-Type' => 'application/json']));
+
+            return TestResponse::fromBaseResponse(response(end($matches[1]), $response->getStatusCode(), ['Content-Type' => 'application/json']));
         }
+
         return $response;
     };
 });

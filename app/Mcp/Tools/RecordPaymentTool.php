@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Payments\RecordManualPaymentAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
 use App\Mcp\McpResponse;
 use App\Mcp\McpTargets;
+use App\Models\ManualPayment;
+use App\Support\MoneyFormatter;
 use Illuminate\Auth\Access\Response as AuthorizationResponse;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -50,16 +52,18 @@ final class RecordPaymentTool extends RestaurantMutationTool
         if (isset($input['guest_id'])) {
             $this->targets->guest($session, $input['guest_id']);
         }
-        return Gate::forUser($context->user)->authorize('create', [\App\Models\ManualPayment::class, $context->branch]);
+
+        return Gate::forUser($context->user)->authorize('create', [ManualPayment::class, $context->branch]);
     }
 
     protected function perform(McpContext $context, array $input): array
     {
         $session = $this->targets->session($context, $input['table_session_id']);
-        $tips = \App\Support\MoneyFormatter::centsToDecimal($input['tips_cents'] ?? 0);
+        $tips = MoneyFormatter::centsToDecimal($input['tips_cents'] ?? 0);
         $payment = isset($input['guest_id'])
             ? $this->action->recordGuest($session, $this->targets->guest($session, $input['guest_id']), $context->user, $input['method'], $input['note'] ?? null, $tips)
             : $this->action->recordTable($session, $context->user, $input['method'], $input['note'] ?? null, $tips);
+
         return ['payment_id' => $payment->id, 'table_session_id' => $payment->table_session_id,
             'amount_cents' => $payment->amount_cents, 'tips_cents' => $payment->tips_cents, 'currency' => $payment->currency];
     }

@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 
-export function runVerificationProcess(command, { env, timeout, grace = 5_000, onOutput = () => {} }) {
+export function runVerificationProcess(command, { cwd, env, timeout, grace = 5_000, onOutput = () => {} }) {
     return new Promise(resolve => {
-        const child = spawn(command[0], command.slice(1), { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+        const child = spawn(command[0], command.slice(1), { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
         let output = '';
         let stoppedCode = null;
         let killTimer;

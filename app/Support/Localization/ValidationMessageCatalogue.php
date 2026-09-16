@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Localization;
 
 use Illuminate\Support\Arr;
+use Illuminate\Translation\Translator;
 use ReflectionClass;
 
 final class ValidationMessageCatalogue
@@ -12,7 +13,7 @@ final class ValidationMessageCatalogue
     /** @return list<string> */
     public static function keys(): array
     {
-        $directory = dirname((new ReflectionClass(\Illuminate\Translation\Translator::class))->getFileName());
+        $directory = dirname((new ReflectionClass(Translator::class))->getFileName());
         $messages = require $directory.'/lang/en/validation.php';
         unset($messages['custom'], $messages['attributes']);
 

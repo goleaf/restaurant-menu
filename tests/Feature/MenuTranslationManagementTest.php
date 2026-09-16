@@ -44,8 +44,8 @@ test('menu base name conflicts are visible in the primary translation panel with
     [$owner, $organization, $brand, $branch, $existingMenu] = createMenuTranslationContext();
     $component = Livewire::actingAs($owner)->test(MenuCatalog::class,
         menuTranslationComponentParameters($organization->id, $brand->id, $branch->id));
-    $nameField = $editing ? 'editingMenuName' : 'menuName';
-    $translationsField = $editing ? 'editingMenuTranslations' : 'menuTranslations';
+    $nameField = $editing ? 'editingMenuForm.menuName' : 'menuForm.menuName';
+    $translationsField = $editing ? 'editingMenuForm.menuTranslations' : 'menuForm.menuTranslations';
     $translations = ['en' => $existingMenu->name, 'lt' => 'Neišsaugotas meniu', 'ru' => 'Несохранённое меню'];
     $editedMenu = null;
 
@@ -78,14 +78,14 @@ test('manager creates category and dish translations for every supported locale'
 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, $parameters)
-        ->set('categoryMenuId', (string) $menu->id)
-        ->set('categoryName', 'Starters')
-        ->set('categoryTranslations.en.name', 'Starters')
-        ->set('categoryTranslations.en.description', 'Small plates')
-        ->set('categoryTranslations.lt.name', 'Užkandžiai')
-        ->set('categoryTranslations.lt.description', 'Maži patiekalai')
-        ->set('categoryTranslations.ru.name', 'Закуски')
-        ->set('categoryTranslations.ru.description', 'Небольшие блюда')
+        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+        ->set('categoryForm.categoryName', 'Starters')
+        ->set('categoryForm.categoryTranslations.en.name', 'Starters')
+        ->set('categoryForm.categoryTranslations.en.description', 'Small plates')
+        ->set('categoryForm.categoryTranslations.lt.name', 'Užkandžiai')
+        ->set('categoryForm.categoryTranslations.lt.description', 'Maži patiekalai')
+        ->set('categoryForm.categoryTranslations.ru.name', 'Закуски')
+        ->set('categoryForm.categoryTranslations.ru.description', 'Небольшие блюда')
         ->call('createCategory')
         ->assertHasNoErrors();
 
@@ -93,15 +93,15 @@ test('manager creates category and dish translations for every supported locale'
 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, $parameters)
-        ->set('itemMenuId', (string) $menu->id)
-        ->set('itemCategoryId', (string) $category->id)
-        ->set('itemName', 'Cold beet soup')
-        ->set('itemTranslations.en.name', 'Cold beet soup')
-        ->set('itemTranslations.en.description', 'With herbs')
-        ->set('itemTranslations.lt.name', 'Šaltibarščiai')
-        ->set('itemTranslations.lt.description', 'Su žalumynais')
-        ->set('itemTranslations.ru.name', 'Холодный свекольный суп')
-        ->set('itemTranslations.ru.description', 'С зеленью')
+        ->set('itemForm.itemMenuId', (string) $menu->id)
+        ->set('itemForm.itemCategoryId', (string) $category->id)
+        ->set('itemForm.itemName', 'Cold beet soup')
+        ->set('itemForm.itemTranslations.en.name', 'Cold beet soup')
+        ->set('itemForm.itemTranslations.en.description', 'With herbs')
+        ->set('itemForm.itemTranslations.lt.name', 'Šaltibarščiai')
+        ->set('itemForm.itemTranslations.lt.description', 'Su žalumynais')
+        ->set('itemForm.itemTranslations.ru.name', 'Холодный свекольный суп')
+        ->set('itemForm.itemTranslations.ru.description', 'С зеленью')
         ->call('createItem')
         ->assertHasNoErrors();
 
@@ -145,16 +145,16 @@ test('manager reads and updates required translations and invalidates the guest 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
         ->call('startEditingCategory', $category->id)
-        ->assertSet('editingCategoryTranslations.lt.name', 'lt category')
-        ->set('editingCategoryTranslations.lt.name', 'Atnaujinta kategorija')
+        ->assertSet('editingCategoryForm.categoryTranslations.lt.name', 'lt category')
+        ->set('editingCategoryForm.categoryTranslations.lt.name', 'Atnaujinta kategorija')
         ->call('updateCategory')
         ->assertHasNoErrors()
         ->call('startEditingItem', $item->id)
-        ->assertSet('editingItemTranslations.lt.name', 'Lietuviškas patiekalas')
-        ->set('editingItemTranslations.lt.name', 'Atnaujintas patiekalas')
-        ->set('editingItemTranslations.lt.description', "Pirma pastraipa.\n\nAntra pastraipa.")
-        ->set('editingItemTranslations.ru.name', 'Обновлённое блюдо')
-        ->set('editingItemTranslations.ru.description', '')
+        ->assertSet('editingItemForm.itemTranslations.lt.name', 'Lietuviškas patiekalas')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Atnaujintas patiekalas')
+        ->set('editingItemForm.itemTranslations.lt.description', "Pirma pastraipa.\n\nAntra pastraipa.")
+        ->set('editingItemForm.itemTranslations.ru.name', 'Обновлённое блюдо')
+        ->set('editingItemForm.itemTranslations.ru.description', '')
         ->call('updateItem')
         ->assertHasNoErrors()
         ->assertSee('Atnaujinta kategorija')
@@ -175,12 +175,12 @@ test('translation description requires a locale name and errors stay associated 
 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
-        ->set('categoryMenuId', (string) $menu->id)
-        ->set('categoryName', 'Desserts')
-        ->set('categoryTranslations.lt.name', '')
-        ->set('categoryTranslations.lt.description', 'Saldūs patiekalai')
+        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+        ->set('categoryForm.categoryName', 'Desserts')
+        ->set('categoryForm.categoryTranslations.lt.name', '')
+        ->set('categoryForm.categoryTranslations.lt.description', 'Saldūs patiekalai')
         ->call('createCategory')
-        ->assertHasErrors(['categoryTranslations.lt.name' => 'required']);
+        ->assertHasErrors(['categoryForm.categoryTranslations.lt.name' => 'required']);
 
     expect(MenuCategory::query()->where('menu_id', $menu->id)->where('name', 'Desserts')->exists())->toBeFalse();
 });
@@ -190,12 +190,12 @@ test('menu editor requires a name in every supported guest locale', function () 
 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
-        ->set('menuName', 'Lunch')
-        ->set('menuTranslations.en', 'Lunch')
-        ->set('menuTranslations.lt', 'Pietūs')
-        ->set('menuTranslations.ru', '')
+        ->set('menuForm.menuName', 'Lunch')
+        ->set('menuForm.menuTranslations.en', 'Lunch')
+        ->set('menuForm.menuTranslations.lt', 'Pietūs')
+        ->set('menuForm.menuTranslations.ru', '')
         ->call('createMenu')
-        ->assertHasErrors(['menuTranslations.ru' => 'required']);
+        ->assertHasErrors(['menuForm.menuTranslations.ru' => 'required']);
 
     expect(Menu::query()->where('branch_id', $branch->id)->where('name', 'Lunch')->exists())->toBeFalse();
 });
@@ -210,27 +210,27 @@ test('menu administration rejects duplicate names inside their owning scope', fu
 
     Livewire::actingAs($owner)
         ->test(MenuCatalog::class, $parameters)
-        ->set('menuName', $menu->name)
-        ->set('menuTranslations.en', 'Menu')
-        ->set('menuTranslations.lt', 'Meniu')
-        ->set('menuTranslations.ru', 'Меню')
+        ->set('menuForm.menuName', $menu->name)
+        ->set('menuForm.menuTranslations.en', 'Menu')
+        ->set('menuForm.menuTranslations.lt', 'Meniu')
+        ->set('menuForm.menuTranslations.ru', 'Меню')
         ->call('createMenu')
-        ->assertHasErrors(['menuName' => 'unique'])
-        ->set('categoryMenuId', (string) $menu->id)
-        ->set('categoryName', 'Starters')
-        ->set('categoryTranslations.en.name', 'Starters')
-        ->set('categoryTranslations.lt.name', 'Užkandžiai')
-        ->set('categoryTranslations.ru.name', 'Закуски')
+        ->assertHasErrors(['menuForm.menuName' => 'unique'])
+        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+        ->set('categoryForm.categoryName', 'Starters')
+        ->set('categoryForm.categoryTranslations.en.name', 'Starters')
+        ->set('categoryForm.categoryTranslations.lt.name', 'Užkandžiai')
+        ->set('categoryForm.categoryTranslations.ru.name', 'Закуски')
         ->call('createCategory')
-        ->assertHasErrors(['categoryName' => 'unique'])
-        ->set('itemMenuId', (string) $menu->id)
-        ->set('itemCategoryId', (string) $category->id)
-        ->set('itemName', 'Soup')
-        ->set('itemTranslations.en.name', 'Soup')
-        ->set('itemTranslations.lt.name', 'Sriuba')
-        ->set('itemTranslations.ru.name', 'Суп')
+        ->assertHasErrors(['categoryForm.categoryName' => 'unique'])
+        ->set('itemForm.itemMenuId', (string) $menu->id)
+        ->set('itemForm.itemCategoryId', (string) $category->id)
+        ->set('itemForm.itemName', 'Soup')
+        ->set('itemForm.itemTranslations.en.name', 'Soup')
+        ->set('itemForm.itemTranslations.lt.name', 'Sriuba')
+        ->set('itemForm.itemTranslations.ru.name', 'Суп')
         ->call('createItem')
-        ->assertHasErrors(['itemName' => 'unique']);
+        ->assertHasErrors(['itemForm.itemName' => 'unique']);
 
     Livewire::actingAs($owner)
         ->test(MenuModifiers::class, $parameters)

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Data\Menus\MenuItemData;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;

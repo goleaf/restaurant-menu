@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
-use App\Data\Menus\MenuItemData;
-
 use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
+use App\Data\Menus\MenuItemData;
 use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
 use App\Models\Branch;

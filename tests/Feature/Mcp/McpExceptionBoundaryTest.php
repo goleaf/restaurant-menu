@@ -11,7 +11,9 @@ test('MCP response boundary reports only a safe exception without its original p
     config(['app.debug' => $debug]);
     Exceptions::fake();
     $private = new RuntimeException('fixture-private-credential-message');
-    $response = app(McpResponse::class)->run(function () use ($private): never { throw $private; });
+    $response = app(McpResponse::class)->run(function () use ($private): never {
+        throw $private;
+    });
 
     expect((string) $response->content())->not->toContain($private->getMessage())
         ->toBe(__('mcp.errors.operation_failed'));
@@ -22,7 +24,9 @@ test('MCP response boundary reports only a safe exception without its original p
 
 test('MCP response boundary returns safe validation and access failures without reporting them', function (Throwable $exception, string $key): void {
     Exceptions::fake();
-    $response = app(McpResponse::class)->run(function () use ($exception): never { throw $exception; });
+    $response = app(McpResponse::class)->run(function () use ($exception): never {
+        throw $exception;
+    });
     expect((string) $response->content())->toBe(__($key));
     Exceptions::assertNothingReported();
 })->with([
@@ -32,6 +36,8 @@ test('MCP response boundary returns safe validation and access failures without 
 
 test('MCP discovery failures hide a tool and never expose the original exception', function (): void {
     Exceptions::fake();
-    expect(app(McpResponse::class)->available(function (): never { throw new RuntimeException('fixture-private-discovery'); }))->toBeFalse();
+    expect(app(McpResponse::class)->available(function (): never {
+        throw new RuntimeException('fixture-private-discovery');
+    }))->toBeFalse();
     Exceptions::assertReported(fn (RuntimeException $reported): bool => $reported->getMessage() === 'Restaurant MCP operation failed.');
 });

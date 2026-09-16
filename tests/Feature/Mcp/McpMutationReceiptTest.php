@@ -5,15 +5,19 @@ declare(strict_types=1);
 use App\Actions\Mcp\ExecuteMcpMutationAction;
 use App\Actions\Mcp\IssueMcpAccessTokenAction;
 use App\Enums\McpAbility;
+use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
 use App\Models\Branch;
 use App\Models\McpMutationReceipt;
 use App\Models\OrganizationUser;
+use App\Models\Permission;
+use App\Models\PermissionUserOverride;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -42,7 +46,9 @@ test('MCP mutation receipts return the first result without overwriting a later 
     $first = $action->handle(McpAbility::SetOrderingPause, $this->key, ['closed' => true], $this->authorize, $this->operation);
     $this->branch->forceFill(['is_temporarily_closed' => false])->save();
     $again = $action->handle(McpAbility::SetOrderingPause, strtoupper($this->key), ['closed' => true], $this->authorize,
-        function (): never { throw new RuntimeException('Replay must not execute'); });
+        function (): never {
+            throw new RuntimeException('Replay must not execute');
+        });
 
     expect($again)->toBe($first)->and($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
     $this->assertDatabaseCount('mcp_mutation_receipts', 1);
@@ -60,7 +66,9 @@ test('MCP mutation receipts reauthorize before replay', function (): void {
     $action = app(ExecuteMcpMutationAction::class);
     $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
     expect(fn () => $action->handle(McpAbility::SetOrderingPause, $this->key, [],
-        function (): never { throw new AuthorizationException; }, $this->operation))->toThrow(AuthorizationException::class);
+        function (): never {
+            throw new AuthorizationException;
+        }, $this->operation))->toThrow(AuthorizationException::class);
 });
 
 test('MCP mutation receipts fail closed for a non-throwing authorization denial', function (mixed $decision): void {
@@ -68,7 +76,7 @@ test('MCP mutation receipts fail closed for a non-throwing authorization denial'
         fn () => $decision, $this->operation))->toThrow(AuthorizationException::class);
     expect($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
     $this->assertDatabaseCount('mcp_mutation_receipts', 0);
-})->with([false, null, \Illuminate\Auth\Access\Response::deny()]);
+})->with([false, null, Response::deny()]);
 
 test('MCP mutation receipts refuse a revoked token even for a completed request', function (): void {
     $action = app(ExecuteMcpMutationAction::class);
@@ -133,10 +141,10 @@ test('MCP replay checks current domain permission write gate and token ability',
     $action = app(ExecuteMcpMutationAction::class);
     $action->handle(McpAbility::SetOrderingPause, $this->key, [], $this->authorize, $this->operation);
     if ($change === 'permission') {
-        foreach ([\App\Enums\SystemPermission::ManageSettings, \App\Enums\SystemPermission::ManageBranches] as $permission) {
-            \App\Models\PermissionUserOverride::factory()->forOrganization($this->branch->organization)->create([
+        foreach ([SystemPermission::ManageSettings, SystemPermission::ManageBranches] as $permission) {
+            PermissionUserOverride::factory()->forOrganization($this->branch->organization)->create([
                 'user_id' => $this->user->id, 'enabled' => false,
-                'permission_id' => \App\Models\Permission::query()->where('code', $permission->value)->firstOrFail()->id,
+                'permission_id' => Permission::query()->where('code', $permission->value)->firstOrFail()->id,
             ]);
         }
     } elseif ($change === 'gate') {

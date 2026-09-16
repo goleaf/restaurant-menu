@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
-use App\Support\Validation\Branches\BranchSettingsRules;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Models\Branch;
 use App\Models\User;
+use App\Support\Validation\Branches\BranchSettingsRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;

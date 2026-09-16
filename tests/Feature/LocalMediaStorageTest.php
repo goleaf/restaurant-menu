@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Support\Media\LocalImageConstraints;
 use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
@@ -13,6 +12,7 @@ use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\User;
+use App\Support\Media\LocalImageConstraints;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\ParallelTesting;

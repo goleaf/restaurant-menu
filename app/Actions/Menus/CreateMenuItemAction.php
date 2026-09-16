@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Menus;
 
 use App\Data\Menus\MenuItemData;
-
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;

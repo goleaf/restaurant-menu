@@ -52,6 +52,7 @@ final class SetOrderingPauseTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $branch = $this->action->handle($context->user, $context->branch->id, $input['closed'], $input['reason'] ?? null, $input['until'] ?? null);
+
         return ['branch_id' => $branch->id, 'paused' => $branch->is_temporarily_closed, 'until' => $branch->temporary_closed_until?->toIso8601String()];
     }
 }

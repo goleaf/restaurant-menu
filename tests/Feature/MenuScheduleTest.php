@@ -208,11 +208,10 @@ test('manager can add and delete menu schedule from menu admin', function () {
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSeeText('Menu schedule')
-        ->set('scheduleMenuId', (string) $menu->id)
-        ->set('scheduleDayOfWeek', '1')
-        ->set('scheduleStartsAt', '08:00')
-        ->set('scheduleEndsAt', '12:00')
-        ->call('createMenuSchedule')
+        ->set('scheduleForm.scheduleDayOfWeek', '1')
+        ->set('scheduleForm.scheduleStartsAt', '08:00')
+        ->set('scheduleForm.scheduleEndsAt', '12:00')
+        ->call('createMenuSchedule', $menu->id)
         ->assertHasNoErrors()
         ->assertSeeText(__('ui.actions.branches.getbranchopeningstatusaction.ponedelnik'))
         ->assertSeeText('08:00-12:00');
@@ -247,10 +246,10 @@ test('manager updates a menu schedule and invalidates every guest menu cache', f
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingMenuSchedule', $schedule->id)
-        ->assertSet('editingScheduleDayOfWeek', '2')
-        ->set('editingScheduleDayOfWeek', '3')
-        ->set('editingScheduleStartsAt', '09:30')
-        ->set('editingScheduleEndsAt', '14:00')
+        ->assertSet('editingScheduleForm.scheduleDayOfWeek', '2')
+        ->set('editingScheduleForm.scheduleDayOfWeek', '3')
+        ->set('editingScheduleForm.scheduleStartsAt', '09:30')
+        ->set('editingScheduleForm.scheduleEndsAt', '14:00')
         ->call('updateMenuSchedule')
         ->assertHasNoErrors()
         ->assertSeeText('09:30-14:00');
@@ -259,6 +258,41 @@ test('manager updates a menu schedule and invalidates every guest menu cache', f
         ->and($schedule->starts_at)->toBe('09:30')
         ->and($schedule->ends_at)->toBe('14:00')
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+});
+
+test('menu schedule forms reject a foreign menu and retain overlapping edit errors', function () {
+    [$menu, $branch, $organization, $brand, $manager] = createPrompt104MenuContext(withManager: true);
+    grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
+    $foreignMenu = Menu::factory()->create();
+    $schedule = MenuAvailabilitySchedule::factory()->for($menu)->create([
+        'day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00',
+    ]);
+    MenuAvailabilitySchedule::factory()->for($menu)->create([
+        'day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '17:00',
+    ]);
+
+    $component = Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('createMenuSchedule', $foreignMenu->id)
+        ->assertHasErrors(['scheduleForm.scheduleMenuId'])
+        ->call('startEditingMenuSchedule', $schedule->id)
+        ->set('editingScheduleForm.scheduleStartsAt', '12:30')
+        ->set('editingScheduleForm.scheduleEndsAt', '14:00')
+        ->call('updateMenuSchedule')
+        ->assertHasErrors(['editingScheduleForm.scheduleStartsAt'])
+        ->assertSet('editingScheduleId', $schedule->id)
+        ->assertSet('editingScheduleForm.scheduleStartsAt', '12:30');
+
+    expect(MenuAvailabilitySchedule::query()->where('menu_id', $foreignMenu->id)->exists())->toBeFalse()
+        ->and($schedule->fresh()->starts_at)->toBe('08:00');
+
+    $component->call('createCategory')
+        ->assertHasErrors(['categoryForm.categoryName'])
+        ->call('cancelMenuScheduleEditing')
+        ->assertHasNoErrors(['editingScheduleForm.scheduleStartsAt'])
+        ->assertHasErrors(['categoryForm.categoryName'])
+        ->assertSet('editingScheduleId', null)
+        ->assertSet('editingScheduleForm.scheduleStartsAt', '08:00');
 });
 
 test('menu schedule update rejects reversed and overlapping intervals', function () {

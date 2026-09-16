@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Menus;
 
 use App\Data\Menus\MenuItemData;
-
 use App\Enums\MenuOperationKind;
 use App\Enums\MenuOperationPhase;
 use App\Models\Branch;

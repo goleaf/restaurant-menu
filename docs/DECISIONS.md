@@ -4,6 +4,18 @@
 
 # Restaurant Menu completion decisions
 
+## Platform MCP launcher — 2026-09-16
+
+Local Boost now launches as `herd php artisan boost:mcp`, which uses the current site's stable PHP selection. The pre-existing global `php` alias pointed to an incompatible PHP 8.6 prerelease. An actual stdio MCP initialize, tools/list and get-absolute-url call passed after the change. No global runtime, MCP write capability or token permission changed.
+
+## 2026-09-16 — Stable platform plus honest PHP 8.6 experiment
+
+- Keep production PHP 8.5 and stable dependencies. PHP 8.6.0beta3 is isolated runtime/syntax evidence only until the actual Nette/Sabberworm/ParaTest constraints and full application matrix allow it. Do not widen the root constraint to manufacture success.
+- Upgrade in three verified-cache Composer groups and separate registry-only frontend groups. Preserve one lock per ecosystem, disable installer scripts/plugins until reviewed, and enforce network denial for offline Composer work. Local Pro 0.1.1 and its Rolldown 1.2.5 generator remain distinct from Vite's newer minifier.
+- Require explicit executable selection and owned source/storage/DB/cache/session/mail isolation in the existing verify:migration entrypoint. Record the PHP process responding to browser HTTP separately from CLI/coordinator identity. Coverage remains >=90% on supported stable PHP and JS lines 100%; no test exclusion or skip is introduced.
+- Larastan 3.11 defaults parseModelCastsMethod to false. Explicitly enable it for this repository's modern casts() models; do not replace known enum/date types with broad suppressions or unnecessary model annotations.
+- Prompt 2 owns every remaining controller disposition. Class-based Livewire/Actions/read services/Policies/Rules/Forms, available genuine Pro components, SCSS with the separate framework bridge, EN/LT/RU and progressive mobile-first responsiveness are the active series contract.
+
 ## 2026-09-16 — Cohesive Flux controls and local accessibility patch
 
 - Preserve the installed Free 2.17.0 / Livewire 4.4.1 pair. Packagist metadata advertises Free 2.20.0, whose distribution URL is GitHub; no archive request is allowed. Local Pro 0.1.1 is a project patch release, not an upstream version. Four maintained templates now use semantic JSON labels for dates/search; original inventory/license/runtime bytes remain preserved. Normal offline Composer path installation provides the mirror.

@@ -15,7 +15,13 @@
             <directory>tests/Browser</directory>
         </testsuite>
     </testsuites>
-    <source>
+    <source ignoreSuppressionOfErrors="true"
+            ignoreSuppressionOfWarnings="true"
+            ignoreSuppressionOfPhpWarnings="true"
+            ignoreSuppressionOfDeprecations="true"
+            ignoreSuppressionOfPhpDeprecations="true"
+            ignoreSuppressionOfNotices="true"
+            ignoreSuppressionOfPhpNotices="true">
         <include>
             <directory>app</directory>
         </include>

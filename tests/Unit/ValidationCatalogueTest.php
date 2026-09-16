@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\PresenceVerifierInterface;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 test('every installed validator message is exercised in every locale', function (string $key, Closure $fixture): void {
     $catalogue = require base_path('vendor/laravel/framework/src/Illuminate/Translation/lang/en/validation.php');
@@ -44,7 +46,7 @@ test('every installed validator message is exercised in every locale', function 
             expect($message)->toContain(__('validation.attributes.date_from'));
         }
         // Compare the actual final text to the localized template with Laravel's replacements.
-        expect($message)->toBe($validator->makeReplacements($translated, $field, \Illuminate\Support\Str::studly(explode('.', $key)[0]), $validator->getRules()[$field] === [] ? [] : catalogueParameters($key, $rules[$field] ?? [])));
+        expect($message)->toBe($validator->makeReplacements($translated, $field, Str::studly(explode('.', $key)[0]), $validator->getRules()[$field] === [] ? [] : catalogueParameters($key, $rules[$field] ?? [])));
     }
 })->with(fn () => validationCatalogueCases());
 
@@ -81,6 +83,7 @@ function catalogueParameters(string $key, array|string $rules): array
             return str_getcsv(explode(':', $rule, 2)[1], escape: '');
         }
     }
+
     return [];
 }
 
@@ -118,40 +121,49 @@ function validationCatalogueCases(): array
         'multiple_of' => [3, 'multiple_of:2'], 'not_in' => ['a', 'not_in:a'], 'not_regex' => ['abc', 'not_regex:/abc/'], 'numeric' => ['abc', 'numeric'],
         'prohibited' => ['x', 'prohibited'], 'prohibited_if' => ['x', 'prohibited_if:other,yes'], 'prohibited_unless' => ['x', 'prohibited_unless:other,no'],
         'prohibited_if_accepted' => ['x', 'prohibited_if_accepted:other'], 'prohibits' => ['x', 'prohibits:other'],
-        'regex' => ['xyz', 'regex:/abc/'], 'required' => [null, 'required'], 'required_array_keys' => [['a'=>1], 'required_array_keys:b'],
+        'regex' => ['xyz', 'regex:/abc/'], 'required' => [null, 'required'], 'required_array_keys' => [['a' => 1], 'required_array_keys:b'],
         'required_if' => [null, 'required_if:other,yes'], 'required_if_accepted' => [null, 'required_if_accepted:other'],
         'required_unless' => [null, 'required_unless:other,no'], 'required_with' => [null, 'required_with:other'], 'required_with_all' => [null, 'required_with_all:other'],
         'same' => ['x', 'same:other'], 'starts_with' => ['a', 'starts_with:b'], 'string' => [1, 'string'], 'timezone' => ['bad', 'timezone'],
         'unique' => ['x', 'unique:fixtures,id'], 'uppercase' => ['abc', 'uppercase'], 'url' => ['bad', 'url'], 'ulid' => ['bad', 'ulid'], 'uuid' => ['bad', 'uuid'],
     ] as $key => [$value, $rule]) {
-        $add($key, $value, $rule, ['other'=>'yes', 'choices'=>['a']]);
+        $add($key, $value, $rule, ['other' => 'yes', 'choices' => ['a']]);
     }
-    foreach (['required_without','required_without_all'] as $key) { $add($key, null, $key.':other'); }
-    foreach (['prohibited_if_declined','required_if_declined'] as $key) { $add($key, $key === 'required_if_declined' ? null : 'x', $key.':other', ['other'=>'no']); }
-    foreach (['present','present_if','present_unless','present_with','present_with_all'] as $key) {
-        $rule = match ($key) { 'present_if' => 'present_if:other,yes', 'present_unless' => 'present_unless:other,no', 'present_with','present_with_all' => $key.':other', default=>$key };
-        $cases[$key]=[$key,fn()=>[['other'=>'yes'],['date_from'=>$rule],'date_from']];
+    foreach (['required_without', 'required_without_all'] as $key) {
+        $add($key, null, $key.':other');
     }
-    $add('can', 'x', fn()=>[Rule::can('catalogue-denied')]);
-    $add('any_of', 'a', fn()=>[Rule::anyOf([['integer'], ['email']])]);
-    $add('enum', 'xx', fn()=>[Rule::enum(SupportedLocale::class)]);
-    $cases['distinct']=['distinct',fn()=>[['dates'=>['x','x']],['dates.*'=>'distinct'],'dates.0']];
-    foreach (['image'=>'image','mimes'=>'mimes:png','mimetypes'=>'mimetypes:image/png','extensions'=>'extensions:png'] as $key=>$rule) {
-        $add($key, fn()=>UploadedFile::fake()->createWithContent('text.txt','plain text'), $rule);
+    foreach (['prohibited_if_declined', 'required_if_declined'] as $key) {
+        $add($key, $key === 'required_if_declined' ? null : 'x', $key.':other', ['other' => 'no']);
     }
-    $add('dimensions', fn()=>UploadedFile::fake()->image('tiny.png', 2, 2), 'dimensions:min_width=10');
-    $add('uploaded', fn()=>new UploadedFile('/missing-upload','image.png','image/png',UPLOAD_ERR_INI_SIZE,true), 'file');
-    foreach (['letters'=>'12345678','mixed'=>'abcdefgh','numbers'=>'abcdefgh','symbols'=>'abcdefgh','uncompromised'=>'abcdefgh'] as $key=>$value) {
-        $add('password.'.$key, $value, fn()=>[match($key) {
-            'letters'=>Password::min(8)->letters(), 'mixed'=>Password::min(8)->mixedCase(), 'numbers'=>Password::min(8)->numbers(), 'symbols'=>Password::min(8)->symbols(), 'uncompromised'=>Password::min(8)->uncompromised(),
+    foreach (['present', 'present_if', 'present_unless', 'present_with', 'present_with_all'] as $key) {
+        $rule = match ($key) {
+            'present_if' => 'present_if:other,yes', 'present_unless' => 'present_unless:other,no', 'present_with','present_with_all' => $key.':other', default => $key
+        };
+        $cases[$key] = [$key, fn () => [['other' => 'yes'], ['date_from' => $rule], 'date_from']];
+    }
+    $add('can', 'x', fn () => [Rule::can('catalogue-denied')]);
+    $add('any_of', 'a', fn () => [Rule::anyOf([['integer'], ['email']])]);
+    $add('enum', 'xx', fn () => [Rule::enum(SupportedLocale::class)]);
+    $cases['distinct'] = ['distinct', fn () => [['dates' => ['x', 'x']], ['dates.*' => 'distinct'], 'dates.0']];
+    foreach (['image' => 'image', 'mimes' => 'mimes:png', 'mimetypes' => 'mimetypes:image/png', 'extensions' => 'extensions:png'] as $key => $rule) {
+        $add($key, fn () => UploadedFile::fake()->createWithContent('text.txt', 'plain text'), $rule);
+    }
+    $add('dimensions', fn () => UploadedFile::fake()->image('tiny.png', 2, 2), 'dimensions:min_width=10');
+    $add('uploaded', fn () => new UploadedFile('/missing-upload', 'image.png', 'image/png', UPLOAD_ERR_INI_SIZE, true), 'file');
+    foreach (['letters' => '12345678', 'mixed' => 'abcdefgh', 'numbers' => 'abcdefgh', 'symbols' => 'abcdefgh', 'uncompromised' => 'abcdefgh'] as $key => $value) {
+        $add('password.'.$key, $value, fn () => [match ($key) {
+            'letters' => Password::min(8)->letters(), 'mixed' => Password::min(8)->mixedCase(), 'numbers' => Password::min(8)->numbers(), 'symbols' => Password::min(8)->symbols(), 'uncompromised' => Password::min(8)->uncompromised(),
         }]);
     }
-    foreach (['between','gt','gte','lt','lte','max','min','size'] as $rule) {
-        $size = in_array($rule,['lt','lte','max']) ? 4 : 1;
-        foreach (['array','file','numeric','string'] as $type) {
-            $value = match($type) { 'array'=>array_fill(0,$size,'a'), 'file'=>fn()=>UploadedFile::fake()->create('file.txt',$size), 'numeric'=>$size, 'string'=>str_repeat('a',$size) };
-            $add($rule.'.'.$type, $value, [$type, $rule.($rule==='between'?':2,3':':2')]);
+    foreach (['between', 'gt', 'gte', 'lt', 'lte', 'max', 'min', 'size'] as $rule) {
+        $size = in_array($rule, ['lt', 'lte', 'max']) ? 4 : 1;
+        foreach (['array', 'file', 'numeric', 'string'] as $type) {
+            $value = match ($type) {
+                'array' => array_fill(0, $size, 'a'), 'file' => fn () => UploadedFile::fake()->create('file.txt', $size), 'numeric' => $size, 'string' => str_repeat('a', $size)
+            };
+            $add($rule.'.'.$type, $value, [$type, $rule.($rule === 'between' ? ':2,3' : ':2')]);
         }
     }
+
     return $cases;
 }

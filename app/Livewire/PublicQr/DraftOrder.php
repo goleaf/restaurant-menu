@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
-use App\Support\Validation\TableSessions\GuestRules;
-use App\Support\Validation\Orders\OrderInputRules;
-use App\Support\Validation\Menus\ModifierRules;
 use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
@@ -24,10 +21,15 @@ use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
+use App\Support\Validation\Menus\ModifierRules;
+use App\Support\Validation\Orders\OrderInputRules;
+use App\Support\Validation\TableSessions\GuestRules;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -921,14 +923,14 @@ class DraftOrder extends Component
 
         return $this->buildModifierSnapshots
             ->groupsFor($menuItem)
-            ->map(fn ($modifierGroup): array => [
+            ->map(fn (ModifierGroup $modifierGroup): array => [
                 'id' => $modifierGroup->id,
                 'name' => $modifierGroup->name,
                 'is_required' => (bool) $modifierGroup->is_required,
                 'min_select' => (int) $modifierGroup->min_select,
                 'max_select' => (int) $modifierGroup->max_select,
                 'options' => $modifierGroup->options
-                    ->map(fn ($modifierOption): array => [
+                    ->map(fn (ModifierOption $modifierOption): array => [
                         'id' => $modifierOption->id,
                         'name' => $modifierOption->name,
                         'price_delta_cents' => $modifierOption->price_delta_cents,

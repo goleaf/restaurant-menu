@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms\Onboarding;
 
-use App\Support\Validation\Organizations\OrganizationRules;
-use App\Support\Validation\Menus\MenuItemRules;
-use App\Support\Validation\Branches\ServicePointRules;
-use App\Support\Validation\Branches\BranchProfileRules;
-use App\Support\Validation\Branches\AreaRules;
 use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -16,6 +11,11 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Support\PlainText;
 use App\Support\RestaurantSetupOptions;
+use App\Support\Validation\Branches\AreaRules;
+use App\Support\Validation\Branches\BranchProfileRules;
+use App\Support\Validation\Branches\ServicePointRules;
+use App\Support\Validation\Menus\MenuItemRules;
+use App\Support\Validation\Organizations\OrganizationRules;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 

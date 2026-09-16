@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Menus;
 
 use App\Data\Menus\MenuItemData;
-
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;
@@ -55,13 +54,13 @@ final class UpdateMenuItemAction
                 ->where('menu_id', $menu->id)
                 ->whereKey($category->getKey())->firstOrFail();
             $item = MenuItem::query()
-                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])
-                    ->with('translations')
-                    ->whereKey($item->id)
-                    ->where('menu_id', $item->getRawOriginal('menu_id'))
-                    ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])
+                ->with('translations')
+                ->whereKey($item->id)
+                ->where('menu_id', $item->getRawOriginal('menu_id'))
+                ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($expectedVersion !== null) {
                 if (! hash_equals($item->contentFingerprint(), $expectedVersion)) {

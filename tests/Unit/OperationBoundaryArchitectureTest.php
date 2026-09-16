@@ -58,11 +58,13 @@ test('rules and form requests do not mutate persistence or generate ui side effe
     $finder = new NodeFinder;
     $violations = [];
     foreach (['app/Http/Requests', 'app/Rules', 'app/Support/Validation'] as $directory) {
-        if (! is_dir(dirname(__DIR__, 2).'/'.$directory)) { continue; }
+        if (! is_dir(dirname(__DIR__, 2).'/'.$directory)) {
+            continue;
+        }
         foreach (boundaryFiles($directory) as $file) {
             foreach ($finder->findInstanceOf(boundaryAst((string) $file), Node\Expr::class) as $node) {
-                if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && in_array((string) $node->name, ['save','saveOrFail','delete','deleteOrFail','updateOrCreate','firstOrCreate','sync','attach','detach','notify','redirect','toast'], true)
-                    || $node instanceof Node\Expr\StaticCall && $node->class instanceof Node\Name && in_array((string) $node->class,['Flux\\Flux','Illuminate\\Support\\Facades\\DB'],true)) {
+                if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && in_array((string) $node->name, ['save', 'saveOrFail', 'delete', 'deleteOrFail', 'updateOrCreate', 'firstOrCreate', 'sync', 'attach', 'detach', 'notify', 'redirect', 'toast'], true)
+                    || $node instanceof Node\Expr\StaticCall && $node->class instanceof Node\Name && in_array((string) $node->class, ['Flux\\Flux', 'Illuminate\\Support\\Facades\\DB'], true)) {
                     $violations[] = basename((string) $file).':'.$node->getStartLine();
                 }
             }

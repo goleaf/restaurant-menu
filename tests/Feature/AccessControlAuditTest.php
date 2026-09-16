@@ -117,11 +117,11 @@ test('waiter can manage menu labels without changing prices when change prices i
     Livewire::actingAs($waiter->fresh())
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
-        ->set('editingItemName', 'Prompt 96 Dish Renamed')
-        ->set('editingItemTranslations.en.name', 'Prompt 96 Dish Renamed')
-        ->set('editingItemTranslations.lt.name', 'Prompt 96 Dish Renamed LT')
-        ->set('editingItemTranslations.ru.name', 'Prompt 96 Dish Renamed RU')
-        ->set('editingItemPrice', '99.99')
+        ->set('editingItemForm.itemName', 'Prompt 96 Dish Renamed')
+        ->set('editingItemForm.itemTranslations.en.name', 'Prompt 96 Dish Renamed')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Prompt 96 Dish Renamed LT')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Prompt 96 Dish Renamed RU')
+        ->set('editingItemForm.itemPrice', '99.99')
         ->call('updateItem')
         ->assertHasNoErrors();
 

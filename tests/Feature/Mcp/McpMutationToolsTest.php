@@ -5,14 +5,23 @@ declare(strict_types=1);
 use App\Actions\Mcp\IssueMcpAccessTokenAction;
 use App\Enums\McpAbility;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionStatus;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
 use App\Mcp\Tools\OpenTableTool;
 use App\Mcp\Tools\SetOrderingPauseTool;
 use App\Models\Branch;
+use App\Models\DraftOrder;
+use App\Models\DraftOrderItem;
+use App\Models\KitchenDepartment;
+use App\Models\KitchenTicketItem;
+use App\Models\Menu;
+use App\Models\MenuItem;
 use App\Models\OrganizationUser;
 use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
+use App\Models\WaiterCall;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
@@ -86,16 +95,16 @@ test('MCP executes a full approved service and offline settlement workflow witho
     $point = ServicePoint::factory()->forBranch($this->branch)->free()->create();
     $openKey = (string) Str::uuid();
     $opened = mcpMutationResult('OpenTable', ['service_point_id' => $point->id, 'idempotency_key' => $openKey]);
-    $session = \App\Models\TableSession::query()->findOrFail($opened['table_session_id']);
-    $department = \App\Models\KitchenDepartment::factory()->for($this->branch)->create(['type' => $departmentType]);
-    $menu = \App\Models\Menu::factory()->for($this->branch)->active()->create();
-    $item = \App\Models\MenuItem::factory()->for($menu)->create(['kitchen_department_id' => $department->id, 'price_cents' => 1000]);
-    $draft = \App\Models\DraftOrder::factory()->forTableSession($session)->sentToWaiter()->create();
-    \App\Models\DraftOrderItem::factory()->for($draft)->create(['menu_item_id' => $item->id, 'item_name' => $item->name]);
+    $session = TableSession::query()->findOrFail($opened['table_session_id']);
+    $department = KitchenDepartment::factory()->for($this->branch)->create(['type' => $departmentType]);
+    $menu = Menu::factory()->for($this->branch)->active()->create();
+    $item = MenuItem::factory()->for($menu)->create(['kitchen_department_id' => $department->id, 'price_cents' => 1000]);
+    $draft = DraftOrder::factory()->forTableSession($session)->sentToWaiter()->create();
+    DraftOrderItem::factory()->for($draft)->create(['menu_item_id' => $item->id, 'item_name' => $item->name]);
     $confirmKey = (string) Str::uuid();
     $confirmed = mcpMutationResult('ConfirmDraft', ['draft_id' => $draft->id, 'idempotency_key' => $confirmKey]);
     expect($confirmed['total_cents'])->toBe(1000);
-    $ticketItem = \App\Models\KitchenTicketItem::query()->whereHas('kitchenTicket', fn ($query) => $query->where('order_id', $confirmed['order_id']))->firstOrFail();
+    $ticketItem = KitchenTicketItem::query()->whereHas('kitchenTicket', fn ($query) => $query->where('order_id', $confirmed['order_id']))->firstOrFail();
     $ready = mcpMutationResult('UpdateTicketItem', ['ticket_item_id' => $ticketItem->id, 'status' => 'ready']);
     expect($ready['status'])->toBe('ready');
     expect(mcpMutationResult('ServeTicketItem', ['ticket_item_id' => $ticketItem->id])['served'])->toBeTrue();
@@ -108,21 +117,21 @@ test('MCP executes a full approved service and offline settlement workflow witho
     expect(mcpMutationResult('CloseTable', ['table_session_id' => $session->id])['status'])->toBe('closed');
     expect(mcpMutationResult('OpenTable', ['service_point_id' => $point->id, 'idempotency_key' => $openKey]))->toBe($opened)
         ->and(mcpMutationResult('ConfirmDraft', ['draft_id' => $draft->id, 'idempotency_key' => $confirmKey]))->toBe($confirmed)
-        ->and($session->fresh()->status)->toBe(\App\Enums\TableSessionStatus::Closed);
+        ->and($session->fresh()->status)->toBe(TableSessionStatus::Closed);
     $this->assertDatabaseCount('table_sessions', 1);
 })->with(['kitchen', 'bar']);
 
 test('MCP menu availability draft rejection and waiter acknowledgement use real domain actions', function (): void {
-    $menu = \App\Models\Menu::factory()->for($this->branch)->create();
-    $item = \App\Models\MenuItem::factory()->for($menu)->create();
+    $menu = Menu::factory()->for($this->branch)->create();
+    $item = MenuItem::factory()->for($menu)->create();
     expect(mcpMutationResult('SetMenuAvailability', ['menu_item_id' => $item->id, 'is_available' => false])['is_available'])->toBeFalse()
         ->and($item->fresh()->is_available)->toBeFalse();
-    $session = \App\Models\TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
-    $draft = \App\Models\DraftOrder::factory()->forTableSession($session)->sentToWaiter()->withItems()->create();
+    $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
+    $draft = DraftOrder::factory()->forTableSession($session)->sentToWaiter()->withItems()->create();
     $arguments = ['draft_id' => $draft->id, 'reason' => 'Unavailable today', 'idempotency_key' => (string) Str::uuid()];
     $rejected = mcpMutationResult('RejectDraft', $arguments);
     expect($rejected['status'])->toBe('rejected')->and(mcpMutationResult('RejectDraft', $arguments))->toBe($rejected);
-    $call = \App\Models\WaiterCall::factory()->forTableSession($session)->pending()->create();
+    $call = WaiterCall::factory()->forTableSession($session)->pending()->create();
     expect(mcpMutationResult('HandleWaiterCall', ['waiter_call_id' => $call->id])['status'])->toBe('handled');
 });
 
@@ -132,12 +141,12 @@ test('MCP mutations cannot select another accessible branch through resource ide
     expect($response)->toBeInstanceOf(Response::class)->and($response->isError())->toBeTrue();
     $this->assertDatabaseCount('mcp_mutation_receipts', 0);
 })->with([
-    ['SetMenuAvailability', \App\Models\MenuItem::class, 'menu_item_id', ['is_available' => false]],
-    ['ConfirmDraft', \App\Models\DraftOrder::class, 'draft_id', []],
-    ['RejectDraft', \App\Models\DraftOrder::class, 'draft_id', ['reason' => 'Unavailable']],
-    ['HandleWaiterCall', \App\Models\WaiterCall::class, 'waiter_call_id', []],
-    ['UpdateTicketItem', \App\Models\KitchenTicketItem::class, 'ticket_item_id', ['status' => 'ready']],
-    ['ServeTicketItem', \App\Models\KitchenTicketItem::class, 'ticket_item_id', []],
-    ['RecordPayment', \App\Models\TableSession::class, 'table_session_id', ['method' => 'cash']],
-    ['CloseTable', \App\Models\TableSession::class, 'table_session_id', []],
+    ['SetMenuAvailability', MenuItem::class, 'menu_item_id', ['is_available' => false]],
+    ['ConfirmDraft', DraftOrder::class, 'draft_id', []],
+    ['RejectDraft', DraftOrder::class, 'draft_id', ['reason' => 'Unavailable']],
+    ['HandleWaiterCall', WaiterCall::class, 'waiter_call_id', []],
+    ['UpdateTicketItem', KitchenTicketItem::class, 'ticket_item_id', ['status' => 'ready']],
+    ['ServeTicketItem', KitchenTicketItem::class, 'ticket_item_id', []],
+    ['RecordPayment', TableSession::class, 'table_session_id', ['method' => 'cash']],
+    ['CloseTable', TableSession::class, 'table_session_id', []],
 ]);

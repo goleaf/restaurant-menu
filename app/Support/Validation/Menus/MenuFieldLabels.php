@@ -8,7 +8,10 @@ use App\Enums\SupportedLocale;
 
 final class MenuFieldLabels
 {
-    /** @return array<string, string> */
+    /**
+     * @param  'menu'|'category'|'item'|'schedule'  $editor
+     * @return array<string, string>
+     */
     public static function forEditor(string $editor): array
     {
         $fields = match ($editor) {

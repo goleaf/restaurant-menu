@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
-use App\Support\Validation\Branches\ServicePointRules;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
@@ -24,6 +23,7 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\ServicePointQueryService;
 use App\Support\LocalizedDateFormatter;
+use App\Support\Validation\Branches\ServicePointRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\Paginator;

@@ -6,11 +6,11 @@ namespace App\Http\Controllers\Invitations;
 
 use App\Actions\Invitations\ResolvedInvitationAccess;
 use App\Actions\Invitations\ResolveInvitationAccessAction;
-use App\Services\Invitations\InvitationPagePresenter;
 use App\Enums\InvitationAccessState;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\Invitations\InvitationPagePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;

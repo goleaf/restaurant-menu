@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
-use App\Models\MenuCategory;
 use App\Models\Menu;
+use App\Models\MenuCategory;
 use App\Models\User;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;

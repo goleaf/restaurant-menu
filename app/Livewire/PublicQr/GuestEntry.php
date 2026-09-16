@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
-use App\Support\Validation\TableSessions\GuestRules;
 use App\Actions\Localization\UpdateGuestLocaleAction;
 use App\Actions\PublicQr\BuildGuestEntryContextAction;
 use App\Actions\PublicQr\EnsureGuestEntryRateLimitAction;
@@ -23,6 +22,7 @@ use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\PublicQr\GuestEntryPresenter;
+use App\Support\Validation\TableSessions\GuestRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;

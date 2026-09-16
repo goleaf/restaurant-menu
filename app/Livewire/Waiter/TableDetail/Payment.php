@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
-use App\Support\Validation\Payments\PaymentRules;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Models\TableSessionGuest;
+use App\Support\Validation\Payments\PaymentRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 

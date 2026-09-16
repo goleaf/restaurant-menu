@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -52,6 +52,7 @@ final class CloseTableTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $session = $this->action->handle($this->targets->session($context, $input['table_session_id']), $context->user);
+
         return ['table_session_id' => $session->id, 'status' => $session->status->value];
     }
 }

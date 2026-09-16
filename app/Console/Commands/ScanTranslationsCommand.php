@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Localization\ValidationMessageCatalogue;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -140,7 +141,7 @@ class ScanTranslationsCommand extends Command
     private function extractUsages(array $files, array $catalogKeys): array
     {
         $usages = [];
-        foreach (\App\Support\Localization\ValidationMessageCatalogue::keys() as $key) {
+        foreach (ValidationMessageCatalogue::keys() as $key) {
             if (in_array($key, $catalogKeys, true)) {
                 $usages[$key] = ['Laravel Validator runtime catalogue'];
             }

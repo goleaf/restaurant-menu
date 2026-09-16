@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands;
 
-use App\Support\Validation\Organizations\OrganizationRules;
-use App\Support\Validation\Media\ImageUploadRules;
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
 use App\Actions\Brands\RestoreBrandAction;
@@ -16,6 +14,8 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\BrandQueryService;
 use App\Support\LocalizedDateFormatter;
+use App\Support\Validation\Media\ImageUploadRules;
+use App\Support\Validation\Organizations\OrganizationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\Paginator;

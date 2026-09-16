@@ -181,7 +181,7 @@ class OrderItem extends Model
      */
     public function historicalModifiers(): array
     {
-        $modifiers = $this->modifiers_snapshot ?? $this->selected_modifiers ?? [];
+        $modifiers = $this->getAttribute('modifiers_snapshot') ?? $this->getAttribute('selected_modifiers') ?? [];
 
         return is_array($modifiers) ? $modifiers : [];
     }

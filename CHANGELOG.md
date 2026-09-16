@@ -4,6 +4,16 @@
 
 # Changelog
 
+## 2026-09-16 — Platform stage 1, implementation awaiting aggregate acceptance
+
+- Update available cached stable Composer packages: Laravel 13.31.0, Fortify 1.39.0, Larastan 3.11.0, PHPStan 2.2.13, Pint 1.31.1 and Pao 1.1.5. Keep local Flux Pro 0.1.1 provenance and current Free/Livewire pair.
+- Align installed ESLint with the lock, update Vite 8.3.0, Playwright 1.63.0 and WebAuthn browser SDK 14.0.0; pin the local Pro runtime generator's Rolldown 1.2.5 independently of Vite's version. Test with isolated Node 24.21.0 LTS/npm 12.0.2.
+- Normalize 75 first-party PHP files for the updated Pint defaults; independent resolved-AST comparison found no semantic differences.
+- Strengthen the existing migration coordinator with explicit PHP identity, isolated source/storage, installed-lock integrity, real platform checks and HTTP runtime assertions. Start local Boost through the site's Herd PHP instead of an unrelated global prerelease alias.
+- Enable Larastan cast-method parsing and repair the existing menu schedule Form coordination defect uncovered by analysis. Preserve malformed historical JSON safety with regression fixtures.
+- Retain production PHP 8.5. Official-source PHP 8.6.0beta3 is an isolated experiment; incompatible stable dependency constraints block application acceptance. No controller migration, route redesign, schema change or production deployment is included.
+
+
 ## 2026-09-16 — Appearance settings in Profile
 
 - Move light, dark and system theme selection into Profile while preserving the existing immediate Flux preference and unfinished profile input.

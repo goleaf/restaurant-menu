@@ -24,10 +24,12 @@ use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
 use App\Models\AuditLog;
 use App\Models\Branch;
+use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
+use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -321,7 +323,6 @@ test('MCP payment totals preserve exact integer amounts from the domain summary'
         ->and($summary['is_fully_paid'])->toBeFalse();
 });
 
-
 test('MCP unpublished menu requires management rights even with branch and token access', function (): void {
     $this->membership->forceFill(['role_id' => Role::query()->where('code', SystemRole::Cook->value)->firstOrFail()->id])->save();
     expect(app(ListMenuItemsTool::class)->shouldRegister(new Request))->toBeFalse();
@@ -332,7 +333,7 @@ test('MCP report preserves separate order and payment totals per currency', func
     $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
     Order::factory()->forTableSession($session)->create(['currency' => 'EUR', 'total_price_cents' => 1234, 'confirmed_at' => now()]);
     Order::factory()->forTableSession($session)->create(['currency' => 'USD', 'total_price_cents' => 5678, 'confirmed_at' => now()]);
-    \App\Models\ManualPayment::factory()->forTableSession($session)->create(['currency' => 'GBP', 'amount_cents' => 901, 'paid_at' => now()]);
+    ManualPayment::factory()->forTableSession($session)->create(['currency' => 'GBP', 'amount_cents' => 901, 'paid_at' => now()]);
     $report = mcpReadPayload(BranchReportTool::class)['report'];
     expect($report['order_total_cents'])->toBeNull()->and($report['single_currency'])->toBeNull()
         ->and($report['currency_totals'])->toBe([
@@ -343,7 +344,7 @@ test('MCP report preserves separate order and payment totals per currency', func
 
 test('MCP report includes received payments in a period without new orders', function (): void {
     $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
-    \App\Models\ManualPayment::factory()->forTableSession($session)->create(['amount_cents' => 987, 'paid_at' => now()]);
+    ManualPayment::factory()->forTableSession($session)->create(['amount_cents' => 987, 'paid_at' => now()]);
     $report = mcpReadPayload(BranchReportTool::class)['report'];
     expect($report['orders_count'])->toBe(0)->and($report['currency_totals'])->toBe([])
         ->and($report['payment_currency_totals'])->toBe([['currency' => 'EUR', 'total_cents' => 987, 'payment_count' => 1]]);
@@ -353,7 +354,7 @@ test('MCP item reads carry historical order currency independently of the branch
     $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
     $order = Order::factory()->forTableSession($session)->withItems()->create(['currency' => 'USD']);
     expect(mcpReadPayload(ListOrdersTool::class, ['order_id' => $order->id])['currency'])->toBe('USD');
-    $draft = \App\Models\DraftOrder::factory()->forTableSession($session)->withItems()->create();
+    $draft = DraftOrder::factory()->forTableSession($session)->withItems()->create();
     expect(mcpReadPayload(ListDraftsTool::class, ['draft_id' => $draft->id])['currency'])->toBe('EUR')
         ->and(mcpReadPayload(ListMenuItemsTool::class)['currency'])->toBe('EUR');
 });
@@ -363,6 +364,7 @@ test('MCP summary limit and domain calculations share the same transaction snaps
     $baseline = DB::transactionLevel();
     $this->mock(BuildManualPaymentSummaryAction::class)->shouldReceive('handle')->once()->andReturnUsing(function () use ($baseline): array {
         expect(DB::transactionLevel())->toBe($baseline + 1);
+
         return ['currency' => 'EUR', 'confirmed_total_cents' => 0];
     });
     mcpReadPayload(PaymentSummaryTool::class, ['table_session_id' => $session->id]);

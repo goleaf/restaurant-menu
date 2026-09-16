@@ -99,5 +99,4 @@ final readonly class BranchReportPeriod
             }
         });
     }
-
 }

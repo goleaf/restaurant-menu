@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
-use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\SystemRole;
@@ -14,6 +13,7 @@ use App\Models\BranchUser;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;

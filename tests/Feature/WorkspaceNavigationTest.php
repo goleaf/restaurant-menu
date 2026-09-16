@@ -1,9 +1,9 @@
 <?php
 
-use App\Services\Navigation\ApplicationNavigationPresenter;
 use App\Enums\SystemRole;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Navigation\ApplicationNavigationPresenter;
 use Database\Seeders\SystemRolesSeeder;
 use Dom\HTMLDocument;
 use Illuminate\Http\Request;

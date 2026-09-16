@@ -7,7 +7,6 @@ namespace App\Support\Validation\Menus;
 use App\Enums\MenuItemVariantType;
 use App\Support\Validation\Common\MoneyRules;
 use App\Support\Validation\Common\RuleFields;
-use App\Support\Validation\Menus\MenuTranslationRules;
 use Illuminate\Validation\Rule;
 
 final class MenuVariantRules

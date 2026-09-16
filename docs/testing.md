@@ -4,6 +4,19 @@
 
 # Testing and quality gates
 
+## Platform verification contract — 2026-09-16
+
+Prompt 1 of the restarted 14-stage series is still in verification. Historical green aggregates below do not certify the current dependency graph. Production remains PHP 8.5; PHP 8.6.0beta3 has been built and probed independently but stable dependency constraints currently prevent an application install/run without bypasses.
+
+The existing `npm run verify:migration -- --php /absolute/php --composer /absolute/composer --npm /absolute/npm-cli.js` is the single aggregate. Select `--expected-php 8.6` only for the experimental binary. `--preflight` explicitly reports a preflight result, never full acceptance. `--coverage-extension /absolute/xdebug.so` creates an owned child-only INI directory; no system or Herd configuration changes. Use a matching `PLAYWRIGHT_BROWSERS_PATH` for the selected Playwright package. Node 24.21.0 LTS/npm 12.0.2 are the tested selected tools.
+
+The coordinator inventories and copies source into an owned temporary workspace, excludes `.env`, application data and generated output, requires real PHP identity/platform checks and compares installed Composer/npm metadata against both lock files before and after copying and at completion. Metadata hashes do not certify dependency bytes; clean locked installations remain separate evidence. All child PHP commands and the browser HTTP runtime assertion use the selected binary. Root/snapshot source mutation, dependency drift, missing tests, skipped/incomplete/risky/deprecated cases, nonzero exit and timeout fail the aggregate. Logs and summary remain in the owned artifact directory. Composer setup/update hooks that create keys, migrate or overwrite published assets are not run implicitly.
+
+The full backend inventory needs a bounded 512 MiB test-process limit on the selected Homebrew PHP (its default 128 MiB exhausted memory during test collection/execution). This is passed only to that coordinator child. Production limits remain unchanged. The existing 4 GiB coverage-report process allowance and >=90% PHP /100% JS line requirements remain unchanged; branch/function percentages are separate. Experimental PHP coverage is not inferred from stable coverage.
+
+Targeted regressions cover real server runtime identity (including a deliberately failing version mismatch), isolated command working directories, timeout termination, platform-bypass rejection, source snapshots, stale installed dependencies and archive/extension capabilities. The menu schedule regression found during updated Larastan analysis reconnects the existing Livewire Form objects and preserves scoped Actions, authorization and unrelated validation errors. Full results are maintained in PROGRESS.md after execution.
+
+
 ## Profile appearance consolidation — 2026-09-16
 
 - The initial regression failed because Profile lacked the appearance section and the old address still returned its standalone page. The browser regression additionally caught a relative redirect target and insufficient mobile control bounds; both are corrected.

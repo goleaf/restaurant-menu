@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -52,6 +52,7 @@ final class RejectDraftTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $draft = $this->action->handle($this->targets->draft($context, $input['draft_id']), $context->user, $input['reason']);
+
         return ['draft_id' => $draft->id, 'status' => $draft->status->value];
     }
 }

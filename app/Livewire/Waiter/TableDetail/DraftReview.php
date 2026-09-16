@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
-use App\Support\Validation\TableSessions\GuestRules;
-use App\Support\Validation\Orders\OrderInputRules;
-use App\Support\Validation\Menus\ModifierRules;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
@@ -19,10 +16,15 @@ use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\TableSessionGuest;
 use App\Services\Waiter\TableDetailChangeDetector;
 use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\MoneyFormatter;
+use App\Support\Validation\Menus\ModifierRules;
+use App\Support\Validation\Orders\OrderInputRules;
+use App\Support\Validation\TableSessions\GuestRules;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -642,14 +644,14 @@ final class DraftReview extends TableDetailSection
 
         return $this->buildModifierSnapshots
             ->groupsFor($menuItem)
-            ->map(fn ($modifierGroup): array => [
+            ->map(fn (ModifierGroup $modifierGroup): array => [
                 'id' => $modifierGroup->id,
                 'name' => $modifierGroup->name,
                 'is_required' => (bool) $modifierGroup->is_required,
                 'min_select' => (int) $modifierGroup->min_select,
                 'max_select' => (int) $modifierGroup->max_select,
                 'options' => $modifierGroup->options
-                    ->map(fn ($modifierOption): array => [
+                    ->map(fn (ModifierOption $modifierOption): array => [
                         'id' => $modifierOption->id,
                         'name' => $modifierOption->name,
                         'price_delta_cents' => $modifierOption->price_delta_cents,

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -52,6 +52,7 @@ final class ServeTicketItemTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $item = $this->action->handle($this->targets->ticketItem($context, $input['ticket_item_id']), $context->user);
+
         return ['ticket_item_id' => $item->id, 'served' => $item->served_at !== null];
     }
 }

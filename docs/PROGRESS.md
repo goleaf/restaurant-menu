@@ -4,6 +4,18 @@
 
 # Restaurant Menu completion progress
 
+## Platform execution checkpoint — 2026-09-16
+
+This execution started at `2255449`, preserving earlier staged platform preparation. Working artifacts: `/private/tmp/restaurant-platform-stage1/`; initial index/worktree evidence: system temporary `restaurant-platform-root-motmqk6a`. Main branch, Herd selection, global binaries, working database/storage and application key are unchanged.
+
+Implemented independent work: six cached Composer updates; Vite 8.3.0, Playwright 1.63.0, SimpleWebAuthn 14.0.0; repaired physical ESLint installation; Node 24.21.0/npm 12.0.2 isolated toolchain; explicit Pro Rolldown 1.2.5 pin; isolated executable-aware verification and HTTP runtime proof. Current stable preflight passes. Authentication/settings after Laravel/Fortify update: 58 tests/185 assertions. Architecture/SCSS:25 tests; Pro runtime140files/10patches; production Vite build and asset budgets pass. First JS coverage run:177 tests,100% lines/95.26% branches/98.32% functions; subsequent verification-helper edits require the final repeat. Runtime/coordinator unit28/59; real WebKit HTTP identity1/4 passes on8.5.10 and deliberately mismatched8.6 expectation fails as required.
+
+PHP 8.6.0beta3 built from hash-verified official source; extension/codecs and1120-file syntax pass on the recorded intermediate source. Composer excludes8.6 through root plus Nette Schema/Utils, Sabberworm and ParaTest, including their current stable releases. No application/browser/coverage/performance pass on8.6 is claimed. Current full stable gates, clean final lock installation and independent review are pending; no platform commit/push yet.
+
+## Platform foundation / prompt 1 of 14 — 2026-09-16 (in progress)
+
+Current stage starts at `73f783d`, with pre-existing staged/unstaged MCP and domain/UI changes preserved in a private baseline inventory. Runtime, frontend and verification-infrastructure research is delegated with disjoint ownership; root owns manifests, locks, common entrypoints and canonical documents. No dependency upgrade or PHP 8.6 compatibility pass is claimed yet. The existing unfinished MCP feature work remains distinct. Execution follows the P1.1–P1.7 checklist in IMPLEMENTATION_PLAN.md.
+
 ## 2026-09-16 — Flux component-system continuation (verification in progress)
 
 Started from clean `76932c7`, following the delivered SCSS/Alpine migration. Independent navigation/forms/theme agents implemented bounded changes; a separate reviewer caught the initial grid cascade conflict and breadcrumb translation defect before final verification. Both have explicit regressions. Changes cover keyboard navigation, the three structure lists, semantic danger controls, menu label selection, shared upload/focal errors and localized nested Pro search/date labels. Notification business behavior is preserved and a new browser case observes actual polling after ten navigation transitions and history.

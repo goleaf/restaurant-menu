@@ -21,9 +21,9 @@ final class ExecuteMcpMutationAction
     public function __construct(private readonly McpAccess $access) {}
 
     /**
-     * @param array<string, mixed> $input Validated normalized arguments in schema order.
-     * @param Closure(McpContext): AuthorizationResponse $authorize Current resource authorization, including completed replays.
-     * @param Closure(McpContext): array<string, mixed> $operation Safe, explicitly projected result only.
+     * @param  array<string, mixed>  $input  Validated normalized arguments in schema order.
+     * @param  Closure(McpContext): mixed  $authorize  Current resource authorization; only an allowed AuthorizationResponse is accepted.
+     * @param  Closure(McpContext): array<string, mixed>  $operation  Safe, explicitly projected result only.
      * @return array<string, mixed>
      */
     public function handle(McpAbility $ability, string $key, array $input, Closure $authorize, Closure $operation): array

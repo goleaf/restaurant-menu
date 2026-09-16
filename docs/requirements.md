@@ -4,6 +4,16 @@
 
 # Canonical requirements catalogue
 
+## Platform foundation and fourteen-stage series — 2026-09-16
+
+This refines `sec-dependency-001`, `ops-deployment-001`, `test-feature-001`, `test-architecture-001`, `livewire-001`, `tailwind-001` and the existing interface requirements; it does not add another requirement catalogue. Prompt 1 updates the platform and tests an isolated PHP 8.6 prerelease while preserving supported stable PHP 8.5 operation. Root Composer constraints may admit a runtime only after its real dependency/platform and application acceptance gates pass. Stable dependency selection, one Composer/npm lock graph, no platform emulation/bypass and independent runtime identification are mandatory. PHP 8.6 runtime probes or syntax checks alone do not establish application support.
+
+The series standard is class-based Livewire for application pages/forms/search/filters/pagination/actions, separate Blade views, focused Actions for transactions/invariants/retries, read services for bounded reads, Policies for authorization, Rules for value contracts and Form objects for input/errors. Do not create new application MVC controllers. Prompt 2 must decide migration/removal or a proven narrow authorized transport contract for every existing controller; prompt 1 preserves their routes. Framework/Fortify/Livewire endpoints are not alternative application architecture. Large downloads/restore require memory/streaming/lock analysis rather than mechanical Base64 Livewire conversion.
+
+Use genuine available Flux Pro components with truthful local provenance; unavailable official capabilities must not be reimplemented under an official name. First-party styles originate in SCSS; Tailwind/Flux retain their separate CSS bridge and existing generated token/PDF/print/emergency artifacts. Alpine owns only necessary transient browser state. EN/LT/RU, server authorization, integer money, historical snapshots and tenant boundaries remain mandatory.
+
+Changed layouts are mobile-first Grid/Flex with logical properties and available-space sizing. Use container queries for reusable components whose behavior depends on container width, appropriate dynamic viewport units for mobile height, and supported progressive enhancements through `@supports`. Retain a working baseline, one active form, keyboard/touch/200% zoom support and no global overflow masking. Check 320/390/768/1024/1440 CSS-pixel widths, languages and both themes. Prompt 1 restores compatibility only; later prompts own redesigns.
+
 ## Profile appearance preferences — 2026-09-16
 
 `blade-001`, `livewire-001`, `ui-accessibility-001` and `ui-responsive-001` include light, dark and system appearance controls on `/settings/profile`, alongside profile information and language. Theme selection applies immediately through the existing Flux browser preference without submitting or discarding the profile draft. Settings navigation exposes Profile and Security; the authenticated legacy `/settings/appearance` address redirects to Profile.

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Support\Media\LocalImageConstraints;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Menus\AddMenuItemImagesAction;
 use App\Actions\Menus\DeleteMenuItemAction;
 use App\Models\MenuItem;
 use App\Support\LocalImageVariants;
+use App\Support\Media\LocalImageConstraints;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -59,8 +59,9 @@ test('textured image compression compares the same input with its complete displ
         }
     }
     ob_start();
-    imagejpeg($image, null, 90);
+    imagejpeg($image, null, 85);
     $contents = (string) ob_get_clean();
+    expect(strlen($contents))->toBeLessThanOrEqual(LocalImageConstraints::MAX_IMAGE_KILOBYTES * 1024);
     $file = UploadedFile::fake()->createWithContent('textured.jpg', $contents);
     $path = app(StoreLocalImageAction::class)->handle($file, 'media/textured');
     [$display, $thumbnail] = LocalImageVariants::paths($path);

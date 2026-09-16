@@ -104,7 +104,7 @@ test('every database-seeded demo role signs in and reaches its prepared workspac
     foreach (DemoAccountCatalog::accounts() as $account) {
         $user = User::query()->where('email', $account['email'])->firstOrFail();
 
-        $this->post(route('demo-login.authenticate', ['role' => $account['role']->value]))
+        $this->post('https://ruflo.test'.route('demo-login.authenticate', ['role' => $account['role']->value], absolute: false))
             ->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticatedAs($user);

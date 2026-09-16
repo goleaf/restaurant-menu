@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction;
 use App\Actions\Bar\UpdateBarTicketItemStatusAction;
+use App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -54,8 +56,9 @@ final class UpdateTicketItemTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $target = $this->targets->ticketItem($context, $input['ticket_item_id']);
-        $action = $target->kitchenTicket->kitchenDepartment->type === \App\Enums\KitchenDepartmentType::Bar ? $this->bar : $this->kitchen;
-        $item = $action->handle($target->id, \App\Enums\KitchenTicketItemStatus::from($input['status']), $context->user);
+        $action = $target->kitchenTicket->kitchenDepartment->type === KitchenDepartmentType::Bar ? $this->bar : $this->kitchen;
+        $item = $action->handle($target->id, KitchenTicketItemStatus::from($input['status']), $context->user);
+
         return ['ticket_item_id' => $item->id, 'status' => $item->status->value];
     }
 }

@@ -8,9 +8,9 @@ use App\Models\Branch;
 use App\Models\MenuCategory;
 use App\Services\Menus\CatalogData;
 use App\Support\Validation\Menus\CategoryRules;
-use App\Support\Validation\Menus\MenuTranslationRules;
 use App\Support\Validation\Menus\MenuFieldLabels;
 use App\Support\Validation\Menus\MenuScopeRules;
+use App\Support\Validation\Menus\MenuTranslationRules;
 use Livewire\Form;
 
 final class CategoryForm extends Form
@@ -41,7 +41,7 @@ final class CategoryForm extends Form
         $this->categoryName = is_string($this->categoryName) ? trim($this->categoryName) : $this->categoryName;
         $this->categoryDescription = is_string($this->categoryDescription) ? trim($this->categoryDescription) : $this->categoryDescription;
         $rules = [...CategoryRules::category(iconValues: array_keys(CatalogData::iconOptions())), ...MenuTranslationRules::menuTranslations('categoryTranslations', 160, 1000)];
-        $menuId = $category?->menu_id ?? $this->categoryMenuId;
+        $menuId = $category->menu_id ?? $this->categoryMenuId;
         $unique = MenuScopeRules::categoryName($menuId, $category);
         if ($unique !== null) {
             $rules['categoryName'][] = $unique;

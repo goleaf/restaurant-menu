@@ -4,6 +4,29 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-16 — Platform foundation, prompt 1 of 14 (active)
+
+Current execution checkpoint (root, after pre-existing preparation): actual starting HEAD `2255449`; cached stable Composer groups and registry frontend groups are installed. P1.1 inventory/provenance complete; P1.2 executable/snapshot/HTTP isolation implemented with targeted evidence; P1.3 selected updates installed, final clean-install proof pending; P1.4 confirmed analyser/schedule compatibility repairs in verification. P1.5–P1.7 remain pending. PHP 8.6 application acceptance is blocked by stable dependency constraints, not by missing runtime; Beta3 standalone probes/syntax are available. See CURRENT_VERSION.md and PROGRESS.md for dated versions/results.
+
+
+Scope: one supported stable runtime plus a real isolated PHP 8.6 experiment; preserve routes, product workflows, data, authentication and MCP capability/write defaults. Controller migration is prompt 2, not completed here. This section owns the current stage; earlier operation-boundary and MCP entries remain separate unfinished work.
+
+Baseline: local `main` at `73f783d13d3e3489b4cd7749ad4111ba3de979d7`. The initial staged/unstaged inventory and patches are in ignored `storage/app/private/platform-2026-09-16/`. They include unfinished MCP tools/resources/prompts and unrelated menu, factory, seeder and backup-controller changes. These are not platform deliverables and must not be broadly staged or committed by this stage. Working tree and index can change concurrently; check ownership before every edit and commit.
+
+Confirmed constraints: Composer requires `>=8.5.0 <8.6.0`; PHP 8.6 is additionally excluded by installed Nette Schema/Utils, Sabberworm and ParaTest constraints. Laravel's official support table currently lists 8.3–8.5. PHP 8.6.0 Beta 3 is experimental only. Existing verification chooses PHP from PATH and needs explicit binary propagation. Official Packagist shows newer stable releases than several installed packages; installation must use verified cached archives when their only download source is prohibited GitHub. No platform emulation, ignored requirements, vendor patches, prerelease dependency graph, production switch or new application controller is authorized.
+
+| Step | Owner / files | Acceptance and verification | Status |
+| --- | --- | --- | --- |
+| P1.1 Baseline and compatibility map | Root manifests/locks/docs; runtime and frontend researchers read-only | Record declared/locked/installed/latest/target versions, PHP release provenance, real extensions/codecs/config, all prior changes; inspect release archives and scripts | In progress |
+| P1.2 Deterministic isolated verification | Root `tests/verify-migration.mjs`; assigned worker verification helpers and browser runtime assertions | Explicit PHP binary in Composer, tools, concurrency and browser process; isolated DB/storage/cache/mail; real platform checks, discovery parity, errors/timeouts retained | Pending P1.1 |
+| P1.3 Compatible dependency groups | Root Composer/npm manifests and locks | Sequential dry-run/install using allowed sources; stable graph; preserve local Pro 0.1.1 provenance; checkpoint targeted tests after each group; clean disposable lock installation | Pending P1.1 |
+| P1.4 Confirmed compatibility repairs | Assigned source/test owners, root integration | Regression tests for actual PHP 8.6/updated-dependency failures; stable PHP syntax; no changes to product contracts or security controls | Pending P1.2–3 |
+| P1.5 Two-runtime test and browser matrix | Root aggregate runner, workers bounded diagnostics only | Same discovered backend suite on both actual runtimes; stable coverage >=90%, JS lines 100%; isolated browser PHP identity, complete journeys, locale/theme/responsive evidence, file/QR/PDF/backup scenarios | Pending P1.4 |
+| P1.6 Reproducibility and measurements | Root sequential runs | Production build, SCSS HMR/artifact drift, audits, caches, controlled cold/warm latency/memory/query/payload/asset measurements; final source digest and exact failure/skip records | Pending P1.5 |
+| P1.7 Review and handoff | Independent reviewer read-only; root canonical docs/scoped git | Current stable/experimental status, source-linked version decisions, prompt-2 controller inventory; preserve GitHub block in first-party Markdown; commit/push only owned verified changes after safe-index check | Pending P1.6 |
+
+The series standard is SCSS for first-party styles with a separate Tailwind/Flux CSS bridge; class-based Livewire for new application screens and CRUD, focused Actions/query services/Policies/Rules/Forms, available genuine Flux Pro components, EN/LT/RU and server authorization. Existing controller routes remain until prompt 2 assigns migration/removal or a tested narrow transport exception. Layout changes in this stage are limited to compatibility regressions. Responsive follow-up uses mobile-first Grid/Flex, logical properties, appropriate container queries and dynamic viewport units with progressive enhancement, no duplicate active forms or overflow masking.
+
 ## 2026-09-16 — Business-operation boundary migration (active)
 
 User-authorized scope covers all first-party operations; the requirements catalogue remains canonical. Baseline: local `main` at `f3ab943`, with pre-existing profile/appearance changes and concurrent MCP work. Preserve those changes; no dependency, workflow or UI-library migration belongs to this task. Root owns shared contracts, JSON catalogues, documentation, integration and delivery. Domain workers own disjoint explicitly assigned files. Only the root runs aggregate formatters and test suites.
@@ -907,3 +930,25 @@ Bring the present checkout to a locally complete, reproducibly tested, release-r
 - **Completed product follow-up:** the dish gallery and `/organizations` 26-resource CRUD matrix are complete. The focused organization slice passes 179 tests/1,746 assertions, its browser journey passes 1 scenario/183 assertions, and the full browser suite passes 5 scenarios/376 assertions after the production build/cache cycle.
 - **Completed security follow-up:** public registration is fully disabled and the hash-only, recipient/tenant/role-bound invitation lifecycle now covers creation, token-free review, atomic acceptance, replay, expiry, secure reissue, revoke, audit and exact role/tenant isolation. Fresh verification evidence is recorded in `PROGRESS.md` and `testing.md`.
 - **P2:** external/operator evidence remains explicitly bounded as described above; no production deployment, release publication, physical-device claim, or unapproved shared-allocation feature was performed.
+
+
+## Prompt 2 handoff — remaining controller inventory, 2026-09-16
+
+Inventory only; no controller route was migrated or removed in prompt 1. `app/Http/Controllers/Controller.php` is the shared base, not a user endpoint. Each concrete controller below requires a fresh migration/removal/transport decision with authorization and tests. Existing narrow transport candidates are not automatic approval to retain screens.
+
+| Controller | Current purpose | Prompt 2 evaluation |
+| --- | --- | --- |
+| Auth/ShowDemoLoginController | Non-production role entry page | Class-based Livewire page candidate |
+| Auth/LoginAsDemoRoleController | Guarded demo role/session transition | Evaluate Livewire mutation with exact host/auth/session safeguards |
+| Auth/LoginAsLocalUserController | Guarded local identity/session transition | Evaluate Livewire mutation with current identity checks |
+| Invitations/ShowInvitationController | Bearer resolution, URL cleanup, recipient view | Separate credential transport from Livewire presentation |
+| Invitations/RegisterInvitationController | Invited account creation/session transition | Livewire Form plus existing transactional Action candidate |
+| Invitations/AcceptInvitationController | Existing-account acceptance | Livewire mutation plus existing authorization/replay Action candidate |
+| Invitations/SwitchInvitationAccountController | Recipient account switching/logout | Preserve session/credential transition; prove any transport exception |
+| Organizations/DownloadBranchQrPdfController | Authorized QR label PDF | Assess download size/memory and dedicated policy transport |
+| Restaurant/DownloadBranchCsvExportController | Bounded streamed CSV | Preserve streaming/tenant validation; prove narrow transport |
+| Restaurant/DownloadBranchPdfReportController | Branch report PDF | Assess bounded download with authorization |
+| Superadmin/DownloadMediaBackupController | Private media archive stream | Large-file streaming/memory exception candidate |
+| Superadmin/DownloadSqliteBackupController | Consistent private SQLite snapshot | Native snapshot/stream with recent-auth contract |
+| Superadmin/ShowSqliteBackupRestoreController | Restore confirmation screen | Class-based Livewire presentation candidate |
+| Superadmin/RestoreSqliteBackupController | Exclusive-barrier restore before session/auth reads | Preserve lock, one-time authorization, rollback and logout; prove narrow protocol transport |

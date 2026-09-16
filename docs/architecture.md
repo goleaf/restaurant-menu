@@ -4,6 +4,14 @@
 
 # Architecture
 
+## Current platform and series boundary — 2026-09-16
+
+Supported production remains stable PHP 8.5; the isolated PHP 8.6.0beta3 build is experimental and currently rejected by the real locked dependency requirements. See CURRENT_VERSION.md for dated source-backed choices. No global runtime, Herd site, application key, schema, mail integration or production storage is changed by platform verification.
+
+`npm run verify:migration` now requires an explicit PHP binary and Composer path. It snapshots first-party source without credentials/databases/runtime data, copies installed dependencies into a disposable workspace, gives each run owned storage/cache/session paths and a generated test-only key, and propagates the selected PHP/Node/npm into children. Real installed and locked platform checks precede application execution. It records source/lock digests, runtime identity, discovery/execution equality, exit codes/timeouts and strict warnings/deprecations; source changes invalidate the aggregate. Optional Xdebug loading is scoped to the stable coverage child. The test-only HTTP identity route proves the actual serving process and never becomes a production endpoint. Clean lock installation is separate evidence from the copied-dependency run.
+
+New application interfaces must use class-based Livewire plus existing Actions/read services/Policies/Rules/Forms. Existing controller transports are preserved for prompt 2's explicit disposition; their historical allowlist is not blanket permission to retain application MVC screens. No server-side category of Flux controllers exists. Current SCSS and responsive contracts are in requirements.md; historical native-CSS and controller inventories below retain their dated scope.
+
 ## Profile settings consolidation — 2026-09-16
 
 Appearance is a presentation section of the existing Profile Livewire screen. The legacy `appearance.edit` route uses Laravel's authenticated redirect boundary; `LivewireInteractionBoundaryTest` now inventories 29 class-based page routes and 18 ordinary HTTP boundaries. The original migration counts below describe the earlier source. No database, profile Action, authentication or theme-storage contract changes.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Mcp\ExecuteMcpMutationAction;
+use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Enums\McpAbility;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
@@ -52,6 +52,7 @@ final class ConfirmDraftTool extends RestaurantMutationTool
     protected function perform(McpContext $context, array $input): array
     {
         $order = $this->action->handle($this->targets->draft($context, $input['draft_id']), $context->user);
+
         return ['order_id' => $order->id, 'draft_id' => $input['draft_id'], 'status' => $order->status->value, 'total_cents' => $order->total_price_cents, 'currency' => $order->currency];
     }
 }

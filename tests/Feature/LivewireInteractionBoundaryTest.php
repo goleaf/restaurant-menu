@@ -42,7 +42,6 @@ test('every product page route uses its explicit class based Livewire screen', f
         'restaurant.waiter.tables.show' => Screens\Waiter\TableDetail::class,
         'superadmin.dashboard' => Screens\Superadmin\Dashboard::class,
         'profile.edit' => Screens\Settings\Profile::class,
-        'appearance.edit' => Screens\Settings\Appearance::class,
         'security.edit' => Screens\Settings\Security::class,
     ];
     $actual = [];
@@ -79,6 +78,7 @@ test('ordinary first party HTTP routes are limited to explicit protocol and docu
         'home' => ViewController::class,
         'dashboard' => ViewController::class,
         'settings.index' => RedirectController::class,
+        'appearance.edit' => RedirectController::class,
         'demo-login.index' => Controllers\Auth\ShowDemoLoginController::class,
         'demo-login.authenticate' => Controllers\Auth\LoginAsDemoRoleController::class,
         'invitations.show' => Controllers\Invitations\ShowInvitationController::class,

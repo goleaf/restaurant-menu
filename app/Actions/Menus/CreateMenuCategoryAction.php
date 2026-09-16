@@ -6,8 +6,10 @@ namespace App\Actions\Menus;
 
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\User;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
 final class CreateMenuCategoryAction
@@ -19,11 +21,19 @@ final class CreateMenuCategoryAction
     /**
      * @param  array{parent_id: int|null, name: string, description: string|null, icon: string|null, sort_order: int, is_active: bool, translations?: array<string, array{name?: string|null, description?: string|null}>}  $data
      */
-    public function handle(Menu $menu, array $data): MenuCategory
+    public function handle(Menu $menu, array $data, User $actor): MenuCategory
     {
-        $this->ensureParentBelongsToMenu($menu, $data['parent_id']);
+        return DB::transaction(function () use ($menu, $data, $actor): MenuCategory {
+            $menu = Menu::query()
+                ->select(['id', 'branch_id', 'deleted_at'])
+                ->with('branch:id,organization_id,deleted_at')
+                ->where('branch_id', $menu->getRawOriginal('branch_id'))
+                ->whereKey($menu->getKey())
+                ->firstOrFail();
+            Gate::forUser(User::query()->select(['id'])->whereKey($actor->getKey())->first())
+                ->authorize('update', $menu);
+            $this->ensureParentBelongsToMenu($menu, $data['parent_id']);
 
-        return DB::transaction(function () use ($menu, $data): MenuCategory {
             $category = $menu->categories()->create([
                 'parent_id' => $data['parent_id'],
                 'name' => PlainText::required($data['name'], 160, squish: true),

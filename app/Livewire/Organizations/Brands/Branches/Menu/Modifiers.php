@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Support\Validation\Menus\ModifierRules;
+use App\Support\Validation\Menus\MenuTranslationRules;
 use App\Actions\Modifiers\AssignModifierGroupToMenuItemAction;
 use App\Actions\Modifiers\CreateModifierGroupAction;
 use App\Actions\Modifiers\CreateModifierOptionAction;
@@ -19,7 +21,6 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Validation\Rule;
@@ -123,11 +124,11 @@ class Modifiers extends BranchMenuComponent
     {
         $this->authorizeBranchAbility('manageMenu');
         $this->modifierGroupName = $this->trimInput($this->modifierGroupName);
-        $rules = RestaurantValidationRules::modifierGroup();
+        $rules = ModifierRules::modifierGroup();
         $rules['modifierGroupName'][] = $this->groupNameUniqueRule();
         $validated = $this->validate([
             ...$rules,
-            ...RestaurantValidationRules::translatedNames('modifierGroupTranslations'),
+            ...MenuTranslationRules::translatedNames('modifierGroupTranslations'),
         ]);
 
         $group = $createGroup->handle($this->branch, [
@@ -179,11 +180,11 @@ class Modifiers extends BranchMenuComponent
         }
 
         $this->editingModifierGroupName = $this->trimInput($this->editingModifierGroupName);
-        $rules = RestaurantValidationRules::modifierGroup('editing');
+        $rules = ModifierRules::modifierGroup('editing');
         $rules['editingModifierGroupName'][] = $this->groupNameUniqueRule($this->editingModifierGroupId);
         $validated = $this->validate([
             ...$rules,
-            ...RestaurantValidationRules::translatedNames('editingModifierGroupTranslations'),
+            ...MenuTranslationRules::translatedNames('editingModifierGroupTranslations'),
         ]);
         $updateGroup->handle($this->findGroup($this->editingModifierGroupId), [
             'name' => $validated['editingModifierGroupName'],
@@ -222,7 +223,7 @@ class Modifiers extends BranchMenuComponent
         $this->authorizeBranchAbility('manageMenu');
         $this->modifierOptionName = $this->trimInput($this->modifierOptionName);
         $this->refreshMutationCapabilities();
-        $rules = RestaurantValidationRules::modifierOption(
+        $rules = ModifierRules::modifierOption(
             canChangePrices: $this->canChangePrices,
             canChangeAvailability: $this->canChangeAvailability,
         );
@@ -230,7 +231,7 @@ class Modifiers extends BranchMenuComponent
         $rules['modifierOptionName'][] = $this->optionNameUniqueRule((int) $this->selectionValue($this->modifierOptionGroupId));
         $rules = [
             ...$rules,
-            ...RestaurantValidationRules::translatedNames('modifierOptionTranslations'),
+            ...MenuTranslationRules::translatedNames('modifierOptionTranslations'),
         ];
         $validated = $this->validate($rules);
         $group = $this->findGroup((int) $validated['modifierOptionGroupId']);
@@ -273,7 +274,7 @@ class Modifiers extends BranchMenuComponent
         $this->editingModifierOptionName = $this->trimInput($this->editingModifierOptionName);
         $this->refreshMutationCapabilities();
         $option = $this->findOption($this->editingModifierOptionId);
-        $rules = RestaurantValidationRules::modifierOption(
+        $rules = ModifierRules::modifierOption(
             prefix: 'editing',
             canChangePrices: $this->canChangePrices,
             canChangeAvailability: $this->canChangeAvailability,
@@ -284,7 +285,7 @@ class Modifiers extends BranchMenuComponent
         );
         $validated = $this->validate([
             ...$rules,
-            ...RestaurantValidationRules::translatedNames('editingModifierOptionTranslations'),
+            ...MenuTranslationRules::translatedNames('editingModifierOptionTranslations'),
         ]);
         $updateOption->handle($this->currentUser(), $this->branch, $option, $this->optionData($validated, 'editing'));
         $this->cancelModifierOptionEditing();

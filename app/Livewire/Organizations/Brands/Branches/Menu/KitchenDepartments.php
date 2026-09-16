@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Support\Validation\Branches\KitchenDepartmentRules;
 use App\Actions\KitchenDepartments\CreateKitchenDepartmentAction;
 use App\Actions\KitchenDepartments\DeleteKitchenDepartmentAction;
 use App\Actions\KitchenDepartments\SetKitchenDepartmentActiveAction;
@@ -11,7 +12,6 @@ use App\Actions\KitchenDepartments\UpdateKitchenDepartmentAction;
 use App\Enums\KitchenDepartmentType;
 use App\Models\KitchenDepartment;
 use App\Services\Menus\CatalogData;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Validation\Rule;
@@ -188,7 +188,7 @@ class KitchenDepartments extends BranchMenuComponent
             $uniqueName->ignore($this->editingDepartmentId);
         }
 
-        $rules = RestaurantValidationRules::kitchenDepartment($prefix);
+        $rules = KitchenDepartmentRules::kitchenDepartment($prefix);
         $rules[$nameField] = ['required', 'string', 'max:120', $uniqueName];
         $rules[$sortOrderField][] = 'numeric';
 

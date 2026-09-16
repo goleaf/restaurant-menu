@@ -380,7 +380,7 @@ class AuditTranslationsCommand extends Command
     {
         $findings = [];
         $scannedFiles = 0;
-        $usedKeys = [];
+        $usedKeys = array_values(array_intersect($catalogKeys, \App\Support\Localization\ValidationMessageCatalogue::keys()));
         $catalogLookup = array_fill_keys($catalogKeys, true);
 
         foreach ($this->scanFiles($paths) as $file) {

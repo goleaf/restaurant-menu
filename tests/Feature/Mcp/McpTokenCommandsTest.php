@@ -25,7 +25,7 @@ beforeEach(function (): void {
 });
 
 test('MCP CLI issues a read-only credential once with bounded defaults and safe metadata', function (): void {
-    $this->freezeTime();
+    $this->freezeSecond();
 
     expect(Artisan::call('restaurant:mcp-token:issue', [
         'user' => $this->user->id, 'branch' => $this->branch->id,
@@ -219,4 +219,20 @@ test('MCP CLI rejects malformed revoke identifiers', function (string $field, mi
     'malformed token' => ['token', '1wrong'],
     'zero token' => ['token', '0'],
     'boolean token' => ['token', true],
+]);
+
+test('MCP CLI rejects non-scalar and terminal-control inputs before issuing a token', function (string $field, mixed $value): void {
+    expect(Artisan::call('restaurant:mcp-token:issue', [
+        'user' => $this->user->id, 'branch' => $this->branch->id, $field => $value,
+    ]))->toBe(1)
+        ->and(Artisan::output())->toContain(__('mcp.cli.invalid_input'))->not->toContain('rm_mcp_')
+        ->and(McpAccessToken::query()->count())->toBe(0);
+})->with([
+    'boolean name' => ['--name', true],
+    'array name' => ['--name', ['test']],
+    'float hours' => ['--hours', 24.0],
+    'scientific hours' => ['--hours', '2e1'],
+    'newlines in name' => ['--name', "client\nspoofed output"],
+    'escape sequence in name' => ['--name', "client\033[2J"],
+    'non-list abilities' => ['--ability', ['unexpected' => 'branch_context']],
 ]);

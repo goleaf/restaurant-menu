@@ -4,6 +4,10 @@
 
 # Frontend architecture
 
+## Profile appearance preferences — 2026-09-16
+
+The profile page owns the labelled appearance section below its information form and above account deletion. Its existing Flux segmented radio group uses `$flux.appearance`; browser persistence and the account menu's quick theme controls share the same state. It does not participate in profile submission or add server state. Settings navigation contains Profile and Security. The named, authenticated `appearance.edit` route remains a compatibility redirect to `profile.edit`; the separate Appearance Livewire class/view are removed.
+
 ## 2026-09-16 — Current component system continuation
 
 The organization → brand → branch lists share `components/structure/list-toolbar` with Flux search, filters, visible-row count, loading/offline and explicit clear search. The existing simple paginator remains accessible and recovers from an empty late page after archive/restore without clearing filters. Breadcrumb labels are literal by default; static translation keys opt in explicitly.

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Backups;
 
-use App\Actions\Media\StoreLocalImageAction;
+use App\Support\Media\LocalImageConstraints;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\Str;
@@ -131,7 +131,7 @@ final class CreateMediaZipBackupAction
             return [];
         }
 
-        $allowedExtensions = StoreLocalImageAction::allowedExtensions();
+        $allowedExtensions = LocalImageConstraints::allowedExtensions();
         $files = collect($this->files->allFiles($mediaRoot))
             ->filter(function (SplFileInfo $file) use ($allowedExtensions, $mediaRoot): bool {
                 if ($file->isLink() || ! $file->isReadable()) {

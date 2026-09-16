@@ -8,11 +8,48 @@ use App\Enums\OrderStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\Invitation;
+use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
+use App\Models\User;
+
+test('accepted invitation fixtures bind the recipient email to the accepted account', function (bool $suppliedUser): void {
+    $user = $suppliedUser ? User::factory()->create(['email' => 'recipient@example.test']) : null;
+    $invitation = Invitation::factory()->acceptedBy($user)->create();
+
+    expect($invitation->email)->toBe($invitation->acceptedBy->email)
+        ->and($invitation->accepted_at)->not->toBeNull();
+})->with([true, false]);
+
+test('distinct menu translation fixtures retain independent locale text and optional descriptions', function (): void {
+    $item = MenuItem::factory()->withDistinctTranslations()->create();
+    $translations = $item->translations()->orderBy('language_code')->get()->keyBy('language_code');
+
+    expect($translations)->toHaveCount(3)
+        ->and($translations->pluck('name')->unique())->toHaveCount(3)
+        ->and($translations->pluck('description')->unique())->toHaveCount(3);
+
+    $original = $translations->map->getAttributes()->all();
+    $translations['lt']->update(['name' => 'Pakeistas patiekalas']);
+    $item->load('translations');
+    $updated = $item->translations->keyBy('language_code');
+
+    expect($updated['en']->getAttributes())->toBe($original['en'])
+        ->and($updated['ru']->getAttributes())->toBe($original['ru'])
+        ->and($updated['lt']->name)->toBe('Pakeistas patiekalas');
+
+    $withoutDescriptions = MenuItem::factory()->withDistinctTranslations()->withoutDescription()->create();
+    expect($withoutDescriptions->description)->toBeNull()
+        ->and($withoutDescriptions->translations()->whereNotNull('description')->exists())->toBeFalse();
+
+    $long = MenuItem::factory()->withLongText()->withDistinctTranslations()->create();
+    expect(mb_strlen($long->name))->toBe(180)
+        ->and(mb_strlen($long->description))->toBe(1200);
+});
 
 test('variant item factory defaults share the menu branch and parent session', function (string $model) {
     $variant = MenuItemVariant::factory()->create(['price_cents' => 725]);

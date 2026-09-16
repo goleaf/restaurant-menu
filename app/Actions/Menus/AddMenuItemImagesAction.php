@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
+use App\Support\Validation\Media\ImageUploadRules;
 use App\Actions\Media\DeleteRolledBackLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\MenuOperationKind;
@@ -13,7 +14,6 @@ use App\Models\MenuItem;
 use App\Models\MenuItemImage;
 use App\Models\MenuOperation;
 use App\Models\User;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -56,8 +56,8 @@ final class AddMenuItemImagesAction
 
             Validator::make(
                 ['images' => $files],
-                RestaurantValidationRules::imageUploads('images', MenuItem::MAX_IMAGES),
-                StoreLocalImageAction::validationMessages('images.*') + [
+                ImageUploadRules::imageUploads('images', MenuItem::MAX_IMAGES),
+                ImageUploadRules::messages('images.*') + [
                     'images.max' => __('uploads.errors.maximum_images', ['count' => MenuItem::MAX_IMAGES]),
                 ],
             )->validate();

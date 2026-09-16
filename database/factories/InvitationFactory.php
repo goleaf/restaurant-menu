@@ -56,9 +56,11 @@ class InvitationFactory extends Factory
     public function acceptedBy(?User $user = null): static
     {
         return $this->state(fn (): array => [
+            ...($user instanceof User ? ['email' => $user->email] : []),
             'status' => InvitationStatus::Accepted,
             'expires_at' => now()->addDays(7),
-            'accepted_by_user_id' => $user instanceof User ? $user->id : User::factory(),
+            'accepted_by_user_id' => $user instanceof User ? $user->id : fn (array $attributes): int => User::factory()
+                ->create(['email' => $attributes['email']])->id,
             'accepted_at' => now(),
         ]);
     }

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms\Onboarding;
 
+use App\Support\Validation\Organizations\OrganizationRules;
+use App\Support\Validation\Menus\MenuItemRules;
+use App\Support\Validation\Branches\ServicePointRules;
+use App\Support\Validation\Branches\BranchProfileRules;
+use App\Support\Validation\Branches\AreaRules;
 use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -11,7 +16,6 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Support\PlainText;
 use App\Support\RestaurantSetupOptions;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -57,7 +61,7 @@ final class RestaurantSetupForm extends Form
     public function validateOrganization(User $user, ?int $existingId = null): array
     {
         $this->organizationName = $this->plainText($this->organizationName);
-        $rules = RestaurantValidationRules::organizationName('organizationName');
+        $rules = OrganizationRules::organizationName('organizationName');
         array_unshift($rules['organizationName'], 'bail');
         $rules['organizationName'][] = Rule::unique((new Organization)->getTable(), 'name')
             ->where(fn ($query) => $query->where('owner_user_id', $user->id))
@@ -70,7 +74,7 @@ final class RestaurantSetupForm extends Form
     public function validateBrand(Organization $organization, ?int $existingId = null): array
     {
         $this->brandName = $this->plainText($this->brandName);
-        $rules = RestaurantValidationRules::brandName('brandName');
+        $rules = OrganizationRules::brandName('brandName');
         array_unshift($rules['brandName'], 'bail');
         $rules['brandName'][] = Rule::unique((new Brand)->getTable(), 'name')
             ->where(fn ($query) => $query->where('organization_id', $organization->id))
@@ -89,7 +93,7 @@ final class RestaurantSetupForm extends Form
         $this->branchTimezone = $this->scalarString($this->branchTimezone);
         $this->branchCurrency = SupportedCurrency::clean($this->scalarString($this->branchCurrency));
 
-        $rules = RestaurantValidationRules::onboardingBranch();
+        $rules = BranchProfileRules::onboardingBranch();
         $rules['branchName'][] = Rule::unique((new Branch)->getTable(), 'name')
             ->where(fn ($query) => $query->where('brand_id', $brand->id))
             ->ignore($existingId);
@@ -104,7 +108,7 @@ final class RestaurantSetupForm extends Form
         $this->areaType = $this->scalarString($this->areaType);
         $this->areaIcon = $this->scalarString($this->areaIcon);
 
-        return $this->validate(RestaurantValidationRules::onboardingArea(
+        return $this->validate(AreaRules::onboardingArea(
             array_keys(RestaurantSetupOptions::areaIconOptions()),
         ));
     }
@@ -113,7 +117,7 @@ final class RestaurantSetupForm extends Form
     public function validateServicePoints(): array
     {
         $this->tablePrefix = $this->plainText($this->tablePrefix);
-        $validated = $this->validate(RestaurantValidationRules::onboardingServicePoints());
+        $validated = $this->validate(ServicePointRules::onboardingServicePoints());
         $this->tableCount = (int) $validated['tableCount'];
         $this->tableCapacity = (int) $validated['tableCapacity'];
 
@@ -132,7 +136,7 @@ final class RestaurantSetupForm extends Form
         $this->itemName = $this->plainText($this->itemName);
         $this->itemPrice = str_replace(',', '.', $this->numericString($this->itemPrice));
 
-        return $this->validate(RestaurantValidationRules::onboardingStarterMenu());
+        return $this->validate(MenuItemRules::onboardingStarterMenu());
     }
 
     /** @param array<string, string|int> $values */

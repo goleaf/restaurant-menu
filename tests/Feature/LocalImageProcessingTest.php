@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Media\LocalImageConstraints;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Menus\AddMenuItemImagesAction;
@@ -24,7 +25,7 @@ beforeEach(function (): void {
 test('jpeg is not offered when the runtime cannot normalize its EXIF orientation', function (): void {
     $process = new Process([
         PHP_BINARY, '-d', 'disable_functions=exif_read_data', '-r',
-        'require $argv[1]; echo json_encode(App\\Actions\\Media\\StoreLocalImageAction::allowedExtensions());',
+        'require $argv[1]; echo json_encode(App\\Support\\Media\\LocalImageConstraints::allowedExtensions());',
         base_path('vendor/autoload.php'),
     ]);
     $process->mustRun();

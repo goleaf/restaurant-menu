@@ -370,7 +370,6 @@ class DemoOperationalStateSeeder extends Seeder
             return;
         }
 
-        $subscription->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**

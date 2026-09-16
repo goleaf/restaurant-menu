@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\View\Components\Ui;
 
-use App\Actions\Media\StoreLocalImageAction;
+use App\Support\Media\LocalImageConstraints;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\ViewErrorBag;
@@ -21,8 +21,8 @@ final class ImageUploadInput extends Component
         public readonly string $ariaLabel,
         public readonly ?string $errorName = null,
     ) {
-        $this->acceptedMimeTypes = StoreLocalImageAction::acceptedMimeTypes();
-        $this->helpText = StoreLocalImageAction::helpText();
+        $this->acceptedMimeTypes = LocalImageConstraints::acceptedMimeTypes();
+        $this->helpText = LocalImageConstraints::helpText();
     }
 
     /** @return Closure(array{attributes: ComponentAttributeBag, errors?: ViewErrorBag}): View */

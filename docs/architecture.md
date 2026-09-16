@@ -4,6 +4,10 @@
 
 # Architecture
 
+## Profile settings consolidation — 2026-09-16
+
+Appearance is a presentation section of the existing Profile Livewire screen. The legacy `appearance.edit` route uses Laravel's authenticated redirect boundary; `LivewireInteractionBoundaryTest` now inventories 29 class-based page routes and 18 ordinary HTTP boundaries. The original migration counts below describe the earlier source. No database, profile Action, authentication or theme-storage contract changes.
+
 ## Current SCSS / Alpine boundary — 2026-09-16
 
 The accepted migration supersedes earlier native-CSS-only and page-script decisions for first-party code. `resources/css/app.css` is only the Tailwind/installed Flux bridge. `resources/scss/app.scss` owns product tokens, light/dark variables, fonts, base accessibility and semantic compositions; `qr-print.scss` is a print-only entry. `pdf-qr.scss`, `pdf-report.scss` and `emergency.scss` compile into fixed committed `resources/views/generated/styles/*.blade.php` artifacts, so emergency/PDF rendering never needs a Vite manifest or runtime Node. `resources/build/styles.js` generates token aliases and concrete breakpoints automatically in both Vite build and dev/HMR; `npm run styles:check` detects drift. Do not edit generated CSS.

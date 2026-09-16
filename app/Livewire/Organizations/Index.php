@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations;
 
-use App\Actions\Media\StoreLocalImageAction;
+use App\Support\Validation\Organizations\OrganizationRules;
+use App\Support\Validation\Media\ImageUploadRules;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\RestoreOrganizationAction;
@@ -14,7 +15,6 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\OrganizationQueryService;
 use App\Support\LocalizedDateFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\Paginator;
@@ -172,8 +172,8 @@ class Index extends Component
         $organization = $this->findOwnedOrganization($organizationId);
 
         $this->validate(
-            RestaurantValidationRules::imageUpload('organizationLogos.'.$organization->id),
-            StoreLocalImageAction::validationMessages('organizationLogos.'.$organization->id),
+            ImageUploadRules::imageUpload('organizationLogos.'.$organization->id),
+            ImageUploadRules::messages('organizationLogos.'.$organization->id),
         );
 
         $file = $this->organizationLogos[$organization->id] ?? null;
@@ -290,7 +290,7 @@ class Index extends Component
             $uniqueRule->ignore($ignoreOrganizationId);
         }
 
-        $rules = RestaurantValidationRules::organizationName($field);
+        $rules = OrganizationRules::organizationName($field);
         $rules[$field][] = $uniqueRule;
 
         return $rules;

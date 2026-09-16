@@ -6,10 +6,18 @@ use App\Actions\Menus\RemoveMenuItemImageAction;
 use App\Actions\Menus\UpdateMenuAction;
 use App\Actions\Menus\UpdateMenuCategoryAction;
 use App\Enums\MenuStatus;
+use App\Enums\SystemRole;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\OrganizationUser;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Storage;
+
+beforeEach(function (): void {
+    $this->seed(SystemPermissionsSeeder::class);
+});
 
 test('menu action updates mutable menu fields with string and enum statuses', function (): void {
     $menu = Menu::factory()->create([
@@ -18,12 +26,13 @@ test('menu action updates mutable menu fields with string and enum statuses', fu
         'sort_order' => 1,
     ]);
     $action = app(UpdateMenuAction::class);
+    $actor = menuActionOwner($menu);
 
     expect($action->handle($menu, [
         'name' => 'Dinner',
         'status' => MenuStatus::Active->value,
         'sort_order' => 10,
-    ]))->toBe($menu);
+    ], actor: $actor))->toBe($menu);
 
     $menu->refresh();
 
@@ -35,7 +44,7 @@ test('menu action updates mutable menu fields with string and enum statuses', fu
         'name' => 'Archived Dinner',
         'status' => MenuStatus::Archived,
         'sort_order' => 20,
-    ]);
+    ], actor: $actor);
 
     expect($menu->refresh()->status)->toBe(MenuStatus::Archived);
 });
@@ -45,6 +54,7 @@ test('menu category action normalizes plain text and updates presentation fields
         'name' => 'Original',
         'description' => null,
     ]);
+    $actor = menuActionOwner($category->menu);
 
     expect(app(UpdateMenuCategoryAction::class)->handle($category, [
         'name' => "  Hot\n  drinks  ",
@@ -52,7 +62,7 @@ test('menu category action normalizes plain text and updates presentation fields
         'icon' => 'mug-hot',
         'sort_order' => 30,
         'is_active' => false,
-    ]))->toBe($category);
+    ], actor: $actor))->toBe($category);
 
     $category->refresh();
 
@@ -75,3 +85,17 @@ test('menu item image action clears the persisted path and deletes the local fil
     expect($item->refresh()->image)->toBeNull();
     Storage::disk('public')->assertMissing($path);
 });
+
+function menuActionOwner(Menu $menu): User
+{
+    $organization = $menu->branch->organization;
+    $actor = $organization->owner;
+    OrganizationUser::factory()
+        ->forOrganization($organization)
+        ->forUser($actor)
+        ->forSystemRole(SystemRole::Owner)
+        ->active()
+        ->create();
+
+    return $actor;
+}

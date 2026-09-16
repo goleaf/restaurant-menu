@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms;
 
+use App\Support\Validation\Media\ImageUploadRules;
+use App\Support\Validation\Branches\OpeningHoursRules;
+use App\Support\Validation\Branches\BranchSettingsRules;
+use App\Support\Validation\Branches\BranchProfileRules;
 use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Branches\SaveBranchConfigurationAction;
-use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Livewire\Form;
@@ -236,12 +238,12 @@ final class BranchSettingsForm extends Form
     protected function rules(): array
     {
         return [
-            ...RestaurantValidationRules::branchSettings(),
-            ...RestaurantValidationRules::branchProfile(),
+            ...BranchSettingsRules::branchSettings(),
+            ...BranchProfileRules::branchProfile(),
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
-            ...RestaurantValidationRules::temporaryClosure(in_array($this->temporarilyClosed, [true, 1, '1'], true)),
-            ...RestaurantValidationRules::openingHours(in_array($this->openingHoursConfigured, [true, 1, '1'], true)),
+            ...BranchSettingsRules::temporaryClosure(in_array($this->temporarilyClosed, [true, 1, '1'], true)),
+            ...OpeningHoursRules::openingHours(in_array($this->openingHoursConfigured, [true, 1, '1'], true)),
         ];
     }
 
@@ -355,7 +357,7 @@ final class BranchSettingsForm extends Form
      */
     private function optionalImageRules(): array
     {
-        return RestaurantValidationRules::optionalImageUpload('image')['image'];
+        return ImageUploadRules::optionalImageUpload('image')['image'];
     }
 
     /**
@@ -364,8 +366,8 @@ final class BranchSettingsForm extends Form
     private function imageValidationMessages(): array
     {
         return [
-            ...StoreLocalImageAction::validationMessages('publicLogo'),
-            ...StoreLocalImageAction::validationMessages('coverImage'),
+            ...ImageUploadRules::messages('publicLogo'),
+            ...ImageUploadRules::messages('coverImage'),
         ];
     }
 }

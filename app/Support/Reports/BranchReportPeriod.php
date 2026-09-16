@@ -33,12 +33,7 @@ final readonly class BranchReportPeriod
         }
 
         if ($preset === 'custom') {
-            $start = self::validatedDate($dateFrom, 'date_from');
-            $end = self::validatedDate($dateTo, 'date_to');
-
-            if ($end < $start || $end >= $start->addDays(31)) {
-                throw ValidationException::withMessages(['date_to' => __('reports.errors.date_range')]);
-            }
+            new CalendarDateRange($dateFrom ?? '', $dateTo ?? '', 'UTC');
         }
 
         $now ??= CarbonImmutable::now();
@@ -105,18 +100,4 @@ final readonly class BranchReportPeriod
         });
     }
 
-    private static function validatedDate(?string $date, string $field): CarbonImmutable
-    {
-        if (! is_string($date) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/D', $date)) {
-            throw ValidationException::withMessages([$field => __('reports.errors.date')]);
-        }
-
-        $parsed = CarbonImmutable::createFromFormat('!Y-m-d', $date, 'UTC');
-
-        if (! $parsed instanceof CarbonImmutable || $parsed->toDateString() !== $date) {
-            throw ValidationException::withMessages([$field => __('reports.errors.date')]);
-        }
-
-        return $parsed;
-    }
 }

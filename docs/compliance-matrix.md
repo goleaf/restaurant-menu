@@ -4,6 +4,10 @@
 
 # Compliance matrix
 
+## Profile appearance consolidation — 2026-09-16
+
+For `blade-001`, `livewire-001`, `ui-accessibility-001` and `ui-responsive-001`, Profile now includes the existing light/dark/system preference. Appearance navigation and its standalone Livewire screen are removed; its authenticated named route redirects to Profile. `Settings/AppearanceTest`, the settings/route boundary suites (88 tests / 541 assertions), and `SettingsAppearanceBrowserTest` (WebKit: 1 scenario / 72 assertions) verify access, redirect, draft preservation, explicit profile save, theme persistence, keyboard selection, labelled 44px controls and EN/LT/RU reflow at 320/768/1440px. Live isolated Chrome also confirms the Herd redirect and preference persistence with a clean console. Repository-wide gate limits are recorded in `testing.md`.
+
 ## Current Flux component-system continuation — 2026-09-16
 
 The existing frontend, locale, tenant and component requirements now include the shared organization/brand/branch toolbar, retained filters and empty-page recovery, literal breadcrumb names, guarded keyboard section search, semantic danger states and associated upload/menu errors. Local Pro 0.1.1 maintains ten provenance-recorded patches, including four nested search/date label fixes. Free remains 2.17.0. Original source, license, domain Actions, security boundaries and HTTP transports are unchanged.

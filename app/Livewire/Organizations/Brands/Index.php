@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands;
 
+use App\Support\Validation\Organizations\OrganizationRules;
+use App\Support\Validation\Media\ImageUploadRules;
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
 use App\Actions\Brands\RestoreBrandAction;
 use App\Actions\Brands\UpdateBrandAction;
 use App\Actions\Brands\UpdateBrandLogoAction;
-use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\BrandQueryService;
 use App\Support\LocalizedDateFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\Paginator;
@@ -192,8 +192,8 @@ class Index extends Component
         $brand = $this->findOrganizationBrand($brandId);
 
         $this->validate(
-            RestaurantValidationRules::imageUpload('brandLogos.'.$brand->id),
-            StoreLocalImageAction::validationMessages('brandLogos.'.$brand->id),
+            ImageUploadRules::imageUpload('brandLogos.'.$brand->id),
+            ImageUploadRules::messages('brandLogos.'.$brand->id),
         );
 
         $file = $this->brandLogos[$brand->id] ?? null;
@@ -301,7 +301,7 @@ class Index extends Component
             $uniqueRule->ignore($ignoreBrandId);
         }
 
-        $rules = RestaurantValidationRules::brandName($field);
+        $rules = OrganizationRules::brandName($field);
         $rules[$field][] = $uniqueRule;
 
         return $rules;

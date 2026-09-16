@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
+use App\Support\Validation\TableSessions\GuestRules;
+use App\Support\Validation\Orders\OrderInputRules;
+use App\Support\Validation\Menus\ModifierRules;
 use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
@@ -25,7 +28,6 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -745,9 +747,9 @@ class DraftOrder extends Component
     private function editingDraftItemRules(): array
     {
         return [
-            ...RestaurantValidationRules::quantity('editingQuantity'),
-            ...RestaurantValidationRules::guestComment('editingComment'),
-            ...RestaurantValidationRules::selectedModifierOptions('editingModifierOptions'),
+            ...OrderInputRules::quantity('editingQuantity'),
+            ...GuestRules::guestComment('editingComment'),
+            ...ModifierRules::selectedModifierOptions('editingModifierOptions'),
             'editingItemVariantId' => ['nullable', 'integer', 'min:1'],
         ];
     }

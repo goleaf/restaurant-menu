@@ -4,6 +4,12 @@
 
 # Changelog
 
+## 2026-09-16 — Appearance settings in Profile
+
+- Move light, dark and system theme selection into Profile while preserving the existing immediate Flux preference and unfinished profile input.
+- Remove the separate Appearance navigation entry and screen; keep its authenticated URL as a redirect to Profile.
+- Cover the merged section, legacy redirect, authentication, theme persistence, keyboard controls and EN/LT/RU responsive rendering.
+
 ## 2026-09-16 — Consistent Flux controls and structure lists
 
 - Add full keyboard navigation to authorized section search while preserving native links and guarded shortcuts.

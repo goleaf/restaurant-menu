@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Orders;
 
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
@@ -18,7 +19,6 @@ use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
 use App\Support\PlainText;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -223,7 +223,7 @@ final class CancelOrderItemAction
     {
         $validated = Validator::make(
             ['orderItemCancellationReason' => $reason],
-            RestaurantValidationRules::auditReason('orderItemCancellationReason'),
+            AuditReasonRules::auditReason('orderItemCancellationReason'),
             [
                 'orderItemCancellationReason.required' => __('orders.items.errors.reason_required'),
                 'orderItemCancellationReason.min' => __('orders.items.errors.reason_min'),

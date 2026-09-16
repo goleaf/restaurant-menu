@@ -40,6 +40,7 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use App\Support\MoneyFormatter;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -74,8 +75,7 @@ class DemoRestaurantSeeder extends Seeder
         $this->call(SystemPermissionsSeeder::class);
 
         DB::transaction(function (): void {
-            $superadmin = $this->demoUser(SystemRole::Superadmin);
-            $this->syncPermissions($superadmin, []);
+            $this->demoUser(SystemRole::Superadmin);
 
             $owner = $this->demoUser(SystemRole::Owner);
             $organization = $this->demoOrganization($owner);
@@ -217,7 +217,9 @@ class DemoRestaurantSeeder extends Seeder
                 $branch->restore();
             }
 
-            $branch->forceFill($attributes)->save();
+            if ($legacyName !== null && $branch->name === $legacyName) {
+                $branch->forceFill(['name' => $name])->save();
+            }
             $this->deleteLegacyBranchDuplicates($brand, $branch, $legacyName);
 
             return $branch->refresh();
@@ -225,7 +227,15 @@ class DemoRestaurantSeeder extends Seeder
 
         $branch = Branch::factory()
             ->{$factoryState}($brand)
-            ->create();
+            ->create(match ($name) {
+                DemoOrganizationCrudSeeder::TEMPORARILY_CLOSED_BRANCH_NAME => [
+                    'is_temporarily_closed' => true,
+                    'temporary_closed_reason' => 'Planned CRUD demonstration closure',
+                    'temporary_closed_until' => CarbonImmutable::parse('2035-01-15 18:00:00', 'UTC'),
+                ],
+                DemoOrganizationCrudSeeder::INACTIVE_BRANCH_NAME => ['is_active' => false],
+                default => [],
+            });
 
         $this->deleteLegacyBranchDuplicates($brand, $branch, $legacyName);
 
@@ -253,7 +263,9 @@ class DemoRestaurantSeeder extends Seeder
             ->make()
             ->toArray();
 
-        $settings->forceFill($attributes)->save();
+        if ($settings->wasRecentlyCreated) {
+            $settings->forceFill($attributes)->save();
+        }
 
         $this->seedKitchenDepartments->handle($branch);
     }
@@ -266,20 +278,13 @@ class DemoRestaurantSeeder extends Seeder
             ->where('email', $identity['email'])
             ->first();
 
-        if (! $user instanceof User) {
-            $user = User::factory()
-                ->demoIdentity($identity['name'], $identity['email'])
-                ->create();
-        } else {
-            $attributes = User::factory()
-                ->demoIdentity($identity['name'], $identity['email'])
-                ->make()
-                ->getAttributes();
-
-            unset($attributes['password']);
-
-            $user->forceFill($attributes)->save();
+        if ($user instanceof User) {
+            return $user;
         }
+
+        $user = User::factory()
+            ->demoIdentity($identity['name'], $identity['email'])
+            ->create();
 
         $roleModel = $this->role($role);
         $user->roles()->sync([$roleModel->id]);
@@ -1169,7 +1174,6 @@ class DemoRestaurantSeeder extends Seeder
             return;
         }
 
-        $membership->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**
@@ -1182,28 +1186,9 @@ class DemoRestaurantSeeder extends Seeder
         User $assignedBy,
         array $branches,
     ): void {
-        $branchIds = array_map(
-            fn (Branch $branch): int => (int) $branch->id,
-            $branches,
-        );
-
         foreach ($branches as $branch) {
             $this->ensureBranchAssignment($organization, $branch, $user, $role, $assignedBy);
         }
-
-        $staleAssignments = BranchUser::query()
-            ->where('organization_id', $organization->id)
-            ->where('user_id', $user->id);
-
-        if ($branchIds === []) {
-            $staleAssignments->delete();
-
-            return;
-        }
-
-        $staleAssignments
-            ->whereNotIn('branch_id', $branchIds)
-            ->delete();
     }
 
     private function ensureBranchAssignment(
@@ -1231,7 +1216,6 @@ class DemoRestaurantSeeder extends Seeder
             return;
         }
 
-        $assignment->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**
@@ -1239,6 +1223,10 @@ class DemoRestaurantSeeder extends Seeder
      */
     private function syncPermissions(User $user, array $permissions): void
     {
+        if ($permissions === []) {
+            return;
+        }
+
         $permissionIds = Permission::query()
             ->whereIn('code', array_map(fn (SystemPermission $permission): string => $permission->value, $permissions))
             ->orderBy('id')
@@ -1248,7 +1236,7 @@ class DemoRestaurantSeeder extends Seeder
             ->mapWithKeys(fn (int $permissionId): array => [$permissionId => ['enabled' => true]])
             ->all();
 
-        $user->permissionOverrides()->sync($syncRows);
+        $user->permissionOverrides()->syncWithoutDetaching($syncRows);
     }
 
     private function role(SystemRole $role): Role

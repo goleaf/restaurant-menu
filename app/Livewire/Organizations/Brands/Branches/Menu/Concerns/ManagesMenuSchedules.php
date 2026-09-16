@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu\Concerns;
 
+use App\Support\Validation\Menus\MenuScheduleRules;
 use App\Actions\Menus\CreateMenuAvailabilityScheduleAction;
 use App\Actions\Menus\DeleteMenuAvailabilityScheduleAction;
 use App\Actions\Menus\UpdateMenuAvailabilityScheduleAction;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Validation\ValidationException;
 
@@ -133,7 +133,7 @@ trait ManagesMenuSchedules
 
         return [
             'scheduleMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
-            ...RestaurantValidationRules::menuSchedule(),
+            ...MenuScheduleRules::menuSchedule(),
         ];
     }
 

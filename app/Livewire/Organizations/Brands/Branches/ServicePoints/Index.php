@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
+use App\Support\Validation\Branches\ServicePointRules;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
@@ -23,7 +24,6 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\ServicePointQueryService;
 use App\Support\LocalizedDateFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\Paginator;
@@ -866,7 +866,7 @@ class Index extends Component
 
         return [
             $areaNodeField => $areaNodeRules,
-            ...RestaurantValidationRules::servicePoint($fieldPrefix, array_keys($this->iconOptionRows())),
+            ...ServicePointRules::servicePoint($fieldPrefix, array_keys($this->iconOptionRows())),
         ];
     }
 
@@ -885,7 +885,7 @@ class Index extends Component
 
         return [
             'bulkAreaNodeId' => $areaNodeRules,
-            ...RestaurantValidationRules::bulkServicePoint(),
+            ...ServicePointRules::bulkServicePoint(),
         ];
     }
 

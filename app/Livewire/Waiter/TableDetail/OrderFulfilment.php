@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\Orders\CancelOrderItemAction;
 use App\Actions\Orders\ChangeOrderStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
@@ -12,7 +13,6 @@ use App\Enums\OrderStatus;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -93,7 +93,7 @@ final class OrderFulfilment extends TableDetailSection
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
         $this->authorizeWaiterTableSession();
-        $validated = $this->validate(RestaurantValidationRules::auditReason('orderCancellationReason'), [
+        $validated = $this->validate(AuditReasonRules::auditReason('orderCancellationReason'), [
             'orderCancellationReason.required' => __('ui.confirmations.cancel_order.reason_required'),
             'orderCancellationReason.min' => __('ui.confirmations.cancel_order.reason_min'),
         ]);
@@ -129,7 +129,7 @@ final class OrderFulfilment extends TableDetailSection
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
         $this->authorizeWaiterTableSession();
-        $validated = $this->validate(RestaurantValidationRules::auditReason('orderItemCancellationReason'), [
+        $validated = $this->validate(AuditReasonRules::auditReason('orderItemCancellationReason'), [
             'orderItemCancellationReason.required' => __('orders.items.errors.reason_required'),
             'orderItemCancellationReason.min' => __('orders.items.errors.reason_min'),
         ]);

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Support\Validation\Branches\OpeningHoursRules;
 use App\Support\Validation\NonOverlappingOpeningHours;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\Validator;
 
 test('opening hours overlap rule permits adjacent midnight intervals and ignores closed days', function (): void {
@@ -29,7 +29,7 @@ test('opening hours rules reject malformed transport values without throwing', f
         }, range(0, 6));
     }
 
-    $validator = Validator::make(['openingHoursConfigured' => true, 'openingHours' => $hours], RestaurantValidationRules::openingHours(true));
+    $validator = Validator::make(['openingHoursConfigured' => true, 'openingHours' => $hours], OpeningHoursRules::openingHours(true));
 
     expect($validator->fails())->toBeTrue();
 })->with([
@@ -43,4 +43,8 @@ test('opening hours rules reject malformed transport values without throwing', f
     'scalar interval' => [[['day_of_week' => 1, 'intervals' => ['invalid']]]],
     'invalid time type' => [[['day_of_week' => 1, 'intervals' => [['opens_at' => []]]]]],
     'invalid clock time' => [[['day_of_week' => 1, 'intervals' => [['opens_at' => '25:00', 'closes_at' => '26:00']]]]],
+    'unexpected day key' => [[['secret' => 'not allowed']]],
+    'unexpected interval key' => [[['intervals' => [['opens_at' => '08:00', 'closes_at' => '09:00', 'secret' => 'not allowed']]]]],
+    'boolean weekday' => [[['day_of_week' => true]]],
+    'associative intervals' => [[['intervals' => ['unexpected' => ['opens_at' => '08:00', 'closes_at' => '09:00']]]]],
 ]);

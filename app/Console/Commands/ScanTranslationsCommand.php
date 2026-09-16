@@ -140,6 +140,11 @@ class ScanTranslationsCommand extends Command
     private function extractUsages(array $files, array $catalogKeys): array
     {
         $usages = [];
+        foreach (\App\Support\Localization\ValidationMessageCatalogue::keys() as $key) {
+            if (in_array($key, $catalogKeys, true)) {
+                $usages[$key] = ['Laravel Validator runtime catalogue'];
+            }
+        }
         $catalogLookup = array_fill_keys($catalogKeys, true);
 
         foreach ($files as $file) {

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Support\Validation\Branches\BranchSettingsRules;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Models\Branch;
 use App\Models\User;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -22,7 +22,7 @@ final class SaveDashboardOrderingAction
             'temporarilyClosed' => $closed,
             'temporaryClosedReason' => $reason,
             'temporaryClosedUntil' => $until,
-        ], RestaurantValidationRules::temporaryClosure($closed))->validate();
+        ], BranchSettingsRules::temporaryClosure($closed))->validate();
 
         return DB::transaction(function () use ($actor, $branchId, $closed, $values): Branch {
             $branch = Branch::query()->select(['id', 'organization_id', 'brand_id', 'timezone', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until', 'deleted_at'])

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu\Concerns;
 
-use App\Actions\Media\StoreLocalImageAction;
+use App\Support\Validation\Media\ImageUploadRules;
 use App\Actions\Menus\AddMenuItemImagesAction;
 use App\Actions\Menus\PromoteMenuItemImageAction;
 use App\Actions\Menus\RemoveMenuItemGalleryImageAction;
@@ -16,7 +16,6 @@ use App\Livewire\Forms\MenuImagePresentationForm;
 use App\Models\MenuItem;
 use App\Support\LocalImageVariants;
 use App\Support\MenuImagePresentation;
-use App\Support\Validation\RestaurantValidationRules;
 use Closure;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
@@ -187,8 +186,8 @@ trait ManagesItemImages
         }
 
         $this->validate(
-            RestaurantValidationRules::imageUploads($field, MenuItem::MAX_IMAGES),
-            StoreLocalImageAction::validationMessages($field.'.*') + [
+            ImageUploadRules::imageUploads($field, MenuItem::MAX_IMAGES),
+            ImageUploadRules::messages($field.'.*') + [
                 $field.'.max' => __('uploads.errors.maximum_images', ['count' => MenuItem::MAX_IMAGES]),
             ],
         );

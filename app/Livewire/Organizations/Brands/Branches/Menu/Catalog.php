@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Support\Validation\Menus\MenuTranslationRules;
+use App\Support\Validation\Menus\MenuRules;
+use App\Support\Validation\Menus\MenuItemRules;
+use App\Support\Validation\Menus\CategoryRules;
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
 use App\Actions\Menus\ApplyCatalogBulkAction;
@@ -26,7 +30,6 @@ use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\ManagesMenuSchedule
 use App\Models\Menu;
 use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
@@ -388,7 +391,7 @@ class Catalog extends BranchMenuComponent
             'status' => $validated['menuStatus'],
             'sort_order' => (int) $validated['menuSortOrder'],
             'translations' => $validated['menuTranslations'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->categoryMenuId = (string) $menu->id;
         $this->itemMenuId = (string) $menu->id;
@@ -441,7 +444,7 @@ class Catalog extends BranchMenuComponent
             'status' => $validated['editingMenuStatus'],
             'sort_order' => (int) $validated['editingMenuSortOrder'],
             'translations' => $validated['editingMenuTranslations'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->cancelMenuEditing();
         $this->forgetMenuComputed();
@@ -467,7 +470,7 @@ class Catalog extends BranchMenuComponent
             'sort_order' => (int) $validated['categorySortOrder'],
             'is_active' => (bool) $validated['categoryIsActive'],
             'translations' => $validated['categoryTranslations'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->itemMenuId = (string) $menu->id;
         $this->itemCategoryId = (string) $category->id;
@@ -526,7 +529,7 @@ class Catalog extends BranchMenuComponent
             'sort_order' => (int) $validated['editingCategorySortOrder'],
             'is_active' => (bool) $validated['editingCategoryIsActive'],
             'translations' => $validated['editingCategoryTranslations'],
-        ]);
+        ], actor: $this->currentUser());
 
         $this->cancelCategoryEditing();
         $this->forgetMenuComputed();
@@ -744,12 +747,12 @@ class Catalog extends BranchMenuComponent
             $uniqueName->ignore($this->editingMenuId);
         }
 
-        $rules = RestaurantValidationRules::menu($prefix);
+        $rules = MenuRules::menu($prefix);
         $rules[$nameField][] = $uniqueName;
 
         return [
             ...$rules,
-            ...RestaurantValidationRules::translatedNames(
+            ...MenuTranslationRules::translatedNames(
                 $prefix === '' ? 'menuTranslations' : 'editingMenuTranslations',
             ),
         ];
@@ -762,8 +765,8 @@ class Catalog extends BranchMenuComponent
     {
         if ($prefix === 'editing') {
             $rules = [
-                ...RestaurantValidationRules::category('editing', array_keys(CatalogData::iconOptions())),
-                ...RestaurantValidationRules::menuTranslations(
+                ...CategoryRules::category('editing', array_keys(CatalogData::iconOptions())),
+                ...MenuTranslationRules::menuTranslations(
                     'editingCategoryTranslations',
                     nameMax: 160,
                     descriptionMax: 1000,
@@ -786,8 +789,8 @@ class Catalog extends BranchMenuComponent
         $rules = [
             'categoryMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
             'categoryParentId' => $parentRules,
-            ...RestaurantValidationRules::category(iconValues: array_keys(CatalogData::iconOptions())),
-            ...RestaurantValidationRules::menuTranslations(
+            ...CategoryRules::category(iconValues: array_keys(CatalogData::iconOptions())),
+            ...MenuTranslationRules::menuTranslations(
                 'categoryTranslations',
                 nameMax: 160,
                 descriptionMax: 1000,
@@ -817,12 +820,12 @@ class Catalog extends BranchMenuComponent
             $menuField => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
             $categoryField => ['bail', 'required', 'numeric', 'integer', $this->categoryRule($menuId)],
             $departmentField => ['bail', 'nullable', 'numeric', 'integer'],
-            ...RestaurantValidationRules::menuItem(
+            ...MenuItemRules::menuItem(
                 prefix: $fieldPrefix,
                 canChangePrices: $this->canChangePrices,
                 canChangeAvailability: $this->canChangeAvailability,
             ),
-            ...RestaurantValidationRules::menuTranslations(
+            ...MenuTranslationRules::menuTranslations(
                 $fieldPrefix === '' ? 'itemTranslations' : 'editingItemTranslations',
                 nameMax: 180,
                 descriptionMax: 1200,

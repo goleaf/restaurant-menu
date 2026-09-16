@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Media\StoreLocalImageAction;
+use App\Support\Media\LocalImageConstraints;
 use Dom\HTMLDocument;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
@@ -27,9 +27,9 @@ test('image upload associates translated guidance and forwards browser and Livew
     $input = $document->querySelector('input[type="file"]');
 
     expect($input->getAttribute('aria-describedby'))->toBe('gallery-limit gallery-upload-help gallery-upload-error')
-        ->and(trim($document->getElementById('gallery-upload-help')->textContent))->toBe(StoreLocalImageAction::helpText())
+        ->and(trim($document->getElementById('gallery-upload-help')->textContent))->toBe(LocalImageConstraints::helpText())
         ->and($document->getElementById('gallery-upload-error')->hasAttribute('data-flux-error'))->toBeTrue()
-        ->and($input->getAttribute('accept'))->toBe(StoreLocalImageAction::acceptedMimeTypes())
+        ->and($input->getAttribute('accept'))->toBe(LocalImageConstraints::acceptedMimeTypes())
         ->and($input->getAttribute('name'))->toBe('photos')
         ->and($input->getAttribute('wire:model.live'))->toBe('itemImageUploads.42')
         ->and($input->getAttribute('wire:key'))->toBe('upload-42')

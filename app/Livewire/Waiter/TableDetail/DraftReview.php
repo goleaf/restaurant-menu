@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
+use App\Support\Validation\TableSessions\GuestRules;
+use App\Support\Validation\Orders\OrderInputRules;
+use App\Support\Validation\Menus\ModifierRules;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
@@ -20,7 +23,6 @@ use App\Models\TableSessionGuest;
 use App\Services\Waiter\TableDetailChangeDetector;
 use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -450,7 +452,7 @@ final class DraftReview extends TableDetailSection
             return;
         }
 
-        $validated = $this->validate(RestaurantValidationRules::waiterRejectionReason('rejectionReason'), [
+        $validated = $this->validate(OrderInputRules::waiterRejectionReason('rejectionReason'), [
             'rejectionReason.required' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.ukazite_pricinu_otklonenii'),
             'rejectionReason.min' => __('ui.livewire.waiter.tabledetail.pricina_otkloneniia_dolzna_byt_poniatnoi_dli'),
         ]);
@@ -518,9 +520,9 @@ final class DraftReview extends TableDetailSection
     private function addingDraftItemRules(): array
     {
         return [
-            ...RestaurantValidationRules::quantity('addingQuantity'),
-            ...RestaurantValidationRules::guestComment('addingComment'),
-            ...RestaurantValidationRules::selectedModifierOptions('addingModifierOptions'),
+            ...OrderInputRules::quantity('addingQuantity'),
+            ...GuestRules::guestComment('addingComment'),
+            ...ModifierRules::selectedModifierOptions('addingModifierOptions'),
             'addingItemVariantId' => ['nullable', 'integer', 'min:1'],
         ];
     }
@@ -529,9 +531,9 @@ final class DraftReview extends TableDetailSection
     private function editingDraftItemRules(): array
     {
         return [
-            ...RestaurantValidationRules::quantity('editingQuantity'),
-            ...RestaurantValidationRules::guestComment('editingComment'),
-            ...RestaurantValidationRules::selectedModifierOptions('editingModifierOptions'),
+            ...OrderInputRules::quantity('editingQuantity'),
+            ...GuestRules::guestComment('editingComment'),
+            ...ModifierRules::selectedModifierOptions('editingModifierOptions'),
             'editingItemVariantId' => ['nullable', 'integer', 'min:1'],
         ];
     }

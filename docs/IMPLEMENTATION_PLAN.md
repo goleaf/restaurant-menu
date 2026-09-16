@@ -4,6 +4,36 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-16 — Business-operation boundary migration (active)
+
+User-authorized scope covers all first-party operations; the requirements catalogue remains canonical. Baseline: local `main` at `f3ab943`, with pre-existing profile/appearance changes and concurrent MCP work. Preserve those changes; no dependency, workflow or UI-library migration belongs to this task. Root owns shared contracts, JSON catalogues, documentation, integration and delivery. Domain workers own disjoint explicitly assigned files. Only the root runs aggregate formatters and test suites.
+
+- [ ] Inventory every reachable operation and its actual entry/input/context/rules/policy/invariants/Action/models/fixtures/seeders/messages/tests before broad migration. Class helpers and read projections are not separate business operations.
+- [ ] Prove the export-period vertical: one query-only CSV/PDF request, shared calendar validation and typed period, current branch authorization, EN/LT/RU errors, default/single-bound/inclusive/DST boundaries, and conflicting query/body regression tests.
+- [ ] Split shared domain rules and neutral media limits; connect focused menu/forms and remove the obsolete wrapper after migrating every caller.
+- [ ] Complete HTTP presentation/request boundaries and public Action authorization inventory; retain existing tenant, revision, replay and infrastructure-error contracts.
+- [ ] Verify every model factory and strengthen multilingual/scenario states; preserve operator settings/access decisions on repeated system/demo seeding.
+- [ ] Verify the installed validator message catalogue with real EN/LT/RU failures, nested attributes, files/password/custom rules and duplicate-key detection.
+- [ ] Enforce boundaries with precise static tests; independent review of current diff and inventory; run stable-source local gates, scoped commit and ordinary `git push origin main` only when safe.
+
+First vertical operation record (subsequent complete registry follows):
+
+| Operation | Contract |
+| --- | --- |
+| Download branch report (CSV/PDF; orders/payments/menu/tables) | Entry: authenticated named HTTP export routes. Trusted context: current User and route-bound Branch, never payload branch_id. Input: query-only nullable date_from/date_to in YYYY-MM-DD; body cannot override. Request: shared DownloadBranchReportRequest, replacing CSV-specific name. Rules: ReportPeriodRules plus shared calendar range. Policy: BranchPolicy::export and existing Action reauthorization. Invariants: at most 31 inclusive calendar days in branch timezone; defaults span 30 prior days plus today; one bound infers the other by 30 calendar days; orders use confirmed_at, payments use paid_at; menu/tables remain current snapshots. Actions: existing StreamBranchCsvExportAction / BuildBranchPdfReportAction; typed period prepared from validated input. Models/constraints: existing Branch, Order, ManualPayment, menu/table graph and indexes; no schema migration. Fixtures: existing model factories and DataExportsTest / BranchReportingTest graphs. Seeder: existing demo restaurant scenario, no required new seeder. Errors: validation.attributes.date_from/date_to and localized calendar range reason; existing 403/404/download contract. Verification: new ReportExportInputTest plus existing export/report tests, initially pending. Migration: in progress. |
+
+
+## 2026-09-16 — Laravel MCP 1.0 integration (in progress)
+
+The user requests the plan followed by full practical implementation of `sys-mcp-001`. Follow [the single detailed plan](superpowers/plans/2026-09-16-laravel-mcp-integration.md). Authorized MCP 1.0.0 and Boost 2.9.0 archives are downloaded and verified; no other GitHub access is authorized. Existing MCP code is a partial scaffold, and its current tests are not a completion claim.
+
+- [x] Inspect the article, official documentation, current dependency/runtime and shared-worktree state; refresh the plan before implementation.
+- [ ] Install the two exact releases from verified local archives and verify native/legacy protocols.
+- [ ] Complete token commands, current tenant authorization and negative tests.
+- [ ] Implement bounded read and confirmed replay-safe mutation catalogues.
+- [ ] Integrate resources, prompts, ToolSearch, private cache hints and the read-only MCP App.
+- [ ] Verify OAuth/client applicability, whole-project gates and actual Herd transport; reconcile canonical evidence.
+
 ## 2026-09-16 — Unified Flux component system continuation
 
 Baseline is clean local `main` at `76932c7b5f59f646fb9652616ff55c0034f98789`. Installed and locked versions: Flux Free 2.17.0, the accepted local Pro adaptation 0.1.0 (unknown upstream version), Livewire 4.4.1, Laravel 13.26.1. Baseline source hashes and built assets are retained in the owned temporary `restaurant-flux-system-v_19zc_y` directory. Earlier delivered desktop collapse, notification flyout/read actions, branch picker, named confirmation dialogs and SCSS/Alpine runtime remain the baseline, not new claims.

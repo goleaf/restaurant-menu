@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Media\LocalImageConstraints;
 use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
@@ -37,8 +38,8 @@ test('organization owner can upload replace and remove local logo', function () 
 
     Livewire::actingAs($owner)
         ->test(OrganizationsIndex::class)
-        ->assertSee(__('uploads.labels.allowed_types', ['types' => StoreLocalImageAction::allowedExtensionsLabel()]))
-        ->assertSee(__('uploads.labels.max_size', ['size' => StoreLocalImageAction::maxSizeLabel()]))
+        ->assertSee(__('uploads.labels.allowed_types', ['types' => LocalImageConstraints::allowedExtensionsLabel()]))
+        ->assertSee(__('uploads.labels.max_size', ['size' => LocalImageConstraints::maxSizeLabel()]))
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('organization-logo.png')->size(512))
         ->call('saveLogo', $organization->id)
         ->assertHasNoErrors();
@@ -140,14 +141,14 @@ test('local logo uploads validate file type and size', function () {
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->create('logo.txt', 100, 'text/plain'))
         ->call('saveLogo', $organization->id)
         ->assertHasErrors('organizationLogos.'.$organization->id)
-        ->assertSee(__('uploads.errors.invalid_type', ['formats' => StoreLocalImageAction::allowedExtensionsLabel()]));
+        ->assertSee(__('uploads.errors.invalid_type', ['formats' => LocalImageConstraints::allowedExtensionsLabel()]));
 
     Livewire::actingAs($owner)
         ->test(OrganizationsIndex::class)
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('too-large.png')->size(3000))
         ->call('saveLogo', $organization->id)
         ->assertHasErrors('organizationLogos.'.$organization->id)
-        ->assertSee(__('uploads.errors.too_large', ['size' => StoreLocalImageAction::maxSizeLabel()]));
+        ->assertSee(__('uploads.errors.too_large', ['size' => LocalImageConstraints::maxSizeLabel()]));
 
     expect($organization->refresh()->logo_path)->toBeNull();
 });

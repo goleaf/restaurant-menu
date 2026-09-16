@@ -29,17 +29,15 @@ class FirstSuperadminSeeder extends Seeder
             ->where('email', $email)
             ->first();
 
-        if (! $user instanceof User) {
-            if (trim($password) === '') {
-                return;
-            }
-
-            $user = User::query()->create([
-                'name' => $name,
-                'email' => $email,
-                'password' => $password,
-            ]);
+        if ($user instanceof User || trim($password) === '') {
+            return;
         }
+
+        $user = User::query()->create([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+        ]);
 
         $role = Role::query()
             ->where('code', SystemRole::Superadmin->value)

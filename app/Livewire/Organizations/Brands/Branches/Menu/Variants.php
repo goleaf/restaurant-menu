@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Support\Validation\Menus\MenuVariantRules;
 use App\Actions\Menus\CreateMenuItemVariantAction;
 use App\Actions\Menus\DeleteMenuItemVariantAction;
 use App\Actions\Menus\UpdateMenuItemVariantAction;
@@ -15,7 +16,6 @@ use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
 use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Validation\Rule;
@@ -166,7 +166,7 @@ final class Variants extends BranchMenuComponent
 
         $this->refreshMutationCapabilities();
         $variant = $this->findVariant($this->editingVariantId);
-        $rules = RestaurantValidationRules::menuItemVariant(
+        $rules = MenuVariantRules::menuItemVariant(
             prefix: 'editing',
             canChangePrices: $this->canChangePrices,
             canChangeAvailability: $this->canChangeAvailability,
@@ -250,7 +250,7 @@ final class Variants extends BranchMenuComponent
         $rules = [
             'variantMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
             'variantItemId' => ['bail', 'required', 'numeric', 'integer', $this->itemRule($this->variantMenuId)],
-            ...RestaurantValidationRules::menuItemVariant(
+            ...MenuVariantRules::menuItemVariant(
                 canChangePrices: $this->canChangePrices,
                 canChangeAvailability: $this->canChangeAvailability,
             ),

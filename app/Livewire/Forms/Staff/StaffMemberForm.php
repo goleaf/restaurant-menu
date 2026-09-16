@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms\Staff;
 
-use App\Support\Validation\RestaurantValidationRules;
+use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -24,7 +24,7 @@ class StaffMemberForm extends Form
         $values = $this->validate([
             'roleId' => ['required', 'numeric', 'integer', Rule::in($roleIds)],
             'status' => ['required', 'string', Rule::in(['active', 'suspended'])],
-            ...RestaurantValidationRules::auditReason('reason'),
+            ...AuditReasonRules::auditReason('reason'),
         ]);
 
         return ['roleId' => (int) $values['roleId'], 'status' => $values['status'], 'reason' => trim($values['reason'])];

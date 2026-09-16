@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $revoked_at
  * @property-read User $user
+ * @property-read Organization $organization
  * @property-read Branch $branch
  */
 #[Fillable(['name'])]
@@ -45,10 +46,26 @@ class McpAccessToken extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Organization, $this> */
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
     /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * @param  Builder<McpAccessToken>  $query
+     * @return Builder<McpAccessToken>
+     */
+    public function scopeOwnerMetadata(Builder $query, int $userId): Builder
+    {
+        return $query->select(['id', 'name', 'branch_id', 'abilities', 'expires_at', 'revoked_at'])
+            ->where('user_id', $userId);
     }
 
     /** @param Builder<McpAccessToken> $query @return Builder<McpAccessToken> */

@@ -54,6 +54,7 @@ class SystemPermissionsSeeder extends Seeder
 
         Role::query()
             ->select(['id', 'code'])
+            ->with('permissions:id')
             ->whereIn('code', SystemRole::values())
             ->orderBy('sort_order')
             ->get()
@@ -67,7 +68,7 @@ class SystemPermissionsSeeder extends Seeder
                 foreach (SystemPermission::cases() as $systemPermission) {
                     $permission = $permissions->get($systemPermission->value);
 
-                    if (! $permission instanceof Permission) {
+                    if (! $permission instanceof Permission || $role->permissions->contains('id', $permission->id)) {
                         continue;
                     }
 

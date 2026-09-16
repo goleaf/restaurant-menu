@@ -156,11 +156,7 @@ final class DemoTenantPortfolioSeeder extends Seeder
             return $factory->create();
         }
 
-        $attributes = $factory->make()->getAttributes();
-        unset($attributes['password']);
-        $user->forceFill($attributes)->save();
-
-        return $user->refresh();
+        return $user;
     }
 
     private function organization(User $owner, string $name): Organization
@@ -203,7 +199,6 @@ final class DemoTenantPortfolioSeeder extends Seeder
             return;
         }
 
-        $membership->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function subscription(Organization $organization): void
@@ -222,7 +217,6 @@ final class DemoTenantPortfolioSeeder extends Seeder
             return;
         }
 
-        $subscription->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function brand(Organization $organization, string $name): Brand
@@ -277,8 +271,6 @@ final class DemoTenantPortfolioSeeder extends Seeder
             $branch->restore();
         }
 
-        $branch->forceFill($factory->make()->getAttributes())->save();
-
         return $branch->refresh();
     }
 
@@ -301,15 +293,16 @@ final class DemoTenantPortfolioSeeder extends Seeder
             return;
         }
 
-        $assignment->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function branchSettings(Branch $branch): void
     {
         $settings = $this->ensureBranchSettings->handle($branch);
-        $settings->forceFill(
-            BranchSetting::factory()->demoReadyForService($branch)->make()->getAttributes(),
-        )->save();
+        if ($settings->wasRecentlyCreated) {
+            $settings->forceFill(
+                BranchSetting::factory()->demoReadyForService($branch)->make()->getAttributes(),
+            )->save();
+        }
     }
 
     private function area(Branch $branch, string $name, AreaNodeType $type): AreaNode

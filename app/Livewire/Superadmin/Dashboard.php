@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Superadmin;
 
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
 use App\Actions\System\BuildProductionSafetyReportAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
@@ -16,7 +17,6 @@ use App\Models\User;
 use App\Services\Superadmin\SuperadminDashboardQueryService;
 use App\Support\LocalizedDateFormatter;
 use App\Support\PlainText;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
@@ -159,7 +159,7 @@ class Dashboard extends Component
 
         $this->backupDownloadReason = trim($this->backupDownloadReason);
         $validated = $this->validate([
-            ...RestaurantValidationRules::auditReason('backupDownloadReason'),
+            ...AuditReasonRules::auditReason('backupDownloadReason'),
             'backupDownloadConfirmation' => ['required', 'string', 'in:BACKUP'],
         ], [
             'backupDownloadReason.required' => __('ui.confirmations.reason.required'),
@@ -186,7 +186,7 @@ class Dashboard extends Component
 
         $this->mediaBackupDownloadReason = trim($this->mediaBackupDownloadReason);
         $validated = $this->validate([
-            ...RestaurantValidationRules::auditReason('mediaBackupDownloadReason'),
+            ...AuditReasonRules::auditReason('mediaBackupDownloadReason'),
             'mediaBackupDownloadConfirmation' => ['required', 'string', 'in:MEDIA'],
         ], [
             'mediaBackupDownloadReason.required' => __('ui.confirmations.reason.required'),
@@ -214,7 +214,7 @@ class Dashboard extends Component
 
         $this->backupRestoreReason = trim($this->backupRestoreReason);
         $validated = $this->validate([
-            ...RestaurantValidationRules::auditReason('backupRestoreReason'),
+            ...AuditReasonRules::auditReason('backupRestoreReason'),
             'backupRestoreConfirmation' => ['required', 'string', 'in:RESTORE'],
         ], [
             'backupRestoreReason.required' => __('ui.confirmations.reason.required'),

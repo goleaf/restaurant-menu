@@ -7,34 +7,32 @@ namespace App\Actions\Mcp;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\McpAbility;
+use App\Mcp\McpAccess;
 use App\Models\Branch;
 use App\Models\McpAccessToken;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use RuntimeException;
 
 final class IssueMcpAccessTokenAction
 {
-    public function __construct(private readonly RecordAuditLogAction $audit) {}
+    public function __construct(private readonly RecordAuditLogAction $audit, private readonly McpAccess $access) {}
 
     /** @param list<string> $abilities */
     public function handle(User $user, Branch $branch, string $name, array $abilities, int $hours = 24): IssuedMcpAccessToken
     {
         $values = Validator::make(['name' => trim($name), 'abilities' => $abilities, 'hours' => $hours], [
-            'name' => ['required', 'string', 'max:100'],
-            'abilities' => ['required', 'array', 'min:1', 'max:20'],
+            'name' => ['required', 'string', 'max:100', 'not_regex:/[\x00-\x1F\x7F]/'],
+            'abilities' => ['required', 'array', 'list', 'min:1', 'max:20'],
             'abilities.*' => ['required', 'string', 'distinct', Rule::enum(McpAbility::class)],
             'hours' => ['required', 'integer', 'between:1,720'],
         ])->validate();
 
         return DB::transaction(function () use ($user, $branch, $values, $abilities, $hours): IssuedMcpAccessToken {
-            $user = User::query()->whereKey($user->id)->firstOrFail();
-            $branch = Branch::query()->select(['id', 'organization_id', 'brand_id', 'deleted_at'])
-                ->where('organization_id', $branch->organization_id)->whereKey($branch->id)->firstOrFail();
-            Gate::forUser($user)->authorize('view', $branch);
+            $user = User::query()->select(['id', 'locale'])->whereKey($user->id)->firstOrFail();
+            $branch = $this->access->authorizedBranch($user, $branch->id, $branch->organization_id);
             $plainTextToken = 'rm_mcp_'.bin2hex(random_bytes(32));
             $token = new McpAccessToken;
             $token->forceFill([

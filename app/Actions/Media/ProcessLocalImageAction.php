@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use App\Support\LocalImageVariants;
+use App\Support\Media\LocalImageConstraints;
 use GdImage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -12,10 +13,6 @@ use RuntimeException;
 
 final class ProcessLocalImageAction
 {
-    public const MAX_PIXELS = 20_000_000;
-
-    public const MAX_DIMENSION = 8192;
-
     /**
      * @return array{display: string, thumbnail: ?string, width: int, height: int, extension: string}
      */
@@ -29,9 +26,9 @@ final class ProcessLocalImageAction
 
         [$width, $height] = $dimensions;
 
-        if (max($width, $height) > self::MAX_DIMENSION || $width * $height > self::MAX_PIXELS) {
+        if (max($width, $height) > LocalImageConstraints::MAX_DIMENSION || $width * $height > LocalImageConstraints::MAX_PIXELS) {
             throw ValidationException::withMessages(['file' => __('uploads.errors.dimensions_too_large', [
-                'max_pixels' => (int) (self::MAX_PIXELS / 1_000_000), 'max_dimension' => self::MAX_DIMENSION,
+                'max_pixels' => (int) (LocalImageConstraints::MAX_PIXELS / 1_000_000), 'max_dimension' => LocalImageConstraints::MAX_DIMENSION,
             ])]);
         }
 
@@ -59,7 +56,7 @@ final class ProcessLocalImageAction
         [$width, $height] = LocalImageVariants::fit(imagesx($image), imagesy($image), LocalImageVariants::DISPLAY_MAX_DIMENSION);
         $display = $this->resize($image, $width, $height);
         unset($image);
-        $outputExtension = in_array('webp', StoreLocalImageAction::allowedExtensions(), true) ? 'webp' : $extension;
+        $outputExtension = in_array('webp', LocalImageConstraints::allowedExtensions(), true) ? 'webp' : $extension;
         $displayContents = $this->encode($display, $outputExtension);
         $thumbnailContents = null;
 

@@ -22,7 +22,7 @@ test('system permissions are seeded from the base enum list', function () {
     expect($permissions->pluck('name')->all())->toBe(SystemPermission::labels());
 });
 
-test('system permissions seeder restores the baseline and avoids duplicate pivot rows', function () {
+test('system permissions seeder preserves existing decisions and creates missing baseline grants', function () {
     $this->seed(SystemRolesSeeder::class);
     $this->seed(SystemPermissionsSeeder::class);
 
@@ -34,11 +34,15 @@ test('system permissions seeder restores the baseline and avoids duplicate pivot
     $this->seed(SystemPermissionsSeeder::class);
 
     expect(Permission::query()->count())->toBe(count(SystemPermission::cases()));
-    expect((bool) $role->permissions()->where('permissions.id', $permission->id)->firstOrFail()->pivot->enabled)->toBeTrue();
+    expect((bool) $role->permissions()->where('permissions.id', $permission->id)->firstOrFail()->pivot->enabled)->toBeFalse();
+
+    $missingPermission = Permission::query()->where('code', SystemPermission::ChangePrices->value)->firstOrFail();
+    $role->permissions()->detach($missingPermission->id);
 
     $this->seed(SystemPermissionsSeeder::class);
 
     expect(PermissionRole::query()->count())->toBe(Role::query()->count() * Permission::query()->count());
+    expect((bool) $role->permissions()->where('permissions.id', $missingPermission->id)->firstOrFail()->pivot->enabled)->toBeFalse();
 });
 
 test('each fixed role receives a toggle row for every base permission', function () {

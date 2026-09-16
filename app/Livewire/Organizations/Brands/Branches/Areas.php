@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches;
 
+use App\Support\Validation\Branches\AreaRules;
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\AreaNodes\DeleteAreaNodeAction;
 use App\Actions\AreaNodes\RestoreAreaNodeAction;
@@ -16,7 +17,6 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Branches\AreaNodeQueryService;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\Paginator;
@@ -430,7 +430,7 @@ class Areas extends Component
         }
 
         return [
-            ...RestaurantValidationRules::areaNode($fieldPrefix, array_keys($this->iconOptionRows())),
+            ...AreaRules::areaNode($fieldPrefix, array_keys($this->iconOptionRows())),
             $parentField => $parentRules,
         ];
     }

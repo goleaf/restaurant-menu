@@ -152,14 +152,40 @@ class MenuItemFactory extends Factory
         });
     }
 
-    public function withTranslations(): static
+    public function withoutDescription(): static
     {
-        return $this->afterCreating(function (MenuItem $menuItem): void {
+        return $this->state(fn (): array => ['description' => null]);
+    }
+
+    public function withLongText(): static
+    {
+        return $this->state(fn (): array => [
+            'name' => str_repeat('Ž', 180),
+            'description' => str_repeat('Я', 1200),
+        ]);
+    }
+
+    public function withDistinctTranslations(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'description' => $attributes['description'] ?? 'Seasonal vegetables with fresh herbs.',
+        ])->withTranslations(distinct: true);
+    }
+
+    public function withTranslations(bool $distinct = false): static
+    {
+        return $this->afterCreating(function (MenuItem $menuItem) use ($distinct): void {
+            $localized = [
+                'en' => ['name' => 'Garden vegetable soup', 'description' => 'Seasonal vegetables with fresh herbs.'],
+                'lt' => ['name' => 'Daržovių sriuba', 'description' => 'Sezoninės daržovės su šviežiomis žolelėmis.'],
+                'ru' => ['name' => 'Овощной суп', 'description' => 'Сезонные овощи со свежей зеленью.'],
+            ];
+
             foreach (['en', 'lt', 'ru'] as $languageCode) {
                 MenuItemTranslation::factory()->for($menuItem, 'item')->create([
                     'language_code' => $languageCode,
-                    'name' => $menuItem->name,
-                    'description' => $menuItem->description,
+                    'name' => $distinct ? $localized[$languageCode]['name'] : $menuItem->name,
+                    'description' => $menuItem->description === null ? null : ($distinct ? $localized[$languageCode]['description'] : $menuItem->description),
                 ]);
             }
         });

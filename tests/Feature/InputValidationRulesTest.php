@@ -1,6 +1,20 @@
 <?php
 
+use App\Support\Validation\TableSessions\GuestRules;
+use App\Support\Validation\Staff\InvitationRules;
+use App\Support\Validation\Payments\PaymentRules;
+use App\Support\Validation\Organizations\OrganizationRules;
+use App\Support\Validation\Orders\OrderInputRules;
+use App\Support\Validation\Menus\ModifierRules;
+use App\Support\Validation\Menus\MenuRules;
+use App\Support\Validation\Media\ImageUploadRules;
+use App\Support\Validation\Common\MoneyRules;
+use App\Support\Validation\Branches\ServicePointRules;
+use App\Support\Validation\Branches\BranchSettingsRules;
+use App\Support\Validation\Branches\BranchProfileRules;
+use App\Support\Validation\Branches\AreaRules;
 use App\Enums\AreaNodeType;
+use App\Enums\BranchServiceMode;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\MenuStatus;
 use App\Enums\ServicePointType;
@@ -9,21 +23,22 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\DecimalMoney;
-use App\Support\Validation\RestaurantValidationRules;
+use App\Support\Validation\Reports\ReportPeriodRules;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
 test('central rules reject unsafe main form input', function () {
     $rules = [
-        ...RestaurantValidationRules::organizationName('organizationName'),
-        ...RestaurantValidationRules::brandName('brandName'),
-        ...RestaurantValidationRules::guestName('guestName'),
-        ...RestaurantValidationRules::guestComment('guestComment'),
-        ...RestaurantValidationRules::waiterRejectionReason('rejectionReason'),
-        ...RestaurantValidationRules::price('price'),
-        ...RestaurantValidationRules::manualPaymentAmount('paymentAmount'),
-        ...RestaurantValidationRules::paymentMethod('paymentMethod'),
-        ...RestaurantValidationRules::reportDateRange('reportFrom', 'reportTo'),
+        ...OrganizationRules::organizationName('organizationName'),
+        ...OrganizationRules::brandName('brandName'),
+        ...GuestRules::guestName('guestName'),
+        ...GuestRules::guestComment('guestComment'),
+        ...OrderInputRules::waiterRejectionReason('rejectionReason'),
+        ...MoneyRules::price('price'),
+        ...PaymentRules::manualPaymentAmount('paymentAmount'),
+        ...PaymentRules::paymentMethod('paymentMethod'),
+        ...ReportPeriodRules::rules(),
     ];
 
     $validator = Validator::make([
@@ -35,8 +50,8 @@ test('central rules reject unsafe main form input', function () {
         'price' => '-1.00',
         'paymentAmount' => '-0.01',
         'paymentMethod' => 'crypto',
-        'reportFrom' => '2026-06-05',
-        'reportTo' => '2026-06-01',
+        'date_from' => '2026-06-05',
+        'date_to' => '2026-06-01',
     ], $rules);
 
     expect($validator->fails())->toBeTrue()
@@ -49,17 +64,26 @@ test('central rules reject unsafe main form input', function () {
             'price',
             'paymentAmount',
             'paymentMethod',
-            'reportTo',
         );
+});
+
+test('report rules reject a reversed calendar range through the shared resolver', function (): void {
+    $validator = Validator::make([
+        'date_from' => '2026-06-05',
+        'date_to' => '2026-06-01',
+    ], ReportPeriodRules::rules());
+    $validator->after(new ReportPeriodRules('UTC', CarbonImmutable::parse('2026-06-05')));
+
+    expect($validator->errors()->keys())->toContain('date_to');
 });
 
 test('central rules allow valid enum and money inputs', function () {
     $rules = [
-        ...RestaurantValidationRules::areaNode(iconValues: ['folder']),
-        ...RestaurantValidationRules::servicePoint(prefix: 'servicePoint', iconValues: ['squares-2x2']),
-        ...RestaurantValidationRules::menu(),
-        ...RestaurantValidationRules::modifierOption(canChangePrices: true, canChangeAvailability: true),
-        ...RestaurantValidationRules::paymentMethod(),
+        ...AreaRules::areaNode(iconValues: ['folder']),
+        ...ServicePointRules::servicePoint(prefix: 'servicePoint', iconValues: ['squares-2x2']),
+        ...MenuRules::menu(),
+        ...ModifierRules::modifierOption(canChangePrices: true, canChangeAvailability: true),
+        ...PaymentRules::paymentMethod(),
     ];
 
     $validator = Validator::make([
@@ -89,9 +113,9 @@ test('central rules allow valid enum and money inputs', function () {
 
 test('central monetary rules reject values that cannot be converted exactly', function (mixed $value, string $boundary): void {
     $rules = match ($boundary) {
-        'price' => RestaurantValidationRules::price()['price'],
-        'payment' => RestaurantValidationRules::manualPaymentAmount()['tipsAmount'],
-        'service charge' => RestaurantValidationRules::branchSettings()['serviceChargePercent'],
+        'price' => MoneyRules::price()['price'],
+        'payment' => PaymentRules::manualPaymentAmount()['tipsAmount'],
+        'service charge' => BranchSettingsRules::branchSettings()['serviceChargePercent'],
     };
 
     $validator = Validator::make(['amount' => $value], ['amount' => $rules]);
@@ -156,7 +180,7 @@ test('decimal money validation errors use the selected locale and field label', 
 ]);
 
 test('optional guest name accepts null and validates provided names', function (): void {
-    $rules = RestaurantValidationRules::optionalGuestName('guestName');
+    $rules = GuestRules::optionalGuestName('guestName');
     $emptyValidator = Validator::make(['guestName' => null], $rules);
     $validValidator = Validator::make(['guestName' => 'Ana'], $rules);
     $shortValidator = Validator::make(['guestName' => 'A'], $rules);
@@ -170,7 +194,7 @@ test('optional guest name accepts null and validates provided names', function (
 test('central image upload rules reject scriptable files', function () {
     $validator = Validator::make([
         'image' => UploadedFile::fake()->create('payload.svg', 10, 'image/svg+xml'),
-    ], RestaurantValidationRules::imageUpload('image'));
+    ], ImageUploadRules::imageUpload('image'));
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->keys())->toContain('image');
@@ -187,8 +211,70 @@ test('central branch rule scopes branch id to organization', function () {
 
     $validator = Validator::make([
         'branchId' => $otherBranch->id,
-    ], RestaurantValidationRules::branchId('branchId', $organization->id));
+    ], BranchProfileRules::branchId('branchId', $organization->id));
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->keys())->toContain('branchId');
+});
+
+test('invitation rules preserve numeric browser roles but reject boolean roles and invalid expiry', function (mixed $role, mixed $expiry, ?string $error): void {
+    $validator = Validator::make([
+        'email' => 'recipient@example.test',
+        'phone' => null,
+        'roleId' => $role,
+        'expiresInDays' => $expiry,
+    ], InvitationRules::staffInvitation());
+
+    if ($error === null) {
+        expect($validator->passes())->toBeTrue();
+
+        return;
+    }
+
+    expect($validator->errors()->keys())->toContain($error);
+})->with([
+    'browser numeric strings' => ['12', '7', null],
+    'integer values' => [12, 7, null],
+    'boolean role' => [true, '7', 'roleId'],
+    'false role' => [false, '7', 'roleId'],
+    'array role' => [[12], '7', 'roleId'],
+    'expired immediately' => ['12', 0, 'expiresInDays'],
+    'overlong invitation' => ['12', 31, 'expiresInDays'],
+    'boolean expiry' => ['12', true, 'expiresInDays'],
+]);
+
+test('branch service modes reject duplicate and associative selections', function (array $modes): void {
+    $rules = BranchSettingsRules::branchSettings();
+    $validator = Validator::make(['serviceModes' => $modes], [
+        'serviceModes' => $rules['serviceModes'],
+        'serviceModes.*' => $rules['serviceModes.*'],
+    ]);
+
+    expect($validator->fails())->toBeTrue();
+})->with([
+    'duplicate' => [[BranchServiceMode::cases()[0]->value, BranchServiceMode::cases()[0]->value]],
+    'associative' => [['unexpected' => BranchServiceMode::cases()[0]->value]],
+]);
+
+test('selected modifier rules reject malformed and unbounded nested input', function (array $selection): void {
+    $validator = Validator::make(['selectedModifierOptions' => $selection], ModifierRules::selectedModifierOptions());
+
+    expect($validator->fails())->toBeTrue();
+})->with([
+    'duplicate options' => [[1 => [2, '2']]],
+    'boolean option' => [[1 => [true]]],
+    'associative option list' => [[1 => ['unexpected' => 2]]],
+    'nested option' => [[1 => [[2]]]],
+    'invalid group key' => [['unexpected' => [2]]],
+    'ambiguous group key' => [['01' => [2]]],
+    'too many groups' => [array_fill(1, 51, [])],
+    'too many options' => [[1 => range(1, 51)]],
+]);
+
+test('selected modifier rules preserve canonical groups and browser numeric options', function (): void {
+    $selection = [2 => ['3', 4], 5 => []];
+    $validator = Validator::make(['selectedModifierOptions' => $selection], ModifierRules::selectedModifierOptions());
+
+    expect($validator->validated()['selectedModifierOptions'][2])->toBe(['3', 4])
+        ->and($validator->validated()['selectedModifierOptions'][5])->toBe([]);
 });

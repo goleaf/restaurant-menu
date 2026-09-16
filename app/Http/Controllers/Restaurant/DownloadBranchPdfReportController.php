@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Restaurant;
 use App\Actions\Exports\BuildBranchPdfReportAction;
 use App\Enums\DataExportType;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Restaurant\DownloadBranchCsvExportRequest;
+use App\Http\Requests\Restaurant\DownloadBranchReportRequest;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\Response;
@@ -15,7 +15,7 @@ use Illuminate\Http\Response;
 final class DownloadBranchPdfReportController extends Controller
 {
     public function __invoke(
-        DownloadBranchCsvExportRequest $request,
+        DownloadBranchReportRequest $request,
         Branch $branch,
         string $export,
         BuildBranchPdfReportAction $buildBranchPdfReport,
@@ -30,8 +30,8 @@ final class DownloadBranchPdfReportController extends Controller
             user: $user,
             branch: $branch,
             type: $type,
-            startedAt: $request->exportStartedAt(),
-            endedAt: $request->exportEndedAt(),
+            startedAt: $request->period()->startedAt,
+            endedAt: $request->period()->endedAt,
         );
 
         return response($pdf['contents'], 200, [

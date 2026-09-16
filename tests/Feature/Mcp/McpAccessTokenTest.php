@@ -108,3 +108,32 @@ test('MCP credential factory states preserve ownership and expiration semantics'
         ->and(McpAccessToken::factory()->expired()->create()->expires_at->isPast())->toBeTrue()
         ->and(McpAccessToken::factory()->revoked()->create()->revoked_at)->not->toBeNull();
 });
+
+test('MCP issuance rejects inactive or archived tenant chains', function (string $target): void {
+    match ($target) {
+        'branch' => $this->branch->delete(),
+        'brand' => $this->branch->brand->delete(),
+        'organization' => $this->branch->organization->delete(),
+        'inactive' => $this->branch->forceFill(['is_active' => false])->save(),
+    };
+
+    expect(fn () => app(IssueMcpAccessTokenAction::class)->handle($this->user, $this->branch, 'Unavailable', ['branch_context']))
+        ->toThrow(AuthorizationException::class)
+        ->and(McpAccessToken::query()->count())->toBe(0);
+})->with(['branch', 'brand', 'organization', 'inactive']);
+
+test('MCP credentials expose their organization relationship without disclosing the digest', function (): void {
+    $token = McpAccessToken::factory()->create()->load('organization');
+
+    expect($token->organization->id)->toBe($token->organization_id)
+        ->and($token->toArray())->not->toHaveKey('token_hash');
+});
+
+test('MCP revocation rolls back when its audit write is rejected', function (): void {
+    $issued = app(IssueMcpAccessTokenAction::class)->handle($this->user, $this->branch, 'Atomic revoke', ['branch_context']);
+    AuditLog::creating(fn (): bool => false);
+
+    expect(fn () => app(RevokeMcpAccessTokenAction::class)->handle($this->user, $issued->record->id))
+        ->toThrow(RuntimeException::class)
+        ->and($issued->record->fresh()->revoked_at)->toBeNull();
+});

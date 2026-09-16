@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
+use App\Support\Validation\Payments\PaymentRules;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Models\TableSessionGuest;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -157,9 +157,9 @@ final class Payment extends TableDetailSection
     private function manualPaymentRules(): array
     {
         return [
-            ...RestaurantValidationRules::paymentMethod('paymentMethod'),
-            ...RestaurantValidationRules::paymentNote('paymentNote'),
-            ...RestaurantValidationRules::manualPaymentAmount('tipsAmount'),
+            ...PaymentRules::paymentMethod('paymentMethod'),
+            ...PaymentRules::paymentNote('paymentNote'),
+            ...PaymentRules::manualPaymentAmount('tipsAmount'),
         ];
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CancelPendingMemberInvitationsAction;
 use App\Enums\AuditLogAction;
@@ -13,7 +14,6 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -64,7 +64,7 @@ final class SetOrganizationStaffStatusAction
             }
             $reason = trim((string) $reason);
             if ($target === OrganizationUserStatus::Suspended || $reason !== '') {
-                $reason = (string) Validator::make(['reason' => $reason], RestaurantValidationRules::auditReason('reason'))->validate()['reason'];
+                $reason = (string) Validator::make(['reason' => $reason], AuditReasonRules::auditReason('reason'))->validate()['reason'];
             }
             if (OrganizationUser::query()->whereKey($current->id)->where('access_version', $expectedVersion)
                 ->update(['access_version' => $expectedVersion + 1]) !== 1) {

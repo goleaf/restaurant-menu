@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\OrganizationUserStatus;
@@ -12,7 +13,6 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -160,7 +160,7 @@ final class UpdateOrganizationStaffRoleAction
 
         return (string) Validator::make(
             ['reason' => $reason],
-            RestaurantValidationRules::auditReason('reason'),
+            AuditReasonRules::auditReason('reason'),
         )->validate()['reason'];
     }
 }

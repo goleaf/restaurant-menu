@@ -4,6 +4,14 @@
 
 # Testing and quality gates
 
+## Profile appearance consolidation — 2026-09-16
+
+- The initial regression failed because Profile lacked the appearance section and the old address still returned its standalone page. The browser regression additionally caught a relative redirect target and insufficient mobile control bounds; both are corrected.
+- Settings, HTTP route protection and Livewire interaction boundaries pass **88 tests / 541 assertions**. The isolated `SettingsAppearanceBrowserTest` passes **1 WebKit scenario / 72 assertions**, including all three modes, reload persistence, keyboard switching, unfinished input preservation, explicit profile save and EN/LT/RU controls at 320/768/1440px with at least 44px targets and no clipped controls or page overflow. Final scenario artifacts: `restaurant-profile-appearance-d0aee121437c` in the system temporary directory; screenshots: `tests/Browser/Screenshots/profile-appearance-*`.
+- Separate isolated Chrome DevTools navigation through the normal demo login confirms `/settings/appearance` reaches `/settings/profile`, only Profile/Security remain in settings navigation, and dark preference survives reload. The actual Chrome viewport is 500px at its minimum window size; 320px evidence comes from the WebKit test. Console errors/warnings: zero. No real profile information was changed.
+- Pint, the production build/asset budgets and translation scan/audit pass. The final production build and settings/route tests were repeated successfully. Targeted Larastan on `routes/settings.php` and `App\Livewire\Settings\Profile` passes. The final whole-project `composer analyse` exits 1 with 20 errors in concurrently changing MCP, menu and media/validation code outside this transfer; it is not a passing repository-wide gate.
+- The first Chrome-engine Pest attempt could not start because the pinned Playwright installation has no Chromium executable; it was rerun successfully with the installed WebKit engine. This transfer changes no dependency. The broad `Unit,Feature` parallel run exits 1 after 507.64 seconds; its output includes MCP response/CLI errors, a 55-versus-54 canonical requirement count, a concurrently removed CSV request class and an invalid translation JSON read during editing. The shared source was changing during that run, so it is not evidence for a frozen release. The isolated appearance browser and focused 88-test suite pass separately.
+
 ## Flux component-system continuation — 2026-09-16
 
 This stage starts from clean `76932c7`; earlier migration totals below are historical. The same `npm run verify:migration` coordinator now additionally writes Clover line coverage to its owned artifact directory. It does not enable or claim global PHP branch/path coverage.

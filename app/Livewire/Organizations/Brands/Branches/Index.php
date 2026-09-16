@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches;
 
+use App\Support\Validation\Media\ImageUploadRules;
+use App\Support\Validation\Common\AuditReasonRules;
+use App\Support\Validation\Branches\BranchProfileRules;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\RestoreBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Branches\UpdateBranchLogoAction;
-use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\SupportedCurrency;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -20,7 +22,6 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\BranchQueryService;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\Paginator;
@@ -213,7 +214,7 @@ class Index extends Component
         $reason = null;
 
         if ($branch->is_active && ! (bool) $validated['editingIsActive']) {
-            $reasonValidation = $this->validate(RestaurantValidationRules::auditReason('branchSuspendReason'), [
+            $reasonValidation = $this->validate(AuditReasonRules::auditReason('branchSuspendReason'), [
                 'branchSuspendReason.required' => __('ui.livewire.organizations.brands.branches.index.explain_why_this_branch_is'),
                 'branchSuspendReason.min' => __('ui.livewire.organizations.brands.branches.index.the_suspension_reason_must'),
             ]);
@@ -291,8 +292,8 @@ class Index extends Component
         $branch = $this->findBrandBranch($branchId);
 
         $this->validate(
-            RestaurantValidationRules::imageUpload('branchLogos.'.$branch->id),
-            StoreLocalImageAction::validationMessages('branchLogos.'.$branch->id),
+            ImageUploadRules::imageUpload('branchLogos.'.$branch->id),
+            ImageUploadRules::messages('branchLogos.'.$branch->id),
         );
 
         $file = $this->branchLogos[$branch->id] ?? null;
@@ -461,7 +462,7 @@ class Index extends Component
             $uniqueRule->ignore($ignoreBranchId);
         }
 
-        $rules = RestaurantValidationRules::branchBase($fieldPrefix);
+        $rules = BranchProfileRules::branchBase($fieldPrefix);
         $rules[$nameField][] = $uniqueRule;
 
         return $rules;

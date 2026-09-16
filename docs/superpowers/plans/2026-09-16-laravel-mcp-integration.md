@@ -1,5 +1,7 @@
 # Laravel MCP 1.0 Integration Plan
 
+> **Execution skill:** `subagent-driven-development`, with focused implementation and independent review. Continue in the current shared branch as required by AGENTS.md. The user requested the plan followed by immediate implementation; no additional planning approval is pending.
+
 > Execution: implement incrementally in the current shared branch, preserving the existing staged and unstaged Flux work. The user explicitly requested a plan followed immediately by implementation. The canonical requirement is `sys-mcp-001` in `docs/requirements.md`; execution status belongs in `docs/IMPLEMENTATION_PLAN.md`.
 
 **Goal:** expose the restaurant application's authorized operational capabilities through Laravel MCP 1.0, with bounded tenant-scoped reads and explicit, retry-safe writes through existing domain Actions.
@@ -14,8 +16,33 @@
 - Installed MCP 0.9.4 is development-only through Boost 2.5.5. Boost 2.5.5 excludes MCP 1.0.
 - Packagist metadata confirms MCP 1.0.0 and Boost 2.9.0; Boost 2.9.0 permits `^1.0` MCP. Local archive cache contains neither release.
 - Required official archive references: MCP `cfa4f38f82873eeb6848527883545f98f871e229`; Boost `ebe59d97cbc66b66f735e6ec7ff859233e7934e0`.
-- Both distribution URLs use `api.github.com`, prohibited by the active push-only rule. Installation remains blocked until a narrow user exception or independently supplied official local archives exists. Do not relabel 0.9, patch vendor compatibility constraints, or generate a lock file claiming an uninstalled release.
-- About 2.3 GiB free at initial inspection. Do not duplicate vendor/node_modules or run simultaneous coverage jobs.
+- The user explicitly authorized only the two archive downloads. Both verified ZIPs and their SHA-256 manifest are now in ignored `storage/app/private/composer-archives/2026-09-16/`. Install from the Composer cache with network disabled; every other GitHub restriction remains in force.
+- Refreshed baseline: HEAD `f3ab943`, one pre-existing change in `tests/Feature/Settings/AppearanceTest.php`, about 7.5 GiB free, no active Composer/Pest/coverage writer. Preserve concurrent work and recheck before shared-runtime changes.
+- The existing token issue/list/revoke commands are empty scaffolds, the branch-context return type is incorrect, and parent archive checks need tightening. These are implementation work, not verified completion. The canonical MCP requirement is added with this continuation.
+
+## Ordered execution and article coverage
+
+1. **Runtime:** install exact MCP 1.0.0 and Boost 2.9.0 from the verified archive cache, promote MCP to production dependencies, retain every unrelated locked package. Add `McpRuntimeTest` before the upgrade and prove native discovery, legacy initialization, stateless calls, and header/meta validation after it.
+2. **Access lifecycle:** complete existing commands and token relationships; recheck expiry, revocation, active complete tenant chain, current policies and write flags on each invocation. Run existing `McpAccessTokenTest`, `McpTokenCommandsTest`, `McpAuthenticationTest` and schema/factory audits.
+3. **Read catalogue:** implement the ten existing read abilities in `app/Mcp/Tools/` using selected, bounded, tenant/area/department-scoped reads in `app/Services/Mcp/`. Add direct and HTTP tests, negative permissions, malformed arguments, pagination, fixed query budgets, and exact money/report dates.
+4. **Mutation catalogue:** implement the ten existing mutation abilities through the canonical domain Actions. Require JSON boolean `confirmed: true`, the exact token ability and current resource policy. Add an actor/token/branch/tool-bound UUID receipt only where the domain replay contract cannot protect delayed retries; hash normalized arguments and reject key reuse. Never let a delayed open-table replay create a second service visit or a delayed availability/pause replay overwrite newer state.
+5. **Resources and prompts:** add `BranchContextResource`, `OperationsGuideResource`, `ShiftReviewPrompt`, `MenuReviewPrompt`; scope and authorize direct reads, validate prompt arguments, localize human-facing content, treat restaurant content as untrusted data.
+6. **MCP 1.0 search and caching:** keep branch context directly discoverable; place specialist tools behind native `ToolSearch`. Bound batch calls/output, reauthorize every child call, document sequential partial completion. Advertise private zero-TTL for access-sensitive listings/data; permit a private TTL only for the static operational guide. Test token switches, revoked rights, mixed batches and replay after partial failure.
+7. **MCP Apps and OAuth applicability:** add a read-only, self-contained Blade branch overview `BranchOverviewApp`, linked from the context tool, with native `extensions` capability, no network assets or mutation bridge. Test escaped HTML, no-store data, correct UI metadata and sandbox resource rendering. Verify native OAuth PKCE rejection, metadata-document behavior and cached client isolation with faked HTTP. No external OAuth provider/client is configured: custom scoped bearer authentication remains the real server integration, and external OAuth interoperability requires an operator-supplied service.
+8. **Acceptance:** update the canonical requirement/compliance/traceability, architecture/security/data/deployment/seeding/testing documents and existing ledgers with actual results. Run focused/full/parallel Pest, coverage >=90%, Pint, Larastan, translation scans, audits/build, isolated migration/seed/cache checks and Herd HTTP/browser smoke. Distinguish local implementation from external MCP-host certification and deployment.
+
+The protocol contract uses the native 1.0 transport, never a compatibility shim:
+
+```php
+$params['_meta'] = [
+    'io.modelcontextprotocol/protocolVersion' => '2026-07-28',
+    'io.modelcontextprotocol/clientCapabilities' => new stdClass,
+];
+// HTTP headers must agree with the native enum values and request body.
+// Test constants are read from Laravel\\Mcp\\Enums\\MetaKey and RequestHeader.
+```
+
+Every task starts with a failing behaviour test, then implementation, targeted execution, spec review and code-quality review. Worker ownership is bounded by file paths; Composer, server registration, shared locale catalogues and final documentation stay coordinated by the root agent. No commit includes unverified or unrelated work.
 
 ## Sources and applicability
 
@@ -24,13 +51,13 @@
 - Official package metadata: https://repo.packagist.org/p2/laravel/mcp.json and https://repo.packagist.org/p2/laravel/boost.json
 - Use MCP's native `server/discover`, stateless requests, header validation, `ToolSearch` and private cache hints; retain legacy initialization compatibility through the package.
 - OAuth PKCE/client-metadata changes apply to OAuth clients. This application has no Passport/OAuth integration or external MCP service requirement. Use the documented custom bearer middleware boundary; do not install an unrelated identity provider or outbound service. Record this explicitly rather than claiming OAuth is configured.
-- MCP Apps are optional host-rendered interfaces. Their use requires an actual host/client and additional reviewed UI boundary; ordinary tools/resources/prompts are fully usable without an embedded app. Do not fabricate app compatibility or introduce a separate SPA.
+- MCP Apps use a read-only SSR branch overview. Native resource/extension and isolated rendering tests are local evidence; do not claim certification in an external MCP host that has not been exercised or introduce a separate SPA.
 
 ## Task 1 — Dependency and runtime compatibility
 
 Files: `composer.json`, `composer.lock`; tests `tests/Feature/Mcp/McpRuntimeTest.php`.
 
-- [ ] Obtain the two official archives within authorization; inspect source and validate references before installation.
+- [x] Obtain the two official archives within authorization; inspect source and validate references before installation.
 - [ ] Wait for the currently running verification writer before changing shared vendor or Composer files.
 - [ ] Add production `laravel/mcp: ^1.0`; update only MCP and the necessary Boost compatibility dependency, preserving local Flux 0.1.1.
 - [ ] Disable automatic Boost instruction rewriting during the controlled update; run normal package discovery explicitly.

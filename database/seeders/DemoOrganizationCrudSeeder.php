@@ -140,32 +140,13 @@ final class DemoOrganizationCrudSeeder extends Seeder
                     10,
                     $dayOfWeek === 7,
                     $dayOfWeek === 6 ? '12:00' : '11:00',
-                    $dayOfWeek === 6 ? '23:00' : '22:00',
+                    $branch->name === 'Bella Pizza Old Town' && $dayOfWeek === 2 ? '15:00' : ($dayOfWeek === 6 ? '23:00' : '22:00'),
                 );
             }
 
             if ($branch->name === 'Bella Pizza Old Town') {
-                $this->seedOpeningHour($branch, 2, 10, false, '11:00', '15:00');
                 $this->seedOpeningHour($branch, 2, 20, false, '17:00', '22:00');
             }
-        }
-
-        $temporarilyClosedBranch = $branches->firstWhere('name', self::TEMPORARILY_CLOSED_BRANCH_NAME);
-
-        if ($temporarilyClosedBranch instanceof Branch) {
-            $attributes = Branch::factory()
-                ->state(fn (): array => [
-                    'is_temporarily_closed' => true,
-                    'temporary_closed_reason' => 'Planned CRUD demonstration closure',
-                    'temporary_closed_until' => CarbonImmutable::parse('2035-01-15 18:00:00', 'UTC'),
-                ])
-                ->make([
-                    'organization_id' => $temporarilyClosedBranch->organization_id,
-                    'brand_id' => $temporarilyClosedBranch->brand_id,
-                ])
-                ->only(['is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until']);
-
-            $temporarilyClosedBranch->forceFill($attributes)->save();
         }
 
         $inactiveBranch = $branches->firstWhere('name', self::INACTIVE_BRANCH_NAME);
@@ -173,16 +154,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
         if (! $inactiveBranch instanceof Branch) {
             return;
         }
-
-        $inactiveBranchAttributes = Branch::factory()
-            ->inactive()
-            ->make([
-                'organization_id' => $inactiveBranch->organization_id,
-                'brand_id' => $inactiveBranch->brand_id,
-            ])
-            ->only(['is_active']);
-
-        $inactiveBranch->forceFill($inactiveBranchAttributes)->save();
 
         $area = $this->seedInactiveArea($inactiveBranch);
         $this->seedInactiveServicePoint($inactiveBranch, $area);
@@ -217,7 +188,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
             return;
         }
 
-        $openingHour->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function seedInactiveArea(Branch $branch): AreaNode
@@ -373,7 +343,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
         }
 
         $this->seedInvitations($organization, $owner, $waiterRole, $branches);
-        $this->seedPermissionOverrides();
+        $this->seedPermissionOverrides($organization);
     }
 
     private function seedLifecycleUser(string $name, string $email): User
@@ -388,13 +358,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
             return $factory->create();
         }
 
-        $attributes = $factory->make()->getAttributes();
-
-        unset($attributes['password']);
-
-        $user->forceFill($attributes)->save();
-
-        return $user->refresh();
+        return $user;
     }
 
     private function seedOrganizationMembership(
@@ -421,7 +385,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
             return;
         }
 
-        $membership->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function seedBranchMembership(
@@ -448,7 +411,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
             return;
         }
 
-        $assignment->forceFill($factory->make()->getAttributes())->save();
     }
 
     private function seedWaiterAssignment(
@@ -564,7 +526,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
             || hash_equals($legacyHashes['code'], (string) $invitation->getRawOriginal('invite_code_hash'));
     }
 
-    private function seedPermissionOverrides(): void
+    private function seedPermissionOverrides(Organization $organization): void
     {
         $profiles = [
             ['email' => 'permission.staff@demo.test', 'permission' => SystemPermission::ChangeAvailability, 'state' => 'allowed'],
@@ -581,11 +543,13 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 ->where('code', $profile['permission']->value)
                 ->firstOrFail();
             $override = PermissionUserOverride::query()
+                ->where('organization_id', $organization->id)
                 ->where('user_id', $user->id)
                 ->where('permission_id', $permission->id)
                 ->first();
             $state = $profile['state'];
             $factory = PermissionUserOverride::factory()
+                ->forOrganization($organization)
                 ->forUser($user)
                 ->forPermission($permission)
                 ->{$state}();
@@ -596,7 +560,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 continue;
             }
 
-            $override->forceFill($factory->make()->getAttributes())->save();
         }
     }
 

@@ -76,6 +76,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->configureSharedHostingInfrastructure();
+        $this->app->extend('translation.loader', fn (\Illuminate\Contracts\Translation\Loader $loader): \App\Support\Localization\ValidationTranslationLoader => new \App\Support\Localization\ValidationTranslationLoader($loader));
     }
 
     /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms\Staff;
 
-use App\Support\Validation\RestaurantValidationRules;
+use App\Support\Validation\Staff\InvitationRules;
 use Livewire\Form;
 
 class InvitationForm extends Form
@@ -24,11 +24,7 @@ class InvitationForm extends Form
         $this->phone = is_string($this->phone) ? trim($this->phone) : $this->phone;
 
         /** @var array{email: string, phone: string|null, roleId: int, expiresInDays: int} $validated */
-        $validated = $this->validate([
-            ...RestaurantValidationRules::staffInvitation($roleRule),
-            'roleId' => ['required', 'numeric', 'integer', $roleRule],
-            'expiresInDays' => ['required', 'numeric', 'integer', 'between:1,30'],
-        ]);
+        $validated = $this->validate(InvitationRules::staffInvitation($roleRule));
         $validated['roleId'] = (int) $validated['roleId'];
         $validated['expiresInDays'] = (int) $validated['expiresInDays'];
 

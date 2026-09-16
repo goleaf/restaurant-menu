@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
+use App\Support\Validation\TableSessions\GuestRules;
 use App\Actions\Localization\UpdateGuestLocaleAction;
 use App\Actions\PublicQr\BuildGuestEntryContextAction;
 use App\Actions\PublicQr\EnsureGuestEntryRateLimitAction;
@@ -22,7 +23,6 @@ use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\PublicQr\GuestEntryPresenter;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
@@ -263,7 +263,7 @@ class GuestEntry extends Component
 
         $ensureGuestEntryRateLimit->handle($this->token, request()->ip());
 
-        $validated = $this->validate(RestaurantValidationRules::guestName('guestName'), [
+        $validated = $this->validate(GuestRules::guestName('guestName'), [
             'guestName.required' => __('guest.table.enter_name_validation'),
             'guestName.min' => __('guest.table.guest_name_min'),
             'guestName.max' => __('guest.table.guest_name_max'),

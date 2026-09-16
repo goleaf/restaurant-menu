@@ -16,17 +16,17 @@ final class RevokeMcpAccessTokenAction
 {
     public function __construct(private readonly RecordAuditLogAction $audit) {}
 
-    public function handle(User $actor, int $tokenId): void
+    public function handle(User $actor, int $tokenId): bool
     {
-        DB::transaction(function () use ($actor, $tokenId): void {
-            $actor = User::query()->whereKey($actor->id)->firstOrFail();
+        return DB::transaction(function () use ($actor, $tokenId): bool {
+            $actor = User::query()->select(['id'])->whereKey($actor->id)->firstOrFail();
             $token = McpAccessToken::query()->select(['id', 'user_id', 'organization_id', 'branch_id', 'revoked_at'])
                 ->whereKey($tokenId)->lockForUpdate()->firstOrFail();
             if ($token->user_id !== $actor->id && ! $actor->isSuperadmin()) {
                 throw new AuthorizationException;
             }
             if ($token->revoked_at !== null) {
-                return;
+                return false;
             }
             $token->revoked_at = now();
             if (! $token->save()) {
@@ -34,6 +34,8 @@ final class RevokeMcpAccessTokenAction
             }
             $this->audit->handle(AuditLogAction::McpTokenRevoked, 'mcp_access_token', $token->id,
                 actorUser: $actor, organizationId: $token->organization_id, branchId: $token->branch_id);
+
+            return true;
         }, 3);
     }
 }

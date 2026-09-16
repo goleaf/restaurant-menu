@@ -41,6 +41,19 @@
             </div>
         </form>
 
+        <section id="profile-appearance" aria-labelledby="profile-appearance-heading" class="my-6 space-y-6">
+            <div>
+                <flux:heading id="profile-appearance-heading" level="2">{{ __('ui.settings.appearance.appearance_settings') }}</flux:heading>
+                <flux:subheading id="profile-appearance-description">{{ __('ui.settings.appearance.update_the_appearance_settings_for_your_account') }}</flux:subheading>
+            </div>
+
+            <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" aria-labelledby="profile-appearance-heading" aria-describedby="profile-appearance-description" class="h-auto! flex-col sm:flex-row">
+                <flux:radio value="light" icon="sun" class="min-h-touch">{{ __('ui.settings.appearance.light') }}</flux:radio>
+                <flux:radio value="dark" icon="moon" class="min-h-touch">{{ __('ui.settings.appearance.dark') }}</flux:radio>
+                <flux:radio value="system" icon="computer-desktop" class="min-h-touch">{{ __('ui.settings.appearance.system') }}</flux:radio>
+            </flux:radio.group>
+        </section>
+
         @if ($this->showDeleteUser)
             <livewire:settings.delete-user-form />
         @endif

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Payments;
 
+use App\Support\Validation\Payments\PaymentRules;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\TransitionTableOrdersAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
@@ -23,7 +24,6 @@ use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Support\MoneyFormatter;
 use App\Support\PlainText;
-use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -384,7 +384,7 @@ class RecordManualPaymentAction
 
         $validated = Validator::make(
             ['paymentMethod' => $paymentMethod],
-            RestaurantValidationRules::paymentMethod('paymentMethod'),
+            PaymentRules::paymentMethod('paymentMethod'),
             [
                 'paymentMethod.in' => __('payments.errors.method_required'),
                 'paymentMethod.required' => __('payments.errors.method_required'),

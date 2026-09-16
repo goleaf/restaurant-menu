@@ -519,7 +519,8 @@
     "local_login.allowed": "Разрешено",
     "local_login.companies": "Компании и участие",
     "local_login.denied": "Запрещено",
-    "local_login.description": "Все пользователи локальной базы. Логин — email. Пароли показаны только для настроенных демо-аккаунтов; остальные восстановить невозможно.",
+    "local_login.description": "Нажмите на имя пользователя, чтобы сразу войти. Быстрый вход доступен только в локальной среде. Пароли показаны только для настроенных демо-аккаунтов.",
+    "local_login.sign_in_as": "Войти как :name",
     "local_login.empty": "Пользователи ещё не созданы.",
     "local_login.identity": "Имя / логин (email)",
     "local_login.legacy_scope": "Прежнее правило аккаунта",
@@ -546,6 +547,8 @@
     "mcp.cli.revoked_success": "Ключ доступа отозван.",
     "mcp.cli.unavailable": "Пользователь или ресторан недоступен либо доступ запрещён.",
     "mcp.cli.write_required": "Для возможностей записи необходимо явно указать --write.",
+    "mcp.errors.invalid_arguments": "Операцию нельзя выполнить с этими параметрами или при текущем состоянии ресторана. Проверьте данные и повторите запрос.",
+    "mcp.errors.operation_failed": "Не удалось выполнить операцию ресторана. Повторите запрос с тем же ключом.",
     "mcp.errors.replay_conflict": "Этот ключ запроса уже использован с другими аргументами.",
     "mcp.errors.request_denied": "Запрос MCP не разрешён.",
     "menu.admin.hidden_until": "Скрыть от гостей до",
@@ -1272,7 +1275,6 @@
     "reports.csv.yes": "Да",
     "reports.empty.no_data": "Подтверждённых заказов за сегодня пока нет.",
     "reports.errors.date": "Введите корректную дату в формате ГГГГ-ММ-ДД.",
-    "reports.errors.date_range": "Выберите последовательный период не более 31 календарного дня.",
     "reports.errors.period": "Выберите допустимый период отчёта.",
     "reports.exports.csv_and_pdf": "PDF-отчёты и данные CSV",
     "reports.exports.description": "Скачайте PDF-отчёты и CSV-данные филиала по заказам, оплатам, меню и столам.",
@@ -2861,7 +2863,5 @@
     "validation.url": "Поле «:attribute» должно содержать корректный URL.",
     "validation.uuid": "Поле «:attribute» должно содержать корректный UUID.",
     "waiter.dashboard.no_active_tables": "Активных столов сейчас нет.",
-    "waiter.dashboard.no_available_branches": "Филиалов для просмотра заказов официантом нет.",
-    "mcp.errors.invalid_arguments": "Операцию нельзя выполнить с этими параметрами или при текущем состоянии ресторана. Проверьте данные и повторите запрос.",
-    "mcp.errors.operation_failed": "Не удалось выполнить операцию ресторана. Повторите запрос с тем же ключом."
+    "waiter.dashboard.no_available_branches": "Филиалов для просмотра заказов официантом нет."
 }

@@ -10,14 +10,14 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[IsOpenWorld(false)]
-final class BranchContextTool extends RestaurantReadTool
+final class ListWaiterCallsTool extends RestaurantReadTool
 {
-    protected string $name = 'branch_context';
+    protected string $name = 'list_waiter_calls';
 
-    protected string $description = 'Read the exact authorized branch identity, timezone and currency.';
+    protected string $description = 'List branch waiter calls. mine_only defaults to the existing My areas filter.';
 
     protected function ability(): McpAbility
     {
-        return McpAbility::BranchContext;
+        return McpAbility::ListWaiterCalls;
     }
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\CreateMenuAction;
 use App\Actions\Menus\CreateMenuCategoryAction;
 use App\Actions\Menus\CreateMenuItemAction;
@@ -82,9 +83,9 @@ test('menu item updates preserve omitted price availability and hidden deadline'
     ]);
     $hiddenUntil = $item->hidden_until->toIso8601String();
 
-    app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, [
+    app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, MenuItemData::fromValidated([
         'name' => 'Changed item', 'description' => null, 'weight' => null, 'volume' => null, 'calories' => null, 'sort_order' => 0,
-    ], preserveExistingDepartment: true);
+    ]), preserveExistingDepartment: true);
 
     expect($item->fresh()->price_cents)->toBe(975)
         ->and($item->fresh()->is_available)->toBeFalse()
@@ -99,8 +100,8 @@ test('menu item actions reload menu ownership before persisting', function (stri
     $data = ['name' => 'Changed item', 'description' => null, 'weight' => null, 'volume' => null, 'calories' => null, 'sort_order' => 0];
 
     expect(fn () => match ($operation) {
-        'create' => app(CreateMenuItemAction::class)->handle($actor, $branch, $menu, $category, null, $data),
-        'update' => app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, $data),
+        'create' => app(CreateMenuItemAction::class)->handle($actor, $branch, $menu, $category, null, MenuItemData::fromValidated($data)),
+        'update' => app(UpdateMenuItemAction::class)->handle($actor, $branch, $item, $menu, $category, null, MenuItemData::fromValidated($data)),
     })->toThrow(ModelNotFoundException::class);
 
     expect(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(1)

@@ -16,6 +16,13 @@ final class DemoEnvironment
         return $this->isEnabled() && $this->allowsHost($request->getHost());
     }
 
+    public function allowsLocalRequest(Request $request): bool
+    {
+        return $this->application->environment('local')
+            && config('app.env') === 'local'
+            && $this->allowsRequest($request);
+    }
+
     public function shouldSeedDatabase(): bool
     {
         $host = parse_url((string) config('app.url'), PHP_URL_HOST);

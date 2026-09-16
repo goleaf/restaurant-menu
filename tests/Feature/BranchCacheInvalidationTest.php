@@ -19,11 +19,16 @@ use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Events\KeyForgotten;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
+use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+
+beforeEach(function (): void {
+    $this->seed(SystemPermissionsSeeder::class);
+});
 
 test('branch cache invalidation deletes every version and refresh timestamp in one scoped database query', function (): void {
     $branch = Branch::factory()->create();

@@ -519,7 +519,8 @@
     "local_login.allowed": "Allowed",
     "local_login.companies": "Companies and membership",
     "local_login.denied": "Denied",
-    "local_login.description": "All users in this local database. Email is the username. Passwords are shown only for configured demo accounts; other passwords cannot be recovered.",
+    "local_login.description": "Click a user's name to sign in immediately. This shortcut is available only in the local environment. Passwords are shown only for configured demo accounts.",
+    "local_login.sign_in_as": "Sign in as :name",
     "local_login.empty": "No users have been created.",
     "local_login.identity": "Name / username (email)",
     "local_login.legacy_scope": "Legacy account override",
@@ -546,6 +547,8 @@
     "mcp.cli.revoked_success": "Credential revoked.",
     "mcp.cli.unavailable": "The user or restaurant is unavailable or access is denied.",
     "mcp.cli.write_required": "Write capabilities require the explicit --write option.",
+    "mcp.errors.invalid_arguments": "The operation could not be completed with these arguments or the current restaurant state. Review the input and retry.",
+    "mcp.errors.operation_failed": "The restaurant operation could not be completed. Try again with the same request key.",
     "mcp.errors.replay_conflict": "This request key was already used with different arguments.",
     "mcp.errors.request_denied": "The MCP request is not permitted.",
     "menu.admin.hidden_until": "Hide from guests until",
@@ -1272,7 +1275,6 @@
     "reports.csv.yes": "Yes",
     "reports.empty.no_data": "No confirmed orders today yet.",
     "reports.errors.date": "Enter a valid date in YYYY-MM-DD format.",
-    "reports.errors.date_range": "Choose an ordered date range of at most 31 calendar days.",
     "reports.errors.period": "Choose a valid report period.",
     "reports.exports.csv_and_pdf": "PDF reports and CSV data",
     "reports.exports.description": "Download branch PDF reports and CSV data for orders, payments, menu, and tables.",
@@ -2861,7 +2863,5 @@
     "validation.url": "The :attribute field must be a valid URL.",
     "validation.uuid": "The :attribute field must be a valid UUID.",
     "waiter.dashboard.no_active_tables": "No active tables right now.",
-    "waiter.dashboard.no_available_branches": "No branches are available for waiter order viewing.",
-    "mcp.errors.invalid_arguments": "The operation could not be completed with these arguments or the current restaurant state. Review the input and retry.",
-    "mcp.errors.operation_failed": "The restaurant operation could not be completed. Try again with the same request key."
+    "waiter.dashboard.no_available_branches": "No branches are available for waiter order viewing."
 }

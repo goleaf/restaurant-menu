@@ -508,13 +508,11 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 continue;
             }
 
-            $attributes = $factory->make()->getAttributes();
-
             if (! $this->usesLegacyInvitationCredential($invitation, $state)) {
-                unset($attributes['invite_token_hash'], $attributes['invite_code_hash']);
+                continue;
             }
 
-            $invitation->forceFill($attributes)->save();
+            $invitation->forceFill($factory->make()->only(['email', 'invite_token_hash', 'invite_code_hash']))->save();
         }
     }
 
@@ -555,6 +553,18 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 ->{$state}();
 
             if (! $override instanceof PermissionUserOverride) {
+                $legacy = PermissionUserOverride::query()
+                    ->select(['id', 'enabled'])
+                    ->whereNull('organization_id')
+                    ->where('scope_key', 'legacy')
+                    ->where('user_id', $user->id)
+                    ->where('permission_id', $permission->id)
+                    ->first();
+
+                if ($legacy instanceof PermissionUserOverride) {
+                    $factory = $factory->state(['enabled' => $legacy->enabled]);
+                }
+
                 $factory->create();
 
                 continue;

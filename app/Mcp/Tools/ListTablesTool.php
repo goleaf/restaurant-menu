@@ -10,14 +10,14 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[IsOpenWorld(false)]
-final class BranchContextTool extends RestaurantReadTool
+final class ListTablesTool extends RestaurantReadTool
 {
-    protected string $name = 'branch_context';
+    protected string $name = 'list_tables';
 
-    protected string $description = 'Read the exact authorized branch identity, timezone and currency.';
+    protected string $description = 'List service point metadata in the exact token branch. Session and order data are not included.';
 
     protected function ability(): McpAbility
     {
-        return McpAbility::BranchContext;
+        return McpAbility::ListTables;
     }
 }

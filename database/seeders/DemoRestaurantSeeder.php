@@ -97,12 +97,14 @@ class DemoRestaurantSeeder extends Seeder
         $this->call(DemoOperationalStateSeeder::class);
         $this->call(DemoOrganizationCrudSeeder::class);
         $this->call(DemoTenantPortfolioSeeder::class);
+        $this->call(DemoWorkflowScenarioSeeder::class);
         $this->storeDemoQrCodeImages();
     }
 
     private function demoOrganization(User $owner): Organization
     {
         $organization = Organization::withTrashed()
+            ->where('owner_user_id', $owner->id)
             ->where('name', self::ORGANIZATION_NAME)
             ->first();
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
+use App\Data\Menus\MenuItemData;
+
 use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
 use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
@@ -27,7 +29,6 @@ final class BuildMenuItemAttributesAction
     ) {}
 
     /**
-     * @param  array{name: string, description: string|null, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available?: bool, hidden_until?: string|null, sort_order: int}  $data
      * @return array{menu_id: int, category_id: int, kitchen_department_id: int|null, name: string, description: string|null, price_cents: int, allergens: list<string>, dietary_labels: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available: bool, hidden_until: CarbonInterface|null, sort_order: int}
      */
     public function handle(
@@ -36,7 +37,7 @@ final class BuildMenuItemAttributesAction
         Menu $menu,
         MenuCategory $category,
         ?int $kitchenDepartmentId,
-        array $data,
+        MenuItemData $data,
         ?MenuItem $existingItem = null,
         bool $preserveExistingDepartment = false,
     ): array {
@@ -58,27 +59,27 @@ final class BuildMenuItemAttributesAction
             'menu_id' => $menu->id,
             'category_id' => $category->id,
             'kitchen_department_id' => $department?->id,
-            'name' => PlainText::required($data['name'], 180, squish: true),
-            'description' => PlainText::optional($data['description'], 1200),
+            'name' => PlainText::required($data->name, 180, squish: true),
+            'description' => PlainText::optional($data->description, 1200),
             'price_cents' => $canChangePrices
-                ? MoneyFormatter::decimalToCents($data['price'] ?? 0)
+                ? ($data->price === null ? $existingPriceCents : MoneyFormatter::decimalToCents($data->price))
                 : $existingPriceCents,
-            'allergens' => array_key_exists('allergens', $data)
-                ? $this->normalizeLabels($data['allergens'], MenuAllergen::values(), 'allergens')
+            'allergens' => $data->allergens !== null
+                ? $this->normalizeLabels($data->allergens, MenuAllergen::values(), 'allergens')
                 : ($existingItem instanceof MenuItem ? $existingItem->allergens : []),
-            'dietary_labels' => array_key_exists('dietary_labels', $data)
-                ? $this->normalizeLabels($data['dietary_labels'], MenuDietaryLabel::values(), 'dietary_labels')
+            'dietary_labels' => $data->dietaryLabels !== null
+                ? $this->normalizeLabels($data->dietaryLabels, MenuDietaryLabel::values(), 'dietary_labels')
                 : ($existingItem instanceof MenuItem ? $existingItem->dietary_labels : []),
-            'weight' => $this->optionalString($data['weight']),
-            'volume' => $this->optionalString($data['volume']),
-            'calories' => $data['calories'],
+            'weight' => $this->optionalString($data->weight),
+            'volume' => $this->optionalString($data->volume),
+            'calories' => $data->calories,
             'is_available' => $canChangeAvailability
-                ? (bool) ($data['is_available'] ?? true)
+                ? ($data->isAvailable ?? $existingAvailability)
                 : $existingAvailability,
             'hidden_until' => $canChangeAvailability
-                ? $this->hiddenUntil($data['hidden_until'] ?? null, $branch->timezone)
+                ? ($data->updatesHiddenUntil ? $this->hiddenUntil($data->hiddenUntil, $branch->timezone) : $existingHiddenUntil)
                 : $existingHiddenUntil,
-            'sort_order' => $data['sort_order'],
+            'sort_order' => $data->sortOrder,
         ];
     }
 

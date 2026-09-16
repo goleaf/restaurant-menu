@@ -519,7 +519,8 @@
     "local_login.allowed": "Leidžiama",
     "local_login.companies": "Įmonės ir narystė",
     "local_login.denied": "Draudžiama",
-    "local_login.description": "Visi šios vietinės duomenų bazės naudotojai. Prisijungimo vardas yra el. paštas. Slaptažodžiai rodomi tik sukonfigūruotoms demonstracinėms paskyroms; kitų atkurti negalima.",
+    "local_login.description": "Spustelėkite naudotojo vardą, kad iš karto prisijungtumėte. Ši funkcija prieinama tik vietinėje aplinkoje. Slaptažodžiai rodomi tik sukonfigūruotoms demonstracinėms paskyroms.",
+    "local_login.sign_in_as": "Prisijungti kaip :name",
     "local_login.empty": "Naudotojų dar nėra.",
     "local_login.identity": "Vardas / prisijungimas (el. paštas)",
     "local_login.legacy_scope": "Ankstesnė paskyros išimtis",
@@ -546,6 +547,8 @@
     "mcp.cli.revoked_success": "Prieigos raktas atšauktas.",
     "mcp.cli.unavailable": "Naudotojas arba restoranas nepasiekiamas arba prieiga neleidžiama.",
     "mcp.cli.write_required": "Keitimo galimybėms reikia aiškiai nurodytos --write parinkties.",
+    "mcp.errors.invalid_arguments": "Operacijos negalima atlikti su šiais argumentais arba esama restorano būsena. Patikrinkite duomenis ir bandykite dar kartą.",
+    "mcp.errors.operation_failed": "Restorano operacijos atlikti nepavyko. Bandykite dar kartą su tuo pačiu užklausos raktu.",
     "mcp.errors.replay_conflict": "Šis užklausos raktas jau naudotas su kitais argumentais.",
     "mcp.errors.request_denied": "MCP užklausa neleidžiama.",
     "menu.admin.hidden_until": "Slėpti nuo svečių iki",
@@ -1272,7 +1275,6 @@
     "reports.csv.yes": "Taip",
     "reports.empty.no_data": "Šiandien patvirtintų užsakymų dar nėra.",
     "reports.errors.date": "Įveskite tinkamą datą MMMM-MM-DD formatu.",
-    "reports.errors.date_range": "Pasirinkite nuoseklų, ne ilgesnį kaip 31 kalendorinės dienos laikotarpį.",
     "reports.errors.period": "Pasirinkite tinkamą ataskaitos laikotarpį.",
     "reports.exports.csv_and_pdf": "PDF ataskaitos ir CSV duomenys",
     "reports.exports.description": "Atsisiųskite filialo PDF ataskaitas ir CSV duomenis apie užsakymus, mokėjimus, meniu ir stalus.",
@@ -2861,7 +2863,5 @@
     "validation.url": "Lauke „:attribute“ turi būti tinkamas URL.",
     "validation.uuid": "Lauke „:attribute“ turi būti tinkamas UUID.",
     "waiter.dashboard.no_active_tables": "Šiuo metu aktyvių stalų nėra.",
-    "waiter.dashboard.no_available_branches": "Padavėjo užsakymų peržiūrai filialų nėra.",
-    "mcp.errors.invalid_arguments": "Operacijos negalima atlikti su šiais argumentais arba esama restorano būsena. Patikrinkite duomenis ir bandykite dar kartą.",
-    "mcp.errors.operation_failed": "Restorano operacijos atlikti nepavyko. Bandykite dar kartą su tuo pačiu užklausos raktu."
+    "waiter.dashboard.no_available_branches": "Padavėjo užsakymų peržiūrai filialų nėra."
 }

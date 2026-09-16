@@ -12,26 +12,23 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use App\Support\DemoLogin\DemoEnvironment;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * @phpstan-type DirectoryRow array{name: string, email: string, password: ?string, roles: list<string>, companies: list<string>, grants: list<array{scope: string, permissions: list<string>}>, overrides: list<array{scope: string, permission: string, enabled: bool}>}
+ * @phpstan-type DirectoryRow array{id: int, name: string, email: string, password: ?string, roles: list<string>, companies: list<string>, grants: list<array{scope: string, permissions: list<string>}>, overrides: list<array{scope: string, permission: string, enabled: bool}>}
  */
 final class LocalLoginDirectoryQuery
 {
     public function __construct(
-        private readonly Application $application,
         private readonly DemoEnvironment $environment,
     ) {}
 
     /** @return Paginator<int, covariant DirectoryRow>|null */
     public function handle(Request $request): ?Paginator
     {
-        if (! $this->application->environment('local') || config('app.env') !== 'local'
-            || ! $this->environment->allowsRequest($request)) {
+        if (! $this->environment->allowsLocalRequest($request)) {
             return null;
         }
 
@@ -70,6 +67,7 @@ final class LocalLoginDirectoryQuery
         $companies = $companies->concat($ownedWithoutMembership->map(fn (Organization $organization): string => $organization->name.' · '.SystemRole::Owner->localizedLabel()));
 
         return [
+            'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'password' => $this->demoPassword($user),

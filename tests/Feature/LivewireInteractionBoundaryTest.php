@@ -81,6 +81,7 @@ test('ordinary first party HTTP routes are limited to explicit protocol and docu
         'appearance.edit' => RedirectController::class,
         'demo-login.index' => Controllers\Auth\ShowDemoLoginController::class,
         'demo-login.authenticate' => Controllers\Auth\LoginAsDemoRoleController::class,
+        'local-login.authenticate' => Controllers\Auth\LoginAsLocalUserController::class,
         'invitations.show' => Controllers\Invitations\ShowInvitationController::class,
         'invitations.pending' => Controllers\Invitations\ShowInvitationController::class,
         'invitations.register' => Controllers\Invitations\RegisterInvitationController::class,
@@ -114,6 +115,7 @@ test('native forms stay limited to CSRF protected authentication download and re
     $expected = [
         'auth/demo-login.blade.php' => ["{{ route('demo-login.authenticate', ['role' => \$account['role']]) }}"],
         'components/account-menu.blade.php' => ["{{ route('logout') }}"],
+        'components/auth/local-user-directory.blade.php' => ["{{ route('local-login.authenticate', ['user' => \$user['id']]) }}"],
         'invitations/show.blade.php' => ['{{ $acceptUrl }}', '{{ $registerUrl }}'],
         'invitations/status.blade.php' => ['{{ $switchAccountUrl }}'],
         'livewire/auth/confirm-password.blade.php' => ["{{ route('password.confirm.store') }}"],

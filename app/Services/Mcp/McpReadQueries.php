@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Actions\Auth;
+namespace App\Services\Mcp;
 
-class LoginAsLocalUserAction
+class McpReadQueries
 {
     /**
      * Create a new class instance.

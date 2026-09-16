@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Models\Branch;
@@ -35,11 +36,11 @@ test('dish write veto rolls back translations and observer writes for both edito
     });
     $failure = null;
     try {
-        app(UpdateMenuItemAction::class)->handle($owner->fresh(), $branch, $item, $menu, $category, null, [
+        app(UpdateMenuItemAction::class)->handle($owner->fresh(), $branch, $item, $menu, $category, null, MenuItemData::fromValidated([
             'name' => 'Changed dish', 'description' => null, 'price' => '19.00',
             'weight' => null, 'volume' => null, 'calories' => null, 'sort_order' => 0,
             'translations' => ['lt' => ['name' => 'Changed translation', 'description' => null]],
-        ], $versioned ? $version : null);
+        ]), $versioned ? $version : null);
     } catch (RuntimeException $exception) {
         $failure = $exception;
     } finally {

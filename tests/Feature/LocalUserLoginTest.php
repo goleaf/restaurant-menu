@@ -31,7 +31,7 @@ test('each local directory identity has its own csrf protected login button', fu
 test('a local directory click logs in the selected ordinary account without a password or account changes', function (): void {
     $other = User::factory()->create();
     $selected = User::factory()->create();
-    $original = $selected->getRawOriginal();
+    $original = $selected->fresh()->getRawOriginal();
     $this->withSession([
         '_token' => 'local-login-test-csrf',
         'auth.password_confirmed_at' => time(),

@@ -5,6 +5,7 @@ use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\CoordinateSqliteRestore;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
+use App\Http\Middleware\EnsureLocalLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\ProtectInvitationResponses;
 use App\Http\Middleware\RequireJsonHealthCheckResponse;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'demo-login' => EnsureDemoLoginIsEnabled::class,
+            'local-login' => EnsureLocalLoginIsEnabled::class,
             'password.confirm' => RequireRecentPasswordConfirmation::class,
             'superadmin' => EnsureUserIsSuperadmin::class,
         ]);
@@ -49,6 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             before: PreventRequestForgery::class,
             prepend: EnsureDemoLoginIsEnabled::class,
+        );
+        $middleware->prependToPriorityList(
+            before: PreventRequestForgery::class,
+            prepend: EnsureLocalLoginIsEnabled::class,
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {

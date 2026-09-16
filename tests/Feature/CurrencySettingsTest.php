@@ -17,8 +17,13 @@ use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Support\MoneyFormatter;
+use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\App;
 use Livewire\Livewire;
+
+beforeEach(function (): void {
+    $this->seed(SystemPermissionsSeeder::class);
+});
 
 test('currency foundation supports fixed local currencies and readable formatting', function () {
     App::setLocale('en');

@@ -96,6 +96,7 @@ function translationStandardEnglishIdentityAllowlist(): array
         'fields.placeholders.service_point_prefix_example',
         'fields.placeholders.website_url_example',
         'guest.cart.separator',
+        'mcp.cli.id',
         'menu.guest.unit_grams',
         'menu.guest.unit_liters',
         'menu.modifiers.price_delta',

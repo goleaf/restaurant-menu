@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
+use App\Data\Menus\MenuItemData;
+
 use App\Enums\MenuOperationKind;
 use App\Enums\MenuOperationPhase;
 use App\Models\Branch;
@@ -89,7 +91,7 @@ final readonly class ImportCatalogCsvAction
                 if (! $saved->exists) {
                     throw new RuntimeException('The catalogue import item write was cancelled.');
                 }
-                foreach ($data['translations'] as $locale => $translation) {
+                foreach ($data->translations ?? [] as $locale => $translation) {
                     $stored = $saved->translations->firstWhere('language_code', $locale);
                     if ($stored?->name !== PlainText::required($translation['name'], 180, squish: true)
                         || $stored->description !== PlainText::optional($translation['description'], 1200)) {
@@ -127,20 +129,19 @@ final readonly class ImportCatalogCsvAction
 
     /**
      * @param  CsvRow  $row
-     * @return array{name: string, description: string|null, price: string, weight: string|null, volume: string|null, calories: int|null, is_available: bool, hidden_until: string|null, sort_order: int, translations: array<string, array{name: string, description: string}>}
      */
-    private function attributes(array $row, ?MenuItem $item): array
+    private function attributes(array $row, ?MenuItem $item): MenuItemData
     {
         $translations = [];
         foreach (['en', 'lt', 'ru'] as $locale) {
             $translations[$locale] = ['name' => $row['name_'.$locale], 'description' => $row['description_'.$locale]];
         }
 
-        return ['name' => $row['name_en'], 'description' => $row['description_en'], 'price' => $row['price'],
+        return MenuItemData::fromValidated(['name' => $row['name_en'], 'description' => $row['description_en'], 'price' => $row['price'],
             'weight' => $item?->weight === null ? null : (string) $item->weight,
             'volume' => $item?->volume === null ? null : (string) $item->volume,
             'calories' => $item?->calories, 'is_available' => $item->is_available ?? false,
             'hidden_until' => $item?->hidden_until?->toIso8601String(), 'sort_order' => $item->sort_order ?? 0,
-            'translations' => $translations];
+            'translations' => $translations]);
     }
 }

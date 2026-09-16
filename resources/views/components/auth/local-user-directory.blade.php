@@ -19,7 +19,12 @@
             @forelse ($users as $user)
                 <tr>
                     <td data-label="{{ __('local_login.identity') }}">
-                        <strong>{{ $user['name'] }}</strong>
+                        <form method="POST" action="{{ route('local-login.authenticate', ['user' => $user['id']]) }}">
+                            @csrf
+                            <flux:button type="submit" variant="filled" class="h-auto! min-h-touch w-full whitespace-normal! justify-start text-start" :aria-label="__('local_login.sign_in_as', ['name' => $user['name']])" data-test="local-login-user-{{ $user['id'] }}">
+                                {{ $user['name'] }}
+                            </flux:button>
+                        </form>
                         <span>{{ $user['email'] }}</span>
                     </td>
                     <td data-label="{{ __('ui.auth.confirm_password.password') }}">

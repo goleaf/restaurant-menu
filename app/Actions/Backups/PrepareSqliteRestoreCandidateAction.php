@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Backups;
 
 use App\Exceptions\InvalidSqliteBackupException;
+use App\Support\Backups\SqliteBackupConstraints;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
@@ -15,8 +16,6 @@ use Throwable;
 
 final class PrepareSqliteRestoreCandidateAction
 {
-    public const MAXIMUM_BYTES = 268_435_456;
-
     public function __construct(
         private readonly BuildSqliteSchemaFingerprintAction $buildSchemaFingerprint,
         private readonly DatabaseManager $database,
@@ -35,8 +34,8 @@ final class PrepareSqliteRestoreCandidateAction
             || ! $this->files->isFile($sourcePath)
             || ! $this->files->isReadable($sourcePath)
             || $this->files->size($sourcePath) < 100
-            || $this->files->size($sourcePath) > self::MAXIMUM_BYTES
-            || $this->magicHeader($sourcePath) !== "SQLite format 3\0") {
+            || $this->files->size($sourcePath) > SqliteBackupConstraints::MAXIMUM_BYTES
+            || $this->magicHeader($sourcePath) !== SqliteBackupConstraints::HEADER) {
             throw new InvalidSqliteBackupException('The uploaded file is not a valid SQLite 3 database.');
         }
 

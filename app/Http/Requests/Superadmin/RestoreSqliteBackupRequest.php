@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Superadmin;
 
-use App\Actions\Backups\PrepareSqliteRestoreCandidateAction;
+use App\Support\Backups\SqliteBackupConstraints;
+use App\Rules\Backups\SqliteBackupHeader;
+use Illuminate\Contracts\Validation\ValidationRule;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Validation\Validator;
-use SplFileObject;
 
 final class RestoreSqliteBackupRequest extends FormRequest
 {
@@ -21,49 +20,21 @@ final class RestoreSqliteBackupRequest extends FormRequest
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return array<string, list<string|ValidationRule>>
      */
     public function rules(): array
     {
         return [
             'backup' => [
+                'bail',
                 'required',
                 'file',
                 'min:1',
-                'max:'.intdiv(PrepareSqliteRestoreCandidateAction::MAXIMUM_BYTES, 1024),
+                'max:'.intdiv(SqliteBackupConstraints::MAXIMUM_BYTES, 1024),
                 'extensions:sqlite,sqlite3,db',
                 'mimetypes:application/vnd.sqlite3,application/x-sqlite3,application/octet-stream',
+                new SqliteBackupHeader,
             ],
-        ];
-    }
-
-    /**
-     * @return list<callable(Validator): void>
-     */
-    public function after(): array
-    {
-        return [
-            function (Validator $validator): void {
-                $backup = $this->file('backup');
-
-                if (! $backup instanceof UploadedFile || ! $backup->isValid()) {
-                    return;
-                }
-
-                $path = $backup->getRealPath();
-
-                if (! is_string($path)) {
-                    $validator->errors()->add('backup', __('validation.sqlite_backup_invalid'));
-
-                    return;
-                }
-
-                $file = new SplFileObject($path, 'rb');
-
-                if ($file->fread(16) !== "SQLite format 3\0") {
-                    $validator->errors()->add('backup', __('validation.sqlite_backup_invalid'));
-                }
-            },
         ];
     }
 

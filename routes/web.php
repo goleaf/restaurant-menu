@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\DataExportType;
 use App\Enums\SystemRole;
 use App\Http\Controllers\Auth\LoginAsDemoRoleController;
+use App\Http\Controllers\Auth\LoginAsLocalUserController;
 use App\Http\Controllers\Auth\ShowDemoLoginController;
 use App\Http\Controllers\Invitations\AcceptInvitationController;
 use App\Http\Controllers\Invitations\RegisterInvitationController;
@@ -71,6 +72,15 @@ Route::middleware(['demo-login', 'guest', 'throttle:demo-login'])
         Route::get('/', ShowDemoLoginController::class)->name('index');
         Route::post('{role}', LoginAsDemoRoleController::class)
             ->whereIn('role', SystemRole::values())
+            ->name('authenticate');
+    });
+
+Route::middleware(['local-login', 'guest', 'throttle:demo-login'])
+    ->prefix('local-login')
+    ->name('local-login.')
+    ->group(function (): void {
+        Route::post('{user}', LoginAsLocalUserController::class)
+            ->whereNumber('user')
             ->name('authenticate');
     });
 

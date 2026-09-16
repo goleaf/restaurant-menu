@@ -22,6 +22,7 @@ use Database\Seeders\DemoRestaurantSeeder;
 use Database\Seeders\FirstSuperadminSeeder;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
@@ -53,6 +54,17 @@ test('superadmin bootstrap does not elevate an existing account or restore a rev
 
     expect($user->roles()->exists())->toBeFalse();
 })->with(['existing identity' => true, 'revoked bootstrap grant' => false]);
+
+test('superadmin initialization rolls back the new identity when setup fails', function (): void {
+    config()->set('platform.first_superadmin.email', 'bootstrap@example.test');
+    config()->set('platform.first_superadmin.password', Str::random(32));
+    Event::listen('eloquent.created: '.User::class, function (): never {
+        throw new RuntimeException('Simulated initialization failure.');
+    });
+
+    expect(fn () => $this->seed(FirstSuperadminSeeder::class))->toThrow(RuntimeException::class)
+        ->and(User::query()->where('email', 'bootstrap@example.test')->exists())->toBeFalse();
+});
 
 test('repeated demo seeding preserves access decisions and editable branch configuration in every tenant', function (): void {
     $this->seed(DemoRestaurantSeeder::class);
@@ -140,4 +152,21 @@ test('repeated demo seeding preserves a revoked invitation and its rotated crede
     $this->seed(DemoRestaurantSeeder::class);
 
     expect($invitation->fresh()->getAttributes())->toBe($original);
+});
+
+test('scoped demo fixtures preserve an existing legacy denial during upgrade', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+    $organization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->firstOrFail();
+    $user = User::query()->where('email', 'permission.staff@demo.test')->firstOrFail();
+    $permission = Permission::query()->where('code', SystemPermission::ChangeAvailability->value)->firstOrFail();
+    $legacy = PermissionUserOverride::query()->where('organization_id', $organization->id)
+        ->where('user_id', $user->id)->where('permission_id', $permission->id)->firstOrFail();
+    $legacy->forceFill(['organization_id' => null, 'scope_key' => 'legacy', 'enabled' => false])->save();
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect($legacy->fresh()->organization_id)->toBeNull()
+        ->and($legacy->fresh()->enabled)->toBeFalse()
+        ->and(PermissionUserOverride::query()->where('organization_id', $organization->id)
+            ->where('user_id', $user->id)->where('permission_id', $permission->id)->firstOrFail()->enabled)->toBeFalse();
 });

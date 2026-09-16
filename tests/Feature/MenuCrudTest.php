@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\Menus\MenuItemData;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
@@ -856,7 +857,7 @@ test('menu item action independently preserves restricted price and availability
         menu: $menu,
         category: $category,
         kitchenDepartmentId: null,
-        data: [
+        data: MenuItemData::fromValidated([
             'name' => 'Server-authorized item',
             'description' => null,
             'price' => '99.99',
@@ -865,7 +866,7 @@ test('menu item action independently preserves restricted price and availability
             'calories' => null,
             'is_available' => false,
             'sort_order' => 0,
-        ],
+        ]),
     );
 
     expect($item->refresh()->price_cents)->toBe(800)

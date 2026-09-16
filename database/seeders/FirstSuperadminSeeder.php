@@ -6,6 +6,7 @@ use App\Enums\SystemRole;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class FirstSuperadminSeeder extends Seeder
 {
@@ -25,24 +26,26 @@ class FirstSuperadminSeeder extends Seeder
         $name = trim((string) config('platform.first_superadmin.name', 'Platform Superadmin')) ?: 'Platform Superadmin';
         $password = (string) config('platform.first_superadmin.password', '');
 
-        $user = User::query()
-            ->where('email', $email)
-            ->first();
-
-        if ($user instanceof User || trim($password) === '') {
+        if (trim($password) === '') {
             return;
         }
 
-        $user = User::query()->create([
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
-        ]);
+        DB::transaction(function () use ($email, $name, $password): void {
+            if (User::query()->where('email', $email)->exists()) {
+                return;
+            }
 
-        $role = Role::query()
-            ->where('code', SystemRole::Superadmin->value)
-            ->firstOrFail();
+            $user = User::query()->create([
+                'name' => $name,
+                'email' => $email,
+                'password' => $password,
+            ]);
 
-        $user->roles()->syncWithoutDetachingOrFail([$role->id]);
+            $role = Role::query()
+                ->where('code', SystemRole::Superadmin->value)
+                ->firstOrFail();
+
+            $user->roles()->syncWithoutDetachingOrFail([$role->id]);
+        });
     }
 }

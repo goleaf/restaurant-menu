@@ -1,6 +1,6 @@
 import { runVerificationProcess } from './Support/verification-process.mjs';
 import { assertDependencyIntegrity } from './Support/dependency-integrity.mjs';
-import { composerCommand, coverageEnvironment, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolveJavaScriptRuntime, resolvePhpRuntime, sourceInventory } from './Support/platform-verification.mjs';
+import { composerCommand, coverageEnvironment, createSourceSnapshot, createVerificationEnvironment, phpCommand, resolveJavaScriptRuntime, resolvePhpRuntime, runPlatformPreflight, sourceInventory } from './Support/platform-verification.mjs';
 import { constants, copyFileSync, cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -53,13 +53,11 @@ try {
         writeFileSync(join(artifacts, `${name}.log`), result.output);
         summary.steps.push({ name, exitCode: result.code, timeout: result.timedOut, milliseconds: Date.now()-started });
         record();
-        if (result.code !== 0) throw new Error(`${name} failed with exit ${result.code}`);
+        if (result.code !== 0) throw Object.assign(new Error(`${name} failed with exit ${result.code}`), { exitCode: result.code });
     }
-    await run('composer-manifest', composer(['validate', '--strict', '--no-check-publish']));
-    await run('platform-lock', composer(['check-platform-reqs', '--lock']));
-    await run('platform-installed', composer(['check-platform-reqs']));
-    await run('runtime-capabilities', php(['-r', 'echo json_encode(["version"=>PHP_VERSION,"sapi"=>PHP_SAPI,"binary"=>PHP_BINARY,"gd"=>gd_info(),"sqlite"=>SQLite3::version(),"settings"=>array_map(ini_get(...),array_combine(["memory_limit","upload_max_filesize","post_max_size","upload_tmp_dir","sys_temp_dir","error_reporting","opcache.enable_cli"],["memory_limit","upload_max_filesize","post_max_size","upload_tmp_dir","sys_temp_dir","error_reporting","opcache.enable_cli"]))],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);']));
+    await runPlatformPreflight({ run, php, composer });
     if (!values.preflight) {
+        await run('composer-autoload', composer(['dump-autoload', '--optimize', '--strict-psr', '--no-scripts']));
         await run('composer-audit', composer(['audit', '--locked', '--no-interaction']));
         await run('npm-installed', ['npm', 'ls', '--depth=0']);
         await run('npm-audit', ['npm', 'audit', '--registry=https://registry.npmjs.org']);

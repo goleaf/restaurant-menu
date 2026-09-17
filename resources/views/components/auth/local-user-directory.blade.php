@@ -17,11 +17,10 @@
         </thead>
         <tbody>
             @forelse ($users as $user)
-                <tr>
+                <tr wire:key="local-user-{{ $user['id'] }}">
                     <td data-label="{{ __('local_login.identity') }}">
-                        <form method="POST" action="{{ route('local-login.authenticate', ['user' => $user['id']]) }}">
-                            @csrf
-                            <flux:button type="submit" variant="filled" class="h-auto! min-h-touch w-full whitespace-normal! justify-start text-start" :aria-label="__('local_login.sign_in_as', ['name' => $user['name']])" data-test="local-login-user-{{ $user['id'] }}">
+                        <form wire:submit="login({{ $user['id'] }})" novalidate>
+                            <flux:button type="submit" wire:loading.attr="disabled" wire:offline.attr="disabled" variant="filled" class="h-auto! min-h-touch w-full whitespace-normal! justify-start text-start" :aria-label="__('local_login.sign_in_as', ['name' => $user['name']])" data-test="local-login-user-{{ $user['id'] }}">
                                 {{ $user['name'] }}
                             </flux:button>
                         </form>

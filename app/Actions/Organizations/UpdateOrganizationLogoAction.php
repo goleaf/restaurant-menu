@@ -7,8 +7,11 @@ namespace App\Actions\Organizations;
 use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 final class UpdateOrganizationLogoAction
@@ -18,13 +21,20 @@ final class UpdateOrganizationLogoAction
         private readonly RemoveLocalImageAction $removeLocalImage,
     ) {}
 
-    public function handle(Organization $organization, ?UploadedFile $file): Organization
+    public function handle(Organization $organization, ?UploadedFile $file, ?User $actor = null, ?string $expectedMediaFingerprint = null): Organization
     {
-        $current = DB::transaction(function () use ($organization, $file): Organization {
+        $current = DB::transaction(function () use ($organization, $file, $actor, $expectedMediaFingerprint): Organization {
             $current = Organization::query()
-                ->select(['id', 'logo_path', 'updated_at'])
+                ->select(['id', 'owner_user_id', 'logo_path', 'updated_at', 'deleted_at'])
                 ->lockForUpdate()
                 ->findOrFail($organization->getKey());
+
+            if ($actor !== null) {
+                Gate::forUser(User::query()->whereKey($actor->id)->firstOrFail())->authorize('update', $current);
+            }
+            if ($expectedMediaFingerprint !== null && ! hash_equals($expectedMediaFingerprint, hash('sha256', (string) $current->logo_path))) {
+                throw ValidationException::withMessages(['logo' => __('center.conflict')]);
+            }
 
             if ($file instanceof UploadedFile) {
                 $this->replaceLocalImage->handle(

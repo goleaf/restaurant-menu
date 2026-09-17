@@ -4,6 +4,16 @@
 
 # Deployment
 
+## Prompt2 application transport release contract
+
+This change adds no schema migration, dependency, persistent worker, scheduler or runtime Node requirement. Rebuild the existing Vite/Sass assets and regenerate normal route/config/view caches when deploying through the existing operator process; this local implementation run does not deploy or modify the working database. Keep PHP8.5 support and ordinary CSRF/session settings.
+
+The existing platform panel now prepares private CSV/SQLite/media files. Delivery grants last5minutes, bind the current actor/session, recheck permission/password and are consumed once. A repeated preparation response can recover the same grant; refreshing/reconfirming is required after expired/consumed/failed operations. HEAD, prefetch and Range requests cannot spend authorization. File-cache storage must remain writable for atomic replay receipts/locks; no Redis is required. Temporary private files are removed after successful transmission and through bounded expiry cleanup.
+
+Restore starts with a Livewire/Flux upload and read-only compatibility preview, then a final native POST carrying only a CSRF token and reviewed-file grant. The signed restore-purpose upload accepts the existing maximum256MiB; ordinary uploads retain their12MiB limit. Web-server request limits, PHP upload limits and temporary disk capacity must independently accommodate the operator's file. Replacement invalidates the preview and requires inspection again. Final replacement still uses the exclusive pre-session SQLite barrier, fresh password, current superadmin and single-use nonce; it logs out the old client context. Quiesce independent CLI writers as described in operations.md. Never run a restore browser test against the working database.
+
+Bounded PDF acceptance was measured with512MiB PHP memory; the500-row report fixture peaks at219MiB allocated in the test process. This is not certification of128MiB hosting. File transfer and PDF renderer memory are different constraints; large backup/CSV contents are not Base64 Livewire responses.
+
 ## SCSS / Livewire ESM deployment contract — 2026-09-16
 
 Install PHP and npm dependencies from their lock files and run `npm run build` before deployment. Composer changes to Livewire require rebuilding the bundled ESM runtime. Ship the Vite manifest/assets plus the fixed generated PDF/error Blade CSS files with matching source. `npm run styles:check` verifies generated source parity. Runtime PHP must never invoke Node/Sass; emergency pages and PDF styles do not depend on a working Vite manifest.

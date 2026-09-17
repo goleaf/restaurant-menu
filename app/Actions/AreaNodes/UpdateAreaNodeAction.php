@@ -1,71 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\AreaNodes;
 
 use App\Enums\AreaNodeType;
 use App\Models\AreaNode;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
-use InvalidArgumentException;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
-class UpdateAreaNodeAction
+final class UpdateAreaNodeAction
 {
-    /**
-     * @param  array{parent_id: int|null, type: string, name: string, icon: string|null, sort_order: int, is_active: bool}  $data
-     */
-    public function handle(AreaNode $areaNode, array $data): AreaNode
+    public function __construct(
+        private readonly PrepareAreaNodeMutationAction $prepare,
+        private readonly EnsureAreaNodeParentAction $ensureParent,
+        private readonly RecordAreaNodeChangeAction $recordChange,
+        private readonly ValidateAreaNodeInputAction $validateInput,
+    ) {}
+
+    /** @param array{parent_id:int|null,type:string,name:string,icon:string|null,sort_order:int,is_active:bool} $data */
+    public function handle(AreaNode $areaNode, array $data, ?User $actor = null, ?int $expectedVersion = null): AreaNode
     {
-        $this->ensureParentIsAvailable($areaNode, $data['parent_id']);
+        return DB::transaction(function () use ($areaNode, $data, $actor, $expectedVersion): AreaNode {
+            $context = $this->prepare->handle($areaNode->branch_id, $actor, 'update', $areaNode->id, $expectedVersion);
+            $data = $this->validateInput->handle($data);
+            $area = $context['area'];
+            assert($area instanceof AreaNode);
+            $this->ensureParent->handle($context['branch'], $data['parent_id'], $area->id);
+            $before = $area->only(['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'structure_version']);
+            $area->fill([...$data, 'type' => AreaNodeType::from($data['type'])]);
+            if (! $area->isDirty()) {
+                return $area;
+            }
+            if (! $area->save()) {
+                throw new RuntimeException('Required area update was rejected.');
+            }
+            $this->recordChange->handle($context['actor'], $context['branch'], $area, 'update', $before);
 
-        $areaNode->fill([
-            'parent_id' => $data['parent_id'],
-            'type' => AreaNodeType::from($data['type']),
-            'name' => $data['name'],
-            'icon' => $data['icon'],
-            'sort_order' => $data['sort_order'],
-            'is_active' => $data['is_active'],
-        ]);
-
-        $areaNode->save();
-
-        return $areaNode;
-    }
-
-    private function ensureParentIsAvailable(AreaNode $areaNode, ?int $parentId): void
-    {
-        if ($parentId === null) {
-            return;
-        }
-
-        if ($parentId === $areaNode->id) {
-            throw new InvalidArgumentException('errors.domain.area_cannot_parent_itself');
-        }
-
-        $availableNodes = AreaNode::query()
-            ->select(['id', 'parent_id'])
-            ->where('branch_id', $areaNode->branch_id)
-            ->whereNull('deleted_at')
-            ->get();
-
-        if (! $availableNodes->contains('id', $parentId)) {
-            throw new InvalidArgumentException('errors.domain.selected_parent_area_unavailable');
-        }
-
-        if ($this->descendantIds($availableNodes, $areaNode->id)->contains($parentId)) {
-            throw new InvalidArgumentException('errors.domain.area_cannot_move_into_child');
-        }
-    }
-
-    /**
-     * @param  EloquentCollection<int, AreaNode>  $nodes
-     * @return Collection<int, int>
-     */
-    private function descendantIds(EloquentCollection $nodes, int $parentId): Collection
-    {
-        $children = $nodes->where('parent_id', $parentId);
-
-        return $children
-            ->pluck('id')
-            ->merge($children->flatMap(fn (AreaNode $child): Collection => $this->descendantIds($nodes, $child->id)));
+            return $area;
+        }, attempts: 3);
     }
 }

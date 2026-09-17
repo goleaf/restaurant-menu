@@ -21,7 +21,7 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $otherBranch = Branch::query()->where('organization_id', $organization->id)->whereKeyNot($branch->id)->where('is_active', true)->firstOrFail();
     $branch->forceFill(['name' => 'Vilniaus senamiesčio restoranas ir šeimos terasa'])->save();
     $page = visit(route('demo-login.index', absolute: false));
-    branchControlClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    branchControlClick($page, sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('restaurant.dashboard', absolute: false));
     $page->assertSee(__('dashboard.control.all_branches_description'))

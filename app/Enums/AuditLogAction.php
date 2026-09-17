@@ -6,17 +6,22 @@ namespace App\Enums;
 
 enum AuditLogAction: string
 {
+    case AreaNodeChanged = 'area_node_changed';
+    case ServicePointChanged = 'service_point_changed';
+
     case McpTokenIssued = 'mcp_token_issued';
     case McpTokenRevoked = 'mcp_token_revoked';
     case DishConfigurationChanged = 'dish_configuration_changed';
     case MenuPriceChanged = 'menu_price_changed';
     case MenuAvailabilityChanged = 'menu_availability_changed';
+    case RestaurantSetupCreated = 'restaurant_setup_created';
     case BranchAvailabilityChanged = 'branch_availability_changed';
     case MenuScheduleChanged = 'menu_schedule_changed';
     case MenuItemDeleted = 'menu_item_deleted';
     case ServicePointMoved = 'service_point_moved';
     case ServicePointDeleted = 'service_point_deleted';
     case QrDisabled = 'qr_disabled';
+    case QrGenerated = 'qr_generated';
     case QrReissued = 'qr_reissued';
     case StaffPermissionChanged = 'staff_permission_changed';
     case StaffRoleChanged = 'staff_role_changed';
@@ -48,17 +53,21 @@ enum AuditLogAction: string
     public function label(): string
     {
         return match ($this) {
+            self::AreaNodeChanged => __('floor.audit.area_changed'),
+            self::ServicePointChanged => __('floor.audit.point_changed'),
             self::McpTokenIssued => __('mcp.audit.token_issued'),
             self::McpTokenRevoked => __('mcp.audit.token_revoked'),
             self::DishConfigurationChanged => __('dish.audit.configuration_changed'),
             self::MenuPriceChanged => 'Price changed',
             self::MenuAvailabilityChanged => 'Dish availability changed',
+            self::RestaurantSetupCreated => __('center.audit.created'),
             self::BranchAvailabilityChanged => __('availability.audit.branch_changed'),
             self::MenuScheduleChanged => __('availability.audit.menu_schedule_changed'),
             self::MenuItemDeleted => 'Dish deleted',
             self::ServicePointMoved => 'Service point moved',
             self::ServicePointDeleted => 'Service point deleted',
             self::QrDisabled => 'QR disabled',
+            self::QrGenerated => __('floor.audit.qr_created'),
             self::QrReissued => 'QR reissued',
             self::StaffPermissionChanged => __('audit.actions.staff_permission_changed'),
             self::StaffRoleChanged => __('audit.actions.staff_role_changed'),

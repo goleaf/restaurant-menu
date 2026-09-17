@@ -22,6 +22,13 @@
         </p>
     </section>
 
+    <flux:error name="download" />
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        <flux:input type="date" wire:model="period.date_from" :label="__('validation.attributes.date_from')" />
+        <flux:input type="date" wire:model="period.date_to" :label="__('validation.attributes.date_to')" />
+    </div>
+
     <section class="grid gap-4 xl:grid-cols-2">
         @forelse ($exports['branches'] as $branch)
             <article wire:key="export-branch-{{ $branch['id'] }}" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -38,11 +45,11 @@
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     @foreach ($exports['export_types'] as $type)
                         <div wire:key="export-branch-{{ $branch['id'] }}-{{ $type['value'] }}" class="grid gap-2">
-                            <flux:button icon="arrow-down-tray" :href="$branch['pdf_downloads'][$type['value']]">
+                            <flux:button icon="arrow-down-tray" wire:click="downloadPdf({{ $branch['id'] }}, '{{ $type['value'] }}')" wire:loading.attr="disabled" wire:target="downloadPdf">
                                 {{ __('reports.actions.export_type_pdf', ['type' => $type['label']]) }}
                             </flux:button>
 
-                            <flux:button icon="table-cells" variant="ghost" :href="$branch['downloads'][$type['value']]">
+                            <flux:button icon="table-cells" variant="ghost" wire:click="downloadCsv({{ $branch['id'] }}, '{{ $type['value'] }}')" wire:loading.attr="disabled" wire:target="downloadCsv">
                                 {{ __('reports.actions.export_type_csv', ['type' => $type['label']]) }}
                             </flux:button>
                         </div>

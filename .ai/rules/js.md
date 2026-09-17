@@ -1,7 +1,5 @@
 ---
 paths:
-  - 'resources/js/menu-*.js'
-  - 'resources/js/*.js'
   - 'resources/js/**'
 ---
 
@@ -14,11 +12,8 @@ paths:
 ## Keep menu editor lifecycle compatible with installed Livewire
 For the installed Livewire 4.4.1 lifecycle, use global Livewire.interceptMessage with explicit component/action filtering and dispose its subscription. Component-scoped message unsubscription calls a missing WeakBag.delete method in this version. Use the available onRender callback, and keep novalidate in the Blade markup of translated forms: a JS-only attribute disappears during morphing and prevents repeated server validation.
 
-## Retired page-entry readiness mode
-The previous page-owned Vite entry barrier is superseded by the single Livewire ESM bootstrap documented below. Critical roots stay inert only until the common registered runtime initializes; no late per-screen registration path remains.
-
 ## Register Alpine factories before the one bundled Livewire start
-resources/js/app.js imports Livewire's own ESM Alpine, registers all named factories/bindings, then starts Livewire exactly once. Layouts place @livewireScriptConfig before @fluxScripts; no automatic second runtime or per-screen registration fallback. Component init/destroy owns timers/listeners/uploads/blob URLs/audio; preserve global interceptMessage unsubscribe for installed Livewire 4.4.1. The only first-party fetch allowlist is resources/js/integrations/passkeys.js: same-origin abortable options/credential protocol around pinned @simplewebauthn/browser. Keep CSRF/credentials, reject redirects, check the current operation after each await, and never claim success after cancelling a possibly completed POST. Application CRUD stays in Livewire.
+resources/js/app.js imports Livewire's own ESM Alpine, registers all named factories/bindings, then starts Livewire exactly once. Critical roots stay inert until this registered runtime initializes. Layouts place @livewireScriptConfig before @fluxScripts; no automatic second runtime or per-screen registration fallback. Component init/destroy owns timers/listeners/uploads/blob URLs/audio; preserve global interceptMessage unsubscribe for installed Livewire 4.4.1. The only first-party fetch allowlist is resources/js/integrations/passkeys.js: same-origin abortable options/credential protocol around pinned @simplewebauthn/browser. Keep CSRF/credentials, reject redirects, check the current operation after each await, and never claim success after cancelling a possibly completed POST. Application CRUD stays in Livewire.
 
 ## Keep Alpine resource owners independent of directive context
 Capture the owning root element or its immutable configuration in init(); Alpine $el can resolve to a child element when a method is invoked from its directive, including after await. Test child-triggered handlers. When focusing an x-show panel, wait for the reveal animation frame after $nextTick; own and cancel that frame on replacement or destroy, and guard stale callbacks.

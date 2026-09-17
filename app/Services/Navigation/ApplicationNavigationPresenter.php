@@ -33,9 +33,9 @@ final class ApplicationNavigationPresenter
             if ($items === []) {
                 $items[] = $this->item('dashboard', 'workspace.choose', 'building-storefront', route('dashboard'), $request->routeIs('dashboard'));
             }
-            $items[] = $this->item('organizations', 'workspace.manage_restaurants', 'building-office', route('organizations.index'), $workspace->mode === 'structure', 'administration');
+            $items[] = $this->item('organizations', 'workspace.manage_restaurants', 'building-office', route('restaurants.index'), $workspace->mode === 'structure', 'administration');
             if ($onboarding) {
-                $items[] = $this->item('onboarding', 'navigation.onboarding', 'sparkles', route('onboarding.restaurant'), $request->routeIs('onboarding.*'), 'administration');
+                $items[] = $this->item('onboarding', 'navigation.onboarding', 'sparkles', route('restaurants.create'), $request->routeIs('onboarding.*', 'restaurants.create', 'restaurants.setup'), 'administration');
             }
             if ($platform) {
                 $items[] = $this->item('superadmin', 'workspace.platform', 'rectangle-group', route('superadmin.dashboard'), $request->routeIs('superadmin.*'), 'administration');
@@ -80,7 +80,7 @@ final class ApplicationNavigationPresenter
         $id = $context->branchId;
         $allows = static fn (string $key): bool => in_array($id, $access[$key] ?? [], true);
         $nested = ['organization' => $context->organizationId, 'brand' => $context->brandId, 'branch' => $id];
-        $hallsRoute = $allows('halls') ? 'areas.index' : ($allows('tables') ? 'service-points.index' : 'qr.print');
+        $hallsRoute = 'service-points.index';
         $definitions = [
             ['overview', 'squares-2x2', 'restaurant.dashboard', ['branch' => $id], $allows('overview')],
             ['waiter', 'clipboard-document-list', 'restaurant.waiter.dashboard', ['branch' => $id], $allows('waiter')],
@@ -110,16 +110,8 @@ final class ApplicationNavigationPresenter
         if ($context->branchId === null || $context->destination !== 'halls') {
             return [];
         }
-        $items = [];
-        $parameters = ['organization' => $context->organizationId, 'brand' => $context->brandId, 'branch' => $context->branchId];
-        foreach (['halls' => ['areas.index', 'navigation.areas'], 'tables' => ['service-points.index', 'navigation.service_points'], 'qr' => ['qr.print', 'workspace.qr_print']] as $key => [$suffix, $label]) {
-            if (in_array($context->branchId, $access[$key] ?? [], true)) {
-                $route = 'organizations.brands.branches.'.$suffix;
-                $items[] = $this->item($key, $label, 'qr-code', route($route, $parameters), $request->routeIs($route));
-            }
-        }
 
-        return $items;
+        return [];
     }
 
     /** @param array<string, list<int>> $access */

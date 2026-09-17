@@ -23,7 +23,9 @@ final class RestoreBrandAction
                 ->firstOrFail();
 
             Gate::forUser($actor)->authorize('restore', $scopedBrand);
-            $scopedBrand->restore();
+            if ($scopedBrand->restore() !== true) {
+                throw new \RuntimeException('The structure lifecycle change could not be saved.');
+            }
         });
     }
 }

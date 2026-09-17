@@ -10,6 +10,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
+use RuntimeException;
 
 class GenerateQrCodeForServicePointAction
 {
@@ -54,7 +55,10 @@ class GenerateQrCodeForServicePointAction
                         'public_token' => Str::random(self::PUBLIC_TOKEN_LENGTH),
                         'status' => QrCodeStatus::Active,
                         'created_by_user_id' => $createdBy?->id,
-                    ])->save();
+                    ]);
+                    if (! $qrCode->save()) {
+                        throw new RuntimeException('The QR identity could not be saved.');
+                    }
 
                     return $qrCode;
                 }, 5);
@@ -94,6 +98,7 @@ class GenerateQrCodeForServicePointAction
                 'public_token',
                 'short_code',
                 'status',
+                'structure_version',
                 'created_by_user_id',
                 'revoked_at',
                 'revoked_by_user_id',

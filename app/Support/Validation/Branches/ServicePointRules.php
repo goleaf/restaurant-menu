@@ -47,9 +47,9 @@ final class ServicePointRules
     public static function onboardingServicePoints(): array
     {
         return [
-            'tableCount' => ['bail', 'required', 'integer', 'min:1', 'max:20'],
+            'tableCount' => ['bail', 'required', 'numeric', 'integer', 'min:1', 'max:20'],
             'tablePrefix' => ['bail', 'required', 'string', 'max:40'],
-            'tableCapacity' => ['bail', 'required', 'integer', 'min:1', 'max:50'],
+            'tableCapacity' => ['bail', 'required', 'numeric', 'integer', 'min:1', 'max:50'],
         ];
     }
 }

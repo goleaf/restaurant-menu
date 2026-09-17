@@ -4,6 +4,55 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { runVerificationProcess } from './Support/verification-process.mjs';
+import * as platform from './Support/platform-verification.mjs';
+
+test('platform rejection retains native and installed diagnostics before blocking application gates', async () => {
+    assert.equal(typeof platform.runPlatformPreflight, 'function');
+    const recorded = [];
+    const rejected = new Set(['platform-lock', 'platform-installed']);
+    await assert.rejects(async () => {
+        await platform.runPlatformPreflight({
+            php: args => ['php', ...args], composer: args => ['composer', ...args],
+            run: async (name, command) => {
+                const result = await runVerificationProcess([process.execPath, '-e', `process.exit(${rejected.has(name) ? 1 : 0})`], { env: {}, timeout: 3000 });
+                recorded.push({ name, command, exitCode: result.code });
+                if (result.code !== 0) throw new Error(`${name} failed with exit ${result.code}`);
+            },
+        });
+        recorded.push({ name: 'application-gates' });
+    }, error => error instanceof AggregateError && error.errors.length === 2
+        && /platform-lock failed/.test(error.message) && /platform-installed failed/.test(error.message));
+    assert.deepEqual(recorded.map(step => step.name), ['runtime-capabilities', 'composer-manifest', 'platform-lock', 'platform-installed']);
+    assert.deepEqual(recorded.map(step => step.exitCode), [0, 0, 1, 1]);
+    assert.ok(recorded[2].command.includes('--lock'));
+    assert.ok(!recorded[3].command.includes('--lock'));
+});
+
+test('native failure or timeout cannot become a successful platform preflight', async () => {
+    assert.equal(typeof platform.runPlatformPreflight, 'function');
+    const checks = [];
+    await assert.rejects(platform.runPlatformPreflight({
+        php: args => args, composer: args => args,
+        run: async name => {
+            checks.push(name);
+            if (name === 'runtime-capabilities') throw new Error('runtime-capabilities timed out');
+        },
+    }), /runtime-capabilities timed out/);
+    assert.equal(checks.length, 4);
+    await platform.runPlatformPreflight({ php: args => args, composer: args => args, run: async () => {} });
+});
+
+test('interrupted preflight stops without starting more diagnostic children', async () => {
+    for (const exitCode of [130, 143]) {
+        const interruption = Object.assign(new Error('Interrupted'), { exitCode });
+        const started = [];
+        await assert.rejects(platform.runPlatformPreflight({
+            php: args => args, composer: args => args,
+            run: async name => { started.push(name); throw interruption; },
+        }), error => error === interruption);
+        assert.deepEqual(started, ['runtime-capabilities']);
+    }
+});
 
 test('verification children run in the selected disposable workspace', async t => {
     const cwd = mkdtempSync(join(tmpdir(), 'restaurant-verification-cwd-'));

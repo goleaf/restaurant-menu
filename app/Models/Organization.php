@@ -116,4 +116,9 @@ class Organization extends Model
         return $this->users()
             ->wherePivot('status', OrganizationUserStatus::Active->value);
     }
+
+    public function identityFingerprint(): string
+    {
+        return hash('sha256', json_encode($this->only(['name']), JSON_THROW_ON_ERROR));
+    }
 }

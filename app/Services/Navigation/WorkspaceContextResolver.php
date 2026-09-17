@@ -65,7 +65,7 @@ final class WorkspaceContextResolver
         if ($request->routeIs('superadmin.*', 'local.components')) {
             return new WorkspaceContext($user->id, 'platform', $destination);
         }
-        if ($request->routeIs('organizations.*', 'onboarding.*')) {
+        if ($request->routeIs('organizations.*', 'onboarding.*', 'restaurants.*')) {
             return new WorkspaceContext($user->id, 'structure', $destination);
         }
         if ($pageDestination === null && ! $request->routeIs('dashboard', 'restaurant.*')) {

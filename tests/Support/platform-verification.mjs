@@ -192,6 +192,24 @@ export function createSourceSnapshot({ sourceRoot, destination, exclude = [] }) 
     }
 }
 
+export async function runPlatformPreflight({ run, php, composer }) {
+    // These read-only checks are independent; retain all diagnostics before refusing application execution.
+    const checks = [
+        ['runtime-capabilities', php(['-r', 'echo json_encode(["version"=>PHP_VERSION,"sapi"=>PHP_SAPI,"binary"=>PHP_BINARY,"extensions"=>get_loaded_extensions(),"gd"=>function_exists("gd_info") ? gd_info() : null,"sqlite"=>class_exists("SQLite3", false) ? SQLite3::version() : null,"settings"=>array_map(ini_get(...),array_combine(["memory_limit","upload_max_filesize","post_max_size","upload_tmp_dir","sys_temp_dir","error_reporting","opcache.enable_cli"],["memory_limit","upload_max_filesize","post_max_size","upload_tmp_dir","sys_temp_dir","error_reporting","opcache.enable_cli"]))],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);'])],
+        ['composer-manifest', composer(['validate', '--strict', '--no-check-publish'])],
+        ['platform-lock', composer(['check-platform-reqs', '--lock'])],
+        ['platform-installed', composer(['check-platform-reqs'])],
+    ];
+    const failures = [];
+    for (const [name, command] of checks) {
+        try { await run(name, command); } catch (error) {
+            if ([130, 143].includes(error.exitCode)) throw error;
+            failures.push(error);
+        }
+    }
+    if (failures.length) throw new AggregateError(failures, `Platform preflight failed: ${failures.map(error => error.message).join('; ')}`);
+}
+
 export function createVerificationEnvironment({ runtime, artifacts, baseEnv = process.env, appKey }) {
     commandArguments(runtime, []);
     const environment = inheritedEnvironment(baseEnv);

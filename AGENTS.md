@@ -8,6 +8,10 @@
 
 This repository is a shared-hosting restaurant operations application. It gives restaurant organizations a tenant-safe administration surface, permanent QR entry, guest table sessions and shared drafts, waiter review, kitchen/bar fulfilment, manual offline settlement, reporting, and local operations tooling.
 
+## Instruction scope
+
+For this repository, the technology and architecture contracts below take precedence over generic Laravel/Filament templates in global agent instructions. Use the installed Laravel 13, class-based Livewire 4 and accepted Flux Free/Pro stack; Filament-specific rules apply only to a project that actually installs Filament. Preserve global security and browser-isolation requirements. Package documentation describes available APIs; it does not authorize changing this application's architecture or supported runtime.
+
 ## Mandatory reading order
 
 Before changing code, read:
@@ -24,6 +28,12 @@ For repository-completion work, also read `docs/IMPLEMENTATION_PLAN.md`, `docs/P
 For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend.md`, `docs/design-system.md`, `docs/accessibility.md`, and `docs/tailwind.md`. They define product/design context without overriding `docs/requirements.md`.
 
 `docs/requirements.md` is the canonical active requirement catalogue. `CHANGELOG.md` is historical and must not override current requirements.
+
+## Maintaining agent rules
+
+- Read every applicable `.ai/rules` entry, including overlapping scopes. Use `infer-conventions` incrementally when auditing conventions; skip decisions already covered by these instructions, scoped rules or active tooling. Repeated code that violates current requirements is a defect, not a convention to preserve.
+- Record new user-authorized conventions through Boost's `record-rule`, with narrow paths and at least three consistent examples. Keep evidence in the audit response; rules contain the durable instruction. Do not choose a preferred style when comparable code has unresolved competing patterns.
+- `record-rule` appends entries; it does not update or deduplicate them. During an authorized rules audit, minimally edit existing entries/scopes to remove duplicates or obsolete guidance, preserve security notices, and regenerate the index with Boost's `RuleRepository::writeIndex()`. Preserve pre-existing work and verify that every rule path matches current files and the index matches all rule frontmatter. Keep generated index edits separate from its security notice.
 
 ## Technology baseline
 
@@ -126,6 +136,7 @@ Use the existing npm lock file. Do not introduce another JavaScript package mana
 - The application must work without Redis, WebSockets, S3, Docker, Supervisor, or a continuously running queue worker.
 - The optional scheduler may run inactivity cleanup; equivalent bounded web/Artisan controls must remain safe and idempotent.
 - Do not start a development server: Herd serves the project. Resolve URLs with Laravel Boost before sharing or browser testing.
+- Run Artisan, Boost and PHP checks with the supported PHP binary explicitly when the shell default differs. On this workstation `php85` selects stable PHP 8.5; do not change the global/Herd runtime to repair a tool invocation.
 
 ## Git workflow
 

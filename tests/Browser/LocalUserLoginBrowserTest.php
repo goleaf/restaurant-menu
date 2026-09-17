@@ -30,7 +30,7 @@ test('local directory signs in by mouse and keyboard without filling the passwor
                             && [...document.querySelectorAll('[data-test^="local-login-user-"]')].every(button => {
                                 const bounds = button.getBoundingClientRect();
                                 return bounds.height >= 44 && button.scrollWidth <= button.clientWidth
-                                    && button.form.method === 'post' && button.getAttribute('aria-label').includes(button.textContent.trim());
+                                    && button.form.hasAttribute('wire:submit') && !button.form.hasAttribute('action') && button.getAttribute('aria-label').includes(button.textContent.trim());
                             });
                     })()
                     JS);
@@ -41,10 +41,11 @@ test('local directory signs in by mouse and keyboard without filling the passwor
         ->assertValue('input[name="email"]', '')
         ->assertValue('input[name="password"]', '')
         ->click('@local-login-user-'.$first->id)
-        ->assertPathIs('/dashboard')
-        ->navigate(route('profile.edit', absolute: false))
+        ->assertPathIs('/dashboard');
+    $page->navigate(route('profile.edit', absolute: false))
         ->assertValue('input[wire\\:model="email"]', $first->email)
         ->click('@sidebar-menu-button')->click('@logout-button')
+        ->assertPathIs(route('home', absolute: false))
         ->navigate(route('login', absolute: false))
         ->keys('@local-login-user-'.$second->id, 'Enter')
         ->assertPathIs('/dashboard')

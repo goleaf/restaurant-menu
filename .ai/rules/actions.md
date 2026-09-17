@@ -14,3 +14,6 @@ Organization, brand and branch image Actions reload a selected active record ins
 
 ## Enforce bulk allocation bounds inside the reusable Action
 Component validation alone does not bound direct Action callers. Guard positive ascending range size before range/allocation with overflow-safe arithmetic; preserve transactional model events and throw on rejected required saves. Build successful results from known existing codes and actual saved model values instead of rerunning ownership and preview reads; retain archived-code reservations.
+
+## Invoke single-operation Actions through handle
+Give single-operation application Actions a typed handle(...) entry point. Preserve framework-contract methods and existing explicit multi-operation APIs.

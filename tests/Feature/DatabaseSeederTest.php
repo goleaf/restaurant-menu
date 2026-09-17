@@ -104,8 +104,14 @@ test('every database-seeded demo role signs in and reaches its prepared workspac
     foreach (DemoAccountCatalog::accounts() as $account) {
         $user = User::query()->where('email', $account['email'])->firstOrFail();
 
-        $this->post('https://ruflo.test'.route('demo-login.authenticate', ['role' => $account['role']->value], absolute: false))
-            ->assertRedirect(route('dashboard'));
+        $page = $this->get('https://ruflo.test/demo-login')->assertOk();
+        preg_match('/wire:snapshot="([^"]+)"/', $page->getContent(), $matches);
+        $snapshot = html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5);
+        $this->withCredentials()->withCookie(config('session.cookie'), session()->getId())
+            ->postJson('https://ruflo.test'.route('default-livewire.update', absolute: false), [
+                'components' => [['snapshot' => $snapshot, 'updates' => [], 'calls' => [['method' => 'login', 'params' => [$account['role']->value]]]]],
+            ], ['X-Livewire' => '', 'X-CSRF-TOKEN' => session()->token()])
+            ->assertOk()->assertJsonPath('components.0.effects.redirect', route('dashboard'));
 
         $this->assertAuthenticatedAs($user);
         $this->get(route('dashboard'))->assertOk();
@@ -119,6 +125,7 @@ test('every database-seeded demo role signs in and reaches its prepared workspac
 
         Auth::guard('web')->logout();
         $this->assertGuest();
+        $this->travel(61)->seconds();
     }
 });
 

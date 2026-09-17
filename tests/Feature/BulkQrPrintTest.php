@@ -8,7 +8,9 @@ use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
-use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as FloorIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\SelectionOperations;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -29,165 +31,65 @@ beforeEach(function () {
 test('bulk qr print page requires generate qr permission', function () {
     [$organization, $brand, $branch, , , , $manager] = createPrompt27QrContext();
     $url = prompt27BulkQrPrintUrl($organization, $brand, $branch);
-
-    $this->get($url)
-        ->assertRedirect(route('login'));
-
-    $this->actingAs($manager)
-        ->get($url)
-        ->assertForbidden();
-
+    $this->get($url)->assertRedirect(route('login'));
+    $this->actingAs($manager)->get($url)->assertForbidden();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $this->actingAs($manager)
-        ->get($url)
-        ->assertOk()
-        ->assertSee('data-page="branch-bulk-qr-print"', false)
-        ->assertSeeText('Bulk QR print')
-        ->assertSeeText('Select all with QR');
+    $this->actingAs($manager)->get($url)->assertRedirect(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch, 'zone' => 'all']));
 });
 
 test('bulk qr print filters service points by area', function () {
-    [$organization, $brand, $branch, $mainHall, $terrace, $servicePoints, $manager] = createPrompt27QrContext();
+    [$organization, $brand, $branch, $mainHall, $terrace, $points, $manager] = createPrompt27QrContext();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    Livewire::actingAs($manager)
-        ->test(BulkPrint::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-        ])
-        ->assertSee($mainHall->name)
-        ->assertSee($terrace->name)
-        ->assertSee($servicePoints['mainWithQr']->name)
-        ->assertSee($servicePoints['mainWithoutQr']->name)
-        ->set('areaNodeId', (string) $terrace->id)
-        ->assertSee($servicePoints['terraceWithQr']->name)
-        ->assertDontSee($servicePoints['mainWithQr']->name)
-        ->set('areaNodeId', 'none')
-        ->assertSee($servicePoints['noZoneWithQr']->name)
-        ->assertDontSee($servicePoints['terraceWithQr']->name);
+    Livewire::actingAs($manager)->test(FloorIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertSee($mainHall->name)->assertSee($terrace->name)->assertSee($points['mainWithQr']->name)->assertSee($points['mainWithoutQr']->name)
+        ->set('filters.area', (string) $terrace->id)->assertSee($points['terraceWithQr']->name)->assertDontSee($points['mainWithQr']->name)
+        ->set('filters.area', 'none')->assertSee($points['noZoneWithQr']->name)->assertDontSee($points['terraceWithQr']->name);
 });
 
 test('bulk qr print can select multiple existing eternal qr codes', function () {
-    [$organization, $brand, $branch, , , $servicePoints, $manager] = createPrompt27QrContext();
+    [$organization, $brand, $branch, , , $points, $manager] = createPrompt27QrContext();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $component = Livewire::actingAs($manager)
-        ->test(BulkPrint::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-        ])
-        ->call('selectAllVisible');
-
-    expect($component->get('selectedServicePointIds'))->toEqualCanonicalizing([
-        $servicePoints['mainWithQr']->id,
-        $servicePoints['terraceWithQr']->id,
-        $servicePoints['noZoneWithQr']->id,
-    ]);
-
-    $component
-        ->assertSee('QR-P27MAIN')
-        ->assertSee('QR-P27TERR')
-        ->assertSee('QR-P27NOZN')
-        ->assertSee('data:image/svg+xml;base64', false)
-        ->assertDontSee('QR-P27MISS');
-
-    $component
-        ->set('selectedServicePointIds', [
-            $servicePoints['mainWithQr']->id,
-            (string) $servicePoints['mainWithQr']->id,
-        ]);
-
-    expect($component->get('selectedServicePointIds'))->toBe([$servicePoints['mainWithQr']->id]);
-
-    $component
-        ->call('clearSelection')
-        ->assertSet('selectedServicePointIds', []);
+    $list = Livewire::actingAs($manager)->test(FloorIndex::class, compact('organization', 'brand', 'branch'))
+        ->set('filters.qr', 'with')->call('selectPage');
+    $expected = [$points['mainWithQr']->id, $points['terraceWithQr']->id, $points['noZoneWithQr']->id];
+    expect($list->get('selectedIds'))->toEqualCanonicalizing($expected);
+    $list->call('selectPage');
+    expect($list->get('selectedIds'))->toEqualCanonicalizing($expected);
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => $list->get('selectedIds')])
+        ->call('preparePrint')->assertHasNoErrors()->assertSee(['QR-P27MAIN', 'QR-P27TERR', 'QR-P27NOZN'])
+        ->assertSee('data:image/svg+xml;base64', false)->assertDontSee('QR-P27MISS');
+    $list->call('clearSelection')->assertSet('selectedIds', []);
 });
 
 test('bulk qr print applies label design presets to selected stickers', function () {
-    [$organization, $brand, $branch, , , , $manager] = createPrompt27QrContext();
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    Livewire::actingAs($manager)
-        ->test(BulkPrint::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-        ])
-        ->assertSet('preset', QrLabelPreset::Minimal->value)
-        ->call('selectAllVisible')
-        ->assertSee('data-preset="minimal"', false)
-        ->assertSeeText('Minimal')
-        ->assertSeeText('Classic')
-        ->assertSeeText('Restaurant')
-        ->assertSeeText('Bar')
-        ->assertSeeText('Hotel')
-        ->assertSeeText('Premium')
-        ->set('preset', QrLabelPreset::Bar->value)
-        ->assertSet('preset', QrLabelPreset::Bar->value)
-        ->assertSee('qr-sticker-preset-bar', false)
-        ->assertSee('data-preset="bar"', false)
-        ->assertDontSee('Стол: 1');
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$points['mainWithQr']->id]])
+        ->assertSet('form.preset', 'minimal')->assertSee(['Minimal', 'Classic', 'Restaurant', 'Bar', 'Hotel', 'Premium'])
+        ->call('preparePrint')->assertSee('data-qr-preset="minimal"', false)
+        ->set('form.preset', 'bar')->call('preparePrint')->assertHasNoErrors()->assertSet('form.preset', 'bar')
+        ->assertSee('qr-sticker-preset-bar', false)->assertSee('data-qr-preset="bar"', false)->assertDontSee('Стол: 1');
 });
 
 test('bulk qr print offers and creates missing qr without duplicating active qr codes', function () {
-    [$organization, $brand, $branch, , , $servicePoints, $manager] = createPrompt27QrContext();
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-    $missingServicePoint = $servicePoints['mainWithoutQr'];
-
-    Livewire::actingAs($manager)
-        ->test(BulkPrint::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-        ])
-        ->assertSee($missingServicePoint->name)
-        ->assertSee(__('qr.actions.generate'))
-        ->call('createQrForServicePoint', $missingServicePoint->id)
-        ->assertSet('selectedServicePointIds', [$missingServicePoint->id]);
-
-    expect(QrCode::query()
-        ->where('service_point_id', $missingServicePoint->id)
-        ->where('status', QrCodeStatus::Active->value)
-        ->count())->toBe(1);
-
-    Livewire::actingAs($manager)
-        ->test(BulkPrint::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-        ])
-        ->call('createQrForServicePoint', $missingServicePoint->id)
-        ->call('createMissingQrForVisible');
-
-    expect(QrCode::query()
-        ->where('service_point_id', $missingServicePoint->id)
-        ->where('status', QrCodeStatus::Active->value)
-        ->count())->toBe(1);
+    $missing = $points['mainWithoutQr'];
+    $selected = [$missing->id, $points['mainWithQr']->id];
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => $selected, 'operation' => 'generate'])
+        ->assertSee($missing->name)->call('generateNext')->assertHasNoErrors()->assertSet('finished', true);
+    expect($component->get('completedIds'))->toEqualCanonicalizing($selected);
+    $component->call('generateNext')->assertHasNoErrors();
+    expect(QrCode::query()->where('service_point_id', $missing->id)->where('status', QrCodeStatus::Active)->count())->toBe(1)
+        ->and(QrCode::query()->where('service_point_id', $points['mainWithQr']->id)->count())->toBe(1);
 });
 
 test('branch list links users with generate qr permission to bulk print', function () {
     [$organization, $brand, $branch, , , , $manager] = createPrompt27QrContext();
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-        ])
-        ->assertDontSee('Bulk QR print');
-
+    Livewire::actingAs($manager)->test(BranchesIndex::class, compact('organization', 'brand'))->assertDontSee('Bulk QR print');
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    Livewire::actingAs($manager->fresh())
-        ->test(BranchesIndex::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-        ])
-        ->assertSee('Bulk QR print')
-        ->assertSee(prompt27BulkQrPrintUrl($organization, $brand, $branch), false);
+    Livewire::actingAs($manager->fresh())->test(BranchesIndex::class, compact('organization', 'brand'))
+        ->assertSee('Bulk QR print')->assertSee(prompt27BulkQrPrintUrl($organization, $brand, $branch), false);
 });
 
 function createPrompt27QrContext(): array

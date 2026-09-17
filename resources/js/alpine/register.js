@@ -1,5 +1,6 @@
 import { branchPickerDisabled } from './components/branch-picker.js';
 import { availabilityWorkspace } from './components/availability-workspace.js';
+import { floorWorkspace } from './components/floor-workspace.js';
 import { connectivity } from './components/connectivity.js';
 import { guestDishDialog, guestMenu } from './components/guest-menu.js';
 import { guestInvite } from './components/guest-invite.js';
@@ -13,6 +14,7 @@ import { notificationPanel } from './components/notification-panel.js';
 import { passkeyRegistration, passkeyVerification } from './components/passkeys.js';
 import { catalogTransfer, catalogUpload, onboardingFocus, recoveryCodes, restaurantDashboard } from './components/presentation.js';
 import { securityClipboard } from './components/security-clipboard.js';
+import { restoreUpload } from './components/restore-upload.js';
 import { invitationClipboard, staffEditor, staffWorkspace } from './components/staff-workspace.js';
 import { twoFactorChallenge } from './components/two-factor.js';
 import { waiterSounds } from './components/waiter-sounds.js';
@@ -26,11 +28,11 @@ export function registerAlpineComponents(Alpine) {
 
     const passkeys = createPasskeysAdapter();
     const providers = {
-        availabilityWorkspace, branchPickerDisabled, connectivity, guestDishDialog, guestInvite, guestMenu, httpForm,
+        availabilityWorkspace, branchPickerDisabled, connectivity, floorWorkspace, guestDishDialog, guestInvite, guestMenu, httpForm,
         invitationClipboard, kitchenTimers, menuImagePicker, menuImagePresentationEditor,
         menuTranslations, menuWorkspace, notificationPanel, securityClipboard, staffEditor,
         staffWorkspace, twoFactorChallenge, waiterSounds, workspaceNavigation,
-        catalogTransfer, catalogUpload, onboardingFocus, recoveryCodes, restaurantDashboard,
+        catalogTransfer, catalogUpload, onboardingFocus, recoveryCodes, restaurantDashboard, restoreUpload,
         passkeyRegistration: () => passkeyRegistration(passkeys),
         passkeyVerification: () => passkeyVerification(passkeys),
     };

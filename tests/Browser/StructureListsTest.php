@@ -21,7 +21,11 @@ test('structure lists retain hierarchy filters and drafts while recovering archi
     $organization = Organization::factory()->for($owner, 'owner')->create(['name' => 'North Family Restaurants']);
     OrganizationUser::factory()->forOrganization($organization)->forUser($owner)
         ->forSystemRole(SystemRole::Owner)->active()->create();
+    $excludedOrganization = Organization::factory()->for($owner, 'owner')->create(['name' => 'South Family Restaurants']);
+    OrganizationUser::factory()->forOrganization($excludedOrganization)->forUser($owner)
+        ->forSystemRole(SystemRole::Owner)->active()->create();
     $brand = Brand::factory()->for($organization)->create(['name' => 'Daily Kitchen']);
+    Brand::factory()->for($organization)->create(['name' => 'Evening Cafe']);
     $branches = Branch::factory()->count(16)->for($organization)->for($brand)->active()
         ->sequence(fn ($sequence): array => ['name' => sprintf('Service branch %02d', $sequence->index + 1)])
         ->create();
@@ -35,13 +39,23 @@ test('structure lists retain hierarchy filters and drafts while recovering archi
     $page->fill('email', $owner->email)->fill('password', 'password')->click('@login-button')
         ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('organizations.index', absolute: false))->resize(1440, 1000)
-        ->fill('#organizations-search', 'North')->select('#organizations-sort', 'name_desc')
+        ->assertSee('South Family Restaurants')
+        ->fill('#organizations-search', 'North')
         ->assertSee('North Family Restaurants')
+        ->assertDontSee('South Family Restaurants')
+        ->select('#organizations-sort', 'name_desc')
+        ->assertScript('Livewire.find(document.querySelector("[data-page=organizations]").getAttribute("wire:id")).__instance.canonical.sort', 'name_desc')
+        ->assertQueryStringHas('sort', 'name_desc')
         ->click('[data-page="organizations"] a[href$="'.$brandsUrl.'"]')
         ->assertPathIs($brandsUrl)
         ->assertSeeIn('header.rm-page-header', 'North Family Restaurants')
-        ->fill('#brands-search', 'Daily')->select('#brands-sort', 'name_desc')
+        ->assertSee('Evening Cafe')
+        ->fill('#brands-search', 'Daily')
         ->assertSee('Daily Kitchen')
+        ->assertDontSee('Evening Cafe')
+        ->select('#brands-sort', 'name_desc')
+        ->assertScript('Livewire.find(document.querySelector("[data-page=organization-brands]").getAttribute("wire:id")).__instance.canonical.sort', 'name_desc')
+        ->assertQueryStringHas('sort', 'name_desc')
         ->click('[data-page="organization-brands"] a[href$="'.$branchesUrl.'"]')
         ->assertPathIs($branchesUrl)
         ->assertSeeIn('header.rm-page-header', 'North Family Restaurants')

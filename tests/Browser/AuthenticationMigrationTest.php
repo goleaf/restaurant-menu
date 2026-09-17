@@ -17,7 +17,7 @@ beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
-test('two factor challenge retains Alpine switching validation and recovery login through real Fortify requests', function (): void {
+test('two factor challenge retains focus validation and recovery login through real Livewire requests', function (): void {
     $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
     $user = User::factory()->withTwoFactor()->create(['password' => 'password']);
     $requests = authenticationMigrationRequests();
@@ -29,35 +29,39 @@ test('two factor challenge retains Alpine switching validation and recovery logi
         ->assertMissing('input[name="recovery_code"]');
     $page->assertScript('document.querySelector("[x-ref=otp]").contains(document.activeElement)');
     $page->fill('[x-ref="otp"] input >> nth=0', '1')
-        ->assertAttribute('button[x-on\\:click="toggleInput()"]', 'type', 'button')
-        ->keys('button[x-on\\:click="toggleInput()"]', 'Space')
+        ->assertAttribute('button[wire\\:click="toggleRecovery"]', 'type', 'button')
+        ->keys('button[wire\\:click="toggleRecovery"]', 'Space')
         ->assertVisible('input[name="recovery_code"]')
         ->assertScript('document.activeElement.name', 'recovery_code')
-        ->assertScript('Alpine.$data(document.querySelector("[x-data=twoFactorChallenge]")).code', '');
-    $page->fill('recovery_code', 'unfinished-recovery')
+        ->assertScript('Livewire.find(document.querySelector("[x-data=twoFactorChallenge]").getAttribute("wire:id")).get("form.code")', '');
+    $page->fill('input[name="recovery_code"]', 'unfinished-recovery')
         ->click(__('ui.auth.two_factor_challenge.login_using_an_authentication_code'))
         ->assertVisible('[x-ref="otp"] input >> nth=0')
-        ->assertValue('recovery_code', '')
+        ->assertMissing('input[name="recovery_code"]')
+        ->assertScript('Livewire.find(document.querySelector("[x-data=twoFactorChallenge]").getAttribute("wire:id")).get("form.recovery_code")', '')
         ->assertScript('document.querySelector("[x-ref=otp]").contains(document.activeElement)');
     $page->click(__('ui.auth.two_factor_challenge.login_using_a_recovery_code'))
-        ->fill('recovery_code', 'invalid-recovery-code')
-        ->click('form[action$="/two-factor-challenge"] button[type="submit"]')
+        ->assertVisible('input[name="recovery_code"]')
+        ->fill('input[name="recovery_code"]', 'invalid-recovery-code')
+        ->click('form[wire\\:submit="authenticate"] button[type="submit"]')
         ->assertPathIs(route('two-factor.login', absolute: false))
-        ->assertSee(__('The provided two factor recovery code was invalid.'))
+        ->assertSee(__('auth.two_factor_recovery_code'))
         ->assertVisible('input[name="recovery_code"]')
         ->assertMissing('[x-ref="otp"] input >> nth=0');
     expect($user->refresh()->recoveryCodes())->toBe(['recovery-code-1']);
-    $page->fill('recovery_code', 'recovery-code-1')
-        ->click('form[action$="/two-factor-challenge"] button[type="submit"]')
+    $page->fill('input[name="recovery_code"]', 'recovery-code-1')
+        ->click('form[wire\\:submit="authenticate"] button[type="submit"]')
         ->assertPathIs(route('dashboard', absolute: false));
     expect($user->refresh()->recoveryCodes())->not->toContain('recovery-code-1');
     $page->click('@sidebar-menu-button')->click('@logout-button')
+        ->assertPathIs(route('home', absolute: false))
         ->navigate(route('security.edit', absolute: false))
         ->assertPathIs(route('login', absolute: false))
         ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
-    expect($requests->count('POST', route('login.store', absolute: false), 302))->toBe(1)
-        ->and($requests->count('POST', route('two-factor.login.store', absolute: false), 302))->toBe(2)
-        ->and($requests->count('POST', route('logout', absolute: false), 302))->toBe(1);
+    expect($requests->count('POST', route('login.store', absolute: false), 302))->toBe(0)
+        ->and($requests->count('POST', route('two-factor.login.store', absolute: false), 302))->toBe(0)
+        ->and($requests->count('POST', route('logout', absolute: false), 302))->toBe(0)
+        ->and($requests->livewireUpdates())->toBeGreaterThanOrEqual(7);
 });
 
 test('passkey registration uses real options transport and recovers from WebAuthn cancellation failure and deletion', function (): void {

@@ -32,6 +32,20 @@
 - Fixed long restaurant scope labels overwriting the bounded server-search query in the existing workspace selector.
 - Stable candidate and shared integration acceptance pass; PHP 8.6 application acceptance remains blocked by dependency requirements. Exact evidence and failed diagnostics are recorded in PROGRESS.md; Git delivery is reported separately.
 
+## 2026-09-17 — Restore connectivity state after browser history navigation
+
+- Resynchronize offline notices and disabled controls with current browser connectivity after Livewire navigation. Returning to an offline snapshot after reconnecting no longer leaves a false warning or disabled search fields.
+- Add a failing-then-passing browser regression for cached Back/Forward transitions and bootstrap tests for online/offline synchronization; production assets rebuilt.
+- Expand the online-warning guard across EN/LT/RU, mobile/desktop layouts, auth/staff/guest screens, reloads, successful Livewire updates and repeated reconnects: 7 browser cases / 761 assertions pass.
+
+## 2026-09-16 — Prompt 2 controller migration (verification in progress)
+
+- Replace ordinary auth/local/demo/invitation application forms with class-based Livewire and validated Form objects, retaining Fortify and existing domain Actions.
+- Move report/QR/backup preparation into existing screens; keep explicit credential exchange, private binary delivery and SQLite restore finalization boundaries.
+- Preserve workspace navigation, named links, local Flux Pro adaptation, SCSS ownership and current production runtime/dependency constraints.
+- Delivery and current test evidence remain tracked in PROGRESS.md until the final aggregate and independent review complete.
+
+
 ## 2026-09-16 — Unified restaurant workspace, prompt 3
 
 - Replace the intermediate dashboard view with a class-based Livewire entry and one shared authorized restaurant selector using the available local Flux Pro combobox.

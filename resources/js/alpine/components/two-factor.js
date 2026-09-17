@@ -1,13 +1,15 @@
 export function twoFactorChallenge() {
     return {
         showRecoveryInput: false,
-        code: '',
-        recovery_code: '',
         focusFrame: null,
         focusEpoch: 0,
         destroyed: false,
         init() {
             this.showRecoveryInput = this.$el.dataset.recovery === 'true';
+            this.$watch('$wire.recovery', value => {
+                this.showRecoveryInput = value;
+                this.focusInput();
+            });
             this.focusInput();
         },
         cancelFocus() {
@@ -26,12 +28,6 @@ export function twoFactorChallenge() {
                     input?.focus();
                 });
             });
-        },
-        toggleInput() {
-            this.showRecoveryInput = !this.showRecoveryInput;
-            this.code = '';
-            this.recovery_code = '';
-            this.focusInput();
         },
         destroy() {
             this.destroyed = true;

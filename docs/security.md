@@ -11,6 +11,21 @@ Opening Team/card, managing staff, editing organizational overrides, changing ro
 First assignment scope restriction and final-assignment inheritance restoration are explicit intents, never silent checkbox effects. Protected accounts, self-escalation, delegation, last owner and EnsureOrganizationManagementRemainsAction remain enforced. Individual permissions remain organization-scoped; no legacy override is copied into another organization. Independent SQLite-process tests cover conflicting changes and last-manager preservation; audit failure rolls back the corresponding mutation. Invitation credentials remain digest-only and their cancellation/reissue are version-bound. Existing accepted-account, email, verification and MFA flows are reused.
 
 
+## Application-controller migration boundaries — prompt 2
+
+The application entry forms are Livewire operations, including password/MFA, invitations and local/demo identity selection. Public methods revalidate current actor, permissions and context; page middleware alone is insufficient. Local/demo actions check environment, allowed host, guest status and target on every call, before lookup; local directory rows are prepared only for an eligible local guest and are not serialized as component state. Login and account changes clear previous password/MFA state, regenerate the session and use full navigation.
+
+Invitation credentials and password-reset tokens remain in the session after a minimal token-to-session redirect. Random public attempt identifiers bind a form to the current server attempt; `Locked` is integrity protection, not encryption. Original bearer tokens must be absent from full HTML, snapshots and subsequent responses. Invitation GET/HEAD/prefetch never create users or memberships. Reissued, revoked, expired, mismatched-email and stale-actor attempts fail before mutations. Passwords and recovery input are cleared before dehydration, including errors and refreshes.
+
+`ProtectInvitationResponses` also applies private no-store/no-referrer headers to auth and Livewire responses and their rendered errors. Fortify still owns guards, providers, authentication pipeline and token/signature/WebAuthn protocols. Form objects hold input/validation only; domain Actions retain transactional checks. Ordinary domain Actions may not resolve actor or scope from a global request/session.
+
+Pending MFA expires after10minutes and is bound to the current guard/provider user and a server-only credential fingerprint. Disabling, replacing or unconfirming MFA revokes the pending first factor. Native Fortify and Livewire challenges share the named5/minute limiter, per-user file lock and consumed-attempt receipt; replay cannot spend a second recovery code. No fingerprint or MFA secret is serialized.
+
+Restore-purpose upload URLs are signed and nonce-bound; current superadmin, authorization expiry and password confirmation are checked at upload delivery. A restore grant in the session cannot increase the ordinary image/file upload limit.
+
+File grants never accept a browser filesystem path. Prepared files are private, short lived, actor/session bound, integrity checked and freshly authorized on delivery. HEAD/prefetch cannot consume a grant. Restore finalization is deliberately outside the Livewire update lifecycle: exclusive coordination begins before auth/session reads; successful replacement invalidates prior sessions and returns to login without dehydrating old component models into the restored database. The unchanged operator procedure still requires quiescing independent CLI writers.
+
+
 ## Workspace request identity and context — 2026-09-16
 
 Every first-party authenticated Livewire snapshot carries a signed actor memo. The hook registers before Livewire boots its hook registry; a subsequent HTTP update under a different account fails with 409, even when both accounts have equivalent permissions. Authenticated legacy snapshots without the actor memo also require a fresh page before an operation. Public QR guest components retain their existing independent guest contract. Locked identifiers still require resource authorization and are never treated as hidden data.

@@ -25,6 +25,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\InvitationPage;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -46,8 +47,9 @@ test('an already opened invitation cannot accept a rotated credential', function
     $recipient = User::factory()->create(['email' => 'stale@example.test']);
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email]);
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
+    $snapshot = InvitationPage::open($this);
     app(ReissueInvitationAction::class)->handle($this->owner, $this->organization, $created->invitation);
-    $this->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])->assertGone();
+    InvitationPage::call($this, 'accept', snapshot: $snapshot)->assertGone();
     expect(OrganizationUser::query()->where('user_id', $recipient->id)->exists())->toBeFalse();
     expect(fn () => app(AcceptInvitationAction::class)->handle($created->invitation, $recipient))->toThrow(DomainException::class);
 });
@@ -55,8 +57,9 @@ test('an already opened invitation cannot accept a rotated credential', function
 test('registration rejects a rotated open form before creating a user', function (): void {
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => 'new.stale@example.test']);
     $this->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
+    $snapshot = InvitationPage::open($this);
     app(ReissueInvitationAction::class)->handle($this->owner, $this->organization, $created->invitation);
-    $this->post(route('invitations.register'), ['invitation_version' => $created->invitation->credentialVersion(), 'name' => 'Stale Recipient', 'email' => 'new.stale@example.test', 'password' => 'ValidPassword2026!', 'password_confirmation' => 'ValidPassword2026!'])->assertGone();
+    InvitationPage::call($this, 'register', ['name' => 'Stale Recipient', 'email' => 'new.stale@example.test', 'password' => 'ValidPassword2026!', 'password_confirmation' => 'ValidPassword2026!'], $snapshot)->assertGone();
     expect(User::query()->where('email', 'new.stale@example.test')->exists())->toBeFalse();
 });
 
@@ -105,10 +108,10 @@ test('an existing account switches safely from a mismatched email without losing
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email]);
     $this->actingAs($other)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
     $this->get(route('invitations.pending'))->assertGone()->assertSee(__('invitations.actions.switch_account'))->assertDontSee($recipient->email);
-    $this->post(route('invitations.switch-account'))->assertRedirect(route('login'))->assertSessionHas('staff_invitation_credential', hash('sha256', $created->token));
+    InvitationPage::call($this, 'switchAccount')->assertOk()->assertJsonPath('components.0.effects.redirect', route('login'))->assertSessionHas('staff_invitation_credential', hash('sha256', $created->token));
     $this->assertGuest();
     $this->get(route('invitations.pending'))->assertOk()->assertSee(__('invitations.account.existing_title'))->assertDontSee('register-invitation-button');
-    $this->actingAs($recipient)->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])->assertRedirect(route('restaurant.dashboard'));
+    InvitationPage::call($this->actingAs($recipient), 'accept', [])->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.dashboard'));
     expect($recipient->fresh()->email)->toBe('invited@example.test');
 });
 
@@ -118,8 +121,9 @@ test('opening another invitation in the same browser cannot change the first for
     $branch = Branch::factory()->for($this->organization)->create();
     $second = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email, 'branch' => $branch]);
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $first->token]))->assertRedirect();
+    $snapshot = InvitationPage::open($this);
     $this->get(route('invitations.show', ['token' => $second->token]))->assertRedirect();
-    $this->post(route('invitations.accept'), ['invitation_version' => $first->invitation->credentialVersion()])->assertGone();
+    InvitationPage::call($this, 'accept', snapshot: $snapshot)->assertStatus(409);
     expect(OrganizationUser::query()->where('user_id', $recipient->id)->exists())->toBeFalse();
 });
 
@@ -202,7 +206,7 @@ test('one account consents separately to each organization without changing its 
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
     $this->get(route('invitations.pending'))->assertOk()->assertSee($otherOrganization->name);
     expect($recipient->organizationMemberships()->count())->toBe(1);
-    $this->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])->assertRedirect();
+    InvitationPage::call($this, 'accept', [])->assertOk()->assertJsonStructure(['components' => [['effects' => ['redirect']]]]);
 
     expect($recipient->organizationMemberships()->count())->toBe(2)
         ->and($recipient->organizationMemberships()->where('organization_id', $this->organization->id)->sole()->role_id)->toBe($cashier->id)
@@ -245,11 +249,11 @@ test('acceptance opens the workspace of the preserved scoped role', function (Sy
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email, 'branch' => $branch]);
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
     $this->get(route('invitations.pending'))->assertOk()
-        ->assertViewHas('roleName', $roleCode->localizedLabel())
+        ->assertSee($roleCode->localizedLabel())
         ->assertSee(__('invitations.access.existing_roles'));
 
-    $this->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])
-        ->assertRedirect(route($routeName, ['department' => $department->id]));
+    InvitationPage::call($this, 'accept', [])
+        ->assertOk()->assertJsonPath('components.0.effects.redirect', route($routeName, ['department' => $department->id]));
     expect($recipient->organizationMemberships()->sole()->role_id)->toBe($role->id)
         ->and($recipient->branchAssignments()->sole()->role_id)->toBe($role->id);
 })->with([
@@ -269,7 +273,7 @@ test('an organization invitation does not redirect into another organizations wa
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email]);
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
 
-    $this->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])->assertRedirect(route('restaurant.dashboard'));
+    InvitationPage::call($this, 'accept', [])->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.dashboard'));
 });
 
 test('an organization invitation selects a waiter branch from its own organization', function (): void {
@@ -285,8 +289,8 @@ test('an organization invitation selects a waiter branch from its own organizati
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => $recipient->email]);
     $this->actingAs($recipient)->get(route('invitations.show', ['token' => $created->token]))->assertRedirect();
 
-    $this->post(route('invitations.accept'), ['invitation_version' => $created->invitation->credentialVersion()])
-        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $invitedBranch->id]));
+    InvitationPage::call($this, 'accept', [])
+        ->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.waiter.dashboard', ['branch' => $invitedBranch->id]));
     expect($recipient->fresh()->canAccessBranch($otherBranch))->toBeTrue();
 });
 
@@ -345,14 +349,15 @@ test('failed invitation responses retain private security headers', function (st
         }
         $response = $this->get(route('invitations.pending'))->assertTooManyRequests();
     } else {
-        $response = $this->from(route('invitations.pending'))->post(route('invitations.register'), [
-            'invitation_version' => $created->invitation->credentialVersion(), 'name' => '',
+        $response = InvitationPage::call($this->from(route('invitations.pending')), 'register', [
+            'name' => '',
             'email' => 'private.response@example.test', 'password' => 'short', 'password_confirmation' => 'different',
         ]);
         if ($failure === 'gone') {
             $response->assertGone();
         } else {
-            $response->assertRedirect(route('invitations.pending'))->assertSessionHasErrors(['name', 'password']);
+            $response->assertOk();
+            expect(InvitationPage::errors($response))->toHaveKeys(['form.name', 'form.password']);
         }
     }
 
@@ -368,11 +373,10 @@ test('new invitation accounts retain their selected language in the workplace', 
     ]);
     $this->get(route('invitations.show', ['token' => $created->token, 'lang' => $locale]))->assertRedirect();
     $this->get(route('invitations.pending'))->assertOk()->assertSee('lang="'.$locale.'"', false);
-    $this->post(route('invitations.register'), [
-        'invitation_version' => $created->invitation->credentialVersion(),
+    InvitationPage::call($this, 'register', [
         'name' => 'Locale Recipient', 'email' => 'locale.recipient@example.test',
         'password' => 'ValidPassword2026!', 'password_confirmation' => 'ValidPassword2026!',
-    ])->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $branch->id]));
+    ])->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.waiter.dashboard', ['branch' => $branch->id]));
 
     expect(User::query()->where('email', 'locale.recipient@example.test')->sole()->locale)->toBe($locale);
     $this->get(route('restaurant.waiter.dashboard', ['branch' => $branch->id]))
@@ -408,7 +412,6 @@ test('invitation registration validation uses the selected language and preserve
     $created = app(CreateInvitationAction::class)->handle($this->organization, $this->role, $this->owner, ['email' => 'validation.locale@example.test']);
     $this->get(route('invitations.show', ['token' => $created->token, 'lang' => $locale]))->assertRedirect();
     $input = [
-        'invitation_version' => $created->invitation->credentialVersion(),
         'name' => 'Validation Recipient', 'email' => 'validation.locale@example.test',
         'password' => 'ValidPassword2026!', 'password_confirmation' => 'ValidPassword2026!',
     ];
@@ -424,16 +427,16 @@ test('invitation registration validation uses the selected language and preserve
     $expected = __('invitations.validation.'.$messageKey, ['attribute' => __($attributeKeys[$field]), 'min' => 8]);
     expect($expected)->not->toBe('invitations.validation.'.$messageKey);
 
-    $response = $this->from(route('invitations.pending'))->post(route('invitations.register'), $input);
+    $response = InvitationPage::call($this->from(route('invitations.pending')), 'register', $input);
 
-    $response->assertRedirect(route('invitations.pending'))
-        ->assertSessionHasErrors([$field => $expected])
-        ->assertSessionHas('_old_input', fn (array $oldInput): bool => array_key_exists('name', $oldInput)
-            && array_key_exists('email', $oldInput)
-            && $oldInput['name'] === ($input['name'] === '' ? null : $input['name'])
-            && $oldInput['email'] === ($input['email'] === '' ? null : $input['email']))
+    $response->assertOk()
         ->assertSessionMissing('_old_input.password')
         ->assertSessionMissing('_old_input.password_confirmation');
+    expect(InvitationPage::errors($response)['form.'.$field])->toContain($expected)
+        ->and(InvitationPage::form($response)['name'])->toBe($input['name'])
+        ->and(InvitationPage::form($response)['email'])->toBe($input['email'])
+        ->and(InvitationPage::form($response)['password'])->toBe('')
+        ->and(InvitationPage::form($response)['password_confirmation'])->toBe('');
     expect(User::query()->where('email', 'validation.locale@example.test')->exists())->toBeFalse()
         ->and($created->invitation->fresh()->status)->toBe(InvitationStatus::Pending);
 })->with(['en', 'lt', 'ru'])->with([
@@ -451,17 +454,16 @@ test('an invitation cannot enumerate accounts through mismatched registration em
     $userCount = User::query()->count();
     $memberCount = OrganizationUser::query()->count();
     $input = [
-        'invitation_version' => $created->invitation->credentialVersion(),
         'name' => 'Unaccepted Recipient',
         'password' => 'ValidPassword2026!', 'password_confirmation' => 'ValidPassword2026!',
     ];
 
-    $existing = $this->from(route('invitations.pending'))->post(route('invitations.register'), [...$input, 'email' => $foreign->email]);
-    $existing->assertRedirect(route('invitations.pending'))
-        ->assertSessionHas('errors', fn ($errors): bool => $errors->getBag('default')->get('email') === [__('invitations.validation.email_mismatch')]);
-    $unknown = $this->from(route('invitations.pending'))->post(route('invitations.register'), [...$input, 'email' => 'unknown.account@example.test']);
-    $unknown->assertRedirect(route('invitations.pending'))
-        ->assertSessionHas('errors', fn ($errors): bool => $errors->getBag('default')->get('email') === [__('invitations.validation.email_mismatch')]);
+    $existing = InvitationPage::call($this->from(route('invitations.pending')), 'register', [...$input, 'email' => $foreign->email]);
+    $existing->assertOk();
+    expect(InvitationPage::errors($existing)['form.email'])->toBe([__('invitations.validation.email_mismatch')]);
+    $unknown = InvitationPage::call($this->from(route('invitations.pending')), 'register', [...$input, 'email' => 'unknown.account@example.test']);
+    $unknown->assertOk();
+    expect(InvitationPage::errors($unknown)['form.email'])->toBe([__('invitations.validation.email_mismatch')]);
 
     expect(User::query()->count())->toBe($userCount)
         ->and(OrganizationUser::query()->count())->toBe($memberCount)

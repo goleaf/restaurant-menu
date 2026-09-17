@@ -58,10 +58,45 @@ for (const exitCode of [0, 7]) {
             child.once('message',()=>{console.log(child.pid);child.disconnect();child.unref();process.exit(${exitCode});});
         `, { grace: 100 });
         descendant = Number(result.output.trim());
-        assert.ok(Number.isInteger(descendant) && descendant > 0);
+        assert.ok(Number.isInteger(descendant) && descendant > 0, JSON.stringify(result));
         assert.equal(result.code, exitCode);
         assert.equal(result.timedOut, false);
         assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+    });
+}
+
+for (const persistent of [false, true]) {
+    test(`${persistent ? 'persistent' : 'transient'} permission denial during a group probe requires confirmed disappearance`, async t => {
+        const kill = process.kill.bind(process);
+        let descendant;
+        let killedGroup;
+        let denials = 0;
+        t.after(() => {
+            if (descendant) {
+                try { kill(descendant, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+            }
+        });
+        t.mock.method(process, 'kill', (pid, signal) => {
+            if (pid === killedGroup && signal === 0 && (persistent || denials === 0)) {
+                denials++;
+                throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+            }
+            const result = kill(pid, signal);
+            if (pid < 0 && signal === 'SIGKILL') killedGroup = pid;
+            return result;
+        });
+        const result = await execute(`
+            const {spawn}=require('node:child_process');
+            const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});process.send("ready");setInterval(()=>{},1000)'],{stdio:['ignore','ignore','ignore','ipc']});
+            child.once('message',()=>{console.log(child.pid);child.disconnect();child.unref();process.exit(0);});
+        `, { grace: 20 });
+        descendant = Number(result.output.split('\n')[0]);
+        assert.ok(Number.isInteger(descendant) && descendant > 0, JSON.stringify(result));
+        assert.ok(denials > 0);
+        assert.equal(result.code, persistent ? 1 : 0, JSON.stringify(result));
+        assert.equal(result.timedOut, false);
+        if (persistent) assert.match(result.output, /could not stop its owned process group/);
+        assert.throws(() => kill(descendant, 0), { code: 'ESRCH' });
     });
 }
 

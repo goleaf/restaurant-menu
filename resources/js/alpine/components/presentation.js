@@ -57,22 +57,23 @@ export function catalogTransfer() {
     };
 }
 
-export function catalogUpload() {
+export function catalogUpload(configuration = {}) {
     return {
         uploading: false,
         progress: 0,
         selectionChanged(event) {
-            this.$dispatch('menu-workspace-dirty', { key: 'catalog-transfer', dirty: (event.target.files?.length ?? 0) > 0 });
+            this.$dispatch('menu-workspace-dirty', { key: configuration.key ?? 'catalog-transfer', dirty: (event.target.files?.length ?? 0) > 0 });
         },
+        clearSelection() { this.$dispatch('menu-workspace-dirty', { key: configuration.key ?? 'catalog-transfer', dirty: false }); },
         startUpload() { this.uploading = true; this.progress = 0; },
         updateProgress(event) { this.progress = event.detail.progress; },
         finishUpload() { this.uploading = false; this.progress = 100; },
         failUpload() { this.uploading = false; },
         cancelUpload() { this.uploading = false; this.progress = 0; },
         destroy() {
-            if (this.uploading) this.$wire.$cancelUpload('form.file');
+            if (this.uploading) this.$wire.$cancelUpload(configuration.field ?? 'form.file');
             this.uploading = false;
-            this.$dispatch('menu-workspace-dirty', { key: 'catalog-transfer', dirty: false });
+            this.clearSelection();
         },
     };
 }

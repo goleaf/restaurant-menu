@@ -33,6 +33,8 @@ test('notification bell views messages without reading and keeps local close and
 
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)
         ->resize(390, 844)->navigate(route('dashboard', absolute: false))
         ->assertPathIs(route('restaurant.dashboard', absolute: false))
         ->assertQueryStringHas('branch', (string) $branch->id);
@@ -144,6 +146,8 @@ test('notification history keeps bounded pages and discards a late response afte
 
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)
         ->resize(390, 844)->navigate(route('dashboard', absolute: false))
         ->assertPathIs(route('restaurant.dashboard', absolute: false))
         ->assertQueryStringHas('branch', (string) $branch->id)->click('[data-notification-trigger]')
@@ -214,6 +218,7 @@ test('mobile sidebar and repeated Livewire navigation retain exactly one notific
     $user = User::factory()->create(['email' => 'notification-polling@example.test', 'password' => 'password']);
     $page = visit(route('login', absolute: false));
     $page->resize(390, 844)->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false))
         ->assertVisible('[data-workspace-entry]')
         ->assertScript('document.readyState', 'complete');
     $page->script(<<<'JS'

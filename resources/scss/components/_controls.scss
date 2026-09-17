@@ -24,6 +24,14 @@
         }
     }
 
+    .rm-backup-restore-submit[data-flux-button] {
+        max-inline-size: 100%;
+        min-block-size: var(--rm-spacing-touch);
+        block-size: auto !important;
+        padding-block: tokens.space(2);
+        white-space: normal !important;
+    }
+
     .rm-image-upload {
         display: block;
         width: 100%;

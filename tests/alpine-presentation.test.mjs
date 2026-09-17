@@ -71,3 +71,16 @@ test('named bindings label dialogs, focus surviving controls and invoke native p
     focusSelf()['@click'].call({ $el: heading }); assert.equal(heading.focused, 2);
     let printed = 0; app.window.print = () => printed++; printDocument()['@click'](); assert.equal(printed, 1);
 });
+
+test('a selected identity logo upload cancels its own field and clears only its own dirty marker', async t => {
+    const app = browser(t);
+    const { catalogUpload } = await factories();
+    const upload = app.component(() => catalogUpload({ field: 'logo', key: 'restaurant-logo' })), cancelled = [];
+    upload.$wire.$cancelUpload = property => cancelled.push(property);
+    upload.selectionChanged({ target: { files: [{ name: 'logo.png' }] } });
+    assert.deepEqual(app.state.events.at(-1).detail, { key: 'restaurant-logo', dirty: true });
+    upload.startUpload(); upload.destroy();
+    assert.deepEqual(cancelled, ['logo']);
+    upload.clearSelection();
+    assert.deepEqual(app.state.events.at(-1).detail, { key: 'restaurant-logo', dirty: false });
+});

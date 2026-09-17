@@ -53,6 +53,11 @@ test('menu workspace first response has a bounded component and query budget', f
                 'response_bytes' => strlen($html),
                 'snapshots' => count($snapshots[1]),
                 'snapshot_bytes' => $snapshotBytes,
+                'snapshot_sizes' => array_map(static function (string $encoded): array {
+                    $snapshot = html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5);
+
+                    return ['name' => json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR)['memo']['name'], 'bytes' => strlen($snapshot)];
+                }, $snapshots[1]),
                 'elapsed_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
                 'peak_memory_bytes' => memory_get_peak_usage(true),
             ], JSON_THROW_ON_ERROR).PHP_EOL);
@@ -61,7 +66,8 @@ test('menu workspace first response has a bounded component and query budget', f
         expect(count($snapshots[1]))->toBeLessThanOrEqual(5)
             ->and($queries)->toBeLessThanOrEqual(220)
             ->and(strlen($html))->toBeLessThan(1_250_000)
-            ->and($snapshotBytes)->toBeLessThan(6000);
+            // Includes the new state-free Livewire logout instead of a native POST form.
+            ->and($snapshotBytes)->toBeLessThan(6500);
     }
 });
 

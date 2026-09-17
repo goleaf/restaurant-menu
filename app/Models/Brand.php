@@ -40,4 +40,9 @@ class Brand extends Model
     {
         return $this->hasMany(Invitation::class);
     }
+
+    public function identityFingerprint(): string
+    {
+        return hash('sha256', json_encode($this->only(['organization_id', 'name']), JSON_THROW_ON_ERROR));
+    }
 }

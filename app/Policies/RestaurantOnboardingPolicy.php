@@ -36,6 +36,14 @@ final class RestaurantOnboardingPolicy
             return $this->canStartOnboarding($user);
         }
 
+        if ($restaurantOnboarding->getRawOriginal('purpose') === 'additional') {
+            $organization = Organization::query()->select(['id', 'owner_user_id'])->whereKey($restaurantOnboarding->organization_id)->first();
+
+            return $organization instanceof Organization
+                && $this->createAdditional($user, $organization)
+                && ($restaurantOnboarding->branch_id === null || $user->canAccessBranch((int) $restaurantOnboarding->branch_id, $organization));
+        }
+
         $organization = Organization::query()
             ->withTrashed()
             ->select(['id', 'owner_user_id', 'deleted_at'])
@@ -89,7 +97,10 @@ final class RestaurantOnboardingPolicy
      */
     public function update(User $user, RestaurantOnboarding $restaurantOnboarding): bool
     {
-        return $this->view($user, $restaurantOnboarding);
+        return $this->view($user, $restaurantOnboarding)
+            && ($restaurantOnboarding->organization_id === null || Organization::query()->whereKey($restaurantOnboarding->organization_id)->exists())
+            && ($restaurantOnboarding->brand_id === null || Brand::query()->whereKey($restaurantOnboarding->brand_id)->exists())
+            && ($restaurantOnboarding->branch_id === null || Branch::query()->whereKey($restaurantOnboarding->branch_id)->exists());
     }
 
     public function restoreCheckpointResource(User $user, RestaurantOnboarding $onboarding, Model $resource): bool
@@ -118,6 +129,14 @@ final class RestaurantOnboardingPolicy
                 && (int) $resource->category_id === (int) $onboarding->menu_category_id,
             default => false,
         };
+    }
+
+    public function createAdditional(User $user, Organization $organization): bool
+    {
+        return ! $organization->trashed()
+            && $user->canManageOrganizationBranches($organization)
+            && OrganizationSubscription::query()->where('organization_id', $organization->id)
+                ->where('status', OrganizationSubscriptionStatus::Active->value)->exists();
     }
 
     private function canStartOnboarding(User $user): bool

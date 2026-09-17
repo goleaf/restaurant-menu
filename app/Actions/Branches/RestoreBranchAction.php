@@ -31,7 +31,9 @@ final class RestoreBranchAction
                 ->firstOrFail();
 
             Gate::forUser($actor)->authorize('restore', $scopedBranch);
-            $scopedBranch->restore();
+            if ($scopedBranch->restore() !== true) {
+                throw new \RuntimeException('The structure lifecycle change could not be saved.');
+            }
         });
     }
 }

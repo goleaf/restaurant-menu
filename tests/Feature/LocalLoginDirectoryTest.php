@@ -111,8 +111,9 @@ test('local directory is paginated and its query count does not grow per user', 
     expect($large)->toBe($small)->toBe(9)
         ->and($action->handle($request)->items())->toHaveCount(25)
         ->and($action->handle($request)->hasMorePages())->toBeTrue();
-    $this->get('https://restaurant-menu.test/login?users_page=2')->assertOk()
-        ->assertViewHas('localUsers', fn ($users): bool => count($users->items()) === 7);
+    $response = $this->get('https://restaurant-menu.test/login?users_page=2')->assertOk();
+
+    expect(substr_count($response->getContent(), 'data-test="local-login-user-'))->toBe(7);
 });
 
 test('empty directory shows an empty state without creating users on a get request', function (): void {

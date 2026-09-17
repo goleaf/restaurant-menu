@@ -7,8 +7,11 @@ namespace App\Actions\Branches;
 use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Models\Branch;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 final class UpdateBranchLogoAction
@@ -18,15 +21,22 @@ final class UpdateBranchLogoAction
         private readonly RemoveLocalImageAction $removeLocalImage,
     ) {}
 
-    public function handle(Branch $branch, ?UploadedFile $file): Branch
+    public function handle(Branch $branch, ?UploadedFile $file, ?User $actor = null, ?string $expectedMediaFingerprint = null): Branch
     {
-        $current = DB::transaction(function () use ($branch, $file): Branch {
+        $current = DB::transaction(function () use ($branch, $file, $actor, $expectedMediaFingerprint): Branch {
             $current = Branch::query()
-                ->select(['id', 'organization_id', 'brand_id', 'logo_path', 'updated_at'])
+                ->select(['id', 'organization_id', 'brand_id', 'logo_path', 'updated_at', 'deleted_at'])
                 ->where('organization_id', $branch->getRawOriginal('organization_id'))
                 ->where('brand_id', $branch->getRawOriginal('brand_id'))
                 ->lockForUpdate()
                 ->findOrFail($branch->getKey());
+
+            if ($actor !== null) {
+                Gate::forUser(User::query()->whereKey($actor->id)->firstOrFail())->authorize('update', $current);
+            }
+            if ($expectedMediaFingerprint !== null && ! hash_equals($expectedMediaFingerprint, hash('sha256', (string) $current->logo_path))) {
+                throw ValidationException::withMessages(['logo' => __('center.conflict')]);
+            }
 
             if ($file instanceof UploadedFile) {
                 $this->replaceLocalImage->handle(
@@ -53,8 +63,8 @@ final class UpdateBranchLogoAction
             return $current;
         });
 
-        $branch->forceFill($current->only(['logo_path', 'updated_at']))
-            ->syncOriginalAttributes(['logo_path', 'updated_at']);
+        $branch->forceFill($current->only(['logo_path', 'updated_at', 'deleted_at']))
+            ->syncOriginalAttributes(['logo_path', 'updated_at', 'deleted_at']);
 
         return $branch;
     }

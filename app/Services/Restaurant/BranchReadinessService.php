@@ -10,9 +10,9 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
+use App\Models\RestaurantOnboarding;
 use App\Models\User;
 use App\Services\Availability\AvailabilityEvaluator;
-use App\Services\Onboarding\RestaurantSetupQueryService;
 use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -26,7 +26,6 @@ final class BranchReadinessService
     public function __construct(
         private readonly GetBranchOpeningStatusAction $openingStatus,
         private readonly AvailabilityEvaluator $availability,
-        private readonly RestaurantSetupQueryService $setupQueries,
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveBranchPermissions,
     ) {}
 
@@ -70,12 +69,12 @@ final class BranchReadinessService
             $items[] = $this->item('staff', $branch->getAttribute('has_active_staff') ? 'ready' : 'optional', 'readiness.staff', 'readiness.staff_description', route('organizations.brands.branches.staff.index', $routes));
         }
         $blocked = collect($items)->contains('status', 'blocker');
-        $onboarding = $this->setupQueries->findForUser($user);
+        $completed = RestaurantOnboarding::query()->where('branch_id', $branch->id)->whereNotNull('completed_at')->exists();
 
         return [
             'status' => $blocked ? 'blocked' : (collect($items)->contains('status', 'warning') ? 'warning' : 'ready'),
             'items' => $items,
-            'onboarding_completed' => $onboarding?->branch_id === $branch->id && $onboarding->completed_at !== null,
+            'onboarding_completed' => $completed,
             'ordering' => [
                 'kind' => match (true) {
                     $paused => 'manual_pause', ! $opening['can_accept_orders'] => 'schedule_closed', ! $effective->acceptsNewOrders => 'setup_problem', default => 'open'

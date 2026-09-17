@@ -14,6 +14,13 @@ Only the selected card and active list page are loaded. The card has Overview, R
 
 The reused restaurant selector keeps its search query independent of the selected scope label. Long legitimate organization/brand/restaurant names must not block an authorized context transition through search-length validation.
 
+## Application migration contract — prompt 2
+
+Existing `livewire-001`, `sys-auth-003`, `sys-backup-001` and reporting/QR/security requirements include class-based Livewire auth, invitation and file-preparation workflows, separate Form objects, Flux controls and SCSS sources. Preserve Fortify pipeline, broker, guards, MFA/WebAuthn, session rotation and current authorization. A component must not call a controller, replay an internal HTTP request or accept arbitrary executable class/action names. Sensitive credentials stay outside snapshots; restored database finalization must finish safely outside Livewire hydration when the exclusive pre-session lock requires it.
+
+The exact retained transports are registered in architecture.md: token-to-session invitation exchange, private one-use file delivery and grant-only final SQLite replacement. Vendor protocols and token-bearing password-reset entry retain their existing server contracts. All other migrated native mutation forms/routes are removed after their Livewire consumers are connected. No navigation redesign, dependency upgrade, production-runtime switch, working-data mutation, new required workers or coverage-threshold relaxation belongs to this migration. Execution and acceptance status remain in IMPLEMENTATION_PLAN.md / PROGRESS.md.
+
+
 ## Restaurant workspace contract — prompt 3, 2026-09-16
 
 `ui-workspace-003` refines the existing Livewire, tenant, navigation, localization and responsive requirements. Restaurant work uses one confirmed page context and one shared class-based Livewire switcher. Task order is Overview, Service (permitted waiter/kitchen/bar modes), Menu, Rooms and QR, Team, Reports and Restaurant settings; audit remains an existing authorized destination. Restaurant management and platform administration are separate from restaurant work; account/security/appearance/language remain in the user menu.

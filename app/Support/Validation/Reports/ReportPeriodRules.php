@@ -13,6 +13,21 @@ final readonly class ReportPeriodRules
 {
     public function __construct(private string $timezone, private CarbonImmutable $now) {}
 
+    /** @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    public static function normalize(array $input): array
+    {
+        $data = array_intersect_key($input, self::rules());
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $data[$key] = trim($value) === '' ? null : trim($value);
+            }
+        }
+
+        return $data;
+    }
+
     /** @return array<string, list<string>> */
     public static function rules(): array
     {

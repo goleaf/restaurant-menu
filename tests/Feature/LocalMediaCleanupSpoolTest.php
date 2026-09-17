@@ -8,6 +8,8 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\RejectMediaCleanupWritesFilter;
+use Tests\Support\ShortMediaCleanupWritesFilter;
 
 beforeEach(function (): void {
     ParallelTesting::resolveTokenUsing(fn (): string => 'media-cleanup-spool-'.getmypid());
@@ -179,32 +181,5 @@ function observedMediaCleanupPaths(array $paths, ?string &$spoolPath): Generator
         expect($streams)->toHaveCount(1);
         $spool = reset($streams);
         $spoolPath = stream_get_meta_data($spool)['uri'];
-    }
-}
-
-final class RejectMediaCleanupWritesFilter extends php_user_filter
-{
-    public function filter($in, $out, &$consumed, bool $closing): int
-    {
-        while ($bucket = stream_bucket_make_writeable($in)) {
-            $consumed += $bucket->datalen;
-        }
-
-        return PSFS_ERR_FATAL;
-    }
-}
-
-final class ShortMediaCleanupWritesFilter extends php_user_filter
-{
-    public function filter($in, $out, &$consumed, bool $closing): int
-    {
-        while ($bucket = stream_bucket_make_writeable($in)) {
-            $bucket->data = substr($bucket->data, 0, 1);
-            $bucket->datalen = 1;
-            $consumed++;
-            stream_bucket_append($out, $bucket);
-        }
-
-        return PSFS_PASS_ON;
     }
 }

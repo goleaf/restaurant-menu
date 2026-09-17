@@ -17,6 +17,7 @@ test('the installed Pro reference supports real selection keyboard and editor in
 
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('local.components', absolute: false))->resize(1440, 1000)
         ->assertPresent('[data-pro-reference-catalog]');
 

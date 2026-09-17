@@ -6,75 +6,38 @@ namespace App\Actions\ServicePoints;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\QrCodes\DisableQrCodeAction;
+use App\Actions\ServicePoints\Support\ServicePointMutationGuard;
 use App\Enums\AuditLogAction;
-use App\Enums\BusinessRuleCode;
-use App\Enums\OrderStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
-use App\Exceptions\BusinessRuleViolation;
 use App\Models\Branch;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Branches\ServicePointQueryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use RuntimeException;
 
 final class DeleteServicePointAction
 {
     public function __construct(
         private readonly DisableQrCodeAction $disableQrCode,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly ServicePointMutationGuard $guard,
+        private readonly ServicePointQueryService $queries,
     ) {}
 
-    public function handle(User $actor, Branch $branch, ServicePoint $servicePoint): void
+    public function handle(User $actor, Branch $branch, ServicePoint $servicePoint, ?int $expectedVersion = null): void
     {
-        DB::transaction(function () use ($actor, $branch, $servicePoint): void {
-            $scopedServicePoint = $branch->servicePoints()
-                ->select([
-                    'service_points.id',
-                    'service_points.branch_id',
-                    'service_points.area_node_id',
-                    'service_points.name',
-                    'service_points.internal_code',
-                    'service_points.status',
-                    'service_points.is_active',
-                ])
-                ->withExists([
-                    'activeTableSession',
-                    'activeTableSessionServicePointLinks',
-                    'orders as active_order_exists' => fn ($query) => $query
-                        ->whereIn('status', OrderStatus::activeValues()),
-                ])
-                ->whereKey($servicePoint->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
+        DB::transaction(function () use ($actor, $branch, $servicePoint, $expectedVersion): void {
+            $actor = $this->guard->actor($actor);
+            $branch = $this->guard->branch($branch->id);
+            $scopedServicePoint = $this->queries->mutationRow($branch, $servicePoint->id);
+            $scopedServicePoint->setRelation('branch', $branch);
             Gate::forUser($actor)->authorize('delete', $scopedServicePoint);
-
-            if (
-                (bool) $scopedServicePoint->getAttribute('active_table_session_exists')
-                || (bool) $scopedServicePoint->getAttribute('active_table_session_service_point_links_exists')
-            ) {
-                throw BusinessRuleViolation::for(
-                    BusinessRuleCode::ServicePointHasActiveSession,
-                    'servicePointDeletion',
-                    context: [
-                        'service_point_id' => $scopedServicePoint->id,
-                        'branch_id' => $branch->id,
-                    ],
-                );
-            }
-
-            if ((bool) $scopedServicePoint->getAttribute('active_order_exists')) {
-                throw BusinessRuleViolation::for(
-                    BusinessRuleCode::StructureHasActiveOrder,
-                    'servicePointDeletion',
-                    context: [
-                        'service_point_id' => $scopedServicePoint->id,
-                        'branch_id' => $branch->id,
-                    ],
-                );
-            }
+            $this->guard->version($scopedServicePoint, $expectedVersion);
+            $this->guard->idle($scopedServicePoint, 'servicePointDeletion');
 
             $activeQrCode = $scopedServicePoint->qrCodes()
                 ->select([
@@ -89,6 +52,7 @@ final class DeleteServicePointAction
                     'revoked_by_user_id',
                     'created_at',
                     'updated_at',
+                    'structure_version',
                 ])
                 ->where('status', QrCodeStatus::Active->value)
                 ->lockForUpdate()
@@ -104,11 +68,12 @@ final class DeleteServicePointAction
 
             $previousStatus = $scopedServicePoint->status;
             $wasActive = $scopedServicePoint->is_active;
-            $scopedServicePoint->forceFill([
+            if (! $scopedServicePoint->forceFill([
                 'is_active' => false,
                 'status' => ServicePointStatus::Closed,
-            ])->saveOrFail();
-            $scopedServicePoint->deleteOrFail();
+            ])->save() || ! $scopedServicePoint->delete()) {
+                throw new RuntimeException('The service point could not be archived.');
+            }
 
             $this->recordAuditLog->handle(
                 action: AuditLogAction::ServicePointDeleted,
@@ -129,6 +94,6 @@ final class DeleteServicePointAction
                     'deleted' => true,
                 ],
             );
-        });
+        }, 3);
     }
 }

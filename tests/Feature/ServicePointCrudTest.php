@@ -9,6 +9,9 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PointEditor;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\BulkCreate;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\SelectionOperations;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -46,9 +49,9 @@ test('service point page requires manage service points permission', function ()
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee(__('navigation.service_points'))
-        ->assertSee(__('ui.organizations.brands.branches.index.stoly_i_mesta'))
-        ->assertSee(__('ui.organizations.brands.branches.service_points.index.sag_3_dobavte_stoly'));
+        ->assertSee(__('floor.tables_empty'))
+        ->assertSee(__('floor.title'))
+        ->assertSee(__('floor.tables_empty_help'));
 });
 
 test('branch list shows service point link to users with permission or waiter role', function () {
@@ -84,19 +87,17 @@ test('manager can create service points inside a branch area', function () {
         ]);
 
     Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('No service points yet.')
-        ->call('prepareCreate', ServicePointType::Table->value)
-        ->assertSet('type', ServicePointType::Table->value)
-        ->assertSet('icon', 'squares-2x2')
-        ->set('name', 'Table by window')
-        ->set('displayNumber', '12')
-        ->set('areaNodeId', (string) $hall->id)
-        ->set('capacity', 4)
-        ->call('create')
+        ->test(PointEditor::class, ['branchId' => $branch->id])
+        ->assertSet('form.type', ServicePointType::Table->value)
+        ->assertSet('form.icon', 'squares-2x2')
+        ->set('form.name', 'Table by window')
+        ->set('form.displayNumber', '12')
+        ->set('form.areaNodeId', (string) $hall->id)
+        ->set('form.capacity', 4)
+        ->call('save')
         ->assertHasNoErrors()
-        ->assertSee('Table by window')
-        ->assertSee('Main hall');
+        ->assertSet('form.name', 'Table by window')
+        ->assertDispatched('floor-point-created');
 
     $servicePoint = ServicePoint::query()
         ->where('branch_id', $branch->id)
@@ -110,6 +111,7 @@ test('manager can create service points inside a branch area', function () {
     expect($servicePoint->internal_code)->not->toBeNull();
     expect(str_starts_with((string) $servicePoint->internal_code, 'SP-'))->toBeTrue();
     expect($servicePoint->status)->toBe(ServicePointStatus::Free);
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))->assertSee('Table by window')->assertSee('Main hall');
 });
 
 test('manager can preview and bulk create service points without creating qr automatically', function () {
@@ -131,23 +133,23 @@ test('manager can preview and bulk create service points without creating qr aut
         ]);
 
     Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('bulkAreaNodeId', (string) $hall->id)
-        ->set('bulkType', ServicePointType::Table->value)
-        ->set('bulkPrefix', 'T')
-        ->set('bulkFrom', 1)
-        ->set('bulkTo', 3)
-        ->set('bulkCapacity', 4)
-        ->call('previewBulkCreate')
+        ->test(BulkCreate::class, ['branchId' => $branch->id])
+        ->set('form.areaNodeId', (string) $hall->id)
+        ->set('form.bulkType', ServicePointType::Table->value)
+        ->set('form.bulkPrefix', 'T')
+        ->set('form.bulkFrom', 1)
+        ->set('form.bulkTo', 3)
+        ->set('form.bulkCapacity', 4)
+        ->call('review')
         ->assertHasNoErrors()
         ->assertSee('T1')
         ->assertSee('T2')
-        ->assertSee('Already exists')
+        ->assertSee(__('floor.duplicate'))
         ->assertSee('T3')
-        ->call('confirmBulkCreate')
+        ->call('apply')
         ->assertHasNoErrors()
-        ->assertSee('Created 2 service points.')
-        ->assertSee('Generate QR later');
+        ->assertSee(__('floor.bulk_result', ['created' => 2, 'skipped' => 1]))
+        ->assertSee(__('floor.bulk_next'));
 
     $servicePoints = ServicePoint::query()
         ->where('branch_id', $branch->id)
@@ -215,32 +217,32 @@ test('manager can search and filter service points inside current branch', funct
         ->assertSee('Alpha Window Table')
         ->assertSee('Beta Patio Seat')
         ->assertSee('Gamma Pickup Window')
-        ->set('servicePointSearch', 'find110')
+        ->set('filters.search', 'find110')
         ->assertSee('Alpha Window Table')
         ->assertDontSee('Beta Patio Seat')
         ->assertDontSee('Gamma Pickup Window')
-        ->call('resetServicePointFilters')
-        ->set('filterAreaNodeId', (string) $terrace->id)
+        ->set('filters.search', '')
+        ->set('filters.area', (string) $terrace->id)
         ->assertSee('Beta Patio Seat')
         ->assertDontSee('Alpha Window Table')
-        ->call('resetServicePointFilters')
-        ->set('filterType', ServicePointType::PickupWindow->value)
+        ->set('filters.area', 'all')
+        ->set('filters.type', ServicePointType::PickupWindow->value)
         ->assertSee('Gamma Pickup Window')
         ->assertDontSee('Alpha Window Table')
-        ->call('resetServicePointFilters')
-        ->set('filterStatus', ServicePointStatus::Occupied->value)
+        ->set('filters.type', 'all')
+        ->set('filters.status', ServicePointStatus::Occupied->value)
         ->assertSee('Beta Patio Seat')
         ->assertDontSee('Alpha Window Table')
-        ->call('resetServicePointFilters')
-        ->set('filterActive', 'inactive')
+        ->set('filters.status', 'all')
+        ->set('filters.active', 'inactive')
         ->assertSee('Beta Patio Seat')
         ->assertDontSee('Gamma Pickup Window')
-        ->call('resetServicePointFilters')
-        ->set('filterQr', 'with')
+        ->set('filters.active', 'all')
+        ->set('filters.qr', 'with')
         ->assertSee('Alpha Window Table')
         ->assertDontSee('Beta Patio Seat')
-        ->call('resetServicePointFilters')
-        ->set('filterQr', 'without')
+        ->set('filters.qr', 'all')
+        ->set('filters.qr', 'without')
         ->assertSee('Beta Patio Seat')
         ->assertSee('Gamma Pickup Window')
         ->assertDontSee('Alpha Window Table');
@@ -290,7 +292,7 @@ test('service point page shows a simple visual floor board grouped by zones', fu
             'status' => ServicePointStatus::WaitingWaiter,
             'icon' => 'beaker',
         ]);
-    ServicePoint::factory()
+    $pickup = ServicePoint::factory()
         ->for($branch)
         ->create([
             'type' => ServicePointType::PickupWindow,
@@ -309,22 +311,23 @@ test('service point page shows a simple visual floor board grouped by zones', fu
 
     Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee(__('ui.organizations.brands.branches.service_points.index.vizualnyi_zal'))
+        ->assertSee(__('floor.title'))
         ->assertSee('Board Hall')
         ->assertSee('Board Terrace')
-        ->assertSee(__('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony'))
+        ->assertSee(__('floor.no_area'))
         ->assertSee('Board Alpha Table')
         ->assertSee('Board Terrace Seat')
         ->assertSee('Board Pickup Window')
         ->assertSee(__(ServicePointStatus::HasNewOrder->label()))
         ->assertSee(__(ServicePointStatus::WaitingWaiter->label()))
         ->assertSee('QR-BOARD1')
-        ->assertSee(__('qr.actions.show'))
-        ->assertSee(__('ui.organizations.brands.branches.service_points.index.otkryt_stol'))
-        ->assertSee(__('ui.organizations.brands.branches.area_node_row.izmenit'))
-        ->call('startEditingFromBoard', $terraceTable->id)
-        ->assertSet('editingServicePointId', $terraceTable->id)
-        ->assertSet('servicePointSearch', 'BOARD-TERRACE')
+        ->call('openPoint', $pickup->id)
+        ->assertSee(__('floor.open_service'))
+        ->assertSee(__('floor.qr.title'))
+        ->assertSee(__('floor.properties'))
+        ->call('openPoint', $terraceTable->id)
+        ->assertSet('point', (string) $terraceTable->id)
+        ->assertSet('filters.search', '')
         ->assertSee('Board Terrace Seat');
 });
 
@@ -332,7 +335,7 @@ test('service point list is paginated instead of loading every row', function ()
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
     grantServicePointCrudPermission($manager, $organization);
 
-    foreach (range(1, 12) as $number) {
+    foreach (range(1, 22) as $number) {
         ServicePoint::factory()
             ->for($branch)
             ->create([
@@ -345,9 +348,9 @@ test('service point list is paginated instead of loading every row', function ()
     Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
         ->assertSee('Paged Table 01')
-        ->assertDontSee('Paged Table 11')
+        ->assertDontSee('Paged Table 21')
         ->call('nextPage')
-        ->assertSee('Paged Table 11')
+        ->assertSee('Paged Table 21')
         ->assertDontSee('Paged Table 01');
 });
 
@@ -357,12 +360,9 @@ test('waiter cannot bulk create service points', function () {
     attachServicePointCrudWaiter($waiter, $organization);
 
     Livewire::actingAs($waiter)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('bulkPrefix', 'W')
-        ->set('bulkFrom', 1)
-        ->set('bulkTo', 2)
-        ->call('previewBulkCreate')
+        ->test(BulkCreate::class, ['branchId' => $branch->id])
         ->assertForbidden();
+    expect(ServicePoint::query()->where('branch_id', $branch->id)->exists())->toBeFalse();
 });
 
 test('manager can rename move and disable service points without changing identity', function () {
@@ -394,20 +394,20 @@ test('manager can rename move and disable service points without changing identi
     $originalQrToken = $qrCode->public_token;
 
     $component = Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('startEditing', $servicePoint->id)
-        ->assertSet('editingName', 'Table 12')
-        ->set('editingName', 'Terrace table 12')
-        ->set('editingDisplayNumber', 'T-12')
-        ->set('editingAreaNodeId', (string) $terrace->id)
-        ->set('editingCapacity', 5)
-        ->set('editingIcon', 'sparkles')
-        ->call('update')
+        ->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id])
+        ->assertSet('form.name', 'Table 12')
+        ->set('form.name', 'Terrace table 12')
+        ->set('form.displayNumber', 'T-12')
+        ->set('form.capacity', 5)
+        ->set('form.icon', 'sparkles')
+        ->call('save')
         ->assertHasNoErrors()
-        ->assertSee('Terrace table 12')
-        ->call('disable', $servicePoint->id);
+        ->assertSet('form.name', 'Terrace table 12')
+        ->set('form.isActive', false)->call('save')->assertHasNoErrors();
 
-    expect($component->get('floorBoardServicePointCount'))->toBe(1);
+    Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => [$servicePoint->id], 'operation' => 'move'])
+        ->set('form.targetAreaId', (string) $terrace->id)->call('reviewMove')->assertHasNoErrors()->call('applyMove')->assertHasNoErrors();
+    expect(ServicePoint::query()->where('branch_id', $branch->id)->count())->toBe(1);
 
     $servicePoint->refresh();
 
@@ -423,12 +423,12 @@ test('manager can rename move and disable service points without changing identi
     expect($servicePoint->icon)->toBe('sparkles');
     expect($servicePoint->is_active)->toBeFalse();
 
-    $component->call('enable', $servicePoint->id);
+    Livewire::actingAs($manager)->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id])->set('form.isActive', true)->call('save')->assertHasNoErrors();
 
     expect($servicePoint->fresh()->is_active)->toBeTrue();
 });
 
-test('manager can change service point status manually', function () {
+test('structural workspace does not expose a manual operational status mutation', function () {
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
     grantServicePointCrudPermission($manager, $organization);
     $servicePoint = ServicePoint::factory()
@@ -439,17 +439,14 @@ test('manager can change service point status manually', function () {
         ]);
 
     Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('Free')
-        ->set('statusSelections.'.$servicePoint->id, ServicePointStatus::WaitingWaiter->value)
-        ->call('changeStatus', $servicePoint->id)
-        ->assertHasNoErrors()
-        ->assertSee('Waiting waiter');
-
-    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::WaitingWaiter);
+        ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertSee(__(ServicePointStatus::Free->label()))
+        ->assertDontSeeHtml('wire:click="changeStatus');
+    expect(method_exists(ServicePointsIndex::class, 'changeStatus'))->toBeFalse()
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
 });
 
-test('waiter can change service point status without service point management permission', function () {
+test('waiter can open service from the workspace without table management permission', function () {
     [$organization, $brand, $branch] = createServicePointCrudBranch();
     $waiter = User::factory()->create();
     attachServicePointCrudWaiter($waiter, $organization);
@@ -461,16 +458,14 @@ test('waiter can change service point status without service point management pe
         ]);
 
     Livewire::actingAs($waiter)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canManageServicePoints', false)
-        ->assertSet('canChangeServicePointStatus', true)
-        ->assertDontSee('Add table')
-        ->set('statusSelections.'.$servicePoint->id, ServicePointStatus::HasNewOrder->value)
-        ->call('changeStatus', $servicePoint->id)
-        ->assertHasNoErrors()
-        ->assertSee('Has new order');
-
-    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder);
+        ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertDontSeeHtml('wire:click="createPoint"')
+        ->assertDontSeeHtml('wire:click="changeStatus')
+        ->call('openPoint', $servicePoint->id)
+        ->assertSee(__('floor.open_service'))
+        ->call('openService', $servicePoint->id)->assertHasNoErrors()->assertRedirect();
+    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+    expect($servicePoint->tableSessions()->where('opened_by_user_id', $waiter->id)->count())->toBe(1);
 });
 
 test('service point cannot be assigned to area from another branch', function () {
@@ -482,11 +477,11 @@ test('service point cannot be assigned to area from another branch', function ()
         ->create(['name' => 'Other hall']);
 
     Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('name', 'Wrong area table')
-        ->set('areaNodeId', (string) $otherArea->id)
-        ->call('create')
-        ->assertHasErrors('areaNodeId');
+        ->test(PointEditor::class, ['branchId' => $branch->id])
+        ->set('form.name', 'Wrong area table')
+        ->set('form.areaNodeId', (string) $otherArea->id)
+        ->call('save')
+        ->assertHasErrors('form.areaNodeId');
 });
 
 test('branch must belong to route brand and organization on service point page', function () {
@@ -569,7 +564,8 @@ test('service point screen bounds searchable area choices and reuses page hydrat
     });
     expect($queries)->toBeLessThanOrEqual(70)->and($hydrated)->toBeLessThanOrEqual(120)
         ->and(strlen($component->html()))->toBeLessThan(500_000)
-        ->and($component->get('areaOptions'))->toHaveCount(101);
+        ->and($component->viewData('areaRows'))->toHaveCount(20)
+        ->and($component->viewData('rows'))->toHaveCount(20);
 })->with([150, 1500]);
 
 test('area search reaches omitted children and preserves selected zones for bulk creation', function (): void {
@@ -578,10 +574,10 @@ test('area search reaches omitted children and preserves selected zones for bulk
     AreaNode::factory()->count(101)->for($branch)->create(['name' => 'A common zone']);
     $parent = AreaNode::factory()->for($branch)->create(['name' => 'Z parent']);
     $child = AreaNode::factory()->for($branch)->create(['parent_id' => $parent->id, 'name' => 'Z child']);
-    $component = Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'));
+    $component = Livewire::actingAs($manager)->test(BulkCreate::class, ['branchId' => $branch->id]);
     $component->set('areaSearch', 'Z child')->assertSee('Z parent / Z child')
-        ->set('bulkAreaNodeId', (string) $child->id)->set('areaSearch', 'no match');
-    expect(collect($component->get('areaOptions'))->pluck('value')->all())->toContain((string) $child->id);
-    $component->set('bulkFrom', 1)->set('bulkTo', 2)->call('previewBulkCreate')->call('confirmBulkCreate')->assertHasNoErrors();
+        ->set('form.areaNodeId', (string) $child->id)->set('areaSearch', 'no match');
+    expect(array_column($component->viewData('areas'), 'id'))->toContain($child->id);
+    $component->set('form.bulkFrom', 1)->set('form.bulkTo', 2)->call('review')->call('apply')->assertHasNoErrors();
     expect(ServicePoint::query()->where('branch_id', $branch->id)->where('area_node_id', $child->id)->count())->toBe(2);
 });

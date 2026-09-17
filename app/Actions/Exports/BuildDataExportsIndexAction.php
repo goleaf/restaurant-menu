@@ -49,6 +49,13 @@ class BuildDataExportsIndexAction
         ];
     }
 
+    public function branch(User $user, int $branchId): Branch
+    {
+        abort_unless($this->resolveExportAccessibleBranchIds->canExport($user, $branchId), 403);
+
+        return Branch::query()->select(['id', 'organization_id', 'brand_id', 'name', 'currency', 'timezone'])->findOrFail($branchId);
+    }
+
     public function userHasAccess(User $user): bool
     {
         return $this->resolveExportAccessibleBranchIds->handle($user)->isNotEmpty();
@@ -82,22 +89,7 @@ class BuildDataExportsIndexAction
                 ->filter(fn (?string $value): bool => filled($value))
                 ->implode(', '),
             'currency' => $branch->currency ?: 'EUR',
-            'downloads' => collect(DataExportType::cases())
-                ->mapWithKeys(fn (DataExportType $type): array => [
-                    $type->value => route('restaurant.exports.download', [
-                        'branch' => $branch,
-                        'export' => $type->value,
-                    ]),
-                ])
-                ->all(),
-            'pdf_downloads' => collect(DataExportType::cases())
-                ->mapWithKeys(fn (DataExportType $type): array => [
-                    $type->value => route('restaurant.exports.pdf', [
-                        'branch' => $branch,
-                        'export' => $type->value,
-                    ]),
-                ])
-                ->all(),
+
         ];
     }
 }

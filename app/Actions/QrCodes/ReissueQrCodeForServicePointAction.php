@@ -10,6 +10,8 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class ReissueQrCodeForServicePointAction
 {
@@ -19,10 +21,13 @@ class ReissueQrCodeForServicePointAction
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
-    public function handle(QrCode $qrCode, User $revokedBy): QrCode
+    public function handle(QrCode $qrCode, User $revokedBy, ?int $expectedVersion = null, bool $storeImage = true, ?string $reason = null): QrCode
     {
-        $result = DB::transaction(function () use ($qrCode, $revokedBy): array {
+        $result = DB::transaction(function () use ($qrCode, $revokedBy, $expectedVersion, $reason): array {
             $currentQrCode = $this->reloadQrCode($qrCode);
+            if ($expectedVersion !== null && $currentQrCode->structure_version !== $expectedVersion) {
+                throw ValidationException::withMessages(['expectedVersion' => __('floor.validation.changed')]);
+            }
             $servicePoint = $this->findServicePoint($currentQrCode);
 
             $activeQrCodes = $servicePoint
@@ -33,6 +38,7 @@ class ReissueQrCodeForServicePointAction
                     'public_token',
                     'short_code',
                     'status',
+                    'structure_version',
                     'created_by_user_id',
                     'revoked_at',
                     'revoked_by_user_id',
@@ -56,18 +62,24 @@ class ReissueQrCodeForServicePointAction
                 $activeQrCode->status = QrCodeStatus::Revoked;
                 $activeQrCode->revoked_at = now();
                 $activeQrCode->revoked_by_user_id = $revokedBy->id;
-                $activeQrCode->save();
+                if (! $activeQrCode->save()) {
+                    throw new RuntimeException('The QR revocation could not be saved.');
+                }
             }
 
             $replacementQrCode = $this->generateQrCode->handle($servicePoint, $revokedBy, storeImage: false);
 
-            $this->recordReissue($servicePoint, $activeQrCodes, $replacementQrCode, $revokedBy);
+            $this->recordReissue($servicePoint, $activeQrCodes, $replacementQrCode, $revokedBy, $reason);
 
             return [
                 'new_qr_code' => $replacementQrCode,
                 'revoked_qr_codes' => $activeQrCodes,
             ];
         }, 5);
+
+        if (! $storeImage) {
+            return $result['new_qr_code'];
+        }
 
         $this->storeQrCodeImage->handle($result['new_qr_code']);
 
@@ -89,6 +101,7 @@ class ReissueQrCodeForServicePointAction
                 'public_token',
                 'short_code',
                 'status',
+                'structure_version',
                 'created_by_user_id',
                 'revoked_at',
                 'revoked_by_user_id',
@@ -96,6 +109,7 @@ class ReissueQrCodeForServicePointAction
                 'updated_at',
             ])
             ->whereKey($qrCode->id)
+            ->where('service_point_id', $qrCode->service_point_id)
             ->lockForUpdate()
             ->firstOrFail();
     }
@@ -115,6 +129,7 @@ class ReissueQrCodeForServicePointAction
                 'capacity',
                 'icon',
                 'status',
+                'structure_version',
                 'is_active',
                 'created_at',
                 'updated_at',
@@ -122,7 +137,7 @@ class ReissueQrCodeForServicePointAction
             ->firstOrFail();
     }
 
-    private function recordReissue(ServicePoint $servicePoint, iterable $revokedQrCodes, QrCode $newQrCode, User $revokedBy): void
+    private function recordReissue(ServicePoint $servicePoint, iterable $revokedQrCodes, QrCode $newQrCode, User $revokedBy, ?string $reason): void
     {
         $branch = Branch::query()
             ->select(['id', 'organization_id'])
@@ -154,6 +169,7 @@ class ReissueQrCodeForServicePointAction
                 'qr_code_id' => $newQrCode->id,
                 'short_code' => $newQrCode->short_code,
                 'status' => QrCodeStatus::Active->value,
+                'reason' => filled($reason) ? trim($reason) : null,
             ],
         );
     }

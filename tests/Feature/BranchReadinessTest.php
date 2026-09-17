@@ -129,3 +129,13 @@ test('a revoked QR is a specific entrance limitation and does not pause the rest
     expect($payload['ordering']['can_accept_orders'])->toBeTrue()
         ->and(collect($payload['items'])->firstWhere('key', 'qr')['status'])->toBe('blocker');
 });
+
+test('historical completion belongs to the restaurant instead of the first setup of the viewer', function (): void {
+    $other = Branch::factory()->for($this->organization)->for($this->branch->brand)->create(['name' => 'Another restaurant']);
+    RestaurantOnboarding::factory()->for($this->owner)->create(['organization_id' => $this->organization->id,
+        'brand_id' => $other->brand_id, 'branch_id' => $other->id, 'completed_at' => null]);
+    RestaurantOnboarding::factory()->for($this->owner)->create(['organization_id' => $this->organization->id,
+        'brand_id' => $this->branch->brand_id, 'branch_id' => $this->branch->id, 'completed_at' => now()->subWeek()]);
+    expect($this->service->handle($this->owner, $this->branch)['onboarding_completed'])->toBeTrue()
+        ->and($this->service->handle($this->owner, $other)['onboarding_completed'])->toBeFalse();
+});

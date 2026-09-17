@@ -45,6 +45,31 @@ Current reconstructed signed Livewire request envelopes are1,748/1,889/1,912/2,3
 The separate team SCSS entry measures1,781 raw/557 gzip bytes. The isolated HEAD-plus-Team candidate staff asset scenario totals920,589 raw/376,594 gzip bytes; total CSS51,870 gzip bytes remains under the unchanged51,900 ceiling. Shared prompt-2 changes have their own different asset baseline. No polling or employee-wide permissions matrix is introduced. Browser behavior and visual widths are independently exercised by team browser suites; aggregate acceptance remains recorded separately in PROGRESS.md.
 
 
+## Application-controller migration — prompt2, 2026-09-16
+
+Three matched HTTP Kernel pairs compare clean `7ed78c69e9722a52fe41ffa25d916667f4957bf4` with source checkpoint `9448132dd88d52b0a9122db3816607440937d18dcff22f846a69c98e9b041802`. PHP8.5.10, production/debug-off, bcrypt12, no coverage/CLI OPcache, one identical factory user, owned memory SQLite/storage and real cookies/CSRF/signed Livewire requests are used. Reflection proves source selection after optimized classmap remapping. Both variants reference the same current build; this is not a baseline asset comparison or browser-network timing result.
+
+| Metric | Native baseline | Livewire checkpoint |
+| --- | ---: | ---: |
+| Login HTML bytes / SQL | 25,197 /0 | 26,278 /0 |
+| Invalid credentials requests / SQL | 2 /1 | 1 /1 |
+| Invalid request body bytes | 108 | 691 |
+| Invalid response body bytes, including redirected GET | 26,272 | 16,597 |
+| Invalid response snapshot / HTML effect bytes | 0 /0 | 469 /15,459 |
+| Invalid-submit peak allocation above request start, bytes | 1,501,272 | 2,396,872 |
+| Success request / response bytes | 98 /422 | 769 /634 |
+| Initial GET + invalid + valid + destination journey requests | 5 | 4 |
+| Journey SQL / response body bytes | 54 /133,316 | 54 /126,101 |
+
+All three pairs reproduce these byte/query values and complete at the same authorized `/dashboard`. Invalid-submit median milliseconds is244.840 [241.375–248.180] before and251.526 [250.633–253.540] after; these small samples under shared host activity do not establish an acceleration. Livewire removes a GET while increasing initial HTML, request size and peak invalid-request allocation. These are uncompressed body bytes, not actual compressed transfer or FPM RSS. Later MFA fingerprint hardening is outside this measured checkpoint. Exact per-request records and attribution: `/private/tmp/restaurant-p2-login-measurement-_bmxptna/REPORT.md` and adjacent JSON.
+
+Bounded file capacity was measured through actual Livewire download effects on PHP8.5.10 with512MiB memory limit, no Xdebug and CLI OPcache off. Existing maximum100 QR labels yield210,564 PDF bytes,280,752 Base64 bytes and286,049 effect-JSON bytes, peak allocated111MiB from75MiB start,2.43s. A report with500 of501 table rows yields124,549 PDF bytes,166,068 Base64 bytes and168,261 effect-JSON bytes, peak219MiB from69MiB start,1.96s. These fixture results do not prove that every report fits128MiB or that arbitrary logos/text have the same renderer footprint. Production hosts need capacity for the unchanged Dompdf work. CSV, media archives and SQLite backups use private file responses instead of embedding their contents in Livewire JSON. Capacity evidence: `/private/tmp/restaurant-files-p2-05_krrnw/capacity-*.json`.
+
+The menu snapshot budget increases explicitly from6,000 to6,500bytes because the real nested logout component adds333bytes:5,853→6,186. The five-component cap,220SQL budget and1.25MB HTML budget are unchanged. The diagnostic warm menu has183SQL,1,245,406HTML bytes and6,186snapshot bytes. This is a known protocol cost, not optimization evidence; PHP90% and JavaScript100% line-coverage thresholds are unchanged.
+
+
+The restore-confirmation label exposed a320px clipping defect. Its scoped SCSS wrap/auto-height rule adds179 raw and35 gzip bytes to the product stylesheet (30,969/6,240 →31,148/6,275). The raw SCSS-entry ceiling is explicitly updated31,000→31,200; its6,300 gzip ceiling and all aggregate/application/coverage ceilings are unchanged. This is an accessibility cost, not a performance improvement.
+
 ## Unified workspace — prompt 3, 2026-09-16
 
 The baseline is clean local `9b6a71a`. Matched HTTP measurements use identical owned SQLite fixtures (30 menu items, eight tables, 12 staff memberships and an owner), PHP 8.5.10, production assets, debug off, OPcache CLI off and no coverage. Five fresh processes per page/variant each measure first and warm HTTP Kernel handling plus termination. Bootstrap and fixture setup are excluded; OS caches and host CPU are uncontrolled. All 60 primary requests and 20 reverse-order menu controls return HTTP 200.

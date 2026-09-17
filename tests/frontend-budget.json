@@ -14,13 +14,13 @@
             "raw": 31800,
             "gzip": 6500
         },
-        "resources/scss/qr-print.scss": {
-            "raw": 4000,
-            "gzip": 1200
-        },
         "resources/scss/team.scss": {
             "raw": 2400,
             "gzip": 800
+        },
+        "resources/scss/qr-print.scss": {
+            "raw": 4000,
+            "gzip": 1200
         },
         "resources/scss/availability.scss": {
             "raw": 1800,

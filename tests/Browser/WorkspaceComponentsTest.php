@@ -15,6 +15,7 @@ test('workspace navigation and local component states retain keyboard focus and 
     $user->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail());
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('local.components', absolute: false))->resize(1440, 1000)
         ->assertPresent('[data-component-reference]');
 

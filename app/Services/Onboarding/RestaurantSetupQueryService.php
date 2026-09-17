@@ -15,6 +15,7 @@ use App\Models\QrCode;
 use App\Models\RestaurantOnboarding;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Restaurant\BranchReadinessService;
 use App\Support\MoneyFormatter;
 use App\Support\RestaurantSetupOptions;
 use Illuminate\Support\Collection;
@@ -22,16 +23,22 @@ use Illuminate\Support\Facades\Gate;
 
 final class RestaurantSetupQueryService
 {
+    public function __construct(private readonly BranchReadinessService $branchReadiness) {}
+
+    /** @return array<string, mixed> */
+    public function readiness(User $actor, int $setupId): array
+    {
+        $setup = $this->findForUserOrFail($actor, $setupId);
+        $branch = $setup->branch;
+        abort_unless($branch instanceof Branch && ! $branch->trashed(), 404);
+
+        return $this->branchReadiness->handle($actor, $branch);
+    }
+
     public function userHasAccess(User $user): bool
     {
-        $onboarding = RestaurantOnboarding::query()
-            ->select(['id', 'user_id', 'organization_id', 'branch_id'])
-            ->where('user_id', $user->id)
-            ->first();
-
-        return $onboarding instanceof RestaurantOnboarding
-            ? Gate::forUser($user)->allows('view', $onboarding)
-            : Gate::forUser($user)->allows('create', RestaurantOnboarding::class);
+        return Gate::forUser($user)->allows('create', RestaurantOnboarding::class)
+            || RestaurantOnboarding::query()->where('user_id', $user->id)->exists();
     }
 
     /**
@@ -74,8 +81,8 @@ final class RestaurantSetupQueryService
         $menu = $branch instanceof Branch && $menuReference instanceof Menu && ! $menuReference->trashed() ? $menuReference : null;
         $category = $menu instanceof Menu && $categoryReference instanceof MenuCategory && ! $categoryReference->trashed() ? $categoryReference : null;
         $item = $category instanceof MenuCategory && $itemReference instanceof MenuItem && ! $itemReference->trashed() ? $itemReference : null;
-        $menuValid = $qrValid && $item instanceof MenuItem;
-        $completed = $menuValid && $onboarding->completed_at !== null;
+        $menuValid = $menu instanceof Menu && (bool) $menu->getAttribute('has_content');
+        $completed = $onboarding->completed_at !== null;
         $step = match (true) {
             $completed => 8, $qrValid => 7, $pointsValid => 6, $area instanceof AreaNode => 5,
             $branch instanceof Branch => 4, $brand instanceof Brand => 3, $organization instanceof Organization => 2,
@@ -93,7 +100,7 @@ final class RestaurantSetupQueryService
                 'organization' => $organization?->name, 'brand' => $brand?->name, 'branch' => $branch?->name, 'area' => $area?->name,
                 'service_points' => $pointsValid ? $points->count() : 0, 'qr_codes' => $qrValid ? $qrCodes->count() : 0, 'menu' => $menu?->name,
                 'guest_url' => $qrCode instanceof QrCode ? route('public.qr.show', ['token' => $qrCode->public_token]) : null,
-                'branch_url' => $organization instanceof Organization && $brand instanceof Brand ? route('organizations.brands.branches.index', [$organization, $brand]) : null,
+                'branch_url' => $branch instanceof Branch ? route('restaurants.index', ['kind' => 'branch', 'object' => $branch->id]) : null,
                 'menu_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch
                     ? ($item instanceof MenuItem ? route('organizations.brands.branches.menu.dish.edit', [$organization, $brand, $branch, $item]) : route('organizations.brands.branches.menu.index', [$organization, $brand, $branch])) : null,
                 'print_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]) : null,
@@ -114,16 +121,22 @@ final class RestaurantSetupQueryService
 
     public function findForUser(User $user, ?int $onboardingId = null): ?RestaurantOnboarding
     {
+        if ($onboardingId === null) {
+            return null;
+        }
+
         $onboarding = RestaurantOnboarding::query()
-            ->select(['id', 'user_id', 'organization_id', 'brand_id', 'branch_id', 'area_node_id', 'expected_service_point_count', 'menu_id', 'menu_category_id', 'menu_item_id', 'completed_at', 'created_at', 'updated_at'])
+            ->select(['id', 'purpose', 'setup_version', 'user_id', 'organization_id', 'brand_id', 'branch_id', 'area_node_id', 'expected_service_point_count', 'menu_id', 'menu_category_id', 'menu_item_id', 'completed_at', 'created_at', 'updated_at'])
             ->withCount('servicePoints')
             ->where('user_id', $user->id)
-            ->when($onboardingId !== null, fn ($query) => $query->whereKey($onboardingId))
+            ->whereKey($onboardingId)
             ->first();
 
         if (! $onboarding instanceof RestaurantOnboarding) {
             return null;
         }
+
+        Gate::forUser($user)->authorize('view', $onboarding);
 
         return $this->loadScopedRelations($onboarding, $user);
     }
@@ -133,11 +146,41 @@ final class RestaurantSetupQueryService
         return $this->findForUser($user, $onboardingId) ?? abort(404);
     }
 
+    /** @return array<int,string> */
+    public function menuOptions(User $actor, int $setupId, string $search): array
+    {
+        $setup = RestaurantOnboarding::query()->where('user_id', $actor->id)->whereKey($setupId)->firstOrFail();
+        Gate::forUser($actor)->authorize('view', $setup);
+        if ($setup->branch_id === null) {
+            return [];
+        }
+        $branch = Branch::query()->where('organization_id', $setup->organization_id)->where('brand_id', $setup->brand_id)->whereKey($setup->branch_id)->firstOrFail();
+        if (! Gate::forUser($actor)->allows('manageMenu', $branch)) {
+            return [];
+        }
+
+        return $branch->menus()->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->pluck('name', 'id')->all();
+    }
+
+    /** @return array<int,string> */
+    public function areaOptions(User $actor, int $setupId, string $search): array
+    {
+        $setup = RestaurantOnboarding::query()->where('user_id', $actor->id)->whereKey($setupId)->firstOrFail();
+        Gate::forUser($actor)->authorize('view', $setup);
+        if ($setup->branch_id === null) {
+            return [];
+        }
+
+        return AreaNode::query()->select(['id', 'parent_id', 'name'])->where('branch_id', $setup->branch_id)
+            ->with('parent:id,name')->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->get()
+            ->mapWithKeys(fn (AreaNode $area): array => [$area->id => $area->parent === null ? $area->name : $area->parent->name.' / '.$area->name])->all();
+    }
+
     private function organization(RestaurantOnboarding $state, User $user): ?Organization
     {
         $model = $state->organization;
 
-        return $model instanceof Organization && (int) $model->owner_user_id === (int) $user->id ? $model : null;
+        return $model instanceof Organization && $user->canAccessOrganization($model) ? $model : null;
     }
 
     private function loadScopedRelations(RestaurantOnboarding $onboarding, User $user): RestaurantOnboarding
@@ -155,8 +198,7 @@ final class RestaurantSetupQueryService
 
         $onboarding->load([
             'organization' => fn ($query) => $query
-                ->select(['id', 'owner_user_id', 'name', 'deleted_at'])
-                ->where('owner_user_id', $user->id),
+                ->select(['id', 'owner_user_id', 'name', 'deleted_at']),
         ]);
 
         $organization = $onboarding->organization;
@@ -201,6 +243,7 @@ final class RestaurantSetupQueryService
             'servicePoints.activeQrCode:id,service_point_id,public_token,status',
             'menu' => fn ($query) => $query
                 ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'deleted_at'])
+                ->withExists(['items as has_content'])
                 ->where('branch_id', $branch->id),
         ]);
 

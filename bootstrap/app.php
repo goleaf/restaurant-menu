@@ -3,11 +3,13 @@
 use App\Actions\Monitoring\ReportProductionExceptionAction;
 use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\AuthorizeSqliteRestoreUpload;
 use App\Http\Middleware\CoordinateSqliteRestore;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureLocalLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\ProtectInvitationResponses;
+use App\Http\Middleware\ProtectTwoFactorAttempt;
 use App\Http\Middleware\RequireJsonHealthCheckResponse;
 use App\Http\Middleware\RequireRecentPasswordConfirmation;
 use App\Http\Middleware\SetInterfaceLocale;
@@ -35,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             SetInterfaceLocale::class,
+            AuthorizeSqliteRestoreUpload::class,
+            ProtectTwoFactorAttempt::class,
         ]);
 
         $middleware->alias([
@@ -78,7 +82,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ];
         });
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->routeIs('livewire.upload-file'),
         );
         $exceptions->render(function (BusinessRuleViolation $exception, Request $request) {
             if (! $request->expectsJson() && ! $request->is('api/*')) {

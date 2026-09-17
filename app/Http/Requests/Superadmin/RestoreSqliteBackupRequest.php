@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Superadmin;
 
 use App\Models\User;
-use App\Rules\Backups\SqliteBackupHeader;
-use App\Support\Backups\SqliteBackupConstraints;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -19,23 +17,18 @@ final class RestoreSqliteBackupRequest extends FormRequest
         return $user instanceof User && $user->isSuperadmin();
     }
 
+    /** @return array<string, mixed> */
+    public function validationData(): array
+    {
+        return [...$this->request->all(), ...$this->allFiles()];
+    }
+
     /**
      * @return array<string, list<string|ValidationRule>>
      */
     public function rules(): array
     {
-        return [
-            'backup' => [
-                'bail',
-                'required',
-                'file',
-                'min:1',
-                'max:'.intdiv(SqliteBackupConstraints::MAXIMUM_BYTES, 1024),
-                'extensions:sqlite,sqlite3,db',
-                'mimetypes:application/vnd.sqlite3,application/x-sqlite3,application/octet-stream',
-                new SqliteBackupHeader,
-            ],
-        ];
+        return ['grant' => ['required', 'string', 'regex:/^[A-Za-z0-9]{64}$/D'], 'backup' => ['prohibited'], 'path' => ['prohibited']];
     }
 
     /**
@@ -44,7 +37,7 @@ final class RestoreSqliteBackupRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'backup' => __('validation.attributes.sqlite_backup'),
+            'grant' => __('validation.attributes.sqlite_backup'),
         ];
     }
 }

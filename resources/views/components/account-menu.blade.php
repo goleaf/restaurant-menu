@@ -29,11 +29,6 @@
             </flux:menu.radio.group>
         </flux:menu.group>
         <flux:menu.separator />
-        <form method="POST" action="{{ route('logout') }}" class="w-full">
-            @csrf
-            <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle" class="min-h-touch w-full cursor-pointer" data-test="logout-button">
-                {{ __('navigation.logout') }}
-            </flux:menu.item>
-        </form>
+        <livewire:auth.logout />
     </flux:menu>
 </flux:dropdown>

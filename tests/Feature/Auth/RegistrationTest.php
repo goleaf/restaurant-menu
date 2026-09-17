@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Invitations\Show;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -7,7 +8,9 @@ test('public registration is disabled and account creation is invitation only', 
     expect(config('fortify.features'))->not->toContain(Features::registration())
         ->and(Route::has('register'))->toBeFalse()
         ->and(Route::has('register.store'))->toBeFalse()
-        ->and(Route::has('invitations.register'))->toBeTrue();
+        ->and(Route::has('invitations.register'))->toBeFalse()
+        ->and(Route::getRoutes()->getByName('invitations.pending')?->getAction('livewire_component'))
+        ->toBe(Show::class);
 
     $this->get('/register')->assertNotFound();
     $this->post('/register', [

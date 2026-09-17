@@ -1,18 +1,17 @@
-<x-layouts::auth.simple :title="__('ui.auth.login.log_in')" :directory="$localUsers !== null">
+<div>
     <div class="rm-login-form flex flex-col gap-6">
         <x-auth-header :title="__('ui.auth.login.log_in_to_your_account')" :description="__('ui.auth.login.enter_your_email_and_password_below_to_log_in')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
-            @csrf
+        <form wire:submit="login" novalidate class="flex flex-col gap-6">
 
             <!-- Email Address -->
             <flux:input
                 name="email"
                 :label="__('ui.auth.forgot_password.email_address')"
-                :value="old('email')"
+                wire:model="form.email" error:name="form.email" :invalid="$errors->has('form.email')"
                 type="email"
                 required
                 autocomplete="email"
@@ -23,6 +22,7 @@
             <div class="relative">
                 <flux:input
                     name="password"
+                    wire:model="form.password" error:name="form.password" :invalid="$errors->has('form.password')"
                     :label="__('ui.auth.confirm_password.password')"
                     type="password"
                     required
@@ -31,16 +31,18 @@
                     viewable
                 />
 
-                <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                    {{ __('ui.auth.login.forgot_your_password') }}
-                </flux:link>
+                @if ($canResetPassword)
+                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
+                        {{ __('ui.auth.login.forgot_your_password') }}
+                    </flux:link>
+                @endif
             </div>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('ui.auth.login.remember_me')" :checked="old('remember')" />
+            <flux:checkbox name="remember" :label="__('ui.auth.login.remember_me')" wire:model="form.remember" />
 
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+                <flux:button variant="primary" type="submit" wire:loading.attr="disabled" wire:offline.attr="disabled" class="w-full" data-test="login-button">
                     {{ __('ui.auth.login.log_in') }}
                 </flux:button>
             </div>
@@ -50,7 +52,7 @@
             {{ __('invitations.account.invite_only') }}
         </div>
     </div>
-    @if ($localUsers !== null)
-        <x-auth.local-user-directory :users="$localUsers" />
+    @if ($localDirectoryAvailable)
+        <livewire:local.user-login />
     @endif
-</x-layouts::auth.simple>
+</div>

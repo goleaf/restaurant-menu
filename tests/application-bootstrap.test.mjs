@@ -32,6 +32,15 @@ test('one bootstrap registers every factory before starting Livewire and release
     listeners.get('livewire:navigating').handler({ detail: { onSwap(callback) { callback(); } } });
     assert.deepEqual(removed, ['x-ignore', 'inert', 'x-ignore', 'inert']);
     assert.equal(status.hidden, true);
+    const connectivityEvents = [];
+    globalThis.window = { dispatchEvent: event => connectivityEvents.push(event.type) };
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } });
+    listeners.get('livewire:navigated').handler();
+    navigator.onLine = false;
+    listeners.get('livewire:navigated').handler();
+    assert.deepEqual(connectivityEvents, ['online', 'offline']);
     mock.restoreAll();
     delete globalThis.document;
+    delete globalThis.window;
+    delete globalThis.navigator;
 });

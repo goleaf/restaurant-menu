@@ -4,304 +4,239 @@ declare(strict_types=1);
 
 namespace App\Livewire\Onboarding;
 
+use App\Actions\Onboarding\CompleteRestaurantPreparationAction;
+use App\Actions\Onboarding\CreateRestaurantSetupAction;
 use App\Actions\Onboarding\GenerateOnboardingQrCodesAction;
 use App\Actions\Onboarding\SaveOnboardingAreaAction;
-use App\Actions\Onboarding\SaveOnboardingBranchAction;
-use App\Actions\Onboarding\SaveOnboardingBrandAction;
-use App\Actions\Onboarding\SaveOnboardingOrganizationAction;
 use App\Actions\Onboarding\SaveOnboardingServicePointsAction;
 use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
-use App\Enums\SupportedCurrency;
+use App\Actions\Onboarding\UseExistingSetupMenuAction;
+use App\Actions\Onboarding\UseExistingSetupSpaceAction;
 use App\Livewire\Forms\Onboarding\RestaurantSetupForm;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
+use App\Services\Organizations\RestaurantCenterQuery;
 use App\Support\RestaurantSetupOptions;
 use Closure;
 use Flux\Flux;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Throwable;
 
-/**
- * @property-read array{
- *     step: int,
- *     highest_step: int,
- *     completed: bool,
- *     done: array<int, bool>,
- *     summary: array<string, string|int|null>,
- *     form: array<string, string|int>
- * } $setup
- */
 final class RestaurantSetup extends Component
 {
-    private RestaurantSetupQueryService $setupQueries;
-
-    private Application $application;
-
-    /** @var array{onboarding: RestaurantOnboarding|null, step: int, highest_step: int, completed: bool, done: array<int, bool>, summary: array<string, string|int|null>, form: array<string, string|int>}|null */
-    private ?array $persistentStateCache = null;
-
     public RestaurantSetupForm $form;
 
     #[Locked]
     public ?int $onboardingId = null;
 
     #[Locked]
+    public int $actorId;
+
+    #[Locked]
+    public string $creationKey;
+
+    #[Url(history: true)]
     public int $step = 1;
 
-    public function boot(RestaurantSetupQueryService $setupQueries, Application $application): void
+    public string $organizationSearch = '';
+
+    public string $brandSearch = '';
+
+    public mixed $existingMenuId = '';
+
+    public string $menuSearch = '';
+
+    public string $areaSearch = '';
+
+    public mixed $existingAreaId = '';
+
+    #[Locked]
+    public int $setupVersion = 0;
+
+    private RestaurantSetupQueryService $queries;
+
+    private RestaurantCenterQuery $center;
+
+    private Application $application;
+
+    public function boot(RestaurantSetupQueryService $queries, RestaurantCenterQuery $center, Application $application): void
     {
-        $this->setupQueries = $setupQueries;
+        $this->queries = $queries;
+        $this->center = $center;
         $this->application = $application;
     }
 
-    public function mount(): void
+    public function mount(Request $request, ?int $setup = null): void
     {
-        $state = $this->persistentState();
-        $onboarding = $state['onboarding'];
-
-        if ($onboarding instanceof RestaurantOnboarding) {
-            $this->onboardingId = $onboarding->id;
+        $this->actorId = (int) Auth::id();
+        $this->creationKey = (string) Str::uuid();
+        $this->onboardingId = $setup;
+        $this->form->branchTimezone = RestaurantSetupOptions::defaultTimezone(config('app.timezone'));
+        if ($setup !== null) {
+            $this->queries->findForUserOrFail($this->actor(), $setup);
+            $state = $this->queries->presentation($this->actor(), $setup);
+            $this->setupVersion = $state['onboarding']->setup_version;
+            $this->form->hydrateFromPersistentState($state['form']);
+            $this->form->organizationId = $state['onboarding']->organization_id;
+            $this->form->brandId = $state['onboarding']->brand_id;
+            if ($state['done'][3]) {
+                $this->creationKey = '';
+            }
+        } else {
+            $this->form->organizationId = $request->query('organization') ?: null;
+            $this->form->brandId = $request->query('brand') ?: null;
         }
-
-        $this->form->areaName = __('ui.onboarding.restaurant_setup.defaults.area_name');
-        $this->form->tablePrefix = __('ui.onboarding.restaurant_setup.defaults.table_prefix');
-        $this->form->menuName = __('ui.onboarding.restaurant_setup.defaults.menu_name');
-        $this->form->categoryName = __('ui.onboarding.restaurant_setup.defaults.category_name');
-        $this->form->itemName = __('ui.onboarding.restaurant_setup.defaults.item_name');
-        $configuredTimezone = config('app.timezone');
-        $this->form->branchTimezone = RestaurantSetupOptions::defaultTimezone(
-            is_string($configuredTimezone) ? $configuredTimezone : null,
-        );
-        $this->form->hydrateFromPersistentState($state['form']);
-        $this->step = $state['step'];
     }
 
-    public function createOrganization(SaveOnboardingOrganizationAction $save): void
+    public function createRestaurant(CreateRestaurantSetupAction $create): void
     {
-        $state = $this->persistentState();
-        $validated = $this->form->validateOrganization($this->currentUser(), $state['onboarding']?->organization_id);
-        $onboarding = $save->handle($this->currentUser(), $this->onboardingId, ['name' => $validated['organizationName']]);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.kompaniia_sozdana');
+        abort_if($this->creationKey === '', 409);
+        $setup = $create->handle($this->actor(), $this->form->validateCreation(), $this->creationKey, $this->onboardingId);
+        abort_if($this->onboardingId !== null && $this->onboardingId !== $setup->id, 409);
+        $this->onboardingId = $setup->id;
+        $this->setupVersion = $setup->setup_version;
+        $this->step = 2;
+        $this->saved();
+        $this->dispatch('restaurant-created', url: route('restaurants.setup', ['setup' => $setup->id, 'step' => 2]));
     }
 
-    public function createBrand(SaveOnboardingBrandAction $save): void
+    public function updatedFormOrganizationId(): void
     {
-        $state = $this->requiredState(2);
-        $validated = $this->form->validateBrand($state['onboarding']->organization, $state['onboarding']->brand_id);
-        $onboarding = $save->handle($this->currentUser(), $this->requiredOnboardingId(), ['name' => $validated['brandName']]);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.restoran_sozdan');
-    }
-
-    public function createBranch(SaveOnboardingBranchAction $save): void
-    {
-        $state = $this->requiredState(3);
-        $validated = $this->form->validateBranch($state['onboarding']->brand, $state['onboarding']->branch_id);
-        $onboarding = $save->handle($this->currentUser(), $this->requiredOnboardingId(), [
-            'name' => $validated['branchName'], 'address' => $validated['branchAddress'], 'city' => $validated['branchCity'],
-            'country' => RestaurantSetupOptions::countryName($validated['branchCountryCode']),
-            'timezone' => $validated['branchTimezone'], 'currency' => SupportedCurrency::normalize($validated['branchCurrency']), 'is_active' => true,
-        ]);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.filial_sozdan');
+        $this->form->brandId = null;
     }
 
     public function createArea(SaveOnboardingAreaAction $save): void
     {
-        $this->requiredState(4);
-        $validated = $this->form->validateArea();
-        $onboarding = $save->handle($this->currentUser(), $this->requiredOnboardingId(), [
-            'parent_id' => null, 'type' => $validated['areaType'], 'name' => $validated['areaName'],
-            'icon' => $validated['areaIcon'] ?: null, 'sort_order' => 0, 'is_active' => true,
-        ]);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.zona_dobavlena');
+        $id = $this->requiredId();
+        $data = $this->form->validateArea();
+        $saved = $save->handle($this->actor(), $id, ['parent_id' => null, 'type' => $data['areaType'], 'name' => $data['areaName'], 'icon' => $data['areaIcon'] ?: null, 'sort_order' => 0, 'is_active' => true]);
+        $this->setupVersion = $saved->setup_version;
+        $this->saved();
     }
 
     public function createServicePoints(SaveOnboardingServicePointsAction $save): void
     {
-        $this->requiredState(5);
-        $validated = $this->form->validateServicePoints();
-        $onboarding = $save->handle($this->currentUser(), $this->requiredOnboardingId(), $validated);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.pervye_stoly_dobavleny');
+        $saved = $save->handle($this->actor(), $this->requiredId(), $this->form->validateServicePoints());
+        $this->setupVersion = $saved->setup_version;
+        $this->saved();
     }
 
     public function generateQrCodes(GenerateOnboardingQrCodesAction $generate): void
     {
-        $this->requiredState(6);
-        $onboarding = $generate->handle($this->currentUser(), $this->requiredOnboardingId());
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.qr_kody_gotovy');
+        $generate->handle($this->actor(), $this->requiredId());
+        $this->saved();
     }
 
     public function createStarterMenu(SaveOnboardingStarterMenuAction $save): void
     {
-        $this->requiredState(7);
-        $validated = $this->form->validateStarterMenu();
-        $onboarding = $save->handle($this->currentUser(), $this->requiredOnboardingId(), [
-            'menu_name' => $validated['menuName'], 'category_name' => $validated['categoryName'],
-            'item_name' => $validated['itemName'], 'item_price' => $validated['itemPrice'],
-        ]);
-        $this->afterMutation($onboarding, 'ui.livewire.onboarding.restaurantsetup.pervoe_meniu_dobavleno');
+        $id = $this->requiredId();
+        $data = $this->form->validateStarterMenu();
+        $saved = $save->handle($this->actor(), $id, ['menu_name' => $data['menuName'], 'category_name' => $data['categoryName'], 'item_name' => $data['itemName'], 'item_price' => $data['itemPrice']]);
+        $this->setupVersion = $saved->setup_version;
+        $this->saved();
+    }
+
+    public function useExistingMenu(UseExistingSetupMenuAction $use): void
+    {
+        $data = $this->validate(['existingMenuId' => ['required', 'integer', 'min:1']], [], ['existingMenuId' => __('center.menu')]);
+        $saved = $use->handle($this->actor(), $this->requiredId(), (int) $data['existingMenuId'], $this->setupVersion);
+        $this->setupVersion = $saved->setup_version;
+        $this->saved();
+    }
+
+    public function useExistingSpace(UseExistingSetupSpaceAction $use): void
+    {
+        $data = $this->validate(['existingAreaId' => ['required', 'integer', 'min:1']], [], ['existingAreaId' => __('center.rooms')]);
+        $saved = $use->handle($this->actor(), $this->requiredId(), (int) $data['existingAreaId'], $this->setupVersion);
+        $this->setupVersion = $saved->setup_version;
+        $this->saved();
+    }
+
+    public function complete(CompleteRestaurantPreparationAction $complete): void
+    {
+        $complete->handle($this->actor(), $this->requiredId());
+        $this->saved();
     }
 
     public function goToStep(mixed $step): void
     {
-        if (! is_int($step)) {
-            return;
+        abort_unless(is_int($step) && $step >= 1 && $step <= 4, 422);
+        if ($step > 1) {
+            $this->requiredId();
         }
-
-        $highest = (int) $this->setup()['highest_step'];
-
-        if ($step < 1 || $step > $highest) {
-            return;
-        }
-
         $this->step = $step;
-        $this->resetValidation();
-        $this->dispatch('onboarding-step-changed');
-    }
-
-    /** @return array<string, string> */
-    #[Computed]
-    public function countryOptions(): array
-    {
-        return RestaurantSetupOptions::countryOptions($this->application->getLocale());
-    }
-
-    /** @return array<string, string> */
-    #[Computed]
-    public function timezoneOptions(): array
-    {
-        return RestaurantSetupOptions::timezoneOptions();
-    }
-
-    /** @return array<string, string> */
-    #[Computed]
-    public function currencyOptions(): array
-    {
-        return RestaurantSetupOptions::currencyOptions();
-    }
-
-    /** @return array<string, string> */
-    #[Computed]
-    public function areaTypeOptions(): array
-    {
-        return RestaurantSetupOptions::areaTypeOptions();
-    }
-
-    /** @return array<string, string> */
-    #[Computed]
-    public function areaIconOptions(): array
-    {
-        return RestaurantSetupOptions::areaIconOptions();
-    }
-
-    /** @return array{step: int, highest_step: int, completed: bool, done: array<int, bool>, summary: array<string, string|int|null>, form: array<string, string|int>} */
-    #[Computed]
-    public function setup(): array
-    {
-        $state = $this->persistentState();
-        unset($state['onboarding']);
-
-        return $state;
-    }
-
-    /** @return list<array{number: int, label: string, icon: string, is_done: bool, is_current: bool, is_available: bool}> */
-    #[Computed]
-    public function steps(): array
-    {
-        $state = $this->setup();
-        $definitions = [
-            [1, __('ui.livewire.onboarding.restaurantsetup.kompaniia'), 'building-office'],
-            [2, __('ui.livewire.onboarding.restaurantsetup.restoran'), 'building-storefront'],
-            [3, __('ui.livewire.onboarding.restaurantsetup.adres'), 'map-pin'],
-            [4, __('ui.livewire.onboarding.restaurantsetup.zona'), 'rectangle-group'],
-            [5, __('ui.livewire.onboarding.restaurantsetup.stoly'), 'squares-2x2'],
-            [6, __('permissions.groups.qr'), 'qr-code'], [7, __('ui.livewire.onboarding.restaurantsetup.meniu'), 'book-open'],
-            [8, __('ui.livewire.onboarding.restaurantsetup.proverka'), 'check-circle'],
-        ];
-
-        return collect($definitions)->map(fn (array $definition): array => [
-            'number' => $definition[0], 'label' => $definition[1], 'icon' => $definition[2],
-            'is_done' => $state['done'][$definition[0]], 'is_current' => $this->step === $definition[0],
-            'is_available' => $definition[0] <= $state['highest_step'],
-        ])->all();
-    }
-
-    /** @return array<string, string|int|null> */
-    #[Computed]
-    public function summary(): array
-    {
-        return $this->setup()['summary'];
     }
 
     public function render(): View
     {
-        return view('livewire.onboarding.restaurant-setup')->title(__('ui.onboarding.restaurant_setup.nastroit_restoran'));
+        abort_unless($this->step >= 1 && $this->step <= 4 && ($this->onboardingId !== null || $this->step === 1), 422);
+        $actor = $this->actor();
+        $state = $this->queries->presentation($actor, $this->onboardingId);
+        $organizations = $this->center->creationOrganizations($actor, $this->organizationSearch, $this->form->organizationId);
+        $brands = $this->center->creationBrands($actor, $this->form->organizationId, $this->brandSearch, $this->form->brandId);
+        abort_unless($this->onboardingId !== null || Gate::forUser($actor)->allows('create', RestaurantOnboarding::class) || $organizations !== [], 403);
+
+        return view('livewire.onboarding.restaurant-setup', [
+            'readiness' => $this->step === 4 && $state['done'][3] ? $this->queries->readiness($actor, $this->requiredId()) : null,
+            'state' => $state, 'areaOptions' => $this->onboardingId !== null && $this->step === 2 ? $this->queries->areaOptions($actor, $this->onboardingId, $this->areaSearch) : [], 'menuOptions' => $this->onboardingId !== null && $this->step === 3 ? $this->queries->menuOptions($actor, $this->onboardingId, $this->menuSearch) : [], 'organizations' => $organizations, 'brands' => $brands,
+            'countries' => RestaurantSetupOptions::countryOptions($this->application->getLocale()),
+            'currencies' => RestaurantSetupOptions::currencyOptions(), 'timezones' => RestaurantSetupOptions::timezoneOptions(),
+            'steps' => [1 => __('center.details'), 2 => __('center.rooms'), 3 => __('center.menu'), 4 => __('center.review')],
+            'canCreateOrganization' => Gate::forUser($actor)->allows('create', RestaurantOnboarding::class),
+        ])->title(__('center.title'));
     }
 
     public function exception(Throwable $e, Closure $stopPropagation): void
     {
-        if ($e instanceof ValidationException) {
-            $this->dispatch('onboarding-validation-failed');
+        if (! $e instanceof ValidationException) {
+            return;
         }
-    }
-
-    private function currentUser(): User
-    {
-        $user = Auth::user();
-
-        return $user instanceof User ? $user : abort(401);
-    }
-
-    /** @return array{onboarding: RestaurantOnboarding|null, step: int, highest_step: int, completed: bool, done: array<int, bool>, summary: array<string, string|int|null>, form: array<string, string|int>} */
-    private function persistentState(): array
-    {
-        if ($this->persistentStateCache !== null) {
-            return $this->persistentStateCache;
+        $errors = [];
+        foreach ($e->errors() as $field => $messages) {
+            $key = array_key_exists($field, $this->form->all()) ? 'form.'.$field : $field;
+            $errors[$key] = $messages;
         }
-
-        $state = $this->setupQueries->presentation($this->currentUser(), $this->onboardingId);
-        $onboarding = $state['onboarding'];
-
-        if ($onboarding instanceof RestaurantOnboarding) {
-            Gate::authorize('view', $onboarding);
-        } else {
-            Gate::authorize('create', RestaurantOnboarding::class);
-        }
-
-        return $this->persistentStateCache = $state;
+        $this->setErrorBag($errors);
+        $first = (string) array_key_first($errors);
+        $this->step = match (true) {
+            str_starts_with($first, 'form.menu'), str_starts_with($first, 'form.category'), str_starts_with($first, 'form.item'), $first === 'existingMenuId' => 3,
+            str_starts_with($first, 'form.area'), str_starts_with($first, 'form.table'), $first === 'existingAreaId' => 2,
+            $first === 'preparation' => 4,
+            default => 1,
+        };
+        $this->dispatch('onboarding-validation-failed');
+        $stopPropagation();
     }
 
-    /** @return array{onboarding: RestaurantOnboarding, step: int, highest_step: int, completed: bool, done: array<int, bool>, summary: array<string, string|int|null>, form: array<string, string|int>} */
-    private function requiredState(int $minimumStep): array
+    private function actor(): User
     {
-        $state = $this->persistentState();
-        abort_unless($state['onboarding'] instanceof RestaurantOnboarding && $state['highest_step'] >= $minimumStep, 409);
-        Gate::authorize('update', $state['onboarding']);
+        $actor = Auth::user();
+        abort_unless($actor instanceof User, 401);
+        abort_unless((int) $actor->id === $this->actorId, 403);
 
-        return $state;
+        return $actor;
     }
 
-    private function requiredOnboardingId(): int
+    private function requiredId(): int
     {
-        return $this->onboardingId ?? abort(409);
+        $id = $this->onboardingId ?? abort(409);
+        Gate::forUser($this->actor())->authorize('update', $this->queries->findForUserOrFail($this->actor(), $id));
+
+        return $id;
     }
 
-    private function afterMutation(RestaurantOnboarding $onboarding, string $toastKey): void
+    private function saved(): void
     {
-        $this->onboardingId = $onboarding->id;
-        $this->persistentStateCache = null;
-        unset($this->setup, $this->summary, $this->steps);
-        $state = $this->persistentState();
-        $this->form->hydrateFromPersistentState($state['form']);
-        $this->step = $state['step'];
-        $this->dispatch('onboarding-step-changed');
-        Flux::toast(variant: 'success', text: __($toastKey));
+        Flux::toast(variant: 'success', text: __('center.saved'));
     }
 }

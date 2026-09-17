@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\ServicePointType;
 use Database\Factories\RestaurantOnboardingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+#[Hidden(['creation_key', 'creation_hash'])]
 #[Fillable(['user_id', 'completed_at'])]
 class RestaurantOnboarding extends Model
 {
@@ -120,6 +122,7 @@ class RestaurantOnboarding extends Model
     {
         return [
             'completed_at' => 'immutable_datetime',
+            'setup_version' => 'integer',
             'expected_service_point_count' => 'integer',
         ];
     }

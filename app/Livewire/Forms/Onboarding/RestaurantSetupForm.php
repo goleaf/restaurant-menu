@@ -16,11 +16,16 @@ use App\Support\Validation\Branches\BranchProfileRules;
 use App\Support\Validation\Branches\ServicePointRules;
 use App\Support\Validation\Menus\MenuItemRules;
 use App\Support\Validation\Organizations\OrganizationRules;
+use App\Support\Validation\Organizations\RestaurantCreationRules;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
 final class RestaurantSetupForm extends Form
 {
+    public mixed $organizationId = null;
+
+    public mixed $brandId = null;
+
     public mixed $organizationName = '';
 
     public mixed $brandName = '';
@@ -57,6 +62,14 @@ final class RestaurantSetupForm extends Form
 
     public mixed $itemPrice = '';
 
+    /** @return array<string,mixed> */
+    public function validateCreation(): array
+    {
+        $this->fill(RestaurantCreationRules::normalize($this->all()));
+
+        return $this->validate(RestaurantCreationRules::rules(), [], RestaurantCreationRules::attributes());
+    }
+
     /** @return array{organizationName: string} */
     public function validateOrganization(User $user, ?int $existingId = null): array
     {
@@ -89,9 +102,9 @@ final class RestaurantSetupForm extends Form
         $this->branchName = $this->plainText($this->branchName);
         $this->branchAddress = $this->plainText($this->branchAddress);
         $this->branchCity = $this->plainText($this->branchCity);
-        $this->branchCountryCode = strtoupper($this->scalarString($this->branchCountryCode));
+        $this->branchCountryCode = is_string($this->branchCountryCode) ? strtoupper(trim($this->branchCountryCode)) : $this->branchCountryCode;
         $this->branchTimezone = $this->scalarString($this->branchTimezone);
-        $this->branchCurrency = SupportedCurrency::clean($this->scalarString($this->branchCurrency));
+        $this->branchCurrency = is_string($this->branchCurrency) ? SupportedCurrency::clean(trim($this->branchCurrency)) : $this->branchCurrency;
 
         $rules = BranchProfileRules::onboardingBranch();
         $rules['branchName'][] = Rule::unique((new Branch)->getTable(), 'name')
@@ -134,7 +147,7 @@ final class RestaurantSetupForm extends Form
         $this->menuName = $this->plainText($this->menuName);
         $this->categoryName = $this->plainText($this->categoryName);
         $this->itemName = $this->plainText($this->itemName);
-        $this->itemPrice = str_replace(',', '.', $this->numericString($this->itemPrice));
+        $this->itemPrice = is_string($this->itemPrice) ? str_replace(',', '.', trim($this->itemPrice)) : $this->itemPrice;
 
         return $this->validate(MenuItemRules::onboardingStarterMenu());
     }
@@ -192,18 +205,13 @@ final class RestaurantSetupForm extends Form
         ];
     }
 
-    private function scalarString(mixed $value): string
+    private function scalarString(mixed $value): mixed
     {
-        return is_string($value) ? trim($value) : '';
+        return is_string($value) ? trim($value) : $value;
     }
 
-    private function plainText(mixed $value): string
+    private function plainText(mixed $value): mixed
     {
-        return PlainText::required(is_string($value) ? $value : '', 0, squish: true);
-    }
-
-    private function numericString(mixed $value): string
-    {
-        return is_string($value) || is_int($value) ? trim((string) $value) : '';
+        return is_string($value) ? PlainText::required($value, 0, squish: true) : $value;
     }
 }

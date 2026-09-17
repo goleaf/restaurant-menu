@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\SystemRole;
-use App\Livewire\Superadmin\Dashboard;
 use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
@@ -13,7 +12,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Livewire\Livewire;
+use Tests\Support\FileOperationPage;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -29,52 +28,35 @@ test('only a recently confirmed superadmin with one-time authorization can downl
     $this->get($route)->assertRedirect(route('login'));
     $this->actingAs($ordinaryUser)->get($route)->assertForbidden();
     $this->actingAs($superadmin)->get($route)->assertRedirect(route('password.confirm'));
-    $this->actingAs($superadmin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->get($route)
-        ->assertForbidden();
-
-    $this->actingAs($superadmin)
-        ->withSession([
-            'auth.password_confirmed_at' => now()->timestamp,
-            'media_backup_download_authorization' => [
-                'issued_at' => now()->subMinutes(6)->timestamp,
-                'nonce' => Str::random(64),
-                'reason' => 'Expired media backup authorization',
-                'user_id' => $superadmin->id,
-            ],
-        ])
-        ->get($route)
-        ->assertForbidden();
+    $this->actingAs($superadmin)->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $snapshot = FileOperationPage::open($this, route('superadmin.dashboard'), 'superadmin.dashboard');
+    $prepared = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', ['mediaBackup.reason' => 'Expired media backup authorization', 'mediaBackup.confirmation' => 'MEDIA'])->assertOk();
+    $url = $prepared->json('components.0.effects.redirect');
+    session()->forget('auth.password_confirmed_at');
+    session()->save();
+    $this->get($url)->assertRedirect(route('password.confirm'));
+    $this->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $this->travel(6)->minutes();
+    $this->get($url)->assertForbidden();
 });
 
 test('media ZIP confirmation requires an audited reason and exact typed confirmation', function (): void {
     $superadmin = createSuperadminForMediaBackupTest();
 
-    Livewire::actingAs($superadmin)
-        ->test(Dashboard::class)
-        ->set('mediaBackupDownloadConfirmation', 'MEDIA')
-        ->call('downloadMediaBackup')
-        ->assertHasErrors(['mediaBackupDownloadReason'])
-        ->set('mediaBackupDownloadReason', 'Encrypted off-site media recovery copy')
-        ->set('mediaBackupDownloadConfirmation', 'media')
-        ->call('downloadMediaBackup')
-        ->assertHasErrors(['mediaBackupDownloadConfirmation'])
-        ->set('mediaBackupDownloadConfirmation', 'MEDIA')
-        ->call('downloadMediaBackup')
-        ->assertHasNoErrors()
-        ->assertDispatched('modal-close', name: 'media-backup-download')
-        ->assertRedirect(route('superadmin.backups.media.download'));
-
-    expect(session('media_backup_download_authorization'))
-        ->toMatchArray([
-            'reason' => 'Encrypted off-site media recovery copy',
-            'user_id' => $superadmin->id,
-        ]);
-
-    expect(session('media_backup_download_authorization.nonce'))
-        ->toBeString()
-        ->toHaveLength(64);
+    $this->actingAs($superadmin)->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $snapshot = FileOperationPage::open($this, route('superadmin.dashboard'), 'superadmin.dashboard');
+    $missing = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', ['mediaBackup.confirmation' => 'MEDIA'])->assertOk();
+    expect(json_decode($missing->json('components.0.snapshot'), true)['memo']['errors'])->toHaveKey('mediaBackup.reason');
+    $wrong = FileOperationPage::call($this, $missing->json('components.0.snapshot'), 'downloadMediaBackup', ['mediaBackup.reason' => 'Encrypted off-site media recovery copy', 'mediaBackup.confirmation' => 'media'])->assertOk();
+    expect(json_decode($wrong->json('components.0.snapshot'), true)['memo']['errors'])->toHaveKey('mediaBackup.confirmation');
+    $prepared = FileOperationPage::call($this, $wrong->json('components.0.snapshot'), 'downloadMediaBackup', ['mediaBackup.confirmation' => 'MEDIA'])->assertOk();
+    expect(json_decode($prepared->json('components.0.snapshot'), true)['memo']['errors'])->toBe([]);
+    expect(collect($prepared->json('components.0.effects.dispatches'))->firstWhere('name', 'modal-close')['params']['name'])->toBe('media-backup-download');
+    $grant = array_key_last(session('prepared_downloads'));
+    expect($grant)->toBeString()->toHaveLength(64)
+        ->and($prepared->json('components.0.effects.redirect'))->toBe(route('restaurant.files.download', ['grant' => $grant]))
+        ->and(session('prepared_downloads.'.$grant.'.user_id'))->toBe($superadmin->id)
+        ->and(AuditLog::query()->where('action', 'media_backup_downloaded')->firstOrFail()->new_values['reason'])->toBe('Encrypted off-site media recovery copy');
 });
 
 test('superadmin downloads all stored photographs with integrity manifest and temporary archive cleanup', function (): void {
@@ -94,19 +76,13 @@ test('superadmin downloads all stored photographs with integrity manifest and te
     Date::setTestNow(CarbonImmutable::parse('2026-08-23 17:18:19'));
 
     try {
-        $authorization = [
-            'issued_at' => now()->timestamp,
-            'nonce' => Str::random(64),
-            'reason' => 'Encrypted off-site media recovery copy',
-            'user_id' => $superadmin->id,
-        ];
-
-        $response = $this->actingAs($superadmin)
-            ->withSession([
-                'auth.password_confirmed_at' => now()->timestamp,
-                'media_backup_download_authorization' => $authorization,
-            ])
-            ->get(route('superadmin.backups.media.download'))
+        $this->actingAs($superadmin)->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+        $snapshot = FileOperationPage::open($this, route('superadmin.dashboard'), 'superadmin.dashboard');
+        $prepared = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', ['mediaBackup.reason' => 'Encrypted off-site media recovery copy', 'mediaBackup.confirmation' => 'MEDIA'])->assertOk();
+        $url = $prepared->json('components.0.effects.redirect');
+        $grant = array_key_last(session('prepared_downloads'));
+        $authorization = session('prepared_downloads.'.$grant);
+        $response = $this->get($url)
             ->assertOk()
             ->assertDownload('restaurant-menu-media-backup-2026-08-23-171819.zip')
             ->assertHeader('content-type', 'application/zip')
@@ -119,7 +95,7 @@ test('superadmin downloads all stored photographs with integrity manifest and te
         expect($cacheControl)
             ->toContain('no-store', 'private')
             ->not->toContain('public')
-            ->and(Str::startsWith($archivePath, Storage::disk('local')->path('backups/media/')))->toBeTrue()
+            ->and(Str::startsWith($archivePath, Storage::disk('local')->path('prepared-downloads/')))->toBeTrue()
             ->and($archive->open($archivePath))->toBeTrue();
 
         $entries = collect(range(0, $archive->numFiles - 1))
@@ -160,15 +136,11 @@ test('superadmin downloads all stored photographs with integrity manifest and te
         ob_end_clean();
 
         expect(File::exists($archivePath))->toBeFalse()
-            ->and(session('media_backup_download_authorization'))->toBeNull();
+            ->and(session('prepared_downloads.'.$grant))->toBeNull();
 
-        $this->actingAs($superadmin)
-            ->withSession([
-                'auth.password_confirmed_at' => now()->timestamp,
-                'media_backup_download_authorization' => $authorization,
-            ])
-            ->get(route('superadmin.backups.media.download'))
-            ->assertConflict();
+        session()->put('prepared_downloads', [$grant => $authorization]);
+        session()->save();
+        $this->get($url)->assertConflict();
 
         $auditLog = AuditLog::query()
             ->where('action', 'media_backup_downloaded')
@@ -189,18 +161,10 @@ test('superadmin downloads all stored photographs with integrity manifest and te
 test('empty media storage still produces a valid manifest archive', function (): void {
     $superadmin = createSuperadminForMediaBackupTest();
 
-    $response = $this->actingAs($superadmin)
-        ->withSession([
-            'auth.password_confirmed_at' => now()->timestamp,
-            'media_backup_download_authorization' => [
-                'issued_at' => now()->timestamp,
-                'nonce' => Str::random(64),
-                'reason' => 'Empty media archive verification',
-                'user_id' => $superadmin->id,
-            ],
-        ])
-        ->get(route('superadmin.backups.media.download'))
-        ->assertOk();
+    $this->actingAs($superadmin)->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $snapshot = FileOperationPage::open($this, route('superadmin.dashboard'), 'superadmin.dashboard');
+    $prepared = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', ['mediaBackup.reason' => 'Empty media archive verification', 'mediaBackup.confirmation' => 'MEDIA'])->assertOk();
+    $response = $this->get($prepared->json('components.0.effects.redirect'))->assertOk();
 
     $archive = new ZipArchive;
     expect($archive->open($response->baseResponse->getFile()->getPathname()))->toBeTrue();
@@ -253,3 +217,19 @@ function tinyPngForMediaBackupTest(): string
         true,
     );
 }
+
+test('retrying the same signed backup attempt never creates another archive or audit record', function (): void {
+    $superadmin = createSuperadminForMediaBackupTest();
+    $this->actingAs($superadmin)->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+    $snapshot = FileOperationPage::open($this, route('superadmin.dashboard'), 'superadmin.dashboard');
+    $input = ['mediaBackup.reason' => 'Single recovery attempt', 'mediaBackup.confirmation' => 'MEDIA'];
+    $first = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', $input)->assertOk();
+    $second = FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', $input)->assertOk();
+    expect($second->json('components.0.effects.redirect'))->toBe($first->json('components.0.effects.redirect'))
+        ->and(AuditLog::query()->where('action', 'media_backup_downloaded')->count())->toBe(1)
+        ->and(Storage::disk('local')->files('prepared-downloads'))->toHaveCount(1);
+    FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', [...$input, 'mediaBackup.reason' => 'Changed input on old attempt'])->assertConflict();
+    $this->get($first->json('components.0.effects.redirect'))->assertOk();
+    FileOperationPage::call($this, $snapshot, 'downloadMediaBackup', $input)->assertConflict();
+    expect(AuditLog::query()->where('action', 'media_backup_downloaded')->count())->toBe(1);
+});

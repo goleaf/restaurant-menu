@@ -49,6 +49,8 @@ test('waiter can persist notification sound preference in the browser', function
         ->fill('email', 'waiter-sounds@example.test')
         ->fill('password', 'password')
         ->click('@login-button')
+        ->assertPathIs(route('restaurant.waiter.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)
         ->resize(390, 844)
         ->navigate(route('restaurant.waiter.dashboard', absolute: false))
         ->assertSee(__('ui.waiter.dashboard.enable_sounds'))

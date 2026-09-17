@@ -9,10 +9,9 @@ use App\Exceptions\InvalidSqliteBackupException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Superadmin\RestoreSqliteBackupRequest;
 use App\Models\User;
-use App\Services\Backups\SqliteRestoreAuthorization;
+use App\Support\Backups\PreparedRestoreStore;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 
@@ -20,28 +19,18 @@ final class RestoreSqliteBackupController extends Controller
 {
     public function __invoke(
         RestoreSqliteBackupRequest $request,
-        SqliteRestoreAuthorization $resolveAuthorization,
+        PreparedRestoreStore $candidates,
         RestoreSqliteBackupAction $restoreSqliteBackup,
     ): RedirectResponse {
-        $authorization = $resolveAuthorization->handle($request, consume: true);
         $user = $request->user();
-        $backup = $request->file('backup');
-
-        if (! $user instanceof User || ! $backup instanceof UploadedFile) {
-            abort(403);
-        }
-
-        $uploadedPath = $backup->getRealPath();
-
-        if (! is_string($uploadedPath)) {
-            return $this->failureRedirect('ui.superadmin.backup_restore.invalid_file');
-        }
+        abort_unless($user instanceof User, 403);
+        $candidate = $candidates->consume($request, (string) $request->validated('grant'));
 
         try {
             $restoreSqliteBackup->handle(
-                uploadedPath: $uploadedPath,
+                uploadedPath: $candidate['path'],
                 actor: $user,
-                reason: $authorization['reason'],
+                reason: $candidate['reason'],
             );
         } catch (InvalidSqliteBackupException) {
             return $this->failureRedirect('ui.superadmin.backup_restore.incompatible');
@@ -49,6 +38,10 @@ final class RestoreSqliteBackupController extends Controller
             report($exception);
 
             return $this->failureRedirect('ui.superadmin.backup_restore.failed');
+        } finally {
+            if (is_file($candidate['path'])) {
+                unlink($candidate['path']);
+            }
         }
 
         $request->session()->invalidate();

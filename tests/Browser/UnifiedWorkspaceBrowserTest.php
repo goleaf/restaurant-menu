@@ -28,6 +28,7 @@ test('the restaurant address heading navigation and edited resource stay togethe
     OrganizationUser::factory()->forOrganization($first->organization)->forUser($user)->forSystemRole(SystemRole::Owner)->active()->create();
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('organizations.brands.branches.menu.index', [$first->organization_id, $first->brand_id, $first->id], false))->resize(1440, 1000);
     $page->assertSee($first->name)->assertAttribute('[data-navigation-key="menu"]', 'aria-current', 'page');
     $page->click('[data-navigation-key="halls"]')
@@ -126,7 +127,8 @@ test('a shared restaurant preference cannot retarget an ordering draft open in a
     OrganizationUser::factory()->forOrganization($original->organization)->forUser($user)->forSystemRole(SystemRole::Owner)->active()->create();
 
     $tabA = visit(route('login', absolute: false));
-    $tabA->fill('email', $user->email)->fill('password', 'password')->click('@login-button');
+    $tabA->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false));
     $context = $tabA->page()->context();
     $context->addInitScript(<<<'JS'
         window.workspaceRemembered = 0;

@@ -29,6 +29,7 @@ use Illuminate\Routing\Events\ResponsePrepared;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Pest\Browser\Api\PendingAwaitablePage;
+use Pest\Browser\Playwright\Client;
 use Tests\Support\IsolatedBrowserIdentity;
 
 beforeEach(function (): void {
@@ -88,6 +89,108 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
         ->assertPresent('[data-layout="guest"]');
     frontendAssertSharedBootstrap($page);
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
+
+test('online pages never show offline warnings after loads reloads navigation and successful server updates', function (string $locale, int $width): void {
+    $fixture = frontendAssetFixture();
+    $fixture['owner']->update(['locale' => $locale]);
+    $page = visit(route('login', ['lang' => $locale], false));
+    $page->resize($width, 900)->assertAttribute('html[lang]', 'lang', $locale);
+    frontendAssertOnlineWithoutWarning($page);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
+    frontendAssertOnlineWithoutWarning($page);
+
+    frontendAssetNavigate($page, route('organizations.index', absolute: false));
+    frontendAssertOnlineWithoutWarning($page);
+    $page->refresh();
+    frontendAssertOnlineWithoutWarning($page);
+    frontendObserveRequests($page);
+    $page->fill('input[name="search"]', 'Asset Delivery');
+    $page->assertScript(<<<'JAVASCRIPT'
+        window.frontendRequests.some(request => request.status === 200
+            && JSON.parse(request.body).components.some(component => component.updates.search === 'Asset Delivery'))
+        JAVASCRIPT);
+    frontendAssertOnlineWithoutWarning($page);
+
+    frontendAssetNavigate($page, $fixture['staffUrl']);
+    frontendAssertOnlineWithoutWarning($page);
+    frontendObserveRequests($page);
+    $page->click('button[wire\\:click="refreshWorkspace"]');
+    frontendAssertSuccessfulRequest($page, 'refreshWorkspace');
+    frontendAssertOnlineWithoutWarning($page);
+    frontendAssetNavigate($page, $fixture['menuUrl']);
+    frontendAssertOnlineWithoutWarning($page);
+    $page->script('history.back()');
+    $page->assertPathIs($fixture['staffUrl']);
+    frontendAssertOnlineWithoutWarning($page);
+    $page->script('history.forward()');
+    $page->assertPathIs($fixture['menuUrl']);
+    frontendAssertOnlineWithoutWarning($page);
+
+    $page->navigate(route('public.qr.show', ['token' => $fixture['qr']->public_token, 'lang' => $locale], false))
+        ->assertPresent('[data-layout="guest"]')->assertAttribute('html[lang]', 'lang', $locale);
+    frontendAssertOnlineWithoutWarning($page);
+    $page->refresh();
+    frontendAssertOnlineWithoutWarning($page);
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+})->with([
+    'English desktop' => ['en', 1440],
+    'English mobile' => ['en', 390],
+    'Lithuanian desktop' => ['lt', 1440],
+    'Lithuanian mobile' => ['lt', 390],
+    'Russian desktop' => ['ru', 1440],
+    'Russian mobile' => ['ru', 390],
+]);
+
+test('cached history restores current connectivity instead of stale offline notices and disabled controls', function (): void {
+    $fixture = frontendAssetFixture();
+    $page = visit(route('login', absolute: false));
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
+    $organizations = route('organizations.index', absolute: false);
+    frontendAssetNavigate($page, $organizations);
+    $notice = '[data-staff-workspace] > [wire\\:offline]';
+
+    $context = $page->page()->context();
+    $guid = (new ReflectionProperty($context, 'guid'))->getValue($context);
+    assert(is_string($guid));
+    $setOffline = function (bool $offline) use ($guid): void {
+        foreach (Client::instance()->execute($guid, 'setOffline', ['offline' => $offline]) as $message) {
+            // Consume the protocol response before asserting browser connectivity.
+        }
+    };
+
+    try {
+        for ($cycle = 0; $cycle < 3; $cycle++) {
+            frontendAssetNavigate($page, $fixture['staffUrl']);
+            $page->assertPresent($notice);
+            frontendAssertOnlineWithoutWarning($page);
+            $setOffline(true);
+            $page->assertScript('navigator.onLine', false)->assertVisible($notice)
+                ->assertVisible('[x-data="connectivity"]');
+            $page->script('history.back()');
+            $page->assertPathIs($organizations);
+            $setOffline(false);
+            frontendAssertOnlineWithoutWarning($page);
+            $page->script('history.forward()');
+            $page->assertPathIs($fixture['staffUrl'])->assertPresent($notice);
+            frontendAssertOnlineWithoutWarning($page);
+
+            $page->script('history.back()');
+            $page->assertPathIs($organizations);
+            $setOffline(true);
+            $page->assertDisabled('input[name="search"]');
+            $page->script('history.forward()');
+            $page->assertPathIs($fixture['staffUrl'])->assertVisible($notice);
+            $setOffline(false);
+            frontendAssertOnlineWithoutWarning($page);
+            $page->script('history.back()');
+            $page->assertPathIs($organizations)->assertEnabled('input[name="search"]');
+            frontendAssertOnlineWithoutWarning($page);
+        }
+        $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+    } finally {
+        $setOffline(false);
+    }
 });
 
 test('direct menu and staff loads retain validation drafts and navigation guards after morphs', function (): void {
@@ -500,6 +603,19 @@ function frontendAssetNavigate(PendingAwaitablePage $page, string $url): void
 {
     $page->script('Livewire.navigate('.json_encode($url, JSON_THROW_ON_ERROR).');');
     $page->assertPathIs((string) parse_url($url, PHP_URL_PATH));
+}
+
+function frontendAssertOnlineWithoutWarning(PendingAwaitablePage $page): void
+{
+    $page->assertScript('navigator.onLine', true)
+        ->assertPresent('[x-data="connectivity"]')->assertMissing('[x-data="connectivity"]')
+        ->assertScript(<<<'JAVASCRIPT'
+            [...document.querySelectorAll('[wire\\:offline]')].every(element => !element.checkVisibility())
+            JAVASCRIPT);
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $page->assertDontSee(__('ui.connectivity.offline', [], $locale));
+    }
 }
 
 function frontendAssertModuleReady(PendingAwaitablePage $page, string $module): void

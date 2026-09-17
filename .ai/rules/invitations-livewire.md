@@ -1,6 +1,12 @@
 ---
 paths:
-  - 'app/{Actions/Invitations,Http/Controllers/Invitations,Livewire/**,Models/Invitation.php}/**'
+  - 'app/Actions/Invitations/**'
+  - 'app/Http/Controllers/Invitations/**'
+  - 'app/Livewire/Invitations/**'
+  - 'app/Livewire/Organizations/Staff/**'
+  - 'app/Livewire/Organizations/Brands/Branches/Staff/**'
+  - app/Models/Invitation.php
+  - 'app/Support/Invitations/**'
 ---
 
 <!-- BEGIN GITHUB_PUSH_ONLY -->

@@ -22,7 +22,11 @@ class ProtectInvitationResponses
 
     public static function protect(Request $request, Response $response): Response
     {
-        if ($request->is('invite', 'invite/*')) {
+        if ($request->hasHeader('X-Livewire') || $request->is(
+            'invite', 'invite/*', 'login', 'demo-login', 'demo-login/*',
+            'local-login/*', 'forgot-password', 'reset-password', 'reset-password/*',
+            'two-factor-challenge', 'user/confirm-password', 'email/verify',
+        )) {
             $response->headers->set('Cache-Control', 'no-store, private');
             $response->headers->set('Referrer-Policy', 'no-referrer');
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');

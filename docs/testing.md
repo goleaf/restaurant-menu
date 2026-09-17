@@ -26,6 +26,34 @@ The stable aggregate uses the repository verify-migration harness with explicit 
 
 Final backend and browser discovery/execution inventories, coverage scope and exact source hashes are in PROGRESS.md. Both final source copies pass all discovered cases. UnifiedWorkspaceBrowserTest preserves the real context/draft journey with deterministic long labels, a completed server-search response and mobile popover/focus checks; BranchControlWorkflowTest uses the same listbox. NotificationsPanelTest keeps all original polling/error assertions while completing login before installing its observer. Failed diagnostic runs are retained separately.
 
+## Cached offline notice regression — 2026-09-17
+
+`FrontendAssetDeliveryTest` guards login, dashboard, organizations, staff, menu editor and guest menu against visible offline warnings while online. Six datasets cover EN/LT/RU at 390px and 1440px, direct loads, reloads, Livewire navigation, cached Back/Forward and successful HTTP 200 search/staff updates. The shared assertion checks the global indicator, every `wire:offline` element and the exact warning text in all three languages. A seventh case repeats real offline/reconnect history transitions three times and verifies that warning visibility and disabled search fields recover together. Final focused result: **7 tests / 761 assertions**, all passed. The original cached-history case failed before the bootstrap fix; its first 1-test/27-assertion result is superseded by this expanded matrix.
+
+Each browser dataset ran in a separate PHP 8.5 process with isolated test data and installed stable Chrome in a disposable, sandboxed Playwright launch. The default runner could not locate its Playwright 1.63 browser binaries, so a temporary launcher supplied Chrome without modifying dependencies; it was removed after each run. Initial expansion attempts timed out because Pest interpreted the bare `html` selector as text; the corrected explicit `html[lang]` selector and retained PendingAwaitablePage reference pass the final matrix.
+
+The follow-up bootstrap/Alpine JS checks pass 27/27, and scoped Pint, PHP syntax and diff checks pass. The preceding runtime fix also passed the migration-architecture JS checks, ESLint and production build with asset budgets. This follow-up changes tests and evidence only; full backend, coverage and browser suites were not rerun.
+
+Chrome DevTools also reproduces the original failure on Herd and verifies recovery after the fix. At 390px, both notices appear offline and disappear online without horizontal overflow or console errors on the staff page. The organizations page still has an unrelated logo request to the old `ruflo.test` hostname that fails certificate validation; that configuration was not changed.
+
+## Prompt 2 controller migration — verification in progress
+
+New signed HTTP tests mount the actual Livewire page, preserve its session cookie, then submit the signed snapshot and updates to the real update route. Successful auth is not simulated with an already authenticated user. Coverage includes secret-free snapshots, invalid raw types, current host/environment/actor checks, per-operation throttling, invitation versions/replay and reset-attempt binding. File tests inspect actual generated content and private transfer behavior; restore tests use disposable SQLite files and include final HTTP/session completion.
+
+`RestoreUploadLimitTest` exercises the real signed upload endpoint, including request-scoped256MiB allowance, default12MiB enforcement, invalid signature, stale authorization/password and restoration of config after exceptions. Existing architecture tests pin the exact remaining controllers, framework transports and single native restore-finalization form, with AST checks for forbidden component orchestration and persistence in validation objects.
+
+Focused results are recorded in PROGRESS.md. The new unified acceptance run, complete browser inventory, screenshots, PHP/JS coverage and PHP8.6 limitations remain pending until their actual outputs are observed. Historical counts below must not be reused as current migration results.
+
+
+Current targeted browser evidence includes local login1/21, invitation recipient3/144, team administration2/186, auth5/143 and file workflows4/154 including actual final restore. Full canonical acceptance remains pending. `IsolatedBrowserIdentity` recreates native Redirector and ResponseFactory with the current isolated session because Pest reuses its container, unlike PHP-FPM. This fixes test-only cross-request state after an intentional Livewire410 or validation response; exceptions inside a request remain unchanged.
+
+The file browser uses the same Pest4.3.1/Amp3.4.6 loopback socket, configured to accept2MiB instead of the vendor128KiB default. Its version-pinned test helper delegates to the original HTTP handler; a fixture-hash-restricted multipart decoder supplies the files omitted by that handler. Browser sandbox, app signature/CSRF, file size/content validation and actual final native restore POST remain active. These adaptations are confined to tests and require review after changing Pest/Amp versions.
+
+The restore-confirmation geometry regression fails before the SCSS fix in EN/LT/RU at320px, then checks the button/form and every rendered text-line boundary. Its additional640px viewport with CSS `zoom: 2` tests the final button at doubled rendering scale; it is not native browser zoom or a certification of all controls under that synthetic layout. Physical virtual keyboards and native200% browser zoom remain unverified.
+
+Generated bounded PDF fixtures were reopened with pypdf:100 unique QR labels on25 A4 portrait pages,500 report rows on26 A4 landscape pages, the500/501 count and truncation notice all match. Native PDFKit rendered first/last pages, reviewed without clipping/overlap. All51 pages were text/geometry checked; four pages were visually inspected. The unchanged SCSS-generated print source remains authoritative.
+
+
 ## Workspace verification — prompt 3, 2026-09-16
 
 `RestaurantWorkspaceContextTest`, `WorkspaceBoundaryTest` and `WorkspaceQueryBudgetTest` cover precedence, narrow capabilities, bounded search, stale authorization, signed actor identity, tab-local writes and permission-query reuse. Existing dashboard/waiter/department/export/audit regressions remain required. `UnifiedWorkspaceBrowserTest`, `BranchControlWorkflowTest`, `FrontendAssetDeliveryTest` and `WorkspaceComponentsTest` exercise real switching, dirty-state cancellation/discard, concurrent tabs, keyboard/history, pending/offline behavior, shared search and listener/poller cleanup.

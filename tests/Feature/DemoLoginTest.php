@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Auth\BuildDemoLoginPageAction;
+use App\Actions\Auth\LoginAsDemoRoleAction;
 use App\Enums\SystemRole;
-use App\Http\Controllers\Auth\LoginAsDemoRoleController;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Models\Role;
 use App\Models\User;
@@ -14,6 +14,7 @@ use Database\Seeders\SystemRolesSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 
 beforeEach(function (): void {
     config()->set('demo-login.allowed_hosts', [
@@ -87,6 +88,7 @@ test('page data lists every role in canonical order with two bounded queries', f
 });
 
 test('every seeded demo role may be authenticated with a regenerated session', function (SystemRole $role): void {
+    config()->set('demo-login.enabled', true);
     $user = createDemoLoginAccount($role);
     $request = Request::create('/demo-login/'.$role->value, 'POST');
     $session = app('session')->driver();
@@ -94,7 +96,7 @@ test('every seeded demo role may be authenticated with a regenerated session', f
     $request->setLaravelSession($session);
     $previousSessionId = $session->getId();
 
-    $response = app(LoginAsDemoRoleController::class)($request, $role, app(DemoRoleUserQuery::class));
+    $response = app(LoginAsDemoRoleAction::class)->handle($request, $role);
 
     expect($response->getTargetUrl())->toBe(route('dashboard'))
         ->and(Auth::guard('web')->id())->toBe($user->id)
@@ -140,8 +142,7 @@ test('enabled non-production demo login post retains csrf protection', function 
     config()->set('demo-login.enabled', true);
     $this->app->detectEnvironment(fn (): string => 'demo');
 
-    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
-        ->assertStatus(419);
+    demoLivewireCall(demoLivewireSnapshot(), SystemRole::Waiter->value, csrf: false)->assertStatus(419);
 
     $this->assertGuest();
 });
@@ -181,41 +182,33 @@ test('every seeded demo role may log in through the demo route', function (Syste
     config()->set('demo-login.enabled', true);
     $user = createDemoLoginAccount($role);
 
-    $this->post(route('demo-login.authenticate', ['role' => $role->value]))
-        ->assertRedirect(route('dashboard'));
+    demoLivewireCall(demoLivewireSnapshot(), $role->value)->assertOk()->assertJsonPath('components.0.effects.redirect', route('dashboard'));
 
     $this->assertAuthenticatedAs($user);
 })->with(SystemRole::cases());
 
 test('invalid missing and mismatched demo roles are rejected', function (): void {
     config()->set('demo-login.enabled', true);
-
     $this->post('/demo-login/not-a-role')->assertNotFound();
-
-    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
-        ->assertRedirect(route('demo-login.index'))
-        ->assertSessionHasErrors(['demo_login' => __('demo_login.unavailable_error')]);
-
-    $this->assertGuest();
-
+    $snapshot = demoLivewireSnapshot();
+    foreach (['not-a-role', SystemRole::Waiter->value] as $role) {
+        $response = demoLivewireCall($snapshot, $role)->assertOk();
+        expect(json_decode($response->json('components.0.snapshot'), true, flags: JSON_THROW_ON_ERROR)['memo']['errors'])->toHaveKey('form.role');
+        $this->assertGuest();
+    }
     createDemoLoginAccount(SystemRole::Waiter, SystemRole::Cook);
-
-    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
-        ->assertRedirect(route('demo-login.index'))
-        ->assertSessionHasErrors(['demo_login' => __('demo_login.unavailable_error')]);
-
+    $response = demoLivewireCall($snapshot, SystemRole::Waiter->value)->assertOk();
+    expect(json_decode($response->json('components.0.snapshot'), true, flags: JSON_THROW_ON_ERROR)['memo']['errors'])->toHaveKey('form.role');
     $this->assertGuest();
 });
 
-test('authenticated users cannot switch through demo login', function (): void {
+test('authenticated users cannot switch through a stale demo snapshot', function (): void {
     config()->set('demo-login.enabled', true);
     $currentUser = User::factory()->create();
     createDemoLoginAccount(SystemRole::Waiter);
-
-    $this->actingAs($currentUser)
-        ->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
-        ->assertRedirect(route('dashboard'));
-
+    $snapshot = demoLivewireSnapshot();
+    $this->actingAs($currentUser);
+    demoLivewireCall($snapshot, SystemRole::Waiter->value)->assertStatus(409);
     $this->assertAuthenticatedAs($currentUser);
 });
 
@@ -243,4 +236,24 @@ function createDemoLoginAccount(SystemRole $identityRole, ?SystemRole $assignedR
     $user->roles()->sync([$role->id]);
 
     return $user;
+}
+
+function demoLivewireSnapshot(): string
+{
+    $response = test()->get(route('demo-login.index'))->assertOk();
+    preg_match_all('/wire:snapshot="([^"]+)"/', $response->getContent(), $matches);
+    foreach ($matches[1] as $encoded) {
+        $snapshot = html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5);
+        if (json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR)['memo']['name'] === 'local.demo-login') {
+            return $snapshot;
+        }
+    }
+    throw new RuntimeException('Missing demo login snapshot.');
+}
+
+function demoLivewireCall(string $snapshot, mixed $role, bool $csrf = true): TestResponse
+{
+    return test()->withCredentials()->withCookie(config('session.cookie'), session()->getId())->postJson(route('default-livewire.update'), [
+        'components' => [['snapshot' => $snapshot, 'updates' => [], 'calls' => [['method' => 'login', 'params' => [$role]]]]],
+    ], ['X-Livewire' => '', ...($csrf ? ['X-CSRF-TOKEN' => session()->token()] : [])]);
 }

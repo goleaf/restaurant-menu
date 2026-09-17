@@ -6,6 +6,8 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Areas;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\AreaEditor;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as FloorWorkspace;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -37,18 +39,13 @@ test('area node page requires manage zones permission', function () {
     app()->setLocale('ru');
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
 
-    $this->actingAs($manager)
-        ->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch]))
-        ->assertForbidden();
-
+    Livewire::actingAs($manager)->test(AreaEditor::class, ['branchId' => $branch->id])->assertForbidden();
     grantAreaCrudManageZones($manager, $organization);
-
-    $this->actingAs($manager)
-        ->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch]))
-        ->assertOk()
-        ->assertSee(__('ui.organizations.brands.branches.areas.areas'))
-        ->assertSee(__('ui.organizations.brands.branches.areas.zony_restorana'))
-        ->assertSee(__('ui.organizations.brands.branches.areas.sag_2_dobavte_zony'));
+    $this->actingAs($manager)->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch]))
+        ->assertRedirect();
+    Livewire::actingAs($manager)->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->assertSee(__('floor.title'))->assertSee(__('floor.areas'))->assertSee(__('floor.add_area'));
+    Livewire::actingAs($manager)->test(AreaEditor::class, ['branchId' => $branch->id])->assertOk();
 });
 
 test('manager can create nested area nodes inside branch', function () {
@@ -56,14 +53,12 @@ test('manager can create nested area nodes inside branch', function () {
     grantAreaCrudManageZones($manager, $organization);
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('No areas yet.')
-        ->call('prepareCreate', AreaNodeType::Floor->value)
-        ->assertSet('type', AreaNodeType::Floor->value)
-        ->assertSet('icon', 'building-office')
-        ->set('name', 'First floor')
-        ->set('sortOrder', 10)
-        ->call('create')
+        ->test(AreaEditor::class, ['branchId' => $branch->id])
+        ->set('form.type', AreaNodeType::Floor->value)
+        ->set('form.icon', 'building-office')
+        ->set('form.name', 'First floor')
+        ->set('form.sortOrder', 10)
+        ->call('save')
         ->assertHasNoErrors()
         ->assertSee('First floor');
 
@@ -73,14 +68,14 @@ test('manager can create nested area nodes inside branch', function () {
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('prepareCreate', AreaNodeType::Hall->value)
-        ->set('name', 'Main hall')
-        ->set('parentId', (string) $floor->id)
-        ->set('sortOrder', 20)
-        ->call('create')
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'parentId' => $floor->id])
+        ->set('form.type', AreaNodeType::Hall->value)
+        ->set('form.name', 'Main hall')
+        ->assertSet('form.parentId', (string) $floor->id)
+        ->set('form.sortOrder', 20)
+        ->call('save')
         ->assertHasNoErrors()
-        ->assertSeeInOrder(['First floor', 'Main hall']);
+        ->assertSee('First floor')->assertSet('form.name', 'Main hall');
 
     $hall = AreaNode::query()
         ->where('branch_id', $branch->id)
@@ -116,16 +111,15 @@ test('manager can rename move and disable area nodes', function () {
     ]);
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('startEditing', $hall->id)
-        ->assertSet('editingName', 'Small hall')
-        ->set('editingName', 'VIP hall')
-        ->set('editingType', AreaNodeType::VipRoom->value)
-        ->set('editingIcon', 'sparkles')
-        ->set('editingParentId', (string) $secondFloor->id)
-        ->set('editingSortOrder', 5)
-        ->set('editingIsActive', false)
-        ->call('update')
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $hall->id])
+        ->assertSet('form.name', 'Small hall')
+        ->set('form.name', 'VIP hall')
+        ->set('form.type', AreaNodeType::VipRoom->value)
+        ->set('form.icon', 'sparkles')
+        ->set('form.parentId', (string) $secondFloor->id)
+        ->set('form.sortOrder', 5)
+        ->set('form.isActive', false)
+        ->call('save')
         ->assertHasNoErrors()
         ->assertSee('VIP hall');
 
@@ -137,14 +131,14 @@ test('manager can rename move and disable area nodes', function () {
     expect($hall->is_active)->toBeFalse();
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('enable', $hall->id);
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $hall->id])
+        ->set('form.isActive', true)->call('save')->assertHasNoErrors();
 
     expect($hall->fresh()->is_active)->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('disable', $hall->id);
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $hall->id])
+        ->set('form.isActive', false)->call('save')->assertHasNoErrors();
 
     expect($hall->fresh()->is_active)->toBeFalse();
 });
@@ -165,9 +159,9 @@ test('manager can soft delete area node and keep children visible', function () 
     ]);
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('confirmDelete', $floor->id)
-        ->call('delete')
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $floor->id])
+        ->call('reviewArchive')
+        ->call('archive')
         ->assertDontSee('Floor to remove')
         ->assertSee('Hall to keep');
 
@@ -180,7 +174,7 @@ test('manager can search filter sort and paginate areas inside the current branc
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
     grantAreaCrudManageZones($manager, $organization);
 
-    foreach (range(1, 16) as $number) {
+    foreach (range(1, 26) as $number) {
         AreaNode::factory()->for($branch)->create([
             'type' => AreaNodeType::Hall,
             'name' => sprintf('Paged Hall %02d', $number),
@@ -197,39 +191,39 @@ test('manager can search filter sort and paginate areas inside the current branc
     ]);
 
     $component = Livewire::actingAs($manager)
-        ->test(Areas::class, compact('organization', 'brand', 'branch'));
+        ->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'));
 
-    expect(collect($component->get('treeNodes'))->pluck('name')->all())
+    expect(collect($component->viewData('areaRows'))->pluck('name')->all())
         ->toContain('Paged Hall 01')
-        ->not->toContain('Paged Hall 16');
+        ->not->toContain('Paged Hall 26');
 
     $component
         ->call('setPage', 2, 'areasPage')
         ->assertSet('paginators.areasPage', 2);
 
-    expect($component->get('displayedAreaNodes')->currentPage())->toBe(2);
-    expect(collect($component->get('treeNodes'))->pluck('name')->all())
-        ->toContain('Paged Hall 16')
+    expect($component->viewData('areaPages')->currentPage())->toBe(2);
+    expect(collect($component->viewData('areaRows'))->pluck('name')->all())
+        ->toContain('Paged Hall 26')
         ->not->toContain('Paged Hall 01');
 
     $component
         ->set('areaSearch', 'Unique Filter')
         ->assertSee('Unique Filter Terrace');
 
-    expect(collect($component->get('treeNodes'))->pluck('name')->all())
+    expect(collect($component->viewData('areaRows'))->pluck('name')->all())
         ->toContain('Unique Filter Terrace')
-        ->not->toContain('Paged Hall 16');
+        ->not->toContain('Paged Hall 26');
 
     $component
-        ->set('filterType', AreaNodeType::Terrace->value)
-        ->set('filterActive', 'inactive')
+        ->set('areaType', AreaNodeType::Terrace->value)
+        ->set('areaActive', 'inactive')
         ->assertSee('Unique Filter Terrace')
         ->set('areaSearch', '')
-        ->set('filterType', 'all')
-        ->set('filterActive', 'all')
-        ->set('sort', 'name_desc');
+        ->set('areaType', 'all')
+        ->set('areaActive', 'all')
+        ->set('areaSort', 'name_desc');
 
-    expect($component->get('treeNodes')[0]['name'])->toBe('Unique Filter Terrace');
+    expect($component->viewData('areaRows')[0]['name'])->toBe('Unique Filter Terrace');
 });
 
 test('manager cannot archive area node that contains a service point with an active order', function () {
@@ -241,9 +235,9 @@ test('manager cannot archive area node that contains a service point with an act
     Order::factory()->forTableSession($closedSession)->preparing()->create();
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('confirmDelete', $areaNode->id)
-        ->call('delete')
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $areaNode->id])
+        ->call('reviewArchive')
+        ->call('archive')
         ->assertHasErrors('structureDeletion');
 
     expect($areaNode->fresh())->not->toBeNull();
@@ -265,11 +259,10 @@ test('area node cannot be moved inside its own child', function () {
     ]);
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->call('startEditing', $floor->id)
-        ->set('editingParentId', (string) $hall->id)
-        ->call('update')
-        ->assertHasErrors('editingParentId');
+        ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $floor->id])
+        ->set('form.parentId', (string) $hall->id)
+        ->call('save')
+        ->assertHasErrors('form.parentId');
 });
 
 test('branch must belong to route brand and organization on area page', function () {
@@ -300,15 +293,12 @@ test('zone manager can view and restore an archived area without a page reload',
     $areaNode->deleteOrFail();
 
     Livewire::actingAs($manager)
-        ->test(Areas::class, compact('organization', 'brand', 'branch'))
-        ->assertDontSee('Archived Hall')
-        ->set('lifecycle', 'archived')
-        ->assertSee('Archived Hall')
-        ->assertSeeHtml('wire:click="restore('.$areaNode->id.')"')
-        ->assertDontSeeHtml('wire:click="startEditing('.$areaNode->id.')"')
-        ->assertDontSeeHtml('wire:click="confirmDelete('.$areaNode->id.')"')
-        ->call('restore', $areaNode->id)
-        ->assertHasNoErrors();
+        ->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->assertDontSee('Archived Hall')->set('areaLifecycle', 'archived')->assertSee('Archived Hall')
+        ->call('openArea', $areaNode->id)->assertSet('areaEditor', (string) $areaNode->id);
+    Livewire::actingAs($manager)->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $areaNode->id])
+        ->assertSeeHtml('wire:click="restore"')->assertDontSeeHtml('wire:submit="save"')->assertDontSeeHtml('wire:click="archive"')
+        ->call('restore')->assertHasNoErrors();
 
     expect($areaNode->fresh())->not->toBeNull();
 });
@@ -324,8 +314,8 @@ test('livewire payload cannot restore an area from another branch', function () 
 
     try {
         Livewire::actingAs($manager)
-            ->test(Areas::class, compact('organization', 'brand', 'branch'))
-            ->call('restore', $foreignArea->id);
+            ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $foreignArea->id])
+            ->call('restore');
     } catch (Throwable $exception) {
         $caughtException = $exception;
     }

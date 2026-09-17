@@ -7,7 +7,8 @@ use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -29,140 +30,62 @@ beforeEach(function () {
 test('qr print page requires generate qr permission', function () {
     [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
     $url = prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode);
-
-    $this->get($url)
-        ->assertRedirect(route('login'));
-
-    $this->actingAs($manager)
-        ->get($url)
-        ->assertForbidden();
-
+    $this->get($url)->assertRedirect(route('login'));
+    $this->actingAs($manager)->get($url)->assertForbidden();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $this->actingAs($manager)
-        ->get($url)
-        ->assertOk()
-        ->assertSeeText(__('qr.print.sticker_title'));
+    $this->actingAs($manager)->get($url)->assertRedirect(route('organizations.brands.branches.service-points.index', [
+        $organization, $brand, $branch, 'point' => $servicePoint->id, 'panel' => 'print', 'qr_record' => $qrCode->id,
+    ]));
 });
 
 test('qr print template defaults to sticker without table number or area', function () {
-    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    [$organization, , $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $this->actingAs($manager)
-        ->get(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode))
-        ->assertOk()
-        ->assertSee('data-page="qr-print-template"', false)
-        ->assertSee('data-preset="minimal"', false)
-        ->assertSeeText($brand->name)
-        ->assertSeeText(__('qr.print.sticker_title'))
-        ->assertSee('data:image/svg+xml;base64', false)
-        ->assertSeeText($qrCode->short_code)
-        ->assertDontSeeText(__('qr.labels.table').': 15')
-        ->assertDontSeeText('Main Hall')
-        ->assertDontSeeText(__('qr.print.table_number_warning'));
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$servicePoint->id], 'expectedQrIds' => [$servicePoint->id => $qrCode->id]])
+        ->assertSet('form.printTableNumber', false)->assertDontSee('data:image/svg+xml;base64', false)
+        ->call('preparePrint')->assertHasNoErrors()->assertSee('data-qr-preset="minimal"', false)
+        ->assertSee($branch->name)->assertSee(__('qr.print.sticker_title'))->assertSee('data:image/svg+xml;base64', false)
+        ->assertSee($qrCode->short_code)->assertDontSee(__('qr.labels.table').': 15')->assertDontSee('Main Hall');
 });
 
 test('qr print template offers design presets without printing mutable table text by default', function () {
-    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    [$organization, , $branch, $point, $qr, $manager] = createPrompt26QrContext();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $component = Livewire::actingAs($manager)
-        ->test(PrintTemplate::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->assertSet('preset', QrLabelPreset::Minimal->value)
-        ->assertSee('data-preset="minimal"', false)
-        ->assertSeeText('Minimal')
-        ->assertSeeText('Classic')
-        ->assertSeeText('Restaurant')
-        ->assertSeeText('Bar')
-        ->assertSeeText('Hotel')
-        ->assertSeeText('Premium')
-        ->assertDontSee(__('qr.labels.table').': 15');
-
+    $component = Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$point->id]])
+        ->assertSet('form.preset', 'minimal')->assertSee(['Minimal', 'Classic', 'Restaurant', 'Bar', 'Hotel', 'Premium']);
     foreach (QrLabelPreset::cases() as $preset) {
-        $component
-            ->set('preset', $preset->value)
-            ->assertSet('preset', $preset->value)
-            ->assertSee('qr-sticker-preset-'.$preset->value, false)
-            ->assertSee('data-preset="'.$preset->value.'"', false)
-            ->assertSee($qrCode->short_code)
-            ->assertDontSee(__('qr.labels.table').': 15');
+        $component->set('form.preset', $preset->value)->call('preparePrint')->assertHasNoErrors()
+            ->assertSee('qr-sticker-preset-'.$preset->value, false)->assertSee('data-qr-preset="'.$preset->value.'"', false)
+            ->assertSee($qr->short_code)->assertDontSee(__('qr.labels.table').': 15');
     }
 });
 
 test('qr print template can include table number with warning but still hides area', function () {
-    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    [$organization, , $branch, $point, , $manager] = createPrompt26QrContext();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    $this->actingAs($manager)
-        ->get(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode).'?print_table_number=1')
-        ->assertOk()
-        ->assertSeeText(__('qr.labels.table').': 15')
-        ->assertSeeText(__('qr.print.table_number_warning'))
-        ->assertDontSeeText('Main Hall');
-
-    Livewire::actingAs($manager)
-        ->test(PrintTemplate::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->assertSet('printTableNumber', false)
-        ->set('printTableNumber', true)
-        ->assertSee(__('qr.labels.table').': 15')
-        ->assertSee(__('qr.print.table_number_warning'))
-        ->assertDontSee('Main Hall');
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$point->id]])
+        ->assertSet('form.printTableNumber', false)->set('form.printTableNumber', true)->call('preparePrint')->assertHasNoErrors()
+        ->assertSee(__('qr.labels.table').': 15')->assertSee(__('floor.print.mutable_number_warning'))->assertDontSee('Main Hall');
 });
 
 test('qr admin page links to print template', function () {
-    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    [$organization, , $branch, $point, $qr, $manager] = createPrompt26QrContext();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-
-    Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->assertSee(__('qr.actions.print'))
-        ->assertSee(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode), false);
+    Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $point->id])
+        ->assertSee(__('qr.actions.print'))->call('requestPrint')->assertHasNoErrors()
+        ->assertDispatched('floor-print-point', pointId: $point->id, qrId: $qr->id);
 });
 
 test('print table number setting does not change qr identity', function () {
-    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    [$organization, , $branch, $point, $qr, $manager] = createPrompt26QrContext();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-    $oldToken = $qrCode->public_token;
-    $oldShortCode = $qrCode->short_code;
-
-    Livewire::actingAs($manager)
-        ->test(PrintTemplate::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->set('printTableNumber', true)
-        ->set('printTableNumber', false)
-        ->set('preset', QrLabelPreset::Premium->value)
-        ->set('preset', QrLabelPreset::Minimal->value);
-
-    $qrCode->refresh();
-
-    expect($qrCode->status)->toBe(QrCodeStatus::Active);
-    expect($qrCode->public_token)->toBe($oldToken);
-    expect($qrCode->short_code)->toBe($oldShortCode);
-    expect(QrCode::query()->where('service_point_id', $servicePoint->id)->count())->toBe(1);
+    $token = $qr->public_token;
+    $shortCode = $qr->short_code;
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$point->id]])
+        ->set('form.printTableNumber', true)->set('form.preset', 'premium')->call('preparePrint')->assertHasNoErrors()
+        ->set('form.printTableNumber', false)->set('form.preset', 'minimal')->call('preparePrint')->assertHasNoErrors();
+    expect($qr->fresh()->status)->toBe(QrCodeStatus::Active)->and($qr->fresh()->public_token)->toBe($token)
+        ->and($qr->fresh()->short_code)->toBe($shortCode)->and(QrCode::query()->where('service_point_id', $point->id)->count())->toBe(1);
 });
 
 function createPrompt26QrContext(): array

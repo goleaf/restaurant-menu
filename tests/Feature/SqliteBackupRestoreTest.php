@@ -7,6 +7,7 @@ use App\Actions\Backups\CreateConsistentSqliteBackupAction;
 use App\Actions\Backups\RestoreSqliteBackupAction;
 use App\Enums\SystemRole;
 use App\Exceptions\InvalidSqliteBackupException;
+use App\Livewire\Superadmin\Backups\RestoreSqlite;
 use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
@@ -23,6 +24,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Livewire\EventBus;
+use Livewire\Livewire;
+use Tests\Support\FileOperationPage;
 
 beforeEach(function (): void {
     $temporaryLocalRoot = storage_path('framework/testing/sqlite_restore_local_'.getmypid().'_'.Str::lower(Str::random(8)));
@@ -244,24 +248,21 @@ test('the protected restore endpoint restores sqlite and signs every session out
             ->whereKey($superadmin->id)
             ->update(['name' => 'Name after accidental change']);
 
-        $response = $this->actingAs($superadmin)
-            ->withSession([
-                'auth.password_confirmed_at' => now()->timestamp,
-                'sqlite_backup_restore_authorization' => [
-                    'issued_at' => now()->timestamp,
-                    'nonce' => Str::random(64),
-                    'reason' => 'HTTP disaster recovery verification',
-                    'user_id' => $superadmin->id,
-                ],
-            ])
-            ->post(route('superadmin.backups.sqlite.restore.store'), [
-                'backup' => new UploadedFile(
-                    path: $sourceBackup,
-                    originalName: 'verified-backup.sqlite',
-                    mimeType: 'application/vnd.sqlite3',
-                    test: true,
-                ),
-            ]);
+        $this->actingAs($superadmin)->withSession([
+            'auth.password_confirmed_at' => now()->timestamp,
+            'sqlite_backup_restore_authorization' => [
+                'issued_at' => now()->timestamp,
+                'nonce' => Str::random(64),
+                'reason' => 'HTTP disaster recovery verification',
+                'user_id' => $superadmin->id,
+            ],
+        ]);
+        $snapshot = FileOperationPage::open($this, route('superadmin.backups.sqlite.restore'), 'superadmin.backups.restore-sqlite');
+        $uploaded = FileOperationPage::upload($this, $snapshot, new UploadedFile($sourceBackup, 'verified.sqlite', 'application/vnd.sqlite3', test: true));
+        $preview = FileOperationPage::call($this, $uploaded, 'preview')->assertOk();
+        $state = json_decode($preview->json('components.0.snapshot'), true, flags: JSON_THROW_ON_ERROR);
+        expect($state['memo']['errors'])->toBe([]);
+        $response = $this->withCookie(config('session.cookie'), session()->getId())->post(route('superadmin.backups.sqlite.restore.store'), ['grant' => $state['data']['grant']]);
 
         $response
             ->assertRedirect(route('login'))
@@ -481,5 +482,49 @@ test('a failed restore and failed rollback keep maintenance active', function ()
         collect(File::glob($backupDirectory.'/*.sqlite'))
             ->diff($backupFilesBefore)
             ->each(fn (string $path): bool => File::delete($path));
+    }
+});
+
+test('Livewire previews a bound restore candidate without replacing the database', function (): void {
+    $sandbox = sqliteRestoreSandbox('livewire-preview');
+    $originalDefault = config('database.default');
+    $listeners = [];
+    foreach (['mount', 'hydrate', 'call'] as $event) {
+        $listeners[] = app(EventBus::class)->before($event, static function (): void {
+            request()->setLaravelSession(session()->driver());
+        });
+    }
+    try {
+        Artisan::call('migrate', ['--database' => $sandbox['connection'], '--force' => true]);
+        config()->set('database.default', $sandbox['connection']);
+        app(SystemPermissionsSeeder::class)->run();
+        $superadmin = User::factory()->connection($sandbox['connection'])->create(['name' => 'Before restore preview']);
+        $role = Role::on($sandbox['connection'])->where('code', SystemRole::Superadmin->value)->firstOrFail();
+        $superadmin->roles()->syncWithoutDetachingOrFail([$role->id]);
+        $sourceBackup = app(CreateConsistentSqliteBackupAction::class)->handle();
+        User::on($sandbox['connection'])->whereKey($superadmin->id)->update(['name' => 'Keep until explicit finalization']);
+        $this->actingAs($superadmin)->withSession([
+            'auth.password_confirmed_at' => now()->timestamp,
+            'sqlite_backup_restore_authorization' => ['issued_at' => now()->timestamp, 'nonce' => Str::random(64), 'reason' => 'Verify restore candidate', 'user_id' => $superadmin->id],
+        ]);
+        $component = Livewire::test(RestoreSqlite::class)
+            ->set('upload.backup', UploadedFile::fake()->createWithContent('verified.sqlite', File::get($sourceBackup)))
+            ->call('preview')->assertHasNoErrors();
+        expect($component->get('grant'))->toMatch('/^[A-Za-z0-9]{64}$/D')
+            ->and(User::on($sandbox['connection'])->findOrFail($superadmin->id)->name)->toBe('Keep until explicit finalization');
+        $candidate = session('sqlite_restore_candidate');
+        expect($candidate['sha256'])->toBe(hash_file('sha256', $candidate['path']));
+        $component->call('_startUpload', 'upload.backup', [['name' => 'replacement.sqlite', 'size' => 2048, 'type' => 'application/vnd.sqlite3']], false)->assertSet('grant', '')->assertSet('candidate', null);
+        expect(is_file($candidate['path']))->toBeFalse()
+            ->and(session('sqlite_restore_candidate'))->toBeNull();
+        $component->set('upload.backup', null)->assertSet('grant', '');
+    } finally {
+        foreach ($listeners as $stop) {
+            $stop();
+        }
+        config()->set('database.default', $originalDefault);
+        DB::purge($sandbox['connection']);
+        config()->set("database.connections.{$sandbox['connection']}", null);
+        File::deleteDirectory($sandbox['directory']);
     }
 });

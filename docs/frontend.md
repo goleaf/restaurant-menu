@@ -12,6 +12,19 @@ One employee card replaces repeated person selection for role, status, organizat
 
 The existing restaurant selector uses a Flux listbox with a separate server-search slot. Selecting a long scoped label does not overwrite form.search. The branch identifier, current authorization, 100-character search bound, pagination, offline controls and existing navigation/draft guard remain unchanged.
 
+## Connectivity after cached navigation — 2026-09-17
+
+The shared bootstrap reapplies the browser's current online/offline event after `livewire:navigated`, once restored directives have initialized. Livewire 4.4.1 otherwise retains `wire:offline` inline visibility and disabled attributes captured in cached history, even if connectivity changed on another page. This synchronization uses no network request and does not replay mutations. The existing client indicator and native connection-change listeners remain in place.
+
+## Application forms — prompt 2
+
+Login, MFA/recovery, forgot/reset/confirm password, verification notice, logout, demo/local identity and invitation review now initialize real PHP Livewire components. Existing Flux inputs, OTP, buttons, named dialogs, loading and offline states remain in separate Blade views. Invitation form errors use `form.*`; export periods and restore uploads use their own Form prefixes. No second runtime, router, browser credential store or application AJAX client is introduced. The passkey SDK keeps its established browser protocol boundary.
+
+Existing Exports, QR print and platform administration screens own file preparation. Bounded PDFs use Livewire download effects; large CSV/backups use an ordinary binary response after Livewire preparation. Restore uses the available Flux Pro upload control and a reviewed candidate; its final native form contains only CSRF and the opaque one-time grant. Completion means preparation/response delivery, not proof that a user saved a file on their device. Product styling continues to originate in SCSS, with the separate Tailwind/Flux bridge and unchanged design tokens. The restore-finalization button uses a scoped SCSS wrapping rule so its translated label stays within the form at320px and can grow vertically.
+
+Auth/account transitions perform a full page transition to discard private runtime state. Ordinary navigation remains the already implemented workspace navigation. Current responsive/browser evidence and remaining limitations are recorded in testing.md and PROGRESS.md.
+
+
 ## Shared restaurant workspace — prompt 3, 2026-09-16
 
 The existing Flux sidebar/header/search/notification owner is retained. A single header RestaurantSwitcher uses the installed local Pro combobox with bounded server search (20 matches, at most 200 authorized rows scanned per request, explicit continuation). Matching folds case and diacritics for search only; stored names remain untouched. The current restaurant name is independent of the option page. Native anchors and Livewire Navigate preserve direct links and new-tab behavior. The installed Command control remains unsuitable for native link semantics; the existing accessible section-search mechanism consumes the same presenter registry.

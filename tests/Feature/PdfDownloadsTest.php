@@ -8,6 +8,8 @@ use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
+use App\Livewire\Exports\Index as ExportPage;
+use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\ManualPayment;
@@ -21,6 +23,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\View;
+use Livewire\Livewire;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -29,11 +32,7 @@ beforeEach(function (): void {
 test('authorized staff can download selected branch QR codes as a PDF', function (): void {
     [$organization, $brand, $branch, $servicePoint, $qrCode, $owner] = createPdfDownloadContext();
 
-    $this->post(pdfQrDownloadUrl($organization, $brand, $branch), [
-        'service_points' => [$servicePoint->id],
-        'preset' => 'restaurant',
-        'print_table_number' => true,
-    ])->assertRedirect(route('login'));
+    $this->get(route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]))->assertRedirect(route('login'));
 
     Date::setTestNow(CarbonImmutable::parse('2026-08-23 13:14:15'));
     $preparedView = [];
@@ -42,23 +41,17 @@ test('authorized staff can download selected branch QR codes as a PDF', function
     });
 
     try {
-        $response = $this->actingAs($owner)
-            ->post(pdfQrDownloadUrl($organization, $brand, $branch), [
-                'service_points' => [$servicePoint->id],
-                'preset' => 'restaurant',
-                'print_table_number' => true,
-            ])
-            ->assertOk()
-            ->assertDownload('restaurant-menu-qr-branch-'.$branch->id.'-2026-08-23-131415.pdf')
-            ->assertHeader('Content-Type', 'application/pdf')
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response = Livewire::actingAs($owner)->test(BulkPrint::class, compact('organization', 'brand', 'branch'))
+            ->set('selectedServicePointIds', [$servicePoint->id])->set('preset', 'restaurant')->set('printTableNumber', true)
+            ->call('downloadPdf')->assertHasNoErrors()
+            ->assertFileDownloaded('restaurant-menu-qr-branch-'.$branch->id.'-2026-08-23-131415.pdf', contentType: 'application/pdf');
     } finally {
         Date::setTestNow();
     }
 
-    expect($response->getContent())
+    expect(base64_decode($response->effects['download']['content'], true))
         ->toStartWith('%PDF-')
-        ->and(strlen((string) $response->getContent()))->toBeGreaterThan(5_000)
+        ->and(strlen((string) base64_decode($response->effects['download']['content'], true)))->toBeGreaterThan(5_000)
         ->and($qrCode->fresh()->public_token)->toBe($qrCode->public_token)
         ->and($preparedView['preset'])->toBe(QrLabelPreset::Restaurant->value)
         ->and($preparedView)->not->toHaveKey('theme');
@@ -91,17 +84,9 @@ test('QR PDF selection rejects service points from another branch', function ():
         ->for($foreignServicePoint)
         ->create(['status' => QrCodeStatus::Active]);
 
-    $printUrl = route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]);
-
-    $this->actingAs($owner)
-        ->from($printUrl)
-        ->post(pdfQrDownloadUrl($organization, $brand, $branch), [
-            'service_points' => [$foreignServicePoint->id],
-            'preset' => 'minimal',
-            'print_table_number' => false,
-        ])
-        ->assertRedirect($printUrl)
-        ->assertSessionHasErrors('service_points.0');
+    Livewire::actingAs($owner)->test(BulkPrint::class, compact('organization', 'brand', 'branch'))
+        ->set('selectedServicePointIds', [$foreignServicePoint->id])->call('downloadPdf')
+        ->assertHasErrors('pdf.service_points.0')->assertNoFileDownloaded();
 });
 
 test('authorized staff can download every existing report type as a PDF', function (): void {
@@ -126,41 +111,25 @@ test('authorized staff can download every existing report type as a PDF', functi
         ]);
 
     foreach (DataExportType::cases() as $type) {
-        $response = $this->actingAs($owner)
-            ->get(route('restaurant.exports.pdf', [
-                'branch' => $branch,
-                'export' => $type->value,
-                'date_from' => '2026-08-01',
-                'date_to' => '2026-08-23',
-            ]))
-            ->assertOk()
-            ->assertDownload()
-            ->assertHeader('Content-Type', 'application/pdf')
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response = Livewire::actingAs($owner)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)
+            ->set('period.date_from', '2026-08-01')->set('period.date_to', '2026-08-23')
+            ->call('downloadPdf', $branch->id, $type->value)->assertHasNoErrors()
+            ->assertFileDownloaded(contentType: 'application/pdf');
 
-        expect($response->getContent())
+        expect(base64_decode($response->effects['download']['content'], true))
             ->toStartWith('%PDF-')
-            ->and(strlen((string) $response->getContent()))->toBeGreaterThan(1_000);
+            ->and(strlen((string) base64_decode($response->effects['download']['content'], true)))->toBeGreaterThan(1_000);
     }
 });
 
 test('PDF reports preserve branch authorization and date range validation', function (): void {
     [, , $branch, , , $owner] = createPdfDownloadContext();
     $unassignedUser = User::factory()->create();
-    $url = route('restaurant.exports.pdf', [
-        'branch' => $branch,
-        'export' => DataExportType::Orders->value,
-        'date_from' => '2026-01-01',
-        'date_to' => '2026-03-10',
-    ]);
-
-    $this->get($url)->assertRedirect(route('login'));
-    $this->actingAs($unassignedUser)->get($url)->assertForbidden();
-    $this->actingAs($owner)
-        ->from(route('restaurant.exports.index'))
-        ->get($url)
-        ->assertRedirect(route('restaurant.exports.index'))
-        ->assertSessionHasErrors('date_to');
+    $this->get(route('restaurant.exports.index'))->assertRedirect(route('login'));
+    Livewire::actingAs($unassignedUser)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)->assertForbidden();
+    Livewire::actingAs($owner)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)
+        ->set('period.date_from', '2026-01-01')->set('period.date_to', '2026-03-10')
+        ->call('downloadPdf', $branch->id, DataExportType::Orders->value)->assertHasErrors('period.date_to')->assertNoFileDownloaded();
 });
 
 test('QR and report screens expose PDF download controls', function (): void {
@@ -170,7 +139,7 @@ test('QR and report screens expose PDF download controls', function (): void {
         ->get(route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]))
         ->assertOk()
         ->assertSee(__('qr.actions.download_pdf'))
-        ->assertSee(pdfQrDownloadUrl($organization, $brand, $branch), false);
+        ->assertSee('wire:click="downloadPdf"', false);
 
     $this->actingAs($owner)
         ->get(route('organizations.brands.branches.service-points.qr.print', [
@@ -221,13 +190,4 @@ function createPdfDownloadContext(): array
         ]);
 
     return [$organization, $brand, $branch, $servicePoint, $qrCode, $owner->fresh()];
-}
-
-function pdfQrDownloadUrl(Organization $organization, Brand $brand, Branch $branch): string
-{
-    return route('organizations.brands.branches.qr.pdf', [
-        $organization,
-        $brand,
-        $branch,
-    ]);
 }

@@ -1,362 +1,133 @@
-<section
-    x-data="onboardingFocus"
-    data-page="restaurant-onboarding"
-    class="mx-auto flex w-full min-w-0 max-w-content flex-1 flex-col gap-6 wrap-anywhere text-text-primary"
-    x-on:onboarding-step-changed.window="focusStep()"
-    x-on:onboarding-validation-failed.window="focusValidationError()"
->
-    <header class="min-w-0 border-b border-border-subtle pb-6">
-        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">
-            {{ __('ui.onboarding.restaurant_setup.bystryi_start') }}
-        </p>
-        <h1 class="mt-1 text-3xl font-semibold tracking-tight text-text-primary">
-            {{ __('ui.onboarding.restaurant_setup.nastroit_restoran') }}
-        </h1>
-        <p class="mt-2 max-w-reading text-sm leading-6 text-text-muted">
-            {{ __('ui.onboarding.restaurant_setup.proidite_prostye_sagi_nazvanie_adres_pervyi') }}
-        </p>
-
-        <div class="mt-5 lg:hidden">
-            <div class="mb-2 flex min-w-0 items-start justify-between gap-3 text-sm">
-                <p class="font-medium text-text-primary">
-                    {{ __('ui.onboarding.restaurant_setup.progress', ['current' => $step, 'total' => 8]) }}
-                </p>
-                <p class="min-w-0 wrap-anywhere text-right text-text-muted">{{ $this->steps[$step - 1]['label'] }}</p>
-            </div>
-            <flux:progress
-                wire:key="onboarding-progress-{{ $step }}"
-                class="h-2"
-                value="{{ $step }}"
-                max="8"
-                aria-label="{{ __('ui.onboarding.restaurant_setup.progress_accessible', ['current' => $step, 'total' => 8]) }}"
-            />
-
-            @if ($this->setup['highest_step'] > 1)
-                <details data-onboarding-mobile-summary class="group mt-4 min-w-0 border-t border-border-subtle pt-2">
-                    <summary class="rm-onboarding-disclosure">
-                        <span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.cto_uze_sozdano') }}</span>
-                        <flux:icon.chevron-down class="size-4 shrink-0 text-text-muted transition-transform duration-state group-open:rotate-180 motion-reduce:transition-none" />
-                    </summary>
-                    <x-onboarding.setup-summary :summary="$this->summary" class="px-2 pb-2 pt-3" />
-                </details>
-            @endif
-        </div>
+<section class="rm-restaurant-center" data-page="restaurant-setup" x-data="menuWorkspace({ contentSelector: '[data-center-content]', invalidEvent: 'onboarding-validation-failed', invalidSelector: '[aria-invalid=true], [role=alert]' })" x-on:restaurant-created.window="window.history.replaceState(window.history.state, '', $event.detail.url)">
+    @vite('resources/scss/restaurant-center.scss')
+    <header class="rm-restaurant-center__header">
+        <div><h1>{{ __('center.title') }}</h1><p>{{ __('center.setup_intro') }}</p></div>
+        <flux:button :href="route('restaurants.index')" wire:navigate icon="arrow-left">{{ __('center.exit') }}</flux:button>
     </header>
-
-    <div class="grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:gap-8">
-        <aside class="hidden min-w-0 lg:block">
-            <nav aria-label="{{ __('ui.onboarding.restaurant_setup.steps_navigation') }}">
-                <ol class="grid gap-1.5">
-                    @forelse ($this->steps as $wizardStep)
-                        <li wire:key="onboarding-step-{{ $wizardStep['number'] }}">
-                            <flux:button
-                                variant="ghost"
-                                :loading="false"
-                                type="button"
-                                wire:click="goToStep({{ $wizardStep['number'] }})"
-                                wire:offline.attr="disabled"
-                                :disabled="! $wizardStep['is_available']"
-                                :aria-current="$wizardStep['is_current'] ? 'step' : null"
-                                class="group h-auto! min-h-touch w-full min-w-0 justify-start! gap-3 rounded-control! border px-3 py-2 text-left whitespace-normal! {{ $wizardStep['is_current'] ? 'border-brand-200! bg-surface-selected! text-text-primary!' : 'border-transparent bg-transparent text-text-muted! hover:border-border-subtle hover:bg-surface-muted hover:text-text-primary' }}"
-                            >
-                                <span
-                                    @class([
-                                        'grid size-8 shrink-0 place-items-center rounded-full border text-xs font-semibold',
-                                        'border-success-border bg-success-surface text-success' => $wizardStep['is_done'],
-                                        'border-brand-300 bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200' => $wizardStep['is_current'] && ! $wizardStep['is_done'],
-                                        'border-border-subtle bg-surface text-text-muted' => ! $wizardStep['is_current'] && ! $wizardStep['is_done'],
-                                    ])
-                                >
-                                    @if ($wizardStep['is_done'])
-                                        <flux:icon.check class="size-4" />
-                                    @else
-                                        {{ $wizardStep['number'] }}
-                                    @endif
-                                </span>
-
-                                <span class="min-w-0">
-                                    <span class="block wrap-anywhere text-sm font-medium leading-5">{{ $wizardStep['label'] }}</span>
-                                    <span class="block text-xs leading-4 text-text-muted">
-                                        {{ $wizardStep['is_done'] ? __('ui.departments.dashboard.gotovo') : ($wizardStep['is_current'] ? __('ui.onboarding.restaurant_setup.seicas') : __('ui.onboarding.restaurant_setup.pozze')) }}
-                                    </span>
-                                </span>
-                            </flux:button>
-                        </li>
-                    @empty
-                    @endforelse
-                </ol>
-            </nav>
-
-            <section aria-labelledby="created-context-heading" class="mt-6 border-t border-border-subtle pt-5">
-                <h2 id="created-context-heading" class="text-sm font-semibold text-text-primary">
-                    {{ __('ui.onboarding.restaurant_setup.cto_uze_sozdano') }}
-                </h2>
-                <x-onboarding.setup-summary :summary="$this->summary" class="mt-3" />
-            </section>
-        </aside>
-
-        <section aria-labelledby="active-step-heading" class="min-w-0 rounded-card border border-border-subtle bg-surface p-4 shadow-card sm:p-6 lg:p-8">
-            @if ($errors->any())
-                <flux:callout
-                    id="onboarding-validation-summary"
-                    class="callout-contrast mb-6"
-                    role="alert"
-                    tabindex="-1"
-                    variant="danger"
-                    icon="exclamation-triangle"
-                    :heading="__('ui.onboarding.restaurant_setup.validation_heading')"
-                    :text="__('ui.onboarding.restaurant_setup.validation_recovery')"
-                />
-            @endif
-
-            @if ($step === 1)
-                <form wire:key="restaurant-onboarding-step-1" wire:submit="createOrganization" wire:loading.attr="aria-busy" wire:target="createOrganization" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_1') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.kto_vladeet_zavedeniem') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.napisite_nazvanie_kompanii_ili_vladelca_vy_a') }}</p>
-                    </div>
-
-                    <flux:input
-                        class="min-w-0"
-                        class:input="min-h-touch placeholder:text-text-muted"
-                        wire:model="form.organizationName"
-                        name="organization_name"
-                        error:name="form.organizationName"
-                        error:id="organization-name-error"
-                        description:id="organization-name-help"
-                        :invalid="$errors->has('form.organizationName')"
-                        aria-describedby="organization-name-help organization-name-error"
-                        :label="__('ui.onboarding.restaurant_setup.nazvanie_kompanii')"
-                        :description="__('ui.onboarding.restaurant_setup.organization_name_help')"
-                        :placeholder="__('ui.onboarding.restaurant_setup.organization_name_placeholder')"
-                        type="text"
-                        required
-                        maxlength="120"
-                        autocomplete="organization"
-                        autocapitalize="words"
-                    />
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                        <p id="onboarding-create-organization-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted sm:text-right" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createOrganization">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-organization-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createOrganization">
-                            {{ __('ui.onboarding.restaurant_setup.dalse') }}
-                        </flux:button>
-                    </div>
-                </form>
-            @elseif ($step === 2)
-                <form wire:key="restaurant-onboarding-step-2" wire:submit="createBrand" wire:loading.attr="aria-busy" wire:target="createBrand" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_2') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.kak_nazyvaetsia_restoran') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.eto_nazvanie_gosti_i_sotrudniki_budut_uznava') }}</p>
-                    </div>
-
-                    <flux:input
-                        class="min-w-0"
-                        class:input="min-h-touch placeholder:text-text-muted"
-                        wire:model="form.brandName"
-                        name="brand_name"
-                        error:name="form.brandName"
-                        error:id="brand-name-error"
-                        :invalid="$errors->has('form.brandName')"
-                        aria-describedby="brand-name-error"
-                        :label="__('ui.onboarding.restaurant_setup.nazvanie_restorana')"
-                        :placeholder="__('ui.onboarding.restaurant_setup.brand_name_placeholder')"
-                        type="text"
-                        required
-                        maxlength="120"
-                        autocomplete="organization"
-                        autocapitalize="words"
-                    />
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(1)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-create-brand-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createBrand">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-brand-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBrand">
-                            {{ __('ui.onboarding.restaurant_setup.dalse') }}
-                        </flux:button>
-                    </div>
-                </form>
-            @elseif ($step === 3)
-                <form wire:key="restaurant-onboarding-step-3" wire:submit="createBranch" wire:loading.attr="aria-busy" wire:target="createBranch" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_3') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.gde_naxoditsia_eta_tocka') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.ukazite_adres_pervogo_filiala_potom_mozno_do') }}</p>
-                    </div>
-
-                    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchName" name="branch_name" error:name="form.branchName" error:id="branch-name-error" :invalid="$errors->has('form.branchName')" aria-describedby="branch-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchAddress" name="branch_address" error:name="form.branchAddress" error:id="branch-address-error" :invalid="$errors->has('form.branchAddress')" aria-describedby="branch-address-error" :label="__('ui.onboarding.restaurant_setup.adres_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_address_placeholder')" type="text" required maxlength="255" autocomplete="street-address" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchCity" name="branch_city" error:name="form.branchCity" error:id="branch-city-error" :invalid="$errors->has('form.branchCity')" aria-describedby="branch-city-error" :label="__('ui.onboarding.restaurant_setup.gorod')" :placeholder="__('ui.onboarding.restaurant_setup.branch_city_placeholder')" type="text" required maxlength="120" autocomplete="address-level2" autocapitalize="words" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchCountryCode" name="branch_country_code" error:name="form.branchCountryCode" error:id="branch-country-code-error" description:id="branch-country-code-help" :invalid="$errors->has('form.branchCountryCode')" aria-describedby="branch-country-code-help branch-country-code-error" :label="__('ui.onboarding.restaurant_setup.strana')" :description="__('ui.onboarding.restaurant_setup.country_help')" :placeholder="__('ui.onboarding.restaurant_setup.country_placeholder')" type="text" required maxlength="2" pattern="[A-Za-z]{2}" list="restaurant-country-options" autocomplete="country" autocapitalize="characters" spellcheck="false" />
-                        <datalist id="restaurant-country-options">
-                            @foreach ($this->countryOptions as $countryCode => $countryLabel)
-                                <option wire:key="onboarding-country-{{ $countryCode }}" value="{{ $countryCode }}" label="{{ $countryLabel }}"></option>
-                            @endforeach
-                        </datalist>
-
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchTimezone" name="branch_timezone" error:name="form.branchTimezone" error:id="branch-timezone-error" description:id="branch-timezone-help" :invalid="$errors->has('form.branchTimezone')" aria-describedby="branch-timezone-help branch-timezone-error" :label="__('ui.onboarding.restaurant_setup.casovoi_poias')" :description="__('ui.onboarding.restaurant_setup.timezone_help')" :placeholder="__('ui.onboarding.restaurant_setup.timezone_placeholder')" type="text" required maxlength="64" list="restaurant-timezone-options" autocomplete="off" spellcheck="false" />
-                        <datalist id="restaurant-timezone-options">
-                            @foreach ($this->timezoneOptions as $timezoneIdentifier => $timezoneLabel)
-                                <option wire:key="onboarding-timezone-{{ $timezoneIdentifier }}" value="{{ $timezoneIdentifier }}" label="{{ $timezoneLabel }}"></option>
-                            @endforeach
-                        </datalist>
-
-                        <flux:select class="min-h-touch max-w-full" wire:model="form.branchCurrency" name="branch_currency" error:name="form.branchCurrency" error:id="branch-currency-error" description:id="branch-currency-help" :invalid="$errors->has('form.branchCurrency')" aria-describedby="branch-currency-help branch-currency-error" :label="__('ui.onboarding.restaurant_setup.valiuta')" :description="__('ui.onboarding.restaurant_setup.currency_help')" required>
-                            <flux:select.option value="">{{ __('ui.onboarding.restaurant_setup.select_currency') }}</flux:select.option>
-                            @foreach ($this->currencyOptions as $currencyCode => $currencyLabel)
-                                <flux:select.option wire:key="onboarding-branch-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">{{ $currencyLabel }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                    </div>
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(2)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-create-branch-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createBranch">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-branch-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBranch">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
-                    </div>
-                </form>
-            @elseif ($step === 4)
-                <form wire:key="restaurant-onboarding-step-4" wire:submit="createArea" wire:loading.attr="aria-busy" wire:target="createArea" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_4') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.dobavte_pervyi_zal') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.naprimer_glavnyi_zal_terrasa_vip_zal_stoly_p') }}</p>
-                    </div>
-
-                    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.areaName" name="area_name" error:name="form.areaName" error:id="area-name-error" :invalid="$errors->has('form.areaName')" aria-describedby="area-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" :placeholder="__('ui.onboarding.restaurant_setup.area_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:select class="min-h-touch max-w-full" wire:model="form.areaType" name="area_type" error:name="form.areaType" error:id="area-type-error" description:id="area-type-help" :invalid="$errors->has('form.areaType')" aria-describedby="area-type-help area-type-error" :label="__('ui.onboarding.restaurant_setup.tip_zony')" :description="__('ui.onboarding.restaurant_setup.area_type_help')" required>
-                            @foreach ($this->areaTypeOptions as $areaType => $areaTypeLabel)
-                                <flux:select.option wire:key="onboarding-area-type-{{ $areaType }}" value="{{ $areaType }}">{{ $areaTypeLabel }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                        <flux:select class="min-h-touch max-w-full" wire:model="form.areaIcon" name="area_icon" error:name="form.areaIcon" error:id="area-icon-error" description:id="area-icon-help" :invalid="$errors->has('form.areaIcon')" aria-describedby="area-icon-help area-icon-error" :label="__('ui.onboarding.restaurant_setup.ikonka')" :description="__('ui.onboarding.restaurant_setup.area_icon_help')" required>
-                            @foreach ($this->areaIconOptions as $areaIcon => $areaIconLabel)
-                                <flux:select.option wire:key="onboarding-area-icon-{{ $areaIcon }}" value="{{ $areaIcon }}">{{ $areaIconLabel }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                    </div>
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(3)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-create-area-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createArea">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-area-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createArea">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
-                    </div>
-                </form>
-            @elseif ($step === 5)
-                <form wire:key="restaurant-onboarding-step-5" wire:submit="createServicePoints" wire:loading.attr="aria-busy" wire:target="createServicePoints" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_5') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.dobavte_pervye_stoly') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.sistema_sozdast_neskolko_stolov_srazu_qr_poz') }}</p>
-                    </div>
-
-                    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tableCount" name="table_count" error:name="form.tableCount" error:id="table-count-error" description:id="table-count-help" :invalid="$errors->has('form.tableCount')" aria-describedby="table-count-help table-count-error" :label="__('ui.onboarding.restaurant_setup.skolko_stolov')" :description="__('ui.onboarding.restaurant_setup.table_count_help')" type="number" required min="1" max="20" step="1" inputmode="numeric" autocomplete="off" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tablePrefix" name="table_prefix" error:name="form.tablePrefix" error:id="table-prefix-error" description:id="table-prefix-help" :invalid="$errors->has('form.tablePrefix')" aria-describedby="table-prefix-help table-prefix-error" :label="__('ui.onboarding.restaurant_setup.prefiks_nazvaniia_stolov')" :description="__('ui.onboarding.restaurant_setup.table_prefix_help')" :placeholder="__('ui.onboarding.restaurant_setup.table_prefix_placeholder')" type="text" required maxlength="40" autocomplete="off" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tableCapacity" name="table_capacity" error:name="form.tableCapacity" error:id="table-capacity-error" description:id="table-capacity-help" :invalid="$errors->has('form.tableCapacity')" aria-describedby="table-capacity-help table-capacity-error" :label="__('ui.onboarding.restaurant_setup.mest_za_kazdym_stolom')" :description="__('ui.onboarding.restaurant_setup.table_capacity_help')" type="number" required min="1" max="50" step="1" inputmode="numeric" autocomplete="off" />
-                    </div>
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(4)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-create-service-points-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createServicePoints">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-service-points-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createServicePoints">{{ __('ui.onboarding.restaurant_setup.sozdat_stoly') }}</flux:button>
-                    </div>
-                </form>
-            @elseif ($step === 6)
-                <div wire:key="restaurant-onboarding-step-6" wire:loading.attr="aria-busy" wire:target="generateQrCodes" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_6') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.sozdaite_qr_dlia_stolov') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.odin_stol_polucaet_odin_postoiannyi_qr_v_ssy') }}</p>
-                    </div>
-
-                    <div class="flex items-start gap-4 border-y border-border-subtle bg-surface-muted px-4 py-5 sm:px-5" role="status">
-                        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-surface-selected text-brand-700 dark:text-brand-300"><flux:icon.qr-code class="size-5" /></span>
-                        <div>
-                            <p class="font-semibold text-text-primary">{{ __('ui.onboarding.restaurant_setup.qr_ready_heading') }}</p>
-                            <p class="mt-1 text-sm leading-6 text-text-muted">{{ trans_choice('ui.onboarding.restaurant_setup.1_budet_sozdan_postoiannyi_qr_2_budet_sozdan', $this->summary['service_points'], ['count' => $this->summary['service_points']]) }}</p>
-                        </div>
-                    </div>
-                    <flux:error name="form.tableCount" />
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(5)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-generate-qr-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="generateQrCodes">{{ __('ui.onboarding.restaurant_setup.generating_qr') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="qr-code" variant="primary" type="button" wire:click="generateQrCodes" aria-describedby="onboarding-generate-qr-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="generateQrCodes">{{ __('ui.onboarding.restaurant_setup.sgenerirovat_qr') }}</flux:button>
-                    </div>
-                </div>
-            @elseif ($step === 7)
-                <form wire:key="restaurant-onboarding-step-7" wire:submit="createStarterMenu" wire:loading.attr="aria-busy" wire:target="createStarterMenu" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.onboarding.restaurant_setup.sag_7') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.dobavte_pervoe_meniu') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.dlia_proverki_dostatocno_odnogo_razdela_i_od') }}</p>
-                    </div>
-
-                    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.menuName" name="menu_name" error:name="form.menuName" error:id="menu-name-error" :invalid="$errors->has('form.menuName')" aria-describedby="menu-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.menu_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.categoryName" name="category_name" error:name="form.categoryName" error:id="category-name-error" :invalid="$errors->has('form.categoryName')" aria-describedby="category-name-error" :label="__('ui.onboarding.restaurant_setup.razdel_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.category_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.itemName" name="item_name" error:name="form.itemName" error:id="item-name-error" :invalid="$errors->has('form.itemName')" aria-describedby="item-name-error" :label="__('ui.onboarding.restaurant_setup.pervoe_bliudo')" :placeholder="__('ui.onboarding.restaurant_setup.item_name_placeholder')" type="text" required maxlength="180" autocomplete="off" autocapitalize="sentences" />
-                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.itemPrice" name="item_price" error:name="form.itemPrice" error:id="item-price-error" description:id="item-price-help" :invalid="$errors->has('form.itemPrice')" aria-describedby="item-price-help item-price-error" :label="__('ui.onboarding.restaurant_setup.cena')" :description="__('ui.onboarding.restaurant_setup.item_price_help', ['currency' => $form->branchCurrency])" type="number" required min="0" max="999999.99" step="0.01" inputmode="decimal" autocomplete="off" />
-                    </div>
-
-                    <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(6)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
-                        <p id="onboarding-create-menu-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
-                            <span wire:loading wire:target="createStarterMenu">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
-                        </p>
-                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="check" variant="primary" type="submit" aria-describedby="onboarding-create-menu-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createStarterMenu">{{ __('ui.onboarding.restaurant_setup.dobavit_meniu') }}</flux:button>
-                    </div>
+    <flux:callout wire:offline variant="warning" :heading="__('menu.workspace.offline')" :text="__('center.offline')" />
+    <nav class="rm-restaurant-center__tabs" aria-label="{{ __('center.setup_groups') }}">
+        @forelse ($steps as $number => $label)
+            <flux:button wire:click="goToStep({{ $number }})" :disabled="$onboardingId === null && $number > 1" :variant="$step === $number ? 'primary' : 'ghost'">{{ $label }}</flux:button>
+        @empty
+        @endforelse
+    </nav>
+    <div data-center-content>
+        @error('creation')<flux:callout variant="danger" :heading="$message" role="alert" />@enderror
+        <section wire:show="step === 1" class="rm-restaurant-center__panel">
+            @if (!$state['done'][3])
+                <form novalidate wire:submit="createRestaurant" class="rm-restaurant-center__form">
+                    <flux:input wire:model="form.branchName" :label="__('center.restaurant_name')" required />
+                    <flux:input wire:model="form.branchAddress" :label="__('center.address')" required />
+                    <flux:input wire:model="form.branchCity" :label="__('center.city')" required />
+                    <flux:select wire:model="form.branchCountryCode" variant="listbox" searchable :label="__('center.country')" :placeholder="__('center.choose')" required>
+                        @forelse ($countries as $code => $label)<flux:select.option :value="$code">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    <flux:select wire:model="form.branchTimezone" variant="listbox" searchable :label="__('center.timezone')" required>
+                        @forelse ($timezones as $code => $label)<flux:select.option :value="$code">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    <flux:select wire:model="form.branchCurrency" variant="listbox" :label="__('center.currency')" :placeholder="__('center.choose')" required>
+                        @forelse ($currencies as $code => $label)<flux:select.option :value="$code">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    <flux:select wire:model.live="form.organizationId" variant="listbox" searchable :filter="false" :label="__('center.organization')">
+                        <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="organizationSearch" /></x-slot>
+                        @if ($canCreateOrganization)<flux:select.option value="">{{ __('center.new_organization') }}</flux:select.option>@endif
+                        @forelse ($organizations as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    @if (!$form->organizationId)<flux:input wire:model="form.organizationName" :label="__('center.organization_name')" />@endif
+                    <flux:select wire:model.live="form.brandId" variant="listbox" searchable :filter="false" :label="__('center.brand')">
+                        <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="brandSearch" /></x-slot>
+                        <flux:select.option value="">{{ __('center.new_brand') }}</flux:select.option>
+                        @forelse ($brands as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    @if (!$form->brandId)<flux:input wire:model="form.brandName" :label="__('center.brand_name')" />@endif
+                    <flux:callout :heading="__('center.creation_intent')" :text="__('center.draft_notice')" />
+                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('center.save_continue') }}</flux:button>
                 </form>
             @else
-                <div wire:key="restaurant-onboarding-step-8" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-                    <div class="max-w-reading">
-                        <p class="text-sm font-semibold text-success">{{ __('ui.departments.dashboard.gotovo') }}</p>
-                        <flux:heading id="active-step-heading" data-onboarding-step-heading tabindex="-1" class="mt-1 outline-none" size="xl" level="2">{{ __('ui.onboarding.restaurant_setup.restoran_gotov_k_proverke') }}</flux:heading>
-                        <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.otkroite_gostevuiu_stranicu_i_ubedites_cto_q') }}</p>
-                    </div>
-
-                    @if ($this->summary['guest_url'])
-                        <div class="border-y border-success-border bg-success-surface px-4 py-5 sm:px-5">
-                            <p class="text-sm font-medium text-success">{{ __('ui.onboarding.restaurant_setup.primary_next_step') }}</p>
-                            <p class="mt-1 font-semibold text-text-primary">{{ __('ui.onboarding.restaurant_setup.otkryt_gostevoe_meniu') }}</p>
-                            <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('ui.onboarding.restaurant_setup.ssylka_soderzit_tolko_skrytyi_qr_token') }}</p>
-                            <flux:button class="mt-4 max-w-full whitespace-normal" icon="arrow-up-right" variant="primary" :href="$this->summary['guest_url']" target="_blank" rel="noopener">{{ __('ui.onboarding.restaurant_setup.otkryt_gostevoe_meniu') }}</flux:button>
-                        </div>
-                    @endif
-
-                    <section aria-labelledby="next-actions-heading">
-                        <h2 id="next-actions-heading" class="text-sm font-semibold text-text-primary">{{ __('ui.onboarding.restaurant_setup.next_actions') }}</h2>
-                        <ul class="mt-2 divide-y divide-border-subtle border-y border-border-subtle">
-                            @if ($this->summary['print_url'])
-                                <li><a href="{{ $this->summary['print_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.napecatat_qr') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
-                            @endif
-                            @if ($this->summary['branch_url'])
-                                <li><a href="{{ $this->summary['branch_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.otkryt_nastroiki_filiala') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
-                            @endif
-                            @if ($this->summary['menu_url'])
-                                <li><a href="{{ $this->summary['menu_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.dopolnit_meniu') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
-                            @endif
-                        </ul>
-                    </section>
-                </div>
+                <h2>{{ $state['summary']['branch'] }}</h2>
+                <p>{{ $state['summary']['organization'] }} / {{ $state['summary']['brand'] }}</p>
+                <flux:callout :heading="__('center.saved')" :text="__('center.saved_notice')" />
+                <flux:button :href="$state['summary']['branch_url']" wire:navigate>{{ __('center.properties') }}</flux:button>
             @endif
         </section>
+        <section wire:show="step === 2" class="rm-restaurant-center__panel">
+            <h2>{{ __('center.rooms') }}</h2>
+            @if (!$state['done'][4])
+                <form novalidate wire:submit="useExistingSpace" class="rm-restaurant-center__form">
+                    <flux:select wire:model="existingAreaId" variant="listbox" searchable :filter="false" :label="__('center.existing_room')" :placeholder="__('center.choose')">
+                        <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="areaSearch" /></x-slot>
+                        @forelse ($areaOptions as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    <flux:text>{{ __('center.use_space_notice') }}</flux:text>
+                    <flux:button type="submit" wire:offline.attr="disabled">{{ __('center.use_existing_room') }}</flux:button>
+                </form>
+            @endif
+            @if ($state['done'][4])
+                <p>{{ $state['summary']['area'] }}</p>
+            @else
+                <form novalidate wire:submit="createArea" class="rm-restaurant-center__form">
+                    <flux:input wire:model="form.areaName" :label="__('center.room_name')" required />
+                    <flux:button type="submit" variant="primary" wire:offline.attr="disabled">{{ __('center.save_room') }}</flux:button>
+                </form>
+            @endif
+            @if ($state['done'][4] && !$state['done'][5])
+                <form novalidate wire:submit="createServicePoints" class="rm-restaurant-center__form">
+                    <flux:input wire:model="form.tablePrefix" :label="__('center.table_prefix')" required />
+                    <flux:input wire:model="form.tableCount" type="number" :label="__('center.table_count')" required />
+                    <flux:input wire:model="form.tableCapacity" type="number" :label="__('center.capacity')" required />
+                    <flux:button type="submit" variant="primary" wire:offline.attr="disabled">{{ __('center.save_tables') }}</flux:button>
+                </form>
+            @elseif ($state['done'][5])
+                <p>{{ __('center.tables_saved', ['count' => $state['summary']['service_points']]) }}</p>
+                @if (!$state['done'][6])<flux:button wire:click="generateQrCodes" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('center.create_qr') }}</flux:button>@endif
+                <flux:button :href="$state['summary']['print_url']" wire:navigate>{{ __('center.manage_rooms') }}</flux:button>
+            @endif
+            <flux:button wire:click="goToStep(3)" variant="ghost">{{ __('center.later') }}</flux:button>
+        </section>
+        <section wire:show="step === 3" class="rm-restaurant-center__panel">
+            <h2>{{ __('center.menu') }}</h2>
+            @if (!$state['summary']['menu'])
+                <form novalidate wire:submit="useExistingMenu" class="rm-restaurant-center__form">
+                    <flux:select wire:model="existingMenuId" variant="listbox" searchable :filter="false" :label="__('center.existing_menu')" :placeholder="__('center.choose')">
+                        <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="menuSearch" /></x-slot>
+                        @forelse ($menuOptions as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                    </flux:select>
+                    <flux:button type="submit" wire:offline.attr="disabled">{{ __('center.use_existing_menu') }}</flux:button>
+                </form>
+            @endif
+            @if ($state['summary']['menu'])
+                <p>{{ $state['summary']['menu'] }}</p><p>{{ __('center.use_menu_editor') }}</p>
+                <flux:button :href="$state['summary']['menu_url']" wire:navigate>{{ __('center.open_menu') }}</flux:button>
+            @else
+                <form novalidate wire:submit="createStarterMenu" class="rm-restaurant-center__form">
+                    <flux:input wire:model="form.menuName" :label="__('center.menu_name')" required />
+                    <flux:input wire:model="form.categoryName" :label="__('center.category_name')" required />
+                    <flux:input wire:model="form.itemName" :label="__('center.item_name')" required />
+                    <flux:input wire:model="form.itemPrice" :label="__('center.price')" inputmode="decimal" required />
+                    <flux:callout :heading="__('center.menu_draft')" :text="__('center.menu_independent')" />
+                    <flux:button type="submit" variant="primary" wire:offline.attr="disabled">{{ __('center.save_menu') }}</flux:button>
+                </form>
+            @endif
+            <flux:button wire:click="goToStep(4)" variant="ghost">{{ __('center.review') }}</flux:button>
+        </section>
+        <section wire:show="step === 4" class="rm-restaurant-center__panel">
+            <h2>{{ __('center.review') }}</h2>
+            <p>{{ __('center.review_notice') }}</p>
+            @if ($readiness)<x-restaurants.readiness :readiness="$readiness" />@endif
+            @error('preparation')<flux:callout variant="warning" :heading="$message" role="alert" />@enderror
+            @if ($state['completed'])<flux:badge>{{ __('center.completed_history') }}</flux:badge>@else<flux:button wire:click="complete" wire:offline.attr="disabled">{{ __('center.complete') }}</flux:button>@endif
+            <dl>
+                <dt>{{ __('center.restaurant_name') }}</dt><dd>{{ $state['summary']['branch'] }}</dd>
+                <dt>{{ __('center.rooms') }}</dt><dd>{{ $state['summary']['area'] ?? __('center.pending') }}</dd>
+                <dt>{{ __('center.menu') }}</dt><dd>{{ $state['summary']['menu'] ?? __('center.pending') }}</dd>
+            </dl>
+            <flux:button :href="route('restaurants.index')" wire:navigate>{{ __('center.exit') }}</flux:button>
+        </section>
     </div>
+    <flux:modal name="menu-workspace-unsaved" :closable="false">
+        <flux:heading>{{ __('menu.workspace.unsaved_title') }}</flux:heading>
+        <flux:text>{{ __('center.leave_notice') }}</flux:text>
+        <flux:button x-on:click="cancelNavigation">{{ __('menu.workspace.keep_editing') }}</flux:button>
+        <flux:button x-on:click="discardAndNavigate">{{ __('menu.workspace.discard') }}</flux:button>
+    </flux:modal>
 </section>

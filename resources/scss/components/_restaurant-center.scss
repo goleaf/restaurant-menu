@@ -1,0 +1,52 @@
+@use '../settings/tokens';
+
+@layer components {
+    .rm-restaurant-center {
+        container: restaurant-center / inline-size;
+        display: grid;
+        gap: tokens.space(5);
+        min-inline-size: 0;
+        color: var(--rm-text-primary);
+
+        h1 { @include tokens.type('2xl'); font-weight: 600; }
+        h2 { @include tokens.type('lg'); font-weight: 600; }
+        p, dd, dt, h1, h2 { overflow-wrap: anywhere; }
+        [data-flux-button] { min-block-size: var(--rm-spacing-touch); block-size: auto; white-space: normal; max-inline-size: 100%; }
+        [data-flux-field], form { min-inline-size: 0; }
+    }
+
+    .rm-restaurant-center__header,
+    .rm-restaurant-center__actions,
+    .rm-restaurant-center__tabs { display: flex; flex-wrap: wrap; align-items: center; gap: tokens.space(3); }
+    .rm-restaurant-center__header { justify-content: space-between; }
+    .rm-restaurant-center__layout,
+    .rm-restaurant-center__results,
+    .rm-restaurant-center__identity,
+    .rm-restaurant-center__form,
+    .rm-restaurant-center__filters,
+    .rm-restaurant-center__panel { display: grid; gap: tokens.space(4); min-inline-size: 0; align-content: start; }
+    .rm-restaurant-center__panel,
+    .rm-restaurant-center__row { padding: tokens.space(4); border: 1px solid var(--rm-border-subtle); border-radius: var(--rm-radius-card); background: var(--rm-surface); }
+    .rm-restaurant-center__row { display: grid; gap: tokens.space(3); }
+    .rm-restaurant-center__form { max-inline-size: 42rem; }
+
+    @container restaurant-center (max-width: 39.99rem) {
+        .rm-restaurant-center[data-editor-open='true'] .rm-restaurant-center__filters,
+        .rm-restaurant-center[data-editor-open='true'] .rm-restaurant-center__results { display: none; }
+    }
+
+    @container restaurant-center (min-width: 40rem) {
+        .rm-restaurant-center__filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .rm-restaurant-center__row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+        .rm-restaurant-center__actions { max-inline-size: 22rem; justify-content: end; }
+    }
+
+    @container restaurant-center (min-width: 65rem) {
+        .rm-restaurant-center__layout:has(aside) { grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr); }
+    }
+
+    @media (forced-colors: active) {
+        .rm-restaurant-center__panel,
+        .rm-restaurant-center__row { border-color: CanvasText; }
+    }
+}

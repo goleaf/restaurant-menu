@@ -34,6 +34,7 @@ use App\Models\TableSessionJoinRequest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
+use Tests\Support\FileOperationPage;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -289,13 +290,15 @@ test('branch csv exports do not include raw security tokens', function (): void 
         ->for($organization)
         ->create(['invite_token_hash' => hash('sha256', str_repeat('I', 64))]);
 
-    $content = collect(DataExportType::cases())
-        ->map(fn (DataExportType $type): string => $this
-            ->actingAs($superadmin)
-            ->get(route('restaurant.exports.download', [$branch, $type->value]))
-            ->assertOk()
-            ->streamedContent())
-        ->implode("\n");
+    $this->actingAs($superadmin);
+    $contents = [];
+    foreach (DataExportType::cases() as $type) {
+        $snapshot = FileOperationPage::open($this, route('restaurant.exports.index', ['branch' => $branch->id]), 'exports');
+        $prepared = FileOperationPage::call($this, $snapshot, 'downloadCsv', params: [$branch->id, $type->value])->assertOk();
+        $response = $this->get($prepared->json('components.0.effects.redirect'))->assertOk();
+        $contents[] = $response->baseResponse->getFile()->getContent();
+    }
+    $content = implode("\n", $contents);
 
     expect($content)
         ->not->toContain($qrCode->public_token)

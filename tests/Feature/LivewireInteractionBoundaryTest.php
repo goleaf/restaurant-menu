@@ -9,22 +9,31 @@ use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Routing\ViewController;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Features;
+use Laravel\Fortify\Http\Controllers\NewPasswordController;
 use Livewire\Component;
 use Livewire\Mechanisms\HandleRouting\LivewirePageController;
 
 test('every product page route uses its explicit class based Livewire screen', function (): void {
     $expected = [
+        'login' => Screens\Auth\Login::class,
+        'password.confirm' => Screens\Auth\ConfirmPassword::class,
+        'demo-login.index' => Screens\Local\DemoLogin::class,
+        'invitations.pending' => Screens\Invitations\Show::class,
         'dashboard' => Screens\Workspace\Entry::class,
         'guest.home' => Screens\Guest\Home::class,
         'public.qr.show' => Screens\PublicQr\Show::class,
         'local.components' => Screens\Local\ComponentReference::class,
+        'restaurants.index' => Screens\Restaurants\Index::class,
+        'restaurants.create' => Screens\Onboarding\RestaurantSetup::class,
+        'restaurants.setup' => Screens\Onboarding\RestaurantSetup::class,
         'onboarding.restaurant' => Screens\Onboarding\RestaurantSetup::class,
-        'organizations.index' => Screens\Organizations\Index::class,
+        'organizations.index' => Screens\Restaurants\Index::class,
         'organizations.staff.index' => Screens\Organizations\Staff\Index::class,
         'organizations.staff.show' => Screens\Organizations\Staff\Show::class,
         'organizations.staff.permissions' => Screens\Organizations\Staff\Show::class,
-        'organizations.brands.index' => Screens\Organizations\Brands\Index::class,
-        'organizations.brands.branches.index' => Screens\Organizations\Brands\Branches\Index::class,
+        'organizations.brands.index' => Screens\Restaurants\Index::class,
+        'organizations.brands.branches.index' => Screens\Restaurants\Index::class,
         'organizations.brands.branches.areas.index' => Screens\Organizations\Brands\Branches\Areas::class,
         'organizations.brands.branches.availability.index' => Screens\Organizations\Brands\Branches\Availability\Index::class,
         'organizations.brands.branches.menu.dish.create' => Screens\Organizations\Brands\Branches\Menu\Dish::class,
@@ -42,14 +51,27 @@ test('every product page route uses its explicit class based Livewire screen', f
         'restaurant.audit-log.index' => Screens\AuditLogs\Index::class,
         'restaurant.departments.tickets.print' => Screens\Departments\TicketPrint::class,
         'restaurant.exports.index' => Screens\Exports\Index::class,
+        'restaurant.exports.download' => Screens\Exports\Index::class,
+        'restaurant.exports.pdf' => Screens\Exports\Index::class,
         'restaurant.kitchen.dashboard' => Screens\Kitchen\Dashboard::class,
         'restaurant.bar.dashboard' => Screens\Bar\Dashboard::class,
         'restaurant.waiter.dashboard' => Screens\Waiter\Dashboard::class,
         'restaurant.waiter.tables.show' => Screens\Waiter\TableDetail::class,
         'superadmin.dashboard' => Screens\Superadmin\Dashboard::class,
+        'superadmin.backups.sqlite.restore' => Screens\Superadmin\Backups\RestoreSqlite::class,
         'profile.edit' => Screens\Settings\Profile::class,
         'security.edit' => Screens\Settings\Security::class,
     ];
+    if (Features::enabled(Features::resetPasswords())) {
+        $expected['password.request'] = Screens\Auth\ForgotPassword::class;
+        $expected['password.reset.form'] = Screens\Auth\ResetPassword::class;
+    }
+    if (Features::enabled(Features::twoFactorAuthentication())) {
+        $expected['two-factor.login'] = Screens\Auth\TwoFactorChallenge::class;
+    }
+    if (Features::enabled(Features::emailVerification())) {
+        $expected['verification.notice'] = Screens\Auth\VerifyEmail::class;
+    }
     $actual = [];
 
     foreach (Route::getRoutes() as $route) {
@@ -66,7 +88,15 @@ test('every product page route uses its explicit class based Livewire screen', f
             ->and($route->methods())->toBe(['GET', 'HEAD'])
             ->and($route->gatherMiddleware())->toContain('web');
 
-        if (! in_array($route->getName(), ['guest.home', 'public.qr.show'], true)) {
+        if (in_array($route->getName(), ['login', 'password.request', 'password.reset.form', 'two-factor.login'], true)) {
+            expect($route->gatherMiddleware())->toContain('guest:'.config('fortify.guard'));
+        } elseif (in_array($route->getName(), ['password.confirm', 'verification.notice'], true)) {
+            expect($route->gatherMiddleware())->toContain('auth:'.config('fortify.guard'));
+        } elseif ($route->getName() === 'demo-login.index') {
+            expect($route->gatherMiddleware())->toContain('guest', 'demo-login', 'throttle:demo-login');
+        } elseif ($route->getName() === 'invitations.pending') {
+            expect($route->gatherMiddleware())->toContain('throttle:staff-invitations');
+        } elseif (! in_array($route->getName(), ['guest.home', 'public.qr.show'], true)) {
             expect($route->gatherMiddleware())->toContain('auth');
         }
 
@@ -84,20 +114,10 @@ test('ordinary first party HTTP routes are limited to explicit protocol and docu
         'home' => ViewController::class,
         'settings.index' => RedirectController::class,
         'appearance.edit' => RedirectController::class,
-        'demo-login.index' => Controllers\Auth\ShowDemoLoginController::class,
-        'demo-login.authenticate' => Controllers\Auth\LoginAsDemoRoleController::class,
-        'local-login.authenticate' => Controllers\Auth\LoginAsLocalUserController::class,
         'invitations.show' => Controllers\Invitations\ShowInvitationController::class,
-        'invitations.pending' => Controllers\Invitations\ShowInvitationController::class,
-        'invitations.register' => Controllers\Invitations\RegisterInvitationController::class,
-        'invitations.accept' => Controllers\Invitations\AcceptInvitationController::class,
-        'invitations.switch-account' => Controllers\Invitations\SwitchInvitationAccountController::class,
-        'organizations.brands.branches.qr.pdf' => Controllers\Organizations\DownloadBranchQrPdfController::class,
-        'restaurant.exports.download' => Controllers\Restaurant\DownloadBranchCsvExportController::class,
-        'restaurant.exports.pdf' => Controllers\Restaurant\DownloadBranchPdfReportController::class,
-        'superadmin.backups.sqlite.download' => Controllers\Superadmin\DownloadSqliteBackupController::class,
-        'superadmin.backups.media.download' => Controllers\Superadmin\DownloadMediaBackupController::class,
-        'superadmin.backups.sqlite.restore' => Controllers\Superadmin\ShowSqliteBackupRestoreController::class,
+        'restaurant.files.download' => Controllers\Restaurant\DownloadPreparedFileController::class,
+        'superadmin.backups.sqlite.download' => RedirectController::class,
+        'superadmin.backups.media.download' => RedirectController::class,
         'superadmin.backups.sqlite.restore.store' => Controllers\Superadmin\RestoreSqliteBackupController::class,
     ];
     $actual = [];
@@ -116,22 +136,9 @@ test('ordinary first party HTTP routes are limited to explicit protocol and docu
     expect($actual)->toBe($expected);
 });
 
-test('native forms stay limited to CSRF protected authentication download and restore requests', function (): void {
+test('native forms stay limited to the CSRF protected prepared restore finalization', function (): void {
     $expected = [
-        'auth/demo-login.blade.php' => ["{{ route('demo-login.authenticate', ['role' => \$account['role']]) }}"],
-        'components/account-menu.blade.php' => ["{{ route('logout') }}"],
-        'components/auth/local-user-directory.blade.php' => ["{{ route('local-login.authenticate', ['user' => \$user['id']]) }}"],
-        'invitations/show.blade.php' => ['{{ $acceptUrl }}', '{{ $registerUrl }}'],
-        'invitations/status.blade.php' => ['{{ $switchAccountUrl }}'],
-        'livewire/auth/confirm-password.blade.php' => ["{{ route('password.confirm.store') }}"],
-        'livewire/auth/forgot-password.blade.php' => ["{{ route('password.email') }}"],
-        'livewire/auth/login.blade.php' => ["{{ route('login.store') }}"],
-        'livewire/auth/reset-password.blade.php' => ["{{ route('password.update') }}"],
-        'livewire/auth/two-factor-challenge.blade.php' => ["{{ route('two-factor.login.store') }}"],
-        'livewire/auth/verify-email.blade.php' => ["{{ route('verification.send') }}", "{{ route('logout') }}"],
-        'livewire/organizations/brands/branches/qr/bulk-print.blade.php' => ['{{ $pdfDownloadUrl }}'],
-        'livewire/organizations/brands/branches/service-points/qr/print-template.blade.php' => ['{{ $pdfDownloadUrl }}'],
-        'superadmin/backups/restore-sqlite.blade.php' => ["{{ route('superadmin.backups.sqlite.restore.store') }}"],
+        'livewire/superadmin/backups/restore-sqlite.blade.php' => ["{{ route('superadmin.backups.sqlite.restore.store') }}"],
     ];
     $actual = [];
 
@@ -152,6 +159,9 @@ test('native forms stay limited to CSRF protected authentication download and re
                 ->and($form[2], $file->getRelativePathname())->toContain('@csrf');
             preg_match('/\baction="([^"]+)"/', $form[1], $action);
             $actual[$file->getRelativePathname()][] = $action[1] ?? '';
+            expect($form[1])->not->toContain('multipart/form-data');
+            preg_match_all('/<(?:input|select|textarea)\b[^>]*\bname="([^"]+)"/', $form[2], $fields);
+            expect($fields[1])->toBe(['grant']);
         }
     }
 
@@ -174,3 +184,50 @@ function interactionBoundaryIsFirstPartyHttpRoute(RoutingRoute $route): bool
     return $handler instanceof Closure
         && str_starts_with((string) (new ReflectionFunction($handler))->getFileName(), base_path('routes').DIRECTORY_SEPARATOR);
 }
+
+test('first party controllers are exactly the three retained transport boundaries', function (): void {
+    $files = collect(File::allFiles(app_path('Http/Controllers')))
+        ->map(fn ($file): string => $file->getRelativePathname())->sort()->values()->all();
+    expect($files)->toBe([
+        'Controller.php',
+        'Invitations/ShowInvitationController.php',
+        'Restaurant/DownloadPreparedFileController.php',
+        'Superadmin/RestoreSqliteBackupController.php',
+    ]);
+
+    foreach ([
+        'invitations.show' => [['GET', 'HEAD'], 'invite/{token}', ['web', 'throttle:staff-invitations']],
+        'restaurant.files.download' => [['GET', 'HEAD'], 'restaurant/files/{grant}', ['web', 'auth']],
+        'superadmin.backups.sqlite.restore.store' => [['POST'], 'superadmin/backups/sqlite/restore', ['web', 'auth', 'superadmin', 'password.confirm']],
+    ] as $name => [$methods, $uri, $middleware]) {
+        $route = Route::getRoutes()->getByName($name);
+        expect($route)->not->toBeNull()
+            ->and($route->methods())->toBe($methods)
+            ->and($route->uri())->toBe($uri);
+        foreach ($middleware as $required) {
+            expect($route->gatherMiddleware())->toContain($required);
+        }
+    }
+
+    foreach (['invitations.accept', 'invitations.register', 'invitations.switch-account', 'demo-login.authenticate', 'local-login.authenticate', 'organizations.brands.branches.qr.pdf'] as $removed) {
+        expect(Route::has($removed), $removed)->toBeFalse();
+    }
+});
+
+test('Fortify retains its protocol endpoints while reset entry uses the vendor credential exchange callback', function (): void {
+    $protocols = ['login.store', 'logout', 'password.confirm.store'];
+    if (Features::enabled(Features::resetPasswords())) {
+        $protocols = [...$protocols, 'password.email', 'password.update'];
+        $entry = Route::getRoutes()->getByName('password.reset');
+        expect($entry->getControllerClass())->toBe(NewPasswordController::class)
+            ->and($entry->getActionMethod())->toBe('create')
+            ->and($entry->methods())->toBe(['GET', 'HEAD'])
+            ->and($entry->uri())->toContain('{token}');
+    }
+    foreach ($protocols as $name) {
+        $route = Route::getRoutes()->getByName($name);
+        expect($route)->not->toBeNull()
+            ->and($route->methods())->toBe(['POST'])
+            ->and($route->getControllerClass())->toStartWith('Laravel\\Fortify\\Http\\Controllers\\');
+    }
+});

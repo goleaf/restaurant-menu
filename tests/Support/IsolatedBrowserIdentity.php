@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use Closure;
+use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Symfony\Component\HttpFoundation\Response;
 
 final class IsolatedBrowserIdentity
@@ -31,7 +33,13 @@ final class IsolatedBrowserIdentity
         app('auth')->forgetGuards();
         app('session')->forgetDrivers();
         app()->forgetInstance('session.store');
-        app('redirect')->setSession(app('session')->driver());
+        // An aborted Livewire request may not dehydrate its temporary redirector.
+        // Recreate the native request boundary that PHP-FPM supplies in production.
+        $redirector = new Redirector(app('url'));
+        $redirector->setSession(app('session')->driver());
+        app()->instance('redirect', $redirector);
+        // ResponseFactory also retains the redirector and its previous session.
+        app()->forgetInstance(ResponseFactory::class);
         // Router middleware discovery can retain a controller with the previous request's guard.
         $request->route()?->flushController();
 

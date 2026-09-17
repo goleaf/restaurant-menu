@@ -58,7 +58,7 @@ test('demo owner can complete the organization administration browser journey', 
 
     clickOrganizationsBrowserElement(
         $page,
-        sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $ownerIdentity['role']->value),
+        sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $ownerIdentity['role']->value),
     );
     $page
         ->assertPathIs(route('dashboard', absolute: false))

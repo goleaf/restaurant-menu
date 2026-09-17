@@ -1,6 +1,12 @@
 <?php
 
+use App\Http\Controllers\Restaurant\DownloadPreparedFileController;
+use App\Livewire\Exports\Index;
+use App\Livewire\Invitations\Show;
+use App\Livewire\Local\DemoLogin;
+use App\Livewire\Superadmin\Backups\RestoreSqlite;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Routing\RedirectController;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 
@@ -78,13 +84,13 @@ test('account creation is exposed only through the invitation session boundary',
     expect(prompt334RouteByName('register'))->toBeNull()
         ->and(prompt334RouteByName('register.store'))->toBeNull();
 
-    $inviteRegistration = prompt334RouteByName('invitations.register');
+    $invitation = prompt334RouteByName('invitations.pending');
+    expect(prompt334RouteByName('invitations.register'))->toBeNull()
+        ->and($invitation)->not->toBeNull()
+        ->and(prompt334RouteMethods($invitation))->toBe(['GET', 'HEAD'])
+        ->and(prompt334RouteMiddleware($invitation))->toContain('web', 'throttle:staff-invitations')
+        ->and($invitation?->getAction('livewire_component'))->toBe(Show::class);
 
-    expect($inviteRegistration)->not->toBeNull()
-        ->and(prompt334RouteMethods($inviteRegistration))->toContain('POST')
-        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('web')
-        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('guest')
-        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('throttle:staff-invitations');
 });
 
 test('download routes have the required access middleware boundary', function (): void {
@@ -95,14 +101,19 @@ test('download routes have the required access middleware boundary', function ()
         ->and(prompt334RouteMethods($exportRoute))->toContain('GET')
         ->and(prompt334RouteMiddleware($exportRoute))->toContain('web')
         ->and(prompt334RouteMiddleware($exportRoute))->toContain('auth')
-        ->and($exportRoute?->getActionName())->toBe('App\Http\Controllers\Restaurant\DownloadBranchCsvExportController');
+        ->and($exportRoute?->getAction('livewire_component'))->toBe(Index::class);
 
     expect($backupRoute)->not->toBeNull()
         ->and(prompt334RouteMethods($backupRoute))->toContain('GET')
         ->and(prompt334RouteMiddleware($backupRoute))->toContain('web')
         ->and(prompt334RouteMiddleware($backupRoute))->toContain('auth')
         ->and(prompt334RouteMiddleware($backupRoute))->toContain('superadmin')
-        ->and($backupRoute?->getActionName())->toBe('App\Http\Controllers\Superadmin\DownloadSqliteBackupController');
+        ->and(prompt334RouteMiddleware($backupRoute))->toContain('password.confirm')
+        ->and(ltrim($backupRoute?->getActionName() ?? '', '\\'))->toBe(RedirectController::class);
+
+    $preparedFile = prompt334RouteByName('restaurant.files.download');
+    expect(prompt334RouteMiddleware($preparedFile))->toContain('web', 'auth')
+        ->and($preparedFile?->getActionName())->toBe(DownloadPreparedFileController::class);
 });
 
 test('sqlite restore routes require superadmin password confirmation', function (): void {
@@ -112,7 +123,7 @@ test('sqlite restore routes require superadmin password confirmation', function 
     expect($showRoute)->not->toBeNull()
         ->and(prompt334RouteMethods($showRoute))->toContain('GET')
         ->and(prompt334RouteMiddleware($showRoute))->toContain('web', 'auth', 'superadmin', 'password.confirm')
-        ->and($showRoute?->getActionName())->toBe('App\Http\Controllers\Superadmin\ShowSqliteBackupRestoreController');
+        ->and($showRoute?->getAction('livewire_component'))->toBe(RestoreSqlite::class);
 
     expect($storeRoute)->not->toBeNull()
         ->and(prompt334RouteMethods($storeRoute))->toContain('POST')
@@ -141,7 +152,7 @@ test('state changing invitation requests reject a missing csrf token', function 
         app()->instance('env', 'local');
 
         $this->withMiddleware(PreventRequestForgery::class)
-            ->post(route('invitations.register'), [])
+            ->postJson(route('default-livewire.update'), ['components' => []], ['X-Livewire' => ''])
             ->assertStatus(419);
     } finally {
         app()->instance('env', $originalEnvironment);
@@ -150,7 +161,7 @@ test('state changing invitation requests reject a missing csrf token', function 
 
 test('demo login routes keep their public authentication boundary', function (): void {
     $indexRoute = prompt334RouteByName('demo-login.index');
-    $authenticateRoute = prompt334RouteByName('demo-login.authenticate');
+    expect(prompt334RouteByName('demo-login.authenticate'))->toBeNull();
 
     expect($indexRoute)->not->toBeNull()
         ->and(prompt334RouteMiddleware($indexRoute))->toContain('web')
@@ -160,13 +171,8 @@ test('demo login routes keep their public authentication boundary', function ():
         ->and(prompt334RouteMiddleware($indexRoute))->not->toContain('auth')
         ->and(prompt334RouteMethods($indexRoute))->toContain('GET');
 
-    expect($authenticateRoute)->not->toBeNull()
-        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('web')
-        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('demo-login')
-        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('guest')
-        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('throttle:demo-login')
-        ->and(prompt334RouteMiddleware($authenticateRoute))->not->toContain('auth')
-        ->and(prompt334RouteMethods($authenticateRoute))->toContain('POST');
+    expect($indexRoute?->getAction('livewire_component'))->toBe(DemoLogin::class);
+
 });
 
 /**

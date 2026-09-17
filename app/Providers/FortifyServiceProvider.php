@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Auth\StartTwoFactorChallengeAction;
 use App\Actions\Fortify\ResetUserPassword;
-use App\Services\Auth\LocalLoginDirectoryQuery;
+use App\Support\Auth\PasswordResetContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
+use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -21,7 +22,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(RedirectsIfTwoFactorAuthenticatable::class, StartTwoFactorChallengeAction::class);
     }
 
     /**
@@ -47,41 +48,17 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(function (Request $request) {
-            $localUsers = $this->app->make(LocalLoginDirectoryQuery::class)->handle($request);
+        Fortify::resetPasswordView(function (Request $request) {
+            if ($request->isMethod('HEAD') || str_contains(strtolower($request->header('Purpose', '').' '.$request->header('Sec-Purpose', '').' '.$request->header('X-Moz', '')), 'prefetch')) {
+                return response()->noContent();
+            }
+            $token = $request->route('token');
+            $email = $request->query('email');
+            abort_unless(is_string($token) && is_string($email), 404);
+            $this->app->make(PasswordResetContext::class)->store($request, $token, $email);
 
-            return response()->view('livewire.auth.login', [
-                ...$this->authViewData($request),
-                'localUsers' => $localUsers,
-            ])->withHeaders($localUsers === null ? [] : [
-                'Cache-Control' => 'no-store, private',
-                'Referrer-Policy' => 'no-referrer',
-                'X-Robots-Tag' => 'noindex, nofollow',
-            ]);
+            return to_route('password.reset.form');
         });
-        Fortify::verifyEmailView(fn (Request $request) => view('livewire.auth.verify-email', [
-            ...$this->authViewData($request),
-            'verificationLinkSent' => $request->session()->get('status') === 'verification-link-sent',
-        ]));
-        Fortify::twoFactorChallengeView(fn () => view('livewire.auth.two-factor-challenge'));
-        Fortify::confirmPasswordView(fn (Request $request) => view('livewire.auth.confirm-password', $this->authViewData($request)));
-        Fortify::resetPasswordView(fn (Request $request) => view('livewire.auth.reset-password', [
-            ...$this->authViewData($request),
-            'resetToken' => (string) $request->route('token'),
-            'resetEmail' => (string) $request->query('email', ''),
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
-        Fortify::requestPasswordResetLinkView(fn (Request $request) => view('livewire.auth.forgot-password', $this->authViewData($request)));
-    }
-
-    /**
-     * @return array{sessionStatus: mixed}
-     */
-    private function authViewData(Request $request): array
-    {
-        return [
-            'sessionStatus' => $request->session()->get('status'),
-        ];
     }
 
     /**
@@ -89,6 +66,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
+        RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(5)
+            ->by((string) $request->session()->get('login.id').'|'.$request->ip()));
+
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 

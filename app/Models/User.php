@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
@@ -54,10 +53,10 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         return $this->hasMany(Organization::class, 'owner_user_id');
     }
 
-    /** @return HasOne<RestaurantOnboarding, $this> */
-    public function restaurantOnboarding(): HasOne
+    /** @return HasMany<RestaurantOnboarding, $this> */
+    public function restaurantOnboardings(): HasMany
     {
-        return $this->hasOne(RestaurantOnboarding::class);
+        return $this->hasMany(RestaurantOnboarding::class);
     }
 
     /**

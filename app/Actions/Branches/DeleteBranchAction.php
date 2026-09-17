@@ -42,7 +42,9 @@ final class DeleteBranchAction
                 );
             }
 
-            $scopedBranch->deleteOrFail();
+            if ($scopedBranch->deleteOrFail() !== true) {
+                throw new \RuntimeException('The structure lifecycle change could not be saved.');
+            }
         });
     }
 }

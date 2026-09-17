@@ -21,7 +21,9 @@ final class RestoreOrganizationAction
                 ->firstOrFail();
 
             Gate::forUser($actor)->authorize('restore', $scopedOrganization);
-            $scopedOrganization->restore();
+            if ($scopedOrganization->restore() !== true) {
+                throw new \RuntimeException('The structure lifecycle change could not be saved.');
+            }
         });
     }
 }

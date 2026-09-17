@@ -4,1101 +4,259 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
-use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
-use App\Actions\ServicePoints\BulkCreateServicePointsAction;
-use App\Actions\ServicePoints\CreateServicePointAction;
-use App\Actions\ServicePoints\DeleteServicePointAction;
-use App\Actions\ServicePoints\RestoreServicePointAction;
-use App\Actions\ServicePoints\SetServicePointActiveAction;
-use App\Actions\ServicePoints\UpdateServicePointAction;
-use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
-use App\Enums\ServicePointStatus;
-use App\Enums\ServicePointType;
-use App\Models\AreaNode;
+use App\Livewire\Forms\Floor\FloorFilterForm;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
-use App\Models\ServicePoint;
-use App\Models\User;
+use App\Services\Branches\AreaNodeQueryService;
+use App\Services\Branches\FloorWorkspaceQuery;
 use App\Services\Branches\ServicePointQueryService;
-use App\Support\LocalizedDateFormatter;
-use App\Support\Validation\Branches\ServicePointRules;
-use Flux\Flux;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use InvalidArgumentException;
-use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-/**
- * @property-read Paginator<int, ServicePoint> $servicePoints
- * @property-read EloquentCollection<int, AreaNode> $areaNodes
- * @property-read list<array{area_id: int|null, name: string, type: string|null, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: list<array<string, mixed>>}> $floorBoardSections
- */
 class Index extends Component
 {
-    use WithPagination;
+    use InteractsWithFloorContext, WithPagination;
 
-    private const SERVICE_POINTS_PER_PAGE = 10;
+    public FloorFilterForm $filters;
+    #[Url(as: 'point', history: true, except: '')] public mixed $point = '';
+    #[Url(as: 'area_editor', history: true, except: '')] public mixed $areaEditor = '';
+    #[Url(as: 'panel', history: true, except: '')] public mixed $panel = '';
+    #[Url(as: 'area_search', except: '')] public mixed $areaSearch = '';
+    #[Url(as: 'area_lifecycle', except: 'active')] public mixed $areaLifecycle = 'active';
+    #[Url(as: 'area_type', except: 'all')] public mixed $areaType = 'all';
+    #[Url(as: 'area_active', except: 'all')] public mixed $areaActive = 'all';
+    #[Url(as: 'area_sort', except: 'position')] public mixed $areaSort = 'position';
+    #[Locked] public array $selectedIds = [];
+    #[Locked] public int $editorRevision = 0;
+    #[Url(as: 'qr_record', history: true, except: '')] public mixed $qrRecord = '';
+    #[Locked] public ?int $legacyQrId = null;
 
-    private ServicePointQueryService $servicePointQueries;
+    private AreaNodeQueryService $areaNodeQueryService;
+        private ServicePointQueryService $servicePointQueryService;
 
-    public Organization $organization;
-
-    public Brand $brand;
-
-    public Branch $branch;
-
-    #[Url(as: 'q', except: '')]
-    public string $servicePointSearch = '';
-
-    public string $areaSearch = '';
-
-    #[Url(as: 'zone', except: 'all')]
-    public string $filterAreaNodeId = 'all';
-
-    #[Url(as: 'type', except: 'all')]
-    public string $filterType = 'all';
-
-    #[Url(as: 'status', except: 'all')]
-    public string $filterStatus = 'all';
-
-    #[Url(as: 'active', except: 'all')]
-    public string $filterActive = 'all';
-
-    #[Url(as: 'qr', except: 'all')]
-    public string $filterQr = 'all';
-
-    #[Url(as: 'lifecycle', except: 'active')]
-    public string $filterLifecycle = 'active';
-
-    #[Url(as: 'sort', except: 'position')]
-    public string $sort = 'position';
-
-    public mixed $areaNodeId = '';
-
-    public mixed $type = 'table';
-
-    public mixed $icon = 'squares-2x2';
-
-    public mixed $name = '';
-
-    public mixed $displayNumber = '';
-
-    public mixed $capacity = 2;
-
-    public mixed $isActive = true;
-
-    public ?int $editingServicePointId = null;
-
-    public mixed $editingAreaNodeId = '';
-
-    public mixed $editingType = 'table';
-
-    public mixed $editingIcon = 'squares-2x2';
-
-    public mixed $editingName = '';
-
-    public mixed $editingDisplayNumber = '';
-
-    public mixed $editingCapacity = 2;
-
-    public mixed $editingIsActive = true;
-
-    public bool $canManageServicePoints = false;
-
-    public bool $canChangeServicePointStatus = false;
-
-    public bool $canOpenTable = false;
-
-    public bool $canGenerateQr = false;
-
-    public ?int $shownQrServicePointId = null;
-
-    public mixed $bulkAreaNodeId = '';
-
-    public mixed $bulkType = 'table';
-
-    public mixed $bulkPrefix = 'T';
-
-    public mixed $bulkFrom = 1;
-
-    public mixed $bulkTo = 20;
-
-    public mixed $bulkCapacity = 4;
-
-    public bool $bulkPreviewReady = false;
-
-    public int $bulkCreatedCount = 0;
-
-    public int $bulkSkippedCount = 0;
-
-    /**
-     * @var list<int>
-     */
-    public array $bulkCreatedServicePointIds = [];
-
-    /**
-     * @var list<array{code: string, name: string, display_number: string, exists: bool, will_create: bool}>
-     */
-    public array $bulkPreviewRows = [];
-
-    /**
-     * @var array<int, string>
-     */
-    public array $statusSelections = [];
-
-    public function boot(ServicePointQueryService $servicePointQueries): void
+    public function boot(AreaNodeQueryService $areaNodeQueryService, ServicePointQueryService $servicePointQueryService): void
     {
-        $this->servicePointQueries = $servicePointQueries;
+        $this->areaNodeQueryService = $areaNodeQueryService;
+        $this->servicePointQueryService = $servicePointQueryService;
     }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
-        $this->organization = $organization;
-        $this->brand = $brand;
-        $this->branch = $branch;
-
-        if (
-            $brand->organization_id !== $organization->id
-            || $branch->organization_id !== $organization->id
-            || $branch->brand_id !== $brand->id
-        ) {
-            abort(403);
-        }
-
-        $user = $this->currentUser();
-        $gate = Gate::forUser($user);
-
-        $gate->authorize('view', $branch);
-
-        $this->canManageServicePoints = $gate->allows('manageServicePoints', $branch);
-        $this->canChangeServicePointStatus = $gate->allows('changeServicePointStatus', $branch);
-        $this->canOpenTable = $gate->allows('openTable', $branch);
-        $this->canGenerateQr = $gate->allows('generateQr', $branch);
-
-        if (! $this->canChangeServicePointStatus && ! $this->canOpenTable && ! $this->canGenerateQr) {
-            abort(403);
-        }
-    }
-
-    public function prepareCreate(string $type): void
-    {
-        $this->authorizeServicePointManagement();
-
-        $servicePointType = ServicePointType::tryFrom($type);
-
-        if (! $servicePointType instanceof ServicePointType) {
-            abort(422);
-        }
-
-        $this->type = $servicePointType->value;
-        $this->icon = $this->defaultIconForType($servicePointType);
-        $this->name = $this->defaultNameForType($servicePointType);
-        $this->capacity = $this->defaultCapacityForType($servicePointType);
-    }
-
-    public function create(CreateServicePointAction $createServicePoint): void
-    {
-        $this->authorizeServicePointManagement();
-
-        if (is_string($this->name)) {
-            $this->name = trim($this->name);
-        }
-
-        if (is_string($this->displayNumber)) {
-            $this->displayNumber = trim($this->displayNumber);
-        }
-
-        $validated = $this->validate($this->servicePointRules());
-
-        try {
-            $createServicePoint->handle($this->branch, $this->servicePointPayload($validated));
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('areaNodeId', __($exception->getMessage()));
-
-            return;
-        }
-
-        $this->resetCreateForm();
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service_point'));
-    }
-
-    public function previewBulkCreate(BulkCreateServicePointsAction $bulkCreateServicePoints): void
-    {
-        $this->authorizeServicePointManagement();
-        $this->normalizeBulkFields();
-
-        $validated = $this->validate($this->bulkServicePointRules());
-
-        try {
-            $this->bulkPreviewRows = $bulkCreateServicePoints->preview(
-                $this->branch,
-                $this->bulkServicePointPayload($validated),
-            );
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('bulkAreaNodeId', __($exception->getMessage()));
-
-            return;
-        }
-
-        $this->bulkCreatedCount = 0;
-        $this->bulkSkippedCount = 0;
-        $this->bulkCreatedServicePointIds = [];
-        $this->bulkPreviewReady = true;
-    }
-
-    public function confirmBulkCreate(BulkCreateServicePointsAction $bulkCreateServicePoints): void
-    {
-        $this->authorizeServicePointManagement();
-
-        if (! $this->bulkPreviewReady) {
-            $this->addError('bulkPrefix', __('ui.livewire.organizations.brands.branches.servicepoints.index.preview_the_l'));
-
-            return;
-        }
-
-        $this->normalizeBulkFields();
-
-        $validated = $this->validate($this->bulkServicePointRules());
-
-        try {
-            $result = $bulkCreateServicePoints->handle(
-                $this->branch,
-                $this->bulkServicePointPayload($validated),
-            );
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('bulkAreaNodeId', __($exception->getMessage()));
-
-            return;
-        }
-
-        $this->bulkPreviewRows = $result['preview'];
-        $this->bulkCreatedCount = $result['created_count'];
-        $this->bulkSkippedCount = $result['skipped_count'];
-        $this->bulkCreatedServicePointIds = $result['created_ids'];
-        $this->bulkPreviewReady = false;
-
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__a2ac3691'));
+        abort_unless($brand->organization_id === $organization->id && $branch->organization_id === $organization->id && $branch->brand_id === $brand->id, 403);
+        $this->branchId = $branch->id;
+        $this->branch();
+        $this->validateState();
+        if ($this->point !== '' && $this->panel === '') { $this->panel = 'properties'; }
+        if ($this->areaEditor !== '' && $this->panel === '') { $this->panel = 'area'; }
+        if ($this->panel === 'print' && $this->point !== '') { $this->selectedIds = [(int) $this->point]; }
+        if (in_array($this->panel, ['print', 'generate', 'move'], true) && $this->selectedIds === []) { $this->panel = ''; }
     }
 
     public function updated(string $property): void
     {
-        if ($property === 'filterLifecycle' && ! in_array($this->filterLifecycle, ['active', 'archived'], true)) {
-            $this->filterLifecycle = 'active';
-        }
-
-        if ($property === 'sort' && ! in_array($this->sort, ['position', 'name_asc', 'name_desc', 'newest', 'oldest'], true)) {
-            $this->sort = 'position';
-        }
-
-        if ($this->isServicePointFilterProperty($property)) {
-            $this->resetPage();
-            unset($this->servicePoints);
-
-            return;
-        }
-
-        if (! Str::startsWith($property, 'bulk')) {
-            return;
-        }
-
-        if (in_array($property, [
-            'bulkPreviewRows',
-            'bulkPreviewReady',
-            'bulkCreatedCount',
-            'bulkSkippedCount',
-            'bulkCreatedServicePointIds',
-        ], true)) {
-            return;
-        }
-
-        $this->resetBulkPreview();
+        if (str_starts_with($property, 'filters.') && $property !== 'filters.mode') { $this->resetPage(); }
+        if (in_array($property, ['areaSearch', 'areaLifecycle', 'areaType', 'areaActive', 'areaSort'], true)) { $this->resetPage('areasPage'); }
     }
 
-    public function resetServicePointFilters(): void
+    public function openPoint(int $id, string $panel = 'properties'): void
     {
-        $this->reset(
-            'servicePointSearch',
-            'filterAreaNodeId',
-            'filterType',
-            'filterStatus',
-            'filterActive',
-            'filterQr',
-            'filterLifecycle',
-            'sort',
-        );
+        abort_unless(in_array($panel, ['properties', 'qr'], true), 422);
+        $this->servicePointQueryService->findForBranch($this->branch(), $id, true);
+        $this->qrRecord = '';
+        $this->point = (string) $id;
+        $this->areaEditor = '';
+        $this->panel = $panel;
+        $this->editorRevision++;
+    }
 
+    public function openArea(int $id): void
+    {
+        $area = $this->floorContext->area($this->branch(), $id);
+        Gate::forUser($this->actor())->authorize($area->trashed() ? 'restore' : 'update', $area);
+        $this->areaEditor = (string) $id;
+        $this->point = '';
+        $this->panel = 'area';
+        $this->editorRevision++;
+    }
+
+    public function createPoint(): void
+    {
+        Gate::forUser($this->actor())->authorize('manageServicePoints', $this->branch());
+        $this->clearEditor();
+        $this->panel = 'create-point';
+    }
+
+    public function createArea(): void
+    {
+        Gate::forUser($this->actor())->authorize('manageZones', $this->branch());
+        $this->clearEditor();
+        $this->panel = 'create-area';
+    }
+
+    public function openBulk(): void
+    {
+        Gate::forUser($this->actor())->authorize('manageServicePoints', $this->branch());
+        $this->clearEditor();
+        $this->panel = 'bulk';
+    }
+
+    public function openSelection(string $operation): void
+    {
+        abort_unless(in_array($operation, ['print', 'generate', 'move'], true), 422);
+        $branch = $this->branch();
+        Gate::forUser($this->actor())->authorize($operation === 'move' ? 'manageServicePoints' : 'generateQr', $branch);
+        $this->servicePointQueryService->selected($branch, $this->selectedIds);
+        $this->clearEditor();
+        $this->panel = $operation;
+    }
+
+    public function clearEditor(): void
+    {
+        $this->point = '';
+        $this->areaEditor = '';
+        $this->panel = '';
+        $this->legacyQrId = null;
+        $this->qrRecord = '';
+        $this->editorRevision++;
+    }
+
+    public function chooseArea(string $area): void
+    {
+        $this->filters->area = $area;
+        $filters = $this->filters->filters();
+        $this->floorContext->validateArea($this->branch(), $filters['area_node_id']);
+        $this->clearEditor();
         $this->resetPage();
-        unset($this->servicePoints);
     }
 
-    public function startEditing(int $servicePointId): void
+    public function selectPoint(int $id): void
     {
-        $this->authorizeServicePointManagement();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-
-        $this->fillEditingForm($servicePoint);
-    }
-
-    public function startEditingFromBoard(int $servicePointId): void
-    {
-        $this->authorizeServicePointManagement();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-
-        $this->reset(
-            'filterAreaNodeId',
-            'filterType',
-            'filterStatus',
-            'filterActive',
-            'filterQr',
-        );
-        $this->servicePointSearch = $servicePoint->internal_code ?: $servicePoint->name;
-        $this->resetPage();
-        unset($this->servicePoints);
-
-        $this->fillEditingForm($servicePoint);
-    }
-
-    public function cancelEditing(): void
-    {
-        $this->reset(
-            'editingServicePointId',
-            'editingAreaNodeId',
-            'editingName',
-            'editingDisplayNumber',
-        );
-
-        $this->editingType = ServicePointType::Table->value;
-        $this->editingIcon = $this->defaultIconForType(ServicePointType::Table);
-        $this->editingCapacity = $this->defaultCapacityForType(ServicePointType::Table);
-        $this->editingIsActive = true;
-    }
-
-    public function update(UpdateServicePointAction $updateServicePoint): void
-    {
-        $this->authorizeServicePointManagement();
-
-        if ($this->editingServicePointId === null) {
+        $this->branch();
+        if (in_array($id, $this->selectedIds, true)) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, [$id]));
             return;
         }
-
-        if (is_string($this->editingName)) {
-            $this->editingName = trim($this->editingName);
-        }
-
-        if (is_string($this->editingDisplayNumber)) {
-            $this->editingDisplayNumber = trim($this->editingDisplayNumber);
-        }
-
-        $validated = $this->validate($this->servicePointRules('editing'));
-
-        try {
-            $updateServicePoint->handle(
-                $this->findBranchServicePoint($this->editingServicePointId),
-                $this->servicePointPayload($validated, 'editing'),
-                $this->currentUser(),
-            );
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('editingAreaNodeId', __($exception->getMessage()));
-
-            return;
-        }
-
-        $this->cancelEditing();
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__c89ead5d'));
+        abort_if(count($this->selectedIds) >= 100, 422);
+        $this->servicePointQueryService->findForBranch($this->branch(), $id);
+        $this->selectedIds[] = $id;
     }
 
-    public function disable(int $servicePointId, SetServicePointActiveAction $setActive): void
+    public function selectPage(): void
     {
-        $this->setActive($servicePointId, false, $setActive);
+        $branch = $this->branch();
+        $filters = $this->filters->filters();
+        $this->floorContext->validateArea($branch, $filters['area_node_id']);
+        $page = $this->servicePointQueryService->paginate($branch, $filters, 20);
+        $ids = $page->getCollection()->reject(fn ($point): bool => $point->trashed())->modelKeys();
+        $selected = array_values(array_unique([...$this->selectedIds, ...$ids]));
+        abort_if(count($selected) > 100, 422);
+        $this->selectedIds = $selected;
     }
 
-    public function enable(int $servicePointId, SetServicePointActiveAction $setActive): void
+    public function clearSelection(): void
     {
-        $this->setActive($servicePointId, true, $setActive);
+        $this->selectedIds = [];
     }
 
-    public function deleteServicePoint(int $servicePointId, DeleteServicePointAction $deleteServicePoint): void
+    public function openService(int $id, OpenTableSessionForServicePointAction $open): void
     {
-        $this->authorizeServicePointManagement();
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-
-        $deleteServicePoint->handle($this->currentUser(), $this->branch, $servicePoint);
-
-        unset($this->statusSelections[$servicePointId]);
-
-        if ($this->editingServicePointId === $servicePointId) {
-            $this->cancelEditing();
-        }
-
-        if ($this->shownQrServicePointId === $servicePointId) {
-            $this->shownQrServicePointId = null;
-        }
-
-        $this->forgetServicePointDisplays();
-
-        $this->modal('delete-service-point-'.$servicePointId)->close();
-        Flux::toast(variant: 'success', text: __('service_points.messages.deleted'));
+        $point = $this->servicePointQueryService->findForBranch($this->branch(), $id);
+        $session = $open->handle($point, $this->actor());
+        $this->redirectRoute('restaurant.waiter.dashboard', ['branch' => $this->branchId, 'table' => $session->id], navigate: true);
     }
 
-    public function restoreServicePoint(
-        int $servicePointId,
-        RestoreServicePointAction $restoreServicePoint,
-    ): void {
-        $this->authorizeServicePointManagement();
-        $servicePoint = $this->servicePointQueries->findForBranch($this->branch, $servicePointId, true);
-
-        $restoreServicePoint->handle($this->currentUser(), $this->branch, $servicePoint);
-
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
-    }
-
-    public function changeStatus(int $servicePointId, UpdateServicePointStatusAction $updateServicePointStatus): void
+    #[On('floor-point-created')]
+    public function pointCreated(int $id): void
     {
-        $this->authorizeServicePointStatusChange();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-        $status = ServicePointStatus::tryFrom($this->statusSelections[$servicePoint->id] ?? '');
-
-        if (! $status instanceof ServicePointStatus) {
-            $this->addError('statusSelections.'.$servicePoint->id, __('ui.livewire.organizations.brands.branches.servicepoints.index.the_selected'));
-
-            return;
-        }
-
-        $updateServicePointStatus->handle($servicePoint, $status);
-
-        $this->statusSelections[$servicePoint->id] = $status->value;
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__c86ce720'));
+        $this->servicePointQueryService->findForBranch($this->branch(), $id);
+        $this->point = (string) $id;
+        $this->panel = 'properties';
     }
 
-    public function openTable(int $servicePointId, OpenTableSessionForServicePointAction $openTableSession): void
+    #[On('floor-bulk-created')]
+    public function bulkCreated(array $ids): void
     {
-        $this->authorizeTableOpening();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-
-        $openTableSession->handle($servicePoint, $this->currentUser());
-
-        $this->statusSelections[$servicePoint->id] = ServicePointStatus::Occupied->value;
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.table_opened'));
+        $this->servicePointQueryService->selected($this->branch(), $ids);
+        $this->selectedIds = array_slice($ids, 0, 100);
     }
 
-    public function generateQr(int $servicePointId, GenerateQrCodeForServicePointAction $generateQrCode): void
+    #[On('floor-print-point')]
+    public function printPoint(int $pointId, int $qrId): void
     {
-        $this->authorizeQrGeneration();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-        $qrCode = $generateQrCode->handle($servicePoint, $this->currentUser());
-
-        $this->shownQrServicePointId = $servicePoint->id;
-        $this->forgetServicePointDisplays();
-
-        Flux::toast(
-            variant: 'success',
-            text: $qrCode->wasRecentlyCreated
-                ? __('qr.messages.created')
-                : __('qr.messages.active_exists'),
-        );
+        $branch = $this->branch();
+        Gate::forUser($this->actor())->authorize('generateQr', $branch);
+        $this->servicePointQueryService->findForBranch($branch, $pointId);
+        \App\Models\QrCode::query()->where('service_point_id', $pointId)->whereKey($qrId)->firstOrFail();
+        $this->clearEditor();
+        $this->point = (string) $pointId;
+        $this->qrRecord = (string) $qrId;
+        $this->selectedIds = [$pointId];
+        $this->panel = 'print';
     }
 
-    public function showQr(int $servicePointId): void
+    public function movePoint(int $id): void
     {
-        $this->authorizeQrGeneration();
-
-        $this->shownQrServicePointId = $this->findBranchServicePoint($servicePointId)->id;
+        $this->servicePointQueryService->findForBranch($this->branch(), $id);
+        $this->selectedIds = [$id];
+        $this->openSelection('move');
     }
 
-    public function hideQr(): void
+    #[On('floor-saved')]
+    public function refreshList(): void
     {
-        $this->shownQrServicePointId = null;
-    }
-
-    /**
-     * @return Paginator<int, ServicePoint>
-     */
-    #[Computed]
-    public function servicePoints(): Paginator
-    {
-        $servicePoints = $this->servicePointQueries->paginate(
-            $this->branch,
-            [
-                'search' => $this->servicePointSearch,
-                'area_node_id' => $this->filterAreaNodeId,
-                'type' => $this->filterType,
-                'status' => $this->filterStatus,
-                'active' => $this->filterActive,
-                'qr' => $this->filterQr,
-                'lifecycle' => $this->filterLifecycle,
-                'sort' => $this->sort,
-            ],
-            self::SERVICE_POINTS_PER_PAGE,
-        );
-
-        $this->statusSelections = array_intersect_key($this->statusSelections, array_fill_keys($servicePoints->getCollection()->pluck('id')->all(), true));
-        $servicePoints->getCollection()->each(function (ServicePoint $servicePoint): void {
-            $this->statusSelections[$servicePoint->id] ??= $servicePoint->status->value;
-        });
-
-        return $servicePoints;
-    }
-
-    /**
-     * @return list<array{area_id: int|null, name: string, type: string|null, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: list<array<string, mixed>>}>
-     */
-    #[Computed]
-    public function floorBoardSections(): array
-    {
-        $servicePoints = new EloquentCollection($this->servicePoints->getCollection()->all());
-        $servicePointsByAreaId = $servicePoints->groupBy(
-            fn (ServicePoint $servicePoint): string => $servicePoint->area_node_id === null
-                ? 'none'
-                : (string) $servicePoint->area_node_id,
-        );
-
-        $sections = $servicePoints->pluck('areaNode')->filter()->unique('id')->sortBy('sort_order')
-            ->map(fn (AreaNode $areaNode): array => [
-                'area_id' => $areaNode->id,
-                'name' => $areaNode->name,
-                'type' => $areaNode->type->value,
-                'type_label' => __($areaNode->type->label()),
-                'icon' => $areaNode->icon,
-                'is_active' => $areaNode->is_active,
-                'service_point_count' => $servicePointsByAreaId->get((string) $areaNode->id, new EloquentCollection)->count(),
-                'service_points' => $servicePointsByAreaId
-                    ->get((string) $areaNode->id, new EloquentCollection)
-                    ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
-                    ->values()
-                    ->all(),
-            ])
-            ->values()
-            ->all();
-
-        $servicePointsWithoutArea = $servicePointsByAreaId->get('none', new EloquentCollection);
-
-        if ($servicePointsWithoutArea->isNotEmpty()) {
-            $sections[] = [
-                'area_id' => null,
-                'name' => __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony'),
-                'type' => null,
-                'type_label' => null,
-                'icon' => 'bookmark',
-                'is_active' => true,
-                'service_point_count' => $servicePointsWithoutArea->count(),
-                'service_points' => $servicePointsWithoutArea
-                    ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
-                    ->values()
-                    ->all(),
-            ];
-        }
-
-        return $sections;
-    }
-
-    #[Computed]
-    public function floorBoardServicePointCount(): int
-    {
-        return array_sum(array_column($this->floorBoardSections, 'service_point_count'));
-    }
-
-    /**
-     * @return EloquentCollection<int, AreaNode>
-     */
-    #[Computed]
-    public function areaNodes(): EloquentCollection
-    {
-        $selectedIds = collect([$this->areaNodeId, $this->editingAreaNodeId, $this->bulkAreaNodeId, $this->filterAreaNodeId])
-            ->filter(fn (mixed $value): bool => is_int($value) || (is_string($value) && ctype_digit($value)))
-            ->map(fn (mixed $value): int => (int) $value)->unique()->values()->all();
-
-        return $this->servicePointQueries->areaNodes($this->branch, $this->areaSearch, $selectedIds);
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    #[Computed]
-    public function areaOptions(): array
-    {
-        return array_merge(
-            [['value' => '', 'label' => __('qr.filters.no_zone')]],
-            $this->areaNodes->map(fn (AreaNode $node): array => ['value' => (string) $node->id, 'label' => ($node->parent === null ? '' : $node->parent->name.' / ').$node->name])->all(),
-        );
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    #[Computed]
-    public function filterAreaOptions(): array
-    {
-        return array_merge(
-            [
-                ['value' => 'all', 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones')],
-                ['value' => 'none', 'label' => __('qr.filters.no_zone')],
-            ],
-            $this->areaNodes->map(fn (AreaNode $node): array => ['value' => (string) $node->id, 'label' => ($node->parent === null ? '' : $node->parent->name.' / ').$node->name])->all(),
-        );
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Computed]
-    public function servicePointTypeOptions(): array
-    {
-        return ServicePointType::options();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Computed]
-    public function servicePointStatusOptions(): array
-    {
-        return ServicePointStatus::options();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Computed]
-    public function activeFilterOptions(): array
-    {
-        return [
-            'all' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_places'),
-            'active' => __('ui.livewire.organizations.brands.branches.servicepoints.index.active_only'),
-            'inactive' => __('ui.livewire.organizations.brands.branches.servicepoints.index.inactive_only'),
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Computed]
-    public function qrFilterOptions(): array
-    {
-        return [
-            'all' => __('qr.filters.all_statuses'),
-            'with' => __('qr.filters.has_qr'),
-            'without' => __('qr.labels.no_qr'),
-        ];
-    }
-
-    #[Computed]
-    public function servicePointFiltersAreActive(): bool
-    {
-        return trim($this->servicePointSearch) !== ''
-            || $this->filterAreaNodeId !== 'all'
-            || $this->filterType !== 'all'
-            || $this->filterStatus !== 'all'
-            || $this->filterActive !== 'all'
-            || $this->filterQr !== 'all'
-            || $this->filterLifecycle !== 'active'
-            || $this->sort !== 'position';
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Computed]
-    public function iconOptions(): array
-    {
-        return $this->iconOptionRows();
-    }
-
-    /**
-     * @return list<array{type: string, label: string, icon: string}>
-     */
-    #[Computed]
-    public function quickCreateOptions(): array
-    {
-        return [
-            ['type' => ServicePointType::Table->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.stol'), 'icon' => 'squares-2x2'],
-            ['type' => ServicePointType::BarSeat->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.mesto_u_bara'), 'icon' => 'beaker'],
-            ['type' => ServicePointType::Room->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.komnata'), 'icon' => 'home'],
-            ['type' => ServicePointType::Other->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.drugoe_mesto'), 'icon' => 'bookmark'],
-        ];
-    }
-
-    #[Computed]
-    public function bulkCreatableCount(): int
-    {
-        return collect($this->bulkPreviewRows)
-            ->filter(fn (array $row): bool => (bool) $row['will_create'])
-            ->count();
-    }
-
-    #[Computed]
-    public function bulkDuplicateCount(): int
-    {
-        return collect($this->bulkPreviewRows)
-            ->filter(fn (array $row): bool => (bool) $row['exists'])
-            ->count();
+        $this->branch();
     }
 
     public function render(): View
     {
-        $floorBoardSections = $this->filterLifecycle === 'active' ? $this->floorBoardSections : [];
-        $servicePointPaginator = $this->servicePoints;
-        $servicePointRows = $servicePointPaginator->getCollection()
-            ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
-            ->all();
-
+        $this->validateState();
+        $branch = $this->branch();
+        $query = $this->servicePointQueryService;
+        $workspace = $this->floorContext;
+        $filters = $this->filters->filters();
+        $workspace->validateArea($branch, $filters['area_node_id']);
+        $abilities = $workspace->abilities($this->actor(), $branch);
+        $points = $query->paginate($branch, $filters, 20);
+        $rows = $points->getCollection()->map(fn ($point): array => [...$workspace->present($point, $branch, $abilities), 'selected' => in_array($point->id, $this->selectedIds, true)])->all();
+        $detail = $this->point === '' ? null : $query->selected($branch, [(int) $this->point])->first();
+        $selectedArea = ctype_digit($filters['area_node_id']) ? (int) $filters['area_node_id'] : null;
+        $areaData = $this->areaNodeQueryService->browser($branch, $this->areaSearch, $selectedArea, lifecycle: $this->areaLifecycle, filters: ['type' => $this->areaType, 'active' => $this->areaActive, 'sort' => $this->areaSort]);
         return view('livewire.organizations.brands.branches.service-points.index', [
-            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
-            'branchName' => $this->branch->name,
-            'floorBoardSections' => $floorBoardSections,
-            'floorBoardServicePointCount' => array_sum(array_column($floorBoardSections, 'service_point_count')),
-            'servicePointRows' => $servicePointRows,
-            'servicePointPaginator' => $servicePointPaginator,
-            'areaOptions' => $this->areaOptions(),
-            'filterAreaOptions' => $this->filterAreaOptions(),
-            'servicePointTypeOptions' => $this->servicePointTypeOptions(),
-            'servicePointStatusOptions' => $this->servicePointStatusOptions(),
-            'activeFilterOptions' => $this->activeFilterOptions(),
-            'qrFilterOptions' => $this->qrFilterOptions(),
-            'iconOptions' => $this->iconOptions(),
-            'servicePointFiltersAreActive' => $this->servicePointFiltersAreActive(),
-            'quickCreateOptions' => $this->quickCreateOptions(),
-            'bulkCreatableCount' => $this->bulkCreatableCount(),
-            'bulkDuplicateCount' => $this->bulkDuplicateCount(),
-        ])->title(__('navigation.service_points'));
+            'expectedQrIds' => $this->legacyQrId === null ? [] : [(int) $this->point => $this->legacyQrId],
+            'areaTypeOptions' => \App\Support\Floor\FloorOptions::types(true),
+            'typeOptions' => \App\Support\Floor\FloorOptions::types(),
+            'statusOptions' => array_map(fn ($case): array => ['value' => $case->value, 'label' => __($case->label())], \App\Enums\ServicePointStatus::cases()),
+            'sortOptions' => array_map(fn (string $key): array => ['value' => $key, 'label' => __('floor.sort.'.$key)], ['position', 'name_asc', 'name_desc', 'newest', 'oldest']),
+            'branch' => $branch, 'abilities' => $abilities, 'rows' => $rows, 'points' => $points,
+            'areaRows' => $areaData['rows'], 'areaPages' => $areaData['paginator'], 'selectedArea' => $selectedArea,
+            'detail' => $detail === null ? null : $workspace->present($detail, $branch, $abilities),
+            'selectedCount' => count($this->selectedIds), 'hiddenSelectedCount' => count(array_diff($this->selectedIds, array_column($rows, 'id'))),
+            'resultCount' => $query->count($branch, $filters), 'evaluatedAt' => now()->format('H:i:s'),
+        ])->title(__('floor.title'));
     }
 
-    /**
-     * @return array{
-     *     id: int,
-     *     type: string,
-     *     type_label: string,
-     *     icon: string|null,
-     *     name: string,
-     *     display_number: string|null,
-     *     capacity: int,
-     *     status_tone: string,
-     *     localized_status: string,
-     *     is_active: bool,
-     *     can_open_table: bool,
-     *     is_archived: bool,
-     *     has_direct_session: bool,
-     *     has_linked_session: bool,
-     *     session_started_at: string|null,
-     *     area_name: string,
-     *     has_qr: bool,
-     *     qr_short_code: string|null,
-     *     qr_localized_status: string|null,
-     *     qr_public_path: string|null,
-     *     qr_show_url: string|null
-     * }
-     */
-    private function presentServicePoint(ServicePoint $servicePoint): array
+    private function validateState(): void
     {
-        $activeQrCode = $servicePoint->activeQrCode;
-
-        return [
-            'id' => $servicePoint->id,
-            'type' => $servicePoint->type->value,
-            'type_label' => __($servicePoint->type->label()),
-            'icon' => $servicePoint->icon,
-            'name' => $servicePoint->name,
-            'display_number' => $servicePoint->display_number,
-            'capacity' => $servicePoint->capacity,
-            'status_tone' => $servicePoint->status->badgeColor(),
-            'localized_status' => __($servicePoint->status->label()),
-            'is_active' => $servicePoint->is_active,
-            'can_open_table' => $servicePoint->is_active && $servicePoint->status->allowsTableOpening(),
-            'is_archived' => $servicePoint->trashed(),
-            'has_direct_session' => $servicePoint->activeTableSession !== null,
-            'has_linked_session' => $servicePoint->activeTableSessionServicePointLinks->isNotEmpty(),
-            'session_started_at' => LocalizedDateFormatter::dateTime($servicePoint->activeTableSession?->started_at),
-            'area_name' => $servicePoint->area_node_id === null
-                ? __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony')
-                : $servicePoint->areaNode->name,
-            'has_qr' => $activeQrCode !== null,
-            'qr_short_code' => $activeQrCode?->short_code,
-            'qr_localized_status' => $activeQrCode === null ? null : __($activeQrCode->status->label()),
-            'qr_public_path' => $activeQrCode?->publicPath(),
-            'qr_show_url' => $activeQrCode === null ? null : route(
-                'organizations.brands.branches.service-points.qr.show',
-                [$this->organization, $this->brand, $this->branch, $servicePoint, $activeQrCode],
-            ),
-        ];
-    }
-
-    /**
-     * @return array<string, list<mixed>>
-     */
-    private function servicePointRules(string $prefix = ''): array
-    {
-        $fieldPrefix = $prefix === '' ? '' : $prefix;
-        $areaNodeField = $fieldPrefix === '' ? 'areaNodeId' : $fieldPrefix.'AreaNodeId';
-        $areaNodeValue = $fieldPrefix === '' ? $this->areaNodeId : $this->editingAreaNodeId;
-        $areaNodeRules = ['bail', 'nullable'];
-
-        if ($areaNodeValue !== '') {
-            $areaNodeRules[] = 'numeric';
-            $areaNodeRules[] = 'integer';
-            $areaNodeRules[] = $this->areaNodeRule();
+        \App\Support\Validation\Floor\FloorStateRules::validate([
+            'point' => $this->point, 'areaEditor' => $this->areaEditor, 'qrRecord' => $this->qrRecord,
+            'panel' => $this->panel, 'areaSearch' => $this->areaSearch, 'areaLifecycle' => $this->areaLifecycle,
+            'areaType' => $this->areaType, 'areaActive' => $this->areaActive, 'areaSort' => $this->areaSort,
+        ]);
+        abort_if($this->point !== '' && $this->areaEditor !== '', 422);
+        if ($this->qrRecord !== '') {
+            abort_unless($this->point !== '' && in_array($this->panel, ['qr', 'print'], true), 422);
+            \Illuminate\Support\Facades\Gate::forUser($this->actor())->authorize('generateQr', $this->branch());
+            \App\Models\QrCode::query()->where('service_point_id', (int) $this->point)->whereKey((int) $this->qrRecord)->firstOrFail();
+            $this->legacyQrId = (int) $this->qrRecord;
+        } else {
+            $this->legacyQrId = null;
         }
-
-        return [
-            $areaNodeField => $areaNodeRules,
-            ...ServicePointRules::servicePoint($fieldPrefix, array_keys($this->iconOptionRows())),
-        ];
-    }
-
-    /**
-     * @return array<string, list<mixed>>
-     */
-    private function bulkServicePointRules(): array
-    {
-        $areaNodeRules = ['bail', 'nullable'];
-
-        if ($this->bulkAreaNodeId !== '') {
-            $areaNodeRules[] = 'numeric';
-            $areaNodeRules[] = 'integer';
-            $areaNodeRules[] = $this->areaNodeRule();
-        }
-
-        return [
-            'bulkAreaNodeId' => $areaNodeRules,
-            ...ServicePointRules::bulkServicePoint(),
-        ];
-    }
-
-    private function areaNodeRule(): mixed
-    {
-        return Rule::exists((new AreaNode)->getTable(), 'id')
-            ->where(fn ($query) => $query
-                ->where('branch_id', $this->branch->id)
-                ->whereNull('deleted_at'));
-    }
-
-    /**
-     * @param  array<string, mixed>  $validated
-     * @return array{area_node_id: int|null, type: string, name: string, display_number: string|null, capacity: int, icon: string|null, is_active: bool}
-     */
-    private function servicePointPayload(array $validated, string $prefix = ''): array
-    {
-        $areaNodeValue = $validated[$prefix === '' ? 'areaNodeId' : $prefix.'AreaNodeId'] ?? null;
-        $displayNumber = $validated[$prefix === '' ? 'displayNumber' : $prefix.'DisplayNumber'] ?? null;
-
-        return [
-            'area_node_id' => $areaNodeValue === null || $areaNodeValue === '' ? null : (int) $areaNodeValue,
-            'type' => $validated[$prefix === '' ? 'type' : $prefix.'Type'],
-            'name' => $validated[$prefix === '' ? 'name' : $prefix.'Name'],
-            'display_number' => $displayNumber === null || $displayNumber === '' ? null : $displayNumber,
-            'capacity' => (int) $validated[$prefix === '' ? 'capacity' : $prefix.'Capacity'],
-            'icon' => $validated[$prefix === '' ? 'icon' : $prefix.'Icon'],
-            'is_active' => (bool) $validated[$prefix === '' ? 'isActive' : $prefix.'IsActive'],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $validated
-     * @return array{area_node_id: int|null, type: string, prefix: string, from: int, to: int, capacity: int, icon: string|null, is_active: bool}
-     */
-    private function bulkServicePointPayload(array $validated): array
-    {
-        $areaNodeValue = $validated['bulkAreaNodeId'] ?? null;
-        $type = ServicePointType::from($validated['bulkType']);
-
-        return [
-            'area_node_id' => $areaNodeValue === null || $areaNodeValue === '' ? null : (int) $areaNodeValue,
-            'type' => $type->value,
-            'prefix' => $validated['bulkPrefix'],
-            'from' => (int) $validated['bulkFrom'],
-            'to' => (int) $validated['bulkTo'],
-            'capacity' => (int) $validated['bulkCapacity'],
-            'icon' => $this->defaultIconForType($type),
-            'is_active' => true,
-        ];
-    }
-
-    private function resetCreateForm(): void
-    {
-        $this->reset('areaNodeId', 'name', 'displayNumber');
-        $this->type = ServicePointType::Table->value;
-        $this->icon = $this->defaultIconForType(ServicePointType::Table);
-        $this->capacity = $this->defaultCapacityForType(ServicePointType::Table);
-        $this->isActive = true;
-    }
-
-    private function resetBulkPreview(): void
-    {
-        $this->bulkPreviewReady = false;
-        $this->bulkCreatedCount = 0;
-        $this->bulkSkippedCount = 0;
-        $this->bulkCreatedServicePointIds = [];
-        $this->bulkPreviewRows = [];
-    }
-
-    private function isServicePointFilterProperty(string $property): bool
-    {
-        return in_array($property, [
-            'servicePointSearch',
-            'filterAreaNodeId',
-            'filterType',
-            'filterStatus',
-            'filterActive',
-            'filterQr',
-            'filterLifecycle',
-            'sort',
-        ], true);
-    }
-
-    private function normalizeBulkFields(): void
-    {
-        if (is_string($this->bulkPrefix)) {
-            $this->bulkPrefix = trim($this->bulkPrefix);
-        }
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function iconOptionRows(): array
-    {
-        return [
-            'squares-2x2' => __('qr.labels.table'),
-            'beaker' => __('reports.service_point_types.bar_seat'),
-            'sparkles' => __('ui.livewire.organizations.brands.branches.areas.vip'),
-            'home' => __('reports.service_point_types.room'),
-            'bookmark' => __('permissions.groups.other'),
-            'sun' => __('reports.service_point_types.sunbed'),
-            'building-office-2' => __('reports.service_point_types.hotel_room'),
-            'shopping-bag' => __('ui.livewire.organizations.brands.branches.areas.pickup'),
-            'truck' => __('ui.livewire.organizations.brands.branches.areas.delivery'),
-        ];
-    }
-
-    private function defaultIconForType(ServicePointType $type): string
-    {
-        return match ($type) {
-            ServicePointType::Table => 'squares-2x2',
-            ServicePointType::BarSeat => 'beaker',
-            ServicePointType::VipTable => 'sparkles',
-            ServicePointType::Room => 'home',
-            ServicePointType::Booth => 'bookmark',
-            ServicePointType::Sunbed => 'sun',
-            ServicePointType::HotelRoom => 'building-office-2',
-            ServicePointType::PickupWindow => 'shopping-bag',
-            ServicePointType::DeliveryPoint => 'truck',
-            ServicePointType::Other => 'bookmark',
-        };
-    }
-
-    private function defaultNameForType(ServicePointType $type): string
-    {
-        return match ($type) {
-            ServicePointType::Table => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_table'),
-            ServicePointType::BarSeat => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_bar_seat'),
-            ServicePointType::VipTable => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_vip_table'),
-            ServicePointType::Room => __('ui.livewire.organizations.brands.branches.areas.new_room'),
-            ServicePointType::Booth => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_booth'),
-            ServicePointType::Sunbed => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_sunbed'),
-            ServicePointType::HotelRoom => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_hotel_roo'),
-            ServicePointType::PickupWindow => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_pickup_wi'),
-            ServicePointType::DeliveryPoint => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_delivery'),
-            ServicePointType::Other => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_service_p'),
-        };
-    }
-
-    private function defaultCapacityForType(ServicePointType $type): int
-    {
-        return match ($type) {
-            ServicePointType::BarSeat,
-            ServicePointType::PickupWindow,
-            ServicePointType::DeliveryPoint,
-            ServicePointType::Other => 1,
-            ServicePointType::VipTable => 6,
-            default => 2,
-        };
-    }
-
-    private function setActive(int $servicePointId, bool $isActive, SetServicePointActiveAction $setActive): void
-    {
-        $this->authorizeServicePointManagement();
-
-        $servicePoint = $this->findBranchServicePoint($servicePointId);
-        $setActive->handle($servicePoint, $isActive);
-
-        $this->forgetServicePointDisplays();
-    }
-
-    private function fillEditingForm(ServicePoint $servicePoint): void
-    {
-        $this->editingServicePointId = $servicePoint->id;
-        $this->editingAreaNodeId = $servicePoint->area_node_id === null ? '' : (string) $servicePoint->area_node_id;
-        $this->editingType = $servicePoint->type->value;
-        $this->editingIcon = $servicePoint->icon ?? $this->defaultIconForType($servicePoint->type);
-        $this->editingName = $servicePoint->name;
-        $this->editingDisplayNumber = $servicePoint->display_number ?? '';
-        $this->editingCapacity = $servicePoint->capacity;
-        $this->editingIsActive = $servicePoint->is_active;
-    }
-
-    private function forgetServicePointDisplays(): void
-    {
-        unset($this->servicePoints, $this->floorBoardSections);
-    }
-
-    private function findBranchServicePoint(int $servicePointId): ServicePoint
-    {
-        return $this->servicePointQueries->findForBranch($this->branch, $servicePointId);
-    }
-
-    private function authorizeServicePointManagement(): void
-    {
-        Gate::forUser($this->currentUser())->authorize('manageServicePoints', $this->branch);
-    }
-
-    private function authorizeServicePointStatusChange(): void
-    {
-        Gate::forUser($this->currentUser())->authorize('changeServicePointStatus', $this->branch);
-    }
-
-    private function authorizeQrGeneration(): void
-    {
-        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
-    }
-
-    private function authorizeTableOpening(): void
-    {
-        Gate::forUser($this->currentUser())->authorize('openTable', $this->branch);
-    }
-
-    private function currentUser(): User
-    {
-        $user = Auth::user();
-
-        if (! $user instanceof User) {
-            abort(401);
-        }
-
-        return $user;
     }
 }

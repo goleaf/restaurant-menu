@@ -11,6 +11,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -169,79 +170,40 @@ test('failed qr reissue removes the uncommitted replacement image', function () 
 test('generate qr permission can access service points and create qr from ui', function () {
     [$organization, $brand, $branch, $manager] = createPrompt23Branch();
     grantPrompt23Permission($manager, $organization, SystemPermission::GenerateQr);
-    $servicePoint = ServicePoint::factory()
-        ->for($branch)
-        ->create(['name' => 'QR table']);
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSet('canGenerateQr', true)
-        ->assertSee('Service points');
-
-    $this->actingAs($manager)
-        ->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))
-        ->assertOk();
-
-    $component = Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canGenerateQr', true)
-        ->assertSet('canManageServicePoints', false)
-        ->assertSet('canChangeServicePointStatus', false)
-        ->assertSee('QR table')
-        ->assertSee('Generate QR')
-        ->assertDontSee('Update status')
-        ->call('generateQr', $servicePoint->id)
-        ->assertHasNoErrors()
-        ->assertSee('QR ready');
-
-    $qrCode = $servicePoint->fresh()->activeQrCode;
-
-    expect($qrCode)->not->toBeNull();
-
-    $component
-        ->assertSee($qrCode->short_code)
-        ->assertSee($qrCode->publicPath());
+    $point = ServicePoint::factory()->for($branch)->create(['name' => 'QR table']);
+    Livewire::actingAs($manager)->test(BranchesIndex::class, compact('organization', 'brand'))->assertSet('canGenerateQr', true)->assertSee('Service points');
+    $this->actingAs($manager)->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))->assertOk();
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertViewHas('abilities', fn (array $abilities): bool => $abilities['qr'] && ! $abilities['managePoints'])
+        ->assertSee('QR table')->call('openPoint', $point->id, 'qr')->assertSet('point', (string) $point->id);
+    $component = Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $point->id])
+        ->call('prepareOperation', 'generate')->call('applyOperation')->assertHasNoErrors();
+    $qr = $point->fresh()->activeQrCode;
+    expect($qr)->not->toBeNull();
+    $component->assertSee($qr->short_code)->assertSee($qr->publicPath());
 });
 
 test('service point manager without generate qr permission cannot generate qr', function () {
     [$organization, $brand, $branch, $manager] = createPrompt23Branch();
     grantPrompt23Permission($manager, $organization, SystemPermission::ManageServicePoints);
-    $servicePoint = ServicePoint::factory()->for($branch)->create(['name' => 'Managed table']);
-
-    Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canGenerateQr', false)
-        ->assertSet('canManageServicePoints', true)
-        ->assertDontSee('Create QR')
-        ->call('generateQr', $servicePoint->id)
-        ->assertForbidden();
-
-    expect($servicePoint->fresh()->activeQrCode)->toBeNull();
+    $point = ServicePoint::factory()->for($branch)->create(['name' => 'Managed table']);
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertViewHas('abilities', fn (array $abilities): bool => ! $abilities['qr'] && $abilities['managePoints']);
+    Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $point->id])->assertForbidden();
+    expect($point->fresh()->activeQrCode)->toBeNull();
 });
 
 test('show qr reveals existing active qr without creating another record', function () {
     [$organization, $brand, $branch, $manager] = createPrompt23Branch();
     grantPrompt23Permission($manager, $organization, SystemPermission::GenerateQr);
-    $servicePoint = ServicePoint::factory()->for($branch)->create(['name' => 'Existing QR table']);
-    $existingQrCode = QrCode::factory()
-        ->for($servicePoint)
-        ->create([
-            'short_code' => 'QR-READY1',
-            'public_token' => 'existing-public-token-for-show-action',
-        ]);
-
-    Livewire::actingAs($manager)
-        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('Show QR')
-        ->call('showQr', $servicePoint->id)
-        ->assertSee($existingQrCode->short_code)
-        ->assertSee($existingQrCode->publicPath())
-        ->call('hideQr')
-        ->assertSet('shownQrServicePointId', null)
-        ->call('generateQr', $servicePoint->id)
-        ->assertSee($existingQrCode->short_code);
-
-    expect(QrCode::query()->where('service_point_id', $servicePoint->id)->count())->toBe(1);
+    $point = ServicePoint::factory()->for($branch)->create(['name' => 'Existing QR table']);
+    $qr = QrCode::factory()->for($point)->create(['short_code' => 'QR-READY1', 'public_token' => 'existing-public-token-for-show-action']);
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->call('openPoint', $point->id, 'qr')->assertSet('point', (string) $point->id)
+        ->call('clearEditor')->assertSet('point', '');
+    Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $point->id])
+        ->assertSee($qr->short_code)->assertSee($qr->publicPath())->call('prepareOperation', 'repair')->call('applyOperation')->assertHasNoErrors()->assertSee($qr->short_code);
+    expect(QrCode::query()->where('service_point_id', $point->id)->count())->toBe(1);
 });
 
 function createPrompt23Branch(): array

@@ -4,6 +4,50 @@
 
 # Current version baseline
 
+## Current Prompt 1 refresh — 2026-09-17
+
+This section supersedes earlier dated runtime observations below. The current checkout starts at `98cc5af` with 352 pre-existing changed paths; earlier prompt results are historical evidence for their recorded snapshots, not acceptance of this combined worktree.
+
+Production support remains PHP `>=8.5.0 <8.6.0`, stable Composer dependencies, SQLite and the existing shared-hosting deployment. The selected verification CLI is actual PHP **8.5.10**, the latest stable 8.5 release published on 27 August according to the [official PHP release metadata](https://www.php.net/releases/index.php?json&version=8.5), checked 17 September. Herd CLI separately reports 8.5.8. An owned CLI-only **8.6.0beta3** is built from the official prerelease archive; neither Herd nor production is reconfigured. Laravel 13's [support policy](https://laravel.com/framework/docs/13.x/releases#support-policy) still lists PHP 8.3–8.5. Native/syntax evidence on Beta 3 is distinct from application, HTTP, coverage and performance acceptance, which remain blocked by real Composer requirements.
+
+Declared constraints, both locks and installed metadata were inspected separately. All 179 installed PHP package versions and dist references match the Composer lock. Fresh official publisher metadata from `repo.packagist.org/p2/{vendor}/{package}.json`, checked 17 September at 13:20 UTC, gives:
+
+| Technology | Installed / lock and selected target | Published stable | Reason for difference |
+| --- | --- | --- | --- |
+| Laravel | 13.31.0 | 13.32.0 | No matching permitted local archive; published dist is GitHub-only |
+| Fortify | 1.39.0 | 1.39.0 | Current |
+| Livewire | 4.4.1 | 4.4.5 | Missing permitted archive |
+| Flux Free | 2.17.0 | 2.20.0 | Missing archive and exact donor contract of the local Pro adaptation |
+| Local Flux Pro | 0.1.1, upstream unknown | Unknown | Preserve proprietary source inventory, patches and locally assigned version |
+| Laravel MCP | 1.0.0 | 1.0.0 | Current; no permission changes |
+| Boost | 2.9.0 | 2.9.1, published 17 September | Missing permitted archive |
+| Carbon | 3.13.2 | 3.14.0 | Missing permitted archive |
+| Larastan / Pint | 3.11.0 / 1.31.1 | 3.12.1 / 1.32.1 | Missing permitted archives |
+| Pest | 4.7.8 | 5.2.1; latest 4.x is 4.7.8 | Major plugin/PHPUnit migration; no complete permitted plugin archive set |
+| Pest Laravel / Browser | 4.1.0 / 4.3.1 | 5.0.1 / 5.0.1 | Same major migration boundary |
+| PHPUnit | 12.5.33 | 13.3.4; latest 12.x is 12.5.35 | Pest 4.7.8 excludes versions above 12.5.33 |
+| ParaTest | 7.20.0 | 7.24.1 | Newer releases require PHPUnit 13 |
+| Nette Schema / Utils | 1.3.6 / 4.1.5 | Same | Latest stable PHP constraints still exclude 8.6 |
+| Sabberworm CSS parser | 9.4.0 | 9.4.0 | Latest stable PHP constraint still excludes 8.6 |
+
+The existing PHP lock is retained. A cached newer ParaTest alone cannot form a compatible Pest 4 graph. No GitHub requests, platform emulation, ignored requirements, beta dependency graph or vendor patch is used. Cache CRC/reference/hash checks prove local integrity, not a publisher signature. Exact source/cache evidence is linked from PROGRESS.md.
+
+Frontend metadata was rechecked against the official npm registry and [Node release index](https://nodejs.org/dist/index.json) on 17 September. Actual Node **24.21.0 LTS** is selected over Current 26.9.0. The shell still exposes npm 11.19.0; verification explicitly selects integrity-verified **npm 12.0.2** from an owned prefix, satisfying the existing engines without a global installation.
+
+| Technology | Installed / lock / selected target | Latest stable on check date |
+| --- | --- | --- |
+| Vite / Laravel Vite plugin | 8.3.0 / 3.2.0 | Same |
+| Tailwind / Tailwind Vite plugin | 4.3.3 / 4.3.3 | Same |
+| Sass Embedded | 1.104.1 | Same |
+| Stylelint / SCSS plugin / postcss-scss | 17.15.0 / 7.3.0 / 4.0.9 | Same |
+| ESLint / @eslint/js / promise plugin / globals | 10.10.0 / 10.0.1 / 7.3.0 / 17.12.0 | Same |
+| Playwright | 1.63.0 | Same; WebKit revision 2359 available |
+| SimpleWebAuthn browser / Noto Sans / concurrently | 14.0.0 / 5.3.0 / 10.0.5 | Same |
+| Vite's nested Rolldown | **1.2.8 → 1.2.9** | 1.2.9 |
+| Local Pro's root Rolldown | **1.2.5**, intentionally retained | 1.2.9; exact reproducible Pro compiler is a separate contract |
+
+The npm resolver updates only 17 nested Vite lock entries: Rolldown, its 15 platform bindings and `@oxc-project/types` 0.149.0 → 0.150.0. Both compiler versions produce byte-identical outputs for the same source. Clean registry-only installation and the shared offline installation each install 255 packages with lifecycle scripts disabled. The product's current architecture, coverage and asset-budget failures remain failures; compiler equivalence does not waive those gates. The original package manifests, root Pro compiler and application dependency contracts stay unchanged.
+
 ## Prompt 6 runtime observation — 2026-09-17
 
 Dish checks select the actual PHP 8.5.10 CLI and isolated browser HTTP responder. A fresh runtime-only request to the configured Herd85 socket returns PHP 8.5.8 / fpm-fcgi with memory_limit 500M; its temporary script was deleted without bootstrapping the application or database. Herd/production selection and dependency locks are unchanged.
@@ -29,6 +73,12 @@ Current Herd configuration selects the85 socket for restaurant-menu.test. A dire
 Available experimental PHP is8.6.0beta2. The fresh isolated verify-migration preflight aRnEHK fails Composer platform-lock on Nette Schema1.3.6's PHP8.1–8.5 requirement. Historical Beta3 artifact paths are not available in this run and are not reused as current proof. Production constraints remain >=8.5.0 <8.6.0. No ignored platform requirements, dependency patch or8.6 application acceptance is claimed.
 
 Final stable acceptance records candidate 3,755 backend tests, 46 browser cases and 94.1% PHP coverage; shared integration 3,903 backend / 60 browser cases. The browser responder is PHP 8.5.10, distinct from the measured Herd FPM 8.5.8. All final changed-browser PHP files also pass the actual 8.6.0beta2 syntax follow-up; the application platform blocker remains unchanged.
+
+## Controller migration prompt2 — current verification in progress
+
+The installed stack is unchanged from the accepted prompt3 baseline. Current focused backend checks, full Larastan and202 JavaScript tests (100% line coverage) pass; production build passes. The actual browser HTTP runtime probe reports PHP8.5.10 `/opt/homebrew/Cellar/php/8.5.10/bin/php` (Pest responder, CLI SAPI), not the Herd PHP-FPM process. Final aggregate/browser results remain pending in PROGRESS.md. Both browser MCP tools now successfully navigate and inspect the Herd login page with an isolated context; the earlier TLS failure is historical. Boost currently returns `Invalid JSON output`, so installed source and official documentation supply API evidence.
+
+Actual isolated PHP8.6.0beta3 still fails `composer check-platform-reqs --lock` with Nette Schema's8.1–8.5 constraint. Root PHP remains `>=8.5.0 <8.6.0`; no platform bypass, stable dependency upgrade or production-runtime switch is made. Actual Beta3 syntax validation passes116 changed PHP classes/routes/tests (Blade excluded); this is recorded separately from application/backend/browser/coverage acceptance.
 
 ## Workspace prompt 3 baseline — 2026-09-16
 

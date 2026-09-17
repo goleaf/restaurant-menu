@@ -4,12 +4,30 @@ declare(strict_types=1);
 
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Enums\ServicePointStatus;
+use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
+use App\Models\OrganizationUser;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+
+beforeEach(function (): void {
+    $this->seed(SystemPermissionsSeeder::class);
+});
+
+function authorizedBulkServicePointBranch(): Branch
+{
+    $branch = Branch::factory()->create();
+    $actor = User::factory()->create();
+    OrganizationUser::factory()->forOrganization($branch->organization)->for($actor)->forSystemRole(SystemRole::Owner)->active()->create();
+    test()->actingAs($actor);
+
+    return $branch;
+}
 
 /** @return array{area_node_id: int|null, type: string, prefix: string, from: int, to: int, capacity: int, icon: string|null, is_active: bool} */
 function bulkServicePointActionData(?int $areaNodeId = null): array
@@ -18,7 +36,7 @@ function bulkServicePointActionData(?int $areaNodeId = null): array
 }
 
 test('bulk action rejects invalid ranges before queries or persistence', function (string $method, int $from, int $to, string $field): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $data = [...bulkServicePointActionData(), 'from' => $from, 'to' => $to];
     $queries = countDatabaseQueries(function () use ($method, $branch, $data, $field): void {
         try {
@@ -37,7 +55,7 @@ test('bulk action rejects invalid ranges before queries or persistence', functio
 ]);
 
 test('bulk creation retains reserved codes and returns exact persisted results without a second preview', function (bool $withArea): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $area = $withArea ? AreaNode::factory()->for($branch)->create() : null;
     $existing = ServicePoint::factory()->for($branch)->create(['internal_code' => 'T1']);
     $archived = ServicePoint::factory()->for($branch)->create(['internal_code' => 'T2']);
@@ -50,7 +68,7 @@ test('bulk creation retains reserved codes and returns exact persisted results w
     $queries = countDatabaseQueries(function () use ($action, $branch, $data, &$result): void {
         $result = $action->handle($branch, $data);
     });
-    expect($queries)->toBe($withArea ? 3 : 2)
+    expect($queries)->toBe($withArea ? 17 : 16)
         ->and($result['created_count'])->toBe(1)
         ->and($result['skipped_count'])->toBe(2)
         ->and($result['created_ids'])->toHaveCount(1)
@@ -69,7 +87,7 @@ test('bulk creation retains reserved codes and returns exact persisted results w
 })->with(['without area' => false, 'with area' => true]);
 
 test('bulk creation rolls back all rows when a model event cancels a required save', function (): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $dispatcher = ServicePoint::getEventDispatcher();
     ServicePoint::setEventDispatcher(clone $dispatcher);
     ServicePoint::creating(fn (ServicePoint $point): bool => $point->internal_code !== 'T2');
@@ -83,7 +101,7 @@ test('bulk creation rolls back all rows when a model event cancels a required sa
 });
 
 test('bulk action rejects foreign and archived areas', function (string $method, bool $archived): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $area = AreaNode::factory()->for($archived ? $branch : Branch::factory()->create())->create();
     if ($archived) {
         $area->delete();
@@ -94,7 +112,7 @@ test('bulk action rejects foreign and archived areas', function (string $method,
 })->with(['preview', 'handle'])->with(['foreign' => false, 'archived' => true]);
 
 test('bulk previews use the codes accepted by model events', function (): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $dispatcher = ServicePoint::getEventDispatcher();
     ServicePoint::setEventDispatcher(clone $dispatcher);
     ServicePoint::creating(function (ServicePoint $point): void {
@@ -113,7 +131,7 @@ test('bulk previews use the codes accepted by model events', function (): void {
 });
 
 test('bulk range guards handle extreme integers without allocating oversized ranges', function (string $method, int $from, int $to): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     expect(fn () => app(BulkCreateServicePointsAction::class)->{$method}($branch, [...bulkServicePointActionData(), 'from' => $from, 'to' => $to]))
         ->toThrow(ValidationException::class);
     expect(ServicePoint::query()->exists())->toBeFalse();
@@ -123,7 +141,7 @@ test('bulk range guards handle extreme integers without allocating oversized ran
 ]);
 
 test('bulk creation accepts exactly two hundred entries and an outer rollback removes them', function (): void {
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     $data = [...bulkServicePointActionData(), 'from' => 9800, 'to' => 9999];
     $result = [];
     try {
@@ -145,7 +163,7 @@ test('bulk creation accepts exactly two hundred entries and an outer rollback re
 
 test('direct bulk range errors are localized for every supported locale', function (string $locale): void {
     app()->setLocale($locale);
-    $branch = Branch::factory()->create();
+    $branch = authorizedBulkServicePointBranch();
     foreach ([[0, 2, 'bulkFrom', 'errors.domain.bulk_start_positive'], [3, 1, 'bulkTo', 'errors.domain.bulk_end_before_start']] as [$from, $to, $field, $key]) {
         try {
             app(BulkCreateServicePointsAction::class)->preview($branch, [...bulkServicePointActionData(), 'from' => $from, 'to' => $to]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\QrCodeStatus;
+use App\Models\Concerns\HasStructureVersion;
 use Database\Factories\QrCodeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,18 +13,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * @property int $structure_version
  * @property QrCodeStatus $status
  */
 #[Fillable(['service_point_id', 'short_code', 'revoked_at', 'revoked_by_user_id'])]
 class QrCode extends Model
 {
     /** @use HasFactory<QrCodeFactory> */
-    use HasFactory;
+    use HasFactory, HasStructureVersion;
 
     /**
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'structure_version' => 0,
         'status' => 'active',
     ];
 
@@ -47,6 +50,7 @@ class QrCode extends Model
     protected function casts(): array
     {
         return [
+            'structure_version' => 'integer',
             'status' => QrCodeStatus::class,
             'revoked_at' => 'datetime',
         ];
@@ -87,5 +91,10 @@ class QrCode extends Model
     public function revokedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'revoked_by_user_id');
+    }
+    /** @return list<string> */
+    protected function structureVersionFields(): array
+    {
+        return ['status', 'public_token', 'short_code'];
     }
 }

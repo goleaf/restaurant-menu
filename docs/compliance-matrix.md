@@ -10,6 +10,15 @@ The unified card, explicit scope transitions, atomic permission drafts, typed hi
 
 Stable Team acceptance: candidate backend 3,755/72,403, browser 46/3,543, PHP coverage 94.1%; shared integration backend 3,903/73,761 and browser 60/4,603. No failures/skips or weakened thresholds. These are distinct source scopes; PHP 8.6 application compatibility remains blocked. The existing restaurant selector is additionally covered by a deterministic long-label search regression.
 
+## Offline state regression — 2026-09-17
+
+`livewire-001` and `ui-responsive-001`: the document bootstrap synchronizes restored `wire:offline` notices and disabled controls with current browser connectivity after navigation. `FrontendAssetDeliveryTest` now verifies six EN/LT/RU mobile/desktop online journeys across auth, staff and guest surfaces, successful server updates, reloads and cached history, plus three repeated offline/reconnect cycles with restored controls: 7 tests / 761 assertions passed. The original cached-history case failed before the fix. Follow-up bootstrap/Alpine JS checks pass 27/27; the preceding runtime fix passed the build and asset budgets. This is scoped evidence, not a new full-suite result; see testing.md.
+
+## Prompt 2 controller migration — current acceptance pending
+
+For `livewire-001`, `blade-001`, `sys-auth-003`, `sys-backup-001`, `i18n-001`, `test-feature-001` and `test-architecture-001`, application auth/invitation/local-demo forms and existing file-preparation screens are being migrated to class-based Livewire/Flux. The exact final transport register is in architecture.md and the implementation plan; scoped tests do not replace aggregate/browser/coverage acceptance. Existing workspace, route names for mail and authorized links, permanent QR identity and domain policies remain. No claim of PHP8.6 application compatibility is made.
+
+
 ## Unified workspace acceptance — prompt 3, 2026-09-16
 
 `ui-workspace-003`, `livewire-001`, `blade-001`, `i18n-001`, `ui-accessibility-001` and `ui-responsive-001`: shared page context, one Livewire/Flux Pro selector, stable task registry and scoped existing screens are implemented and accepted on the supported PHP8.5.10 test runtime. Full22-step local aggregate passes:3,608 backend tests/69,577 assertions; PHP94.0%; JavaScript199/100% lines; isolated WebKit44/3,339. Independent signed-HTTP and two-tab regressions cover forbidden/conflicting/changed-actor contexts and preservation of mutation targets. All new workspace classes are included in coverage; no100% product guarantee is implied.

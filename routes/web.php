@@ -3,32 +3,21 @@
 declare(strict_types=1);
 
 use App\Enums\DataExportType;
-use App\Enums\SystemRole;
-use App\Http\Controllers\Auth\LoginAsDemoRoleController;
-use App\Http\Controllers\Auth\LoginAsLocalUserController;
-use App\Http\Controllers\Auth\ShowDemoLoginController;
-use App\Http\Controllers\Invitations\AcceptInvitationController;
-use App\Http\Controllers\Invitations\RegisterInvitationController;
 use App\Http\Controllers\Invitations\ShowInvitationController;
-use App\Http\Controllers\Invitations\SwitchInvitationAccountController;
-use App\Http\Controllers\Organizations\DownloadBranchQrPdfController;
-use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
-use App\Http\Controllers\Restaurant\DownloadBranchPdfReportController;
-use App\Http\Controllers\Superadmin\DownloadMediaBackupController;
-use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
+use App\Http\Controllers\Restaurant\DownloadPreparedFileController;
 use App\Http\Controllers\Superadmin\RestoreSqliteBackupController;
-use App\Http\Controllers\Superadmin\ShowSqliteBackupRestoreController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
 use App\Livewire\Exports\Index as DataExportsIndex;
 use App\Livewire\Guest\Home as GuestHome;
+use App\Livewire\Invitations\Show as InvitationPage;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Local\ComponentReference;
+use App\Livewire\Local\DemoLogin;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index;
-use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as OrganizationBrandBranchMenuIndex;
 use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint as OrganizationBrandBranchQrBulkPrint;
@@ -37,13 +26,12 @@ use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate as
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as OrganizationBrandBranchServicePointQrShow;
 use App\Livewire\Organizations\Brands\Branches\Settings as OrganizationBrandBranchSettings;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as OrganizationBrandBranchStaffIndex;
-use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
-use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
 use App\Livewire\Organizations\Staff\Show;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\QrCodes\ShortCodeLookup as QrShortCodeLookup;
 use App\Livewire\Restaurant\Dashboard as RestaurantDashboard;
+use App\Livewire\Superadmin\Backups\RestoreSqlite;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
@@ -72,19 +60,7 @@ Route::middleware(['demo-login', 'guest', 'throttle:demo-login'])
     ->prefix('demo-login')
     ->name('demo-login.')
     ->group(function (): void {
-        Route::get('/', ShowDemoLoginController::class)->name('index');
-        Route::post('{role}', LoginAsDemoRoleController::class)
-            ->whereIn('role', SystemRole::values())
-            ->name('authenticate');
-    });
-
-Route::middleware(['local-login', 'guest', 'throttle:demo-login'])
-    ->prefix('local-login')
-    ->name('local-login.')
-    ->group(function (): void {
-        Route::post('{user}', LoginAsLocalUserController::class)
-            ->whereNumber('user')
-            ->name('authenticate');
+        Route::livewire('/', DemoLogin::class)->name('index');
     });
 
 Route::middleware(['auth'])->group(function () {
@@ -102,19 +78,19 @@ Route::middleware(['throttle:staff-invitations'])
     ->prefix('invite')
     ->name('invitations.')
     ->group(function () {
-        Route::get('pending', ShowInvitationController::class)->name('pending');
-        Route::post('register', RegisterInvitationController::class)
-            ->middleware('guest')
-            ->name('register');
-        Route::post('accept', AcceptInvitationController::class)
-            ->middleware('auth')
-            ->name('accept');
-        Route::post('switch-account', SwitchInvitationAccountController::class)
-            ->middleware('auth')
-            ->name('switch-account');
+        Route::livewire('pending', InvitationPage::class)->name('pending');
         Route::get('{token}', ShowInvitationController::class)
             ->where('token', '[A-Za-z0-9]{1,128}')
             ->name('show');
+    });
+
+Route::middleware(['auth'])
+    ->prefix('restaurants')
+    ->name('restaurants.')
+    ->group(function (): void {
+        Route::livewire('/', App\Livewire\Restaurants\Index::class)->name('index');
+        Route::livewire('create', RestaurantOnboarding::class)->name('create');
+        Route::livewire('setup/{setup}', RestaurantOnboarding::class)->whereNumber('setup')->name('setup');
     });
 
 Route::middleware(['auth'])
@@ -128,7 +104,7 @@ Route::middleware(['auth'])
     ->prefix('organizations')
     ->name('organizations.')
     ->group(function () {
-        Route::livewire('/', OrganizationsIndex::class)->name('index');
+        Route::livewire('/', App\Livewire\Restaurants\Index::class)->name('index');
 
         Route::livewire('{organization}/staff', OrganizationStaffIndex::class)->name('staff.index');
         Route::livewire('{organization}/staff/members/{member}', Show::class)->name('staff.show');
@@ -138,12 +114,12 @@ Route::middleware(['auth'])
             ->name('brands.')
             ->scopeBindings()
             ->group(function () {
-                Route::livewire('/', OrganizationBrandsIndex::class)->name('index');
+                Route::livewire('/', App\Livewire\Restaurants\Index::class)->name('index');
 
                 Route::prefix('{brand}/branches')
                     ->name('branches.')
                     ->group(function () {
-                        Route::livewire('/', OrganizationBrandBranchesIndex::class)->name('index');
+                        Route::livewire('/', App\Livewire\Restaurants\Index::class)->name('index');
 
                         Route::prefix('{branch}/areas')
                             ->name('areas.')
@@ -169,7 +145,6 @@ Route::middleware(['auth'])
                             ->name('qr.')
                             ->group(function () {
                                 Route::livewire('print', OrganizationBrandBranchQrBulkPrint::class)->name('print');
-                                Route::post('pdf', DownloadBranchQrPdfController::class)->name('pdf');
                             });
 
                         Route::prefix('{branch}/service-points')
@@ -201,6 +176,9 @@ Route::middleware(['auth'])
     ->name('restaurant.')
     ->group(function () {
         Route::livewire('dashboard', RestaurantDashboard::class)->name('dashboard');
+        Route::get('files/{grant}', DownloadPreparedFileController::class)
+            ->where('grant', '[A-Za-z0-9]{64}')
+            ->name('files.download');
         Route::livewire('qr-lookup', QrShortCodeLookup::class)->name('qr-lookup.index');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
 
@@ -214,10 +192,10 @@ Route::middleware(['auth'])
             ->name('exports.')
             ->group(function () {
                 Route::livewire('/', DataExportsIndex::class)->name('index');
-                Route::get('branches/{branch}/{export}', DownloadBranchCsvExportController::class)
+                Route::livewire('branches/{branch}/{export}', DataExportsIndex::class)
                     ->whereIn('export', DataExportType::values())
                     ->name('download');
-                Route::get('pdf/branches/{branch}/{export}', DownloadBranchPdfReportController::class)
+                Route::livewire('pdf/branches/{branch}/{export}', DataExportsIndex::class)
                     ->whereIn('export', DataExportType::values())
                     ->name('pdf');
             });
@@ -253,13 +231,13 @@ Route::middleware(['auth'])
                 Route::prefix('backups')
                     ->name('backups.')
                     ->group(function () {
-                        Route::get('sqlite', DownloadSqliteBackupController::class)
+                        Route::redirect('sqlite', '/superadmin/dashboard')
                             ->middleware('password.confirm')
                             ->name('sqlite.download');
-                        Route::get('media', DownloadMediaBackupController::class)
+                        Route::redirect('media', '/superadmin/dashboard')
                             ->middleware('password.confirm')
                             ->name('media.download');
-                        Route::get('sqlite/restore', ShowSqliteBackupRestoreController::class)
+                        Route::livewire('sqlite/restore', RestoreSqlite::class)
                             ->middleware('password.confirm')
                             ->name('sqlite.restore');
                         Route::post('sqlite/restore', RestoreSqliteBackupController::class)
@@ -270,3 +248,4 @@ Route::middleware(['auth'])
     });
 
 require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';

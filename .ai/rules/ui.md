@@ -1,7 +1,6 @@
 ---
 paths:
   - 'resources/views/components/ui/**'
-  - resources/views/components/ui/page-header.blade.php
 ---
 
 <!-- BEGIN GITHUB_PUSH_ONLY -->

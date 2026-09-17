@@ -81,6 +81,12 @@ class Branch extends Model
         return $this->belongsTo(Brand::class)->withTrashed();
     }
 
+    /** @return HasOne<RestaurantOnboarding, $this> */
+    public function restaurantOnboarding(): HasOne
+    {
+        return $this->hasOne(RestaurantOnboarding::class);
+    }
+
     /**
      * @return HasOne<BranchSetting, $this>
      */
@@ -267,5 +273,10 @@ class Branch extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class);
+    }
+
+    public function identityFingerprint(): string
+    {
+        return hash('sha256', json_encode($this->only(['organization_id', 'brand_id', 'name', 'address', 'city', 'country', 'timezone', 'currency', 'is_active']), JSON_THROW_ON_ERROR));
     }
 }

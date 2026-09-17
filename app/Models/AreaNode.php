@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\AreaNodeType;
+use App\Models\Concerns\HasStructureVersion;
 use Database\Factories\AreaNodeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,18 +15,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
+ * @property int $structure_version
  * @property AreaNodeType $type
  */
 #[Fillable(['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'metadata'])]
 class AreaNode extends Model
 {
     /** @use HasFactory<AreaNodeFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasStructureVersion, SoftDeletes;
 
     /**
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'structure_version' => 0,
         'type' => 'custom',
         'sort_order' => 0,
         'is_active' => true,
@@ -37,6 +40,7 @@ class AreaNode extends Model
     protected function casts(): array
     {
         return [
+            'structure_version' => 'integer',
             'type' => AreaNodeType::class,
             'sort_order' => 'integer',
             'is_active' => 'boolean',
@@ -84,5 +88,10 @@ class AreaNode extends Model
     public function waiterAssignments(): HasMany
     {
         return $this->hasMany(AreaNodeWaiter::class);
+    }
+    /** @return list<string> */
+    protected function structureVersionFields(): array
+    {
+        return ['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'deleted_at'];
     }
 }

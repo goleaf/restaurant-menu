@@ -32,10 +32,12 @@ test('reset password screen can be rendered', function () {
 
     $this->post(route('password.request'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-        $response = $this->get(route('password.reset', $notification->token));
-
-        $response->assertOk();
+    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+        $this->get(route('password.reset', ['token' => $notification->token, 'email' => $user->email]))
+            ->assertRedirect(route('password.reset.form'));
+        $this->get(route('password.reset.form'))->assertOk()
+            ->assertSeeLivewire(App\Livewire\Auth\ResetPassword::class)
+            ->assertDontSee($notification->token);
 
         return true;
     });

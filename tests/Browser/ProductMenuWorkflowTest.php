@@ -44,7 +44,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     $branch = Branch::query()->where('organization_id', $organization->id)->firstOrFail();
     $item = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->firstOrFail();
     $page = visit(route('demo-login.index', absolute: false));
-    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    productMenuClick($page, sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
@@ -141,7 +141,7 @@ test('workspace protects copied translations and restores sections with browser 
     $item->translations()->where('language_code', 'lt')->firstOrFail()->update(['description' => null]);
     $item->translations()->where('language_code', 'en')->firstOrFail()->update(['description' => 'Original to translate']);
     $page = visit(route('demo-login.index', absolute: false));
-    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    productMenuClick($page, sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
@@ -192,7 +192,7 @@ test('owner manages accumulated pending photos without losing image identity', f
     $item = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->firstOrFail();
     $initialImageCount = $item->galleryImages()->count() + ($item->image === null ? 0 : 1);
     $page = visit(route('demo-login.index', absolute: false));
-    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    productMenuClick($page, sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
@@ -276,7 +276,7 @@ test('owner previews local CSV discards safely and applies a page scoped availab
     $menu = Menu::query()->where('branch_id', $branch->id)->firstOrFail();
     $category = MenuCategory::query()->where('menu_id', $menu->id)->where('is_active', true)->firstOrFail();
     $page = visit(route('demo-login.index', absolute: false));
-    productMenuClick($page, 'form[action$="/demo-login/owner"] button[type="submit"]');
+    productMenuClick($page, 'li[wire\\:key="demo-owner"] form[wire\\:submit] button[type="submit"]');
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch, 'section' => 'transfer'], false));
     $page->assertPresent('[data-section="catalog-transfer"]');
@@ -551,6 +551,7 @@ test('guest recovers a configured dish after an availability conflict without re
     productMenuClick($page, '#guest-menu-item-details-'.$item->id);
     $page->assertPresent('[role="dialog"]');
     productMenuClick($page, 'button[wire\\:click^="toggleModifierOption"]');
+    $page->assertAttribute('button[wire\\:click^="toggleModifierOption"]', 'aria-pressed', 'true');
     $page->fill('textarea[wire\\:model="itemComment"]', 'Please keep this comment');
     productMenuAssertOfflineAction($page, 'saveConfiguredItem');
     $item->update(['is_available' => false]);
@@ -595,7 +596,7 @@ test('populated restaurant work screens remain responsive and keyboard reachable
     $branch = Branch::query()->select(['id', 'name'])->where('organization_id', $organization->id)->where('name', $branchName)->sole();
     $workspaceUrl = route($routeName, ['branch' => $branch->id], false);
     $page = visit(route('demo-login.index', absolute: false));
-    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $identity['role']->value));
+    productMenuClick($page, sprintf('li[wire\\:key="demo-%s"] form[wire\\:submit] button[type="submit"]', $identity['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false))->assertPresent('[data-workspace-entry]');
     $page->navigate($workspaceUrl)->assertPathIs(route($routeName, absolute: false))
         ->assertQueryStringHas('branch', (string) $branch->id)->assertPresent($pageSelector);

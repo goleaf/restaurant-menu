@@ -21,6 +21,7 @@ use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Tests\Support\InvitationPage;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -71,9 +72,9 @@ test('an authenticated matching recipient can accept a pending branch invitation
         ->assertSee($branch->name)
         ->assertDontSee($createdInvitation->token);
 
-    $this->actingAs($recipient)
-        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
-        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $branch->id]))
+    $snapshot = InvitationPage::open($this);
+    InvitationPage::call($this->actingAs($recipient), 'accept', snapshot: $snapshot)
+        ->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.waiter.dashboard', ['branch' => $branch->id]))
         ->assertSessionHas('status', __('invitations.messages.accepted'));
 
     $createdInvitation->invitation->refresh();
@@ -98,9 +99,8 @@ test('an authenticated matching recipient can accept a pending branch invitation
         'assigned_by_user_id' => $invitedBy->id,
     ]);
 
-    $this->actingAs($recipient)
-        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
-        ->assertGone();
+    InvitationPage::call($this->actingAs($recipient), 'accept', snapshot: $snapshot)
+        ->assertStatus(409);
 
     expect(OrganizationUser::query()
         ->where('organization_id', $organization->id)
@@ -165,17 +165,16 @@ test('a new recipient can register and atomically accept a branch invitation', f
         ->assertRedirect(route('invitations.pending'));
     $this->get(route('invitations.pending'))->assertOk();
 
-    $this->post(route('invitations.register'), [
-        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
+    InvitationPage::call($this, 'register', [
         'name' => 'New Waiter',
         'email' => ' NEW.WAITER@EXAMPLE.TEST ',
         'password' => 'StrongPassword2026!',
         'password_confirmation' => 'StrongPassword2026!',
     ])
-        ->assertSessionHasNoErrors()
+        ->assertOk()
         ->assertSessionMissing('staff_invitation_id')
         ->assertSessionMissing('url.intended')
-        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $branch->id]));
+        ->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.waiter.dashboard', ['branch' => $branch->id]));
 
     $recipient = User::query()->where('email', 'new.waiter@example.test')->firstOrFail();
 
@@ -235,14 +234,13 @@ test('invitation registration rejects a different email without creating partial
         ->assertRedirect(route('invitations.pending'));
     $this->get(route('invitations.pending'))->assertOk();
 
-    $this->post(route('invitations.register'), [
-        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
+    $response = InvitationPage::call($this, 'register', [
         'name' => 'Wrong Recipient',
         'email' => 'other@example.test',
         'password' => 'StrongPassword2026!',
         'password_confirmation' => 'StrongPassword2026!',
-    ])
-        ->assertSessionHasErrors('email');
+    ])->assertOk();
+    expect(InvitationPage::errors($response))->toHaveKey('form.email');
 
     $this->assertGuest();
     $this->assertDatabaseMissing('users', ['email' => 'other@example.test']);
@@ -271,23 +269,22 @@ test('an existing recipient returns to a token free invitation page after login 
         ->assertSee(__('invitations.actions.accept'))
         ->assertDontSee($createdInvitation->token);
 
-    $this->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
+    InvitationPage::call($this, 'accept', [])
         ->assertSessionMissing('staff_invitation_id')
         ->assertSessionMissing('url.intended')
-        ->assertRedirect(route('restaurant.dashboard'));
+        ->assertOk()->assertJsonPath('components.0.effects.redirect', route('restaurant.dashboard'));
 
     expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Accepted)
         ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id);
 });
 
 test('invitation registration requires a valid invitation in the current session', function (): void {
-    $this->post(route('invitations.register'), [
-        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
+    InvitationPage::call($this, 'register', [
         'name' => 'Uninvited User',
         'email' => 'uninvited@example.test',
         'password' => 'StrongPassword2026!',
         'password_confirmation' => 'StrongPassword2026!',
-    ])->assertGone();
+    ])->assertStatus(409);
 
     $this->assertGuest();
     $this->assertDatabaseMissing('users', ['email' => 'uninvited@example.test']);
@@ -309,8 +306,7 @@ test('a signed in user with a different email cannot inspect or accept an invita
         ->assertDontSee($createdInvitation->invitation->organization->name)
         ->assertDontSee($createdInvitation->token);
 
-    $this->actingAs($otherUser)
-        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
+    InvitationPage::call($this->actingAs($otherUser), 'accept', [])
         ->assertGone();
 
     expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Pending);
@@ -370,8 +366,7 @@ test('expired revoked malformed and replayed invitation credentials are rejected
         $this->actingAs($recipient)
             ->get(route('invitations.show', ['token' => $token]));
 
-        $this->actingAs($recipient)
-            ->post(route('invitations.accept'), ['invitation_version' => str_repeat('0', 64)])
+        InvitationPage::call($this->actingAs($recipient), 'accept', [])
             ->assertGone();
     }
 

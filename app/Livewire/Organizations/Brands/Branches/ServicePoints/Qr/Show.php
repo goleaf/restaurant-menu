@@ -4,257 +4,28 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
 
-use App\Actions\QrCodes\DisableQrCodeAction;
-use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
-use App\Enums\DangerousAction;
-use App\Enums\QrCodeStatus;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
-use App\Services\QrCodes\QrCodeQueryService;
-use App\Services\QrCodeSvgRenderer;
-use App\Support\LocalizedDateFormatter;
-use Flux\Flux;
+use App\Services\Branches\FloorLegacyEntryQuery;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Show extends Component
 {
-    private QrCodeSvgRenderer $qrCodeSvgRenderer;
-
-    private QrCodeQueryService $qrCodeQueries;
-
-    public Organization $organization;
-
-    public Brand $brand;
-
-    public Branch $branch;
-
-    public ServicePoint $servicePoint;
-
-    public QrCode $qrCode;
-
-    public bool $confirmingReissue = false;
-
-    public string $qrDisableReason = '';
-
-    public string $qrReissueConfirmation = '';
-
-    public function boot(QrCodeSvgRenderer $qrCodeSvgRenderer, QrCodeQueryService $qrCodeQueries): void
+    public function mount(Organization $organization, Brand $brand, Branch $branch, ServicePoint $servicePoint, QrCode $qrCode, FloorLegacyEntryQuery $entry): void
     {
-        $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
-        $this->qrCodeQueries = $qrCodeQueries;
-    }
-
-    public function mount(
-        Organization $organization,
-        Brand $brand,
-        Branch $branch,
-        ServicePoint $servicePoint,
-        QrCode $qrCode,
-    ): void {
-        $this->organization = $organization;
-        $this->brand = $brand;
-        $this->branch = $branch;
-        $this->servicePoint = $servicePoint;
-        $this->qrCode = $qrCode;
-
-        $this->authorizeRouteContext();
-        $this->authorizeQrManagement();
-        $this->reloadQrCode();
-    }
-
-    public function disableQr(DisableQrCodeAction $disableQrCode): void
-    {
-        $this->authorizeQrManagement();
-
-        $validated = $this->validate([
-            'qrDisableReason' => ['required', 'string', 'min:3', 'max:500'],
-        ], [
-            'qrDisableReason.required' => __('qr.validation.disable_reason_required'),
-            'qrDisableReason.min' => __('qr.validation.disable_reason_min'),
-        ]);
-
-        $disableQrCode->handle(
-            qrCode: $this->qrCode,
-            disabledBy: $this->currentUser(),
-            reason: (string) $validated['qrDisableReason'],
-        );
-
-        $this->confirmingReissue = false;
-        $this->qrDisableReason = '';
-        $this->reloadQrCode();
-
-        $this->modal('qr-disable-'.$this->qrCode->id)->close();
-        Flux::toast(variant: 'success', text: __('qr.messages.disabled'));
-    }
-
-    public function confirmReissue(): void
-    {
-        $this->authorizeQrManagement();
-
-        $this->confirmingReissue = true;
-        $this->qrReissueConfirmation = '';
-    }
-
-    public function cancelReissue(): void
-    {
-        $this->confirmingReissue = false;
-        $this->qrReissueConfirmation = '';
-    }
-
-    public function reissueQr(ReissueQrCodeForServicePointAction $reissueQrCode): void
-    {
-        $this->authorizeQrManagement();
-
-        $this->validate([
-            'qrReissueConfirmation' => ['required', 'string', Rule::in([$this->qrCode->short_code])],
-        ], [
-            'qrReissueConfirmation.required' => __('qr.validation.reissue_confirmation_required'),
-            'qrReissueConfirmation.in' => __('qr.validation.reissue_confirmation_mismatch'),
-        ]);
-
-        $newQrCode = $reissueQrCode->handle($this->qrCode, $this->currentUser());
-
-        $this->qrReissueConfirmation = '';
-
-        $this->redirectRoute(
-            'organizations.brands.branches.service-points.qr.show',
-            [
-                'organization' => $this->organization,
-                'brand' => $this->brand,
-                'branch' => $this->branch,
-                'servicePoint' => $this->servicePoint,
-                'qrCode' => $newQrCode,
-            ],
-            navigate: true,
-        );
-    }
-
-    public function downloadQrImage(QrCodeSvgRenderer $qrCodeSvgRenderer): StreamedResponse
-    {
-        $this->authorizeQrManagement();
-
-        $svg = $qrCodeSvgRenderer->render($this->publicUrl());
-        $filename = strtolower($this->qrCode->short_code).'.svg';
-
-        return response()->streamDownload(
-            function () use ($svg): void {
-                echo $svg;
-            },
-            $filename,
-            ['Content-Type' => 'image/svg+xml'],
-        );
-    }
-
-    #[Computed]
-    public function publicUrl(): string
-    {
-        return route('public.qr.show', ['token' => $this->qrCode->public_token]);
-    }
-
-    #[Computed]
-    public function qrImageDataUri(): string
-    {
-        $svg = $this->qrCodeSvgRenderer->render($this->publicUrl());
-
-        return 'data:image/svg+xml;base64,'.base64_encode($svg);
-    }
-
-    #[Computed]
-    public function statusColor(): string
-    {
-        return match ($this->qrCode->status) {
-            QrCodeStatus::Active => 'green',
-            QrCodeStatus::Disabled => 'amber',
-            QrCodeStatus::Revoked => 'red',
-        };
+        $actor = Auth::user();
+        abort_unless($actor instanceof User, 401);
+        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ["panel" => "qr"], $servicePoint, $qrCode), navigate: true);
     }
 
     public function render(): View
     {
-        $publicUrl = $this->publicUrl();
-
-        return view('livewire.organizations.brands.branches.service-points.qr.show', [
-            'servicePointsUrl' => route('organizations.brands.branches.service-points.index', [
-                $this->organization,
-                $this->brand,
-                $this->branch,
-            ]),
-            'printUrl' => route('organizations.brands.branches.service-points.qr.print', [
-                $this->organization,
-                $this->brand,
-                $this->branch,
-                $this->servicePoint,
-                $this->qrCode,
-            ]),
-            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
-            'branchName' => $this->branch->name,
-            'branchLocation' => collect([$this->branch->city, $this->branch->country])->filter()->join(', '),
-            'areaName' => $this->servicePoint->area_node_id === null
-                ? __('qr.labels.no_zone')
-                : $this->servicePoint->areaNode->name,
-            'servicePointName' => $this->servicePoint->name,
-            'servicePointTypeLabel' => __($this->servicePoint->type->label()),
-            'servicePointDisplayNumber' => $this->servicePoint->display_number ?: __('qr.labels.not_set'),
-            'qrCodeId' => $this->qrCode->id,
-            'qrShortCode' => $this->qrCode->short_code,
-            'qrLocalizedStatus' => __($this->qrCode->status->label()),
-            'qrStatusColor' => $this->statusColor(),
-            'qrCreatedAt' => LocalizedDateFormatter::dateTime($this->qrCode->created_at),
-            'qrIsActive' => $this->qrCode->status === QrCodeStatus::Active,
-            'publicUrl' => $publicUrl,
-            'qrImageDataUri' => $this->qrImageDataUri(),
-        ])
-            ->title(__('qr.labels.title'));
-    }
-
-    public function dangerousAction(string $action): DangerousAction
-    {
-        return DangerousAction::from($action);
-    }
-
-    private function authorizeRouteContext(): void
-    {
-        if (
-            $this->brand->organization_id !== $this->organization->id
-            || $this->branch->organization_id !== $this->organization->id
-            || $this->branch->brand_id !== $this->brand->id
-            || $this->servicePoint->branch_id !== $this->branch->id
-            || $this->qrCode->service_point_id !== $this->servicePoint->id
-        ) {
-            abort(403);
-        }
-    }
-
-    private function authorizeQrManagement(): void
-    {
-        Gate::forUser($this->currentUser())->authorize('manage', $this->qrCode);
-    }
-
-    private function reloadQrCode(): void
-    {
-        $this->qrCode = $this->qrCodeQueries->reloadForServicePoint($this->qrCode, $this->servicePoint);
-
-        $this->servicePoint = $this->qrCode->servicePoint;
-    }
-
-    private function currentUser(): User
-    {
-        $user = Auth::user();
-
-        if (! $user instanceof User) {
-            abort(401);
-        }
-
-        return $user;
+        return view('livewire.organizations.brands.branches.service-points.legacy-entry');
     }
 }

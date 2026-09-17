@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
@@ -79,10 +80,43 @@ test('team administrators invite assign zones and change scoped access across in
     $admin->assertSee(__('staff.link.fallback'));
     expect($admin->script("Alpine.\$data(document.querySelector('[data-invitation-clipboard]')).copied"))->toBeFalse();
     $recipient = visit($link);
+    $recipient->assertPathIs(route('invitations.pending', absolute: false))
+        ->assertVisible('form[wire\\:submit="register"]');
+    $invitation = Invitation::query()->where('email', 'team.new@example.test')->sole();
+    $originalDigest = $invitation->invite_token_hash;
+    $admin->navigate($staffUrl.'?section=invitations');
+    teamAdminClick($admin, 'button[wire\\:click="confirmInvitation('.$invitation->id.', \'reissue\')"]');
+    $admin->assertSee(__('staff.workspace.reissue_warning'));
+    teamAdminClick($admin, 'button[wire\\:click="reissueInvitation('.$invitation->id.')"]');
+    $admin->assertVisible('[data-invitation-link]');
+    $replacementLink = $admin->script('document.querySelector("[data-invitation-link]").value');
+    expect($replacementLink)->not->toBe($link)
+        ->and($invitation->fresh()->invite_token_hash)->not->toBe($originalDigest);
+    $recipient->navigate($link)->assertPathIs(route('invitations.pending', absolute: false))
+        ->assertSee(__('invitations.states.unavailable_title'))->assertMissing('form[wire\\:submit="register"]');
+    $recipient->navigate($replacementLink)->assertPathIs(route('invitations.pending', absolute: false))
+        ->assertVisible('form[wire\\:submit="register"]');
+    $token = basename((string) parse_url($replacementLink, PHP_URL_PATH));
+    $forbidden = [$token, hash('sha256', $token), $invitation->fresh()->credentialVersion(), 'ValidPassword2026!'];
+    $snapshots = $recipient->script('Array.from(document.querySelectorAll("[wire\\\\:snapshot]"), element => element.getAttribute("wire:snapshot")).join("\\n")');
+    expect($snapshots)->toContain('"name":"invitations.show"');
+    foreach ($forbidden as $value) {
+        expect($snapshots)->not->toContain($value);
+    }
+    teamObserveInvitationRequests($recipient, $forbidden);
     $recipient->fill('input[name="name"]', 'Živilė Сотрудница')->fill('input[name="password"]', 'ValidPassword2026!')->fill('input[name="password_confirmation"]', 'ValidPassword2026!');
-    teamAdminClick($recipient, 'form[action$="/invite/register"] button[type="submit"]');
-    $recipient->assertPathIs(route('restaurant.waiter.dashboard', absolute: false));
+    teamAdminClick($recipient, 'form[wire\\:submit="register"] button[type="submit"]');
+    $recipient->assertPathIs(route('restaurant.waiter.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
+    $requests = $recipient->script('JSON.parse(sessionStorage.getItem("teamInvitationRequests") ?? "[]")');
+    expect($requests)->toHaveCount(1)
+        ->and($requests[0])->toMatchArray([
+            'calls' => ['register'], 'status' => 200, 'snapshotSafe' => true, 'responseSafe' => true, 'path' => 'invite/pending',
+        ]);
     $user = User::query()->where('email', 'team.new@example.test')->sole();
+    expect($invitation->fresh()->status)->toBe(InvitationStatus::Accepted)
+        ->and($invitation->fresh()->accepted_by_user_id)->toBe($user->id)
+        ->and(OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $user->id)->count())->toBe(1);
     $member = BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $user->id)->sole();
     $organizationMember = OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $user->id)->sole();
     $admin->navigate($staffUrl)->assertSee($user->name);
@@ -195,6 +229,38 @@ function teamAdminClick(PendingAwaitablePage $page, string $selector): void
     $page->assertVisible($selector)->assertEnabled($selector);
     $page->click($selector);
     $page->wait(0.3);
+}
+
+/** @param list<string> $forbidden */
+function teamObserveInvitationRequests(PendingAwaitablePage $page, array $forbidden): void
+{
+    $sensitiveValues = json_encode($forbidden, JSON_THROW_ON_ERROR);
+    $page->script(<<<JS
+        (() => {
+            const forbidden = {$sensitiveValues};
+            const original = window.fetch;
+            sessionStorage.removeItem('teamInvitationRequests');
+            window.fetch = async (...args) => {
+                const body = typeof args[1]?.body === 'string' ? args[1].body : '';
+                const components = body.startsWith('{') ? (JSON.parse(body).components ?? []) : [];
+                const invitation = components.find(component => JSON.parse(component.snapshot).memo.name === 'invitations.show');
+                const response = await original(...args);
+                if (invitation) {
+                    const text = await response.clone().text();
+                    const records = JSON.parse(sessionStorage.getItem('teamInvitationRequests') ?? '[]');
+                    records.push({
+                        calls: invitation.calls.map(call => call.method),
+                        status: response.status,
+                        path: JSON.parse(invitation.snapshot).memo.path,
+                        snapshotSafe: !forbidden.some(value => invitation.snapshot.includes(value)),
+                        responseSafe: !forbidden.some(value => text.includes(value)),
+                    });
+                    sessionStorage.setItem('teamInvitationRequests', JSON.stringify(records));
+                }
+                return response;
+            };
+        })()
+        JS);
 }
 
 function teamBrowserOffline(PendingAwaitablePage $page, bool $offline): void

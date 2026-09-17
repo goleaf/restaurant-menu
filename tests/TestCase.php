@@ -31,6 +31,7 @@ abstract class TestCase extends BaseTestCase
         ]))]);
 
         $this->app->getProvider(FortifyServiceProvider::class)->boot();
+        require base_path('routes/auth.php');
         $this->app['router']->getRoutes()->refreshNameLookups();
         $this->app['router']->getRoutes()->refreshActionLookups();
     }

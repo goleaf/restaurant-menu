@@ -11,8 +11,12 @@ function releaseApplicationRoots() {
     document.querySelectorAll('[data-page-module-status]').forEach(status => { status.hidden = true; });
 }
 
-// These two listeners belong to the single document bootstrap, not page instances.
+// These listeners belong to the single document bootstrap, not page instances.
 document.addEventListener('alpine:init', releaseApplicationRoots, { once: true });
 document.addEventListener('livewire:navigating', event => event.detail.onSwap(releaseApplicationRoots));
+document.addEventListener('livewire:navigated', () => {
+    // Cached HTML can retain wire:offline styles and disabled attributes from before reconnecting.
+    window.dispatchEvent(new Event(navigator.onLine ? 'online' : 'offline'));
+});
 
 Livewire.start();

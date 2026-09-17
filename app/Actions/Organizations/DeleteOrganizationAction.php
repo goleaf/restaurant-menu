@@ -39,7 +39,9 @@ final class DeleteOrganizationAction
                 );
             }
 
-            $scopedOrganization->deleteOrFail();
+            if ($scopedOrganization->deleteOrFail() !== true) {
+                throw new \RuntimeException('The structure lifecycle change could not be saved.');
+            }
         });
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Invitations\Show;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
@@ -17,7 +18,9 @@ test('public registration is disabled while password reset remains enabled', fun
     expect(Route::has('login'))->toBeTrue();
     expect(Route::has('register'))->toBeFalse();
     expect(Route::has('register.store'))->toBeFalse();
-    expect(Route::has('invitations.register'))->toBeTrue();
+    expect(Route::has('invitations.register'))->toBeFalse();
+    expect(Route::getRoutes()->getByName('invitations.pending')?->getAction('livewire_component'))
+        ->toBe(Show::class);
     expect(Route::has('logout'))->toBeTrue();
     expect(Route::has('password.request'))->toBeTrue();
     expect(Route::has('password.reset'))->toBeTrue();

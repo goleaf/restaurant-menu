@@ -8,6 +8,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\TableSessionStatus;
+use App\Models\Concerns\HasStructureVersion;
 use Database\Factories\ServicePointFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
+ * @property int $structure_version
  * @property ServicePointType $type
  * @property ServicePointStatus $status
  * @property-read AreaNode|null $areaNode
@@ -31,12 +33,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ServicePoint extends Model
 {
     /** @use HasFactory<ServicePointFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasStructureVersion, SoftDeletes;
 
     /**
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'structure_version' => 0,
         'type' => 'table',
         'capacity' => 1,
         'status' => 'free',
@@ -49,6 +52,7 @@ class ServicePoint extends Model
     protected function casts(): array
     {
         return [
+            'structure_version' => 'integer',
             'type' => ServicePointType::class,
             'capacity' => 'integer',
             'status' => ServicePointStatus::class,
@@ -150,6 +154,13 @@ class ServicePoint extends Model
             ->oldest('id');
     }
 
+    /** @return HasOne<TableSession, $this> */
+    public function unfinishedTableSession(): HasOne
+    {
+        return $this->hasOne(TableSession::class)->whereIn('status', TableSessionStatus::guestViewableValues())
+            ->oldest('started_at')->oldest('id');
+    }
+
     /**
      * @return HasOne<QrCode, $this>
      */
@@ -178,5 +189,10 @@ class ServicePoint extends Model
             ->whereNull('unlinked_at')
             ->orderBy('linked_at')
             ->orderBy('id');
+    }
+    /** @return list<string> */
+    protected function structureVersionFields(): array
+    {
+        return ['area_node_id', 'type', 'name', 'display_number', 'capacity', 'icon', 'is_active', 'deleted_at'];
     }
 }

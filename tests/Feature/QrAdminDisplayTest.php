@@ -10,7 +10,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
 use App\Models\AreaNode;
 use App\Models\AuditLog;
 use App\Models\Branch;
@@ -48,21 +48,13 @@ test('qr admin page requires generate qr permission and shows qr details', funct
 
     $publicUrl = route('public.qr.show', ['token' => $qrCode->public_token]);
 
-    $this->actingAs($manager)
-        ->get($url)
-        ->assertOk()
-        ->assertSeeText('QR code')
-        ->assertSeeText($branch->name)
-        ->assertSeeText('Main Hall')
-        ->assertSeeText($servicePoint->name)
-        ->assertSeeText($qrCode->short_code)
-        ->assertSeeText('Active')
-        ->assertSeeText(DangerousAction::DisableQr->title())
-        ->assertSeeText(DangerousAction::ReissueQr->title())
-        ->assertSeeText(DangerousAction::ReissueQr->consequence())
-        ->assertSee($publicUrl)
-        ->assertSee('data:image/svg+xml;base64', false)
-        ->assertSeeText(LocalizedDateFormatter::dateTime($qrCode->created_at));
+    $this->actingAs($manager)->get($url)->assertRedirect(route('organizations.brands.branches.service-points.index', [
+        $organization, $brand, $branch, 'panel' => 'qr', 'point' => $servicePoint->id, 'qr_record' => $qrCode->id,
+    ]));
+    Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id])
+        ->assertSeeText('QR code')->assertSeeText('Main Hall')->assertSeeText($servicePoint->name)->assertSeeText($qrCode->short_code)
+        ->assertSeeText('Active')->assertSeeText(LocalizedDateFormatter::dateTime($qrCode->created_at))->assertSee($publicUrl)
+        ->assertDontSee('data:image/svg+xml;base64', false)->assertSee(__('floor.qr.image_missing'));
 
     $publicPathSegments = explode('/', trim((string) parse_url($publicUrl, PHP_URL_PATH), '/'));
 
@@ -76,6 +68,7 @@ test('qr admin page requires generate qr permission and shows qr details', funct
 test('qr admin page shows current service point data after move and rename without changing qr identity', function () {
     [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt25QrContext();
     grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
+    grantPrompt25Permission($manager, $organization, SystemPermission::ManageServicePoints);
     $terrace = AreaNode::factory()->for($branch)->create(['name' => 'Terrace']);
     $oldToken = $qrCode->public_token;
     $oldShortCode = $qrCode->short_code;
@@ -88,17 +81,11 @@ test('qr admin page shows current service point data after move and rename witho
         'capacity' => 4,
         'icon' => 'sparkles',
         'is_active' => true,
-    ]);
+    ], $manager);
 
-    $this->actingAs($manager)
-        ->get(prompt25QrAdminUrl($organization, $brand, $branch, $servicePoint, $qrCode))
-        ->assertOk()
-        ->assertSeeText('Terrace Table 12')
-        ->assertSeeText('Terrace')
-        ->assertDontSeeText('Window Table')
-        ->assertDontSeeText('Main Hall')
-        ->assertSee($oldToken)
-        ->assertSeeText($oldShortCode);
+    Livewire::actingAs($manager)->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id])
+        ->assertSeeText('Terrace Table 12')->assertSeeText('Terrace')->assertDontSeeText('Window Table')->assertDontSeeText('Main Hall')
+        ->assertSee($oldToken)->assertSeeText($oldShortCode);
 
     $qrCode->refresh();
 
@@ -114,13 +101,7 @@ test('manager can download qr svg image from admin page', function () {
     $expectedSvg = app(QrCodeSvgRenderer::class)->render($publicUrl);
 
     Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
+        ->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id, 'qrId' => $qrCode->id])
         ->call('downloadQrImage')
         ->assertFileDownloaded(strtolower($qrCode->short_code).'.svg', $expectedSvg, 'image/svg+xml');
 });
@@ -130,17 +111,11 @@ test('manager can disable qr and public route shows disabled message', function 
     grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
 
     Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->set('qrDisableReason', 'Printed sticker was placed at the wrong table.')
-        ->call('disableQr')
+        ->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id, 'qrId' => $qrCode->id])
+        ->set('form.reason', 'Printed sticker was placed at the wrong table.')
+        ->call('prepareOperation', 'disable')->call('applyOperation')
         ->assertHasNoErrors()
-        ->assertDispatched('modal-close', name: 'qr-disable-'.$qrCode->id)
+        ->assertDispatched('floor-editor-saved')
         ->assertSee('Disabled');
 
     $qrCode->refresh();
@@ -163,41 +138,28 @@ test('manager must explain qr disable and type short code before reissue', funct
     grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
 
     $component = Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->call('disableQr')
-        ->assertHasErrors(['qrDisableReason']);
+        ->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id, 'qrId' => $qrCode->id])
+        ->call('prepareOperation', 'disable')->call('applyOperation')
+        ->assertHasErrors(['form.reason']);
 
     expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active);
 
     Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->call('confirmReissue')
-        ->assertSet('confirmingReissue', true)
-        ->set('qrReissueConfirmation', 'TEMPORARY')
-        ->call('cancelReissue')
-        ->assertSet('confirmingReissue', false)
-        ->assertSet('qrReissueConfirmation', '')
-        ->call('confirmReissue')
-        ->call('reissueQr')
-        ->assertHasErrors(['qrReissueConfirmation'])
-        ->set('qrReissueConfirmation', 'WRONG-CODE')
-        ->call('reissueQr')
-        ->assertHasErrors(['qrReissueConfirmation']);
+        ->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id, 'qrId' => $qrCode->id])
+        ->call('prepareOperation', 'reissue')
+        ->assertSet('operation', 'reissue')
+        ->set('form.confirmation', 'TEMPORARY')
+        ->call('cancelOperation')
+        ->assertSet('operation', '')
+        ->assertSet('form.confirmation', '')
+        ->call('prepareOperation', 'reissue')
+        ->call('applyOperation')
+        ->assertHasErrors(['form.confirmation'])
+        ->set('form.confirmation', 'WRONG-CODE')
+        ->call('applyOperation')
+        ->assertHasErrors(['form.confirmation']);
 
-    expect($component->instance()->dangerousAction(DangerousAction::DisableQr->value))
-        ->toBe(DangerousAction::DisableQr);
+    $component->assertSee(__('floor.qr.disable_warning'));
 
     expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active)
         ->and(QrCode::query()
@@ -215,19 +177,13 @@ test('manager can manually reissue qr after warning', function () {
     $oldImagePath = $storeQrCodeImage->handle($qrCode);
 
     Livewire::actingAs($manager)
-        ->test(QrAdminShow::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-            'branch' => $branch,
-            'servicePoint' => $servicePoint,
-            'qrCode' => $qrCode,
-        ])
-        ->call('confirmReissue')
-        ->assertSet('confirmingReissue', true)
-        ->assertSee(DangerousAction::ReissueQr->consequence())
-        ->set('qrReissueConfirmation', $qrCode->short_code)
-        ->call('reissueQr')
-        ->assertRedirect();
+        ->test(QrPanel::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id, 'qrId' => $qrCode->id])
+        ->call('prepareOperation', 'reissue')
+        ->assertSet('operation', 'reissue')
+        ->assertSee(__('floor.qr.reissue_warning'))
+        ->set('form.confirmation', $qrCode->short_code)
+        ->call('applyOperation')
+        ->assertSet('operation', '')->assertSet('pointId', $servicePoint->id);
 
     $qrCode->refresh();
     $newQrCode = QrCode::query()
@@ -251,7 +207,8 @@ test('manager can manually reissue qr after warning', function () {
 });
 
 test('ordinary service point editing does not reissue qr', function () {
-    [, , $branch, $servicePoint, $qrCode] = createPrompt25QrContext();
+    [$organization, , $branch, $servicePoint, $qrCode, $manager] = createPrompt25QrContext();
+    grantPrompt25Permission($manager, $organization, SystemPermission::ManageServicePoints);
     $newArea = AreaNode::factory()->for($branch)->create(['name' => 'VIP Room']);
     $oldToken = $qrCode->public_token;
     $oldShortCode = $qrCode->short_code;
@@ -264,7 +221,7 @@ test('ordinary service point editing does not reissue qr', function () {
         'capacity' => 6,
         'icon' => 'sparkles',
         'is_active' => true,
-    ]);
+    ], $manager);
 
     $qrCode->refresh();
 

@@ -11,6 +11,3 @@ paths:
 
 ## Release completed navigation requests before response effects
 For Livewire 4 message interceptors, release a completed request at onSync, after the returned snapshot is applied and before redirect effects run; onEffect is too late for server navigation. Keep the guard for other pending requests, an idempotent onFinish fallback and listener cleanup. Never auto-replay a blocked navigation or mutation.
-
-## Release completed navigation requests before response effects
-For Livewire 4 message interceptors, release a completed request at onSync, after the returned snapshot is applied and before redirect effects run; onEffect is too late for server navigation. Keep the guard for other pending requests, an idempotent onFinish fallback and listener cleanup. Never auto-replay a blocked navigation or mutation.

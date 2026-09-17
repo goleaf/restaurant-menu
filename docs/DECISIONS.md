@@ -2,7 +2,32 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 1 refresh — real platform boundaries and complete diagnostics (2026-09-17)
+
+Keep PHP 8.5 as the supported production line while testing an explicitly selected, official-source PHP 8.6 prerelease in an owned prefix. The root range cannot be widened on syntax/native evidence: stable Nette Schema/Utils, Sabberworm and the compatible ParaTest graph still reject 8.6. Preserve one stable lock and report the dependency boundary; do not execute the application by ignoring it.
+
+The canonical `verify:migration` preflight records independent native capabilities, Composer manifest, lock-platform and installed-platform results before rejecting application execution. Missing GD/SQLite remains visible instead of crashing the capability report. Ordinary failures and timeouts are accumulated as failures; user interruption (130/143) stops immediately without launching another diagnostic child. Three new regression cases and the existing process-lifecycle tests enforce this distinction. This is the existing main verifier, not a second acceptance command.
+
+Update only Vite's nested Rolldown from 1.2.8 to 1.2.9, using resolver-generated lock data and integrity-checked registry packages. Preserve root Rolldown 1.2.5 and local Flux Pro 0.1.1 because their reproducible donor/build contract is independent. Baseline/candidate output hashes match; existing onboarding, floor-workspace and asset-budget failures are attributable to preserved in-progress product work and are not waived for delivery.
+
+The fourteen-stage standard remains class-based Livewire for application UI, focused Actions/read services/Policies/Rules/Forms, SCSS-owned product styles with the separate Tailwind bridge, available proven Flux Pro components, EN/LT/RU, server authorization and mobile-first accessible layouts. Grid/Flex/logical properties, appropriate container queries and dynamic viewport units follow the current canonical frontend requirements and browser support. No new application MVC controller is introduced. Current pending Prompt 2 has three concrete transport controllers plus the abstract base; this platform refresh neither implements nor accepts that migration. Exact current inventory and outstanding gates are in PROGRESS.md.
+
+## Prompt 4 — Explicit restaurant setup identity (2026-09-17)
+
+A new-restaurant intent has its own request identity. Confirmed creation links a private actor-owned onboarding attempt to exactly one branch. Existing organizations and brands are references, never implicitly renamed or restored. First business creation retains the existing first-launch policy; adding to existing business has a separate authorized policy path. Readiness and historical setup completion remain distinct. The shared working restaurant preference does not select the object being edited.
+
+The four groups are restaurant identity, rooms/tables, menu, and review. The old checkpoint graph remains recognizable for migration; group navigation is addressable UI state and never evidence of completion. Existing restaurant content uses its canonical editor. Onboarding attaches existing space/menu references or creates missing initial resources; changed values do not republish or reconstruct an existing graph. A menu can be prepared before any table or QR. Final confirmation records history only. The same BranchReadinessService used by restaurant operations supplies current readiness for the selected card and review.
+
+Property fingerprints and logo fingerprints are independent. A logo confirmation preserves unsaved text; neither updates the other baseline. Schema changes remove user/organization/brand uniqueness from setup attempts while retaining one attempt per restaurant and a unique creation receipt. No existing attempt is selected merely because it is the first row for a user. Interrupted old attempts require an explicit ID and retain their already-created parents.
+
 # Restaurant Menu completion decisions
+
+## Prompt 5 — one physical-space workspace, separate operations (2026-09-17)
+
+Use the existing service-points URL as the canonical Rooms, tables and QR workspace. Area filters retain exact-area semantics; All and No area are virtual choices. Cards and rows share one bounded query and selection. One selected object owns its editor; QR and print preparation reuse that identity/selection. Legacy entrances resolve the same scoped workspace rather than keeping another active editor.
+
+Physical placement and current service are separate. Nonterminal direct and linked sessions remain occupied. A reviewed structural move/archive must not detach active service or silently change staff defaults. Preserve permanent codes/QR through ordinary edits. Independent versioned Actions and bounded command receipts own explicit mutations; GET/render never generate QR. Printing prepares a checked bounded snapshot, with expiry/current permissions and stale-label/QR detection; no new queue, cron, worker or generic background framework.
+
 
 ## Prompt 6: one dish context, independent resource commits — 2026-09-17
 
@@ -38,6 +63,17 @@ Final candidate and shared integration use separate immutable copies. Production
 - Preserve local Flux Pro provenance, the separate SCSS/Tailwind bridge, existing unsaved guard and actor-bound snapshots. Runtime and aggregate evidence are recorded separately from implementation and Git delivery.
 - Keep the selected restaurant label separate from the bounded server-search query in the existing Flux selector. A listbox search slot preserves the max-100 validation without treating a long organization/brand/restaurant label as user search input.
 - Verify a HEAD-plus-owned candidate separately from shared prompt-2 integration. Coverage certifies unchanged application PHP; final view/test changes receive fresh complete backend and browser inventories. Preserve failed diagnostics and the source hashes instead of claiming one uninterrupted aggregate run.
+
+## Livewire application migration with explicit transport exceptions — 2026-09-16
+
+- Use separate class-based pages and Livewire Form objects for auth, invitation and preparation interfaces. Reuse installed Fortify pipeline/contracts, broker, Actions, Policies, invitation resolver/presenter and report-period rules; do not call controllers or simulate HTTP from a component.
+- Keep invitation and password-reset bearer tokens out of Livewire path metadata by exchanging them into session before rendering a tokenless page. Preserve named email links and reject stale forms using server-bound attempt identifiers.
+- Keep library WebAuthn, signed email verification and Fortify mutation endpoints as infrastructure. Remove first-party native forms once their Livewire consumers are connected; obsolete mutating routes are not redirected into GET operations.
+- Bound PDF responses may use Livewire. CSV and backups use private preparation and a one-use authorized binary endpoint because Livewire buffers/Base64-encodes downloads. A link or signed grant never substitutes for current actor/resource access.
+- Final SQLite replacement retains its exclusive HTTP barrier before session/auth reads. A Livewire upload/preview grants authority only for the exact reviewed candidate; finalization is grant-only and exits the old client context. Never replace the database midway through Livewire hydration/dehydration or a bundled update.
+- Preserve the 256 MiB restore-upload capability through a request-scoped, signed, freshly confirmed superadmin allowance; ordinary Livewire uploads keep their existing limit. No global upload-limit increase, queue/worker requirement or production-runtime change is introduced.
+- Full-suite, browser, coverage, runtime and performance evidence are separate gates. PHP 8.6 application execution remains subject to actual Composer constraints; no bypass or unexecuted acceptance claim is allowed.
+
 
 ## One restaurant context per open page — 2026-09-16
 

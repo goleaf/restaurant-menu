@@ -11,6 +11,7 @@ test('profile appearance retains theme preferences drafts and accessible respons
     $user = User::factory()->create(['password' => 'password']);
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('appearance.edit', absolute: false))
         ->assertPathIs(route('profile.edit', absolute: false))
         ->assertVisible('#profile-appearance')

@@ -12,6 +12,7 @@ use App\Enums\ServicePointType;
 use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Livewire\Exports\Index as ExportPage;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
@@ -32,6 +33,9 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Testing\TestResponse;
+use Livewire\Livewire;
+use Tests\TestCase;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
@@ -57,9 +61,7 @@ test('data exports require export data permission', function () {
         ->get(route('restaurant.exports.index'))
         ->assertForbidden();
 
-    $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, DataExportType::Orders->value]))
-        ->assertForbidden();
+    Livewire::actingAs($user)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)->assertForbidden();
 });
 
 test('data export page shows only assigned export branches', function () {
@@ -79,9 +81,7 @@ test('data export page shows only assigned export branches', function () {
         ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.exports.menu')]))
         ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.exports.tables')]));
 
-    $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$secondBranch, DataExportType::Orders->value]))
-        ->assertForbidden();
+    Livewire::actingAs($user)->withQueryParams(['branch' => $secondBranch->id])->test(ExportPage::class)->assertForbidden();
 });
 
 test('orders csv export includes selected branch orders only', function () {
@@ -176,15 +176,14 @@ test('orders csv export includes selected branch orders only', function () {
     Date::setTestNow(CarbonImmutable::parse('2026-06-04 12:34:56'));
 
     try {
-        $response = $this->actingAs($user)
-            ->get(route('restaurant.exports.download', [$branch, DataExportType::Orders->value]))
+        $response = preparedCsvResponse($this, $user, $branch, DataExportType::Orders->value)
             ->assertOk()
             ->assertDownload('restaurant-menu-orders-branch-'.$branch->id.'-2026-06-04-123456.csv');
     } finally {
         Date::setTestNow();
     }
 
-    $content = $response->streamedContent();
+    $content = $response->baseResponse->getFile()->getContent();
 
     expect($content)
         ->toContain(csvColumns([
@@ -207,16 +206,10 @@ test('csv exports validate date ranges', function () {
     $user = User::factory()->create(['name' => 'Date Range Exporter']);
     attachPrompt76Exporter($user, $organization);
 
-    $this->actingAs($user)
-        ->from(route('restaurant.exports.index'))
-        ->get(route('restaurant.exports.download', [
-            'branch' => $branch,
-            'export' => DataExportType::Orders->value,
-            'date_from' => '2026-01-01',
-            'date_to' => '2026-03-10',
-        ]))
-        ->assertRedirect(route('restaurant.exports.index'))
-        ->assertSessionHasErrors('date_to');
+    Livewire::actingAs($user)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)
+        ->set('period.date_from', '2026-01-01')->set('period.date_to', '2026-03-10')
+        ->call('downloadCsv', $branch->id, DataExportType::Orders->value)
+        ->assertHasErrors('period.date_to')->assertNoRedirect()->assertNoFileDownloaded();
 });
 
 test('payments menu and tables csv exports stream branch data', function (string $locale) {
@@ -294,11 +287,10 @@ test('payments menu and tables csv exports stream branch data', function (string
     Date::setTestNow(CarbonImmutable::parse('2026-06-04 12:34:56'));
 
     try {
-        $paymentContent = $this->actingAs($user)
-            ->get(route('restaurant.exports.download', [$branch, DataExportType::Payments->value]))
+        $paymentContent = preparedCsvResponse($this, $user, $branch, DataExportType::Payments->value)
             ->assertOk()
             ->assertDownload()
-            ->streamedContent();
+            ->baseResponse->getFile()->getContent();
     } finally {
         Date::setTestNow();
     }
@@ -316,11 +308,10 @@ test('payments menu and tables csv exports stream branch data', function (string
         ->toContain('Terminal approved')
         ->not->toContain('Old cash payment');
 
-    $menuContent = $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, DataExportType::Menu->value]))
+    $menuContent = preparedCsvResponse($this, $user, $branch, DataExportType::Menu->value)
         ->assertOk()
         ->assertDownload()
-        ->streamedContent();
+        ->baseResponse->getFile()->getContent();
 
     expect($menuContent)
         ->toContain(csvColumns([
@@ -334,11 +325,10 @@ test('payments menu and tables csv exports stream branch data', function (string
         ->toContain('Pepperoni')
         ->toContain('13.50');
 
-    $tablesContent = $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, DataExportType::ServicePoints->value]))
+    $tablesContent = preparedCsvResponse($this, $user, $branch, DataExportType::ServicePoints->value)
         ->assertOk()
         ->assertDownload()
-        ->streamedContent();
+        ->baseResponse->getFile()->getContent();
 
     expect(app()->getLocale())->toBe($locale);
 
@@ -368,10 +358,9 @@ test('csv payment cells neutralize formula prefixes and preserve ordinary values
         'amount_cents' => 1234,
     ]);
 
-    $content = $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, DataExportType::Payments->value]))
+    $content = preparedCsvResponse($this, $user, $branch, DataExportType::Payments->value)
         ->assertOk()
-        ->streamedContent();
+        ->baseResponse->getFile()->getContent();
     $rows = parseExportCsv($content);
 
     expect($rows)->toHaveCount(2)
@@ -415,10 +404,9 @@ test('every csv export protects its text cells', function (DataExportType $type,
     $category = MenuCategory::factory()->for($menu)->create();
     MenuItem::factory()->for($menu)->for($category, 'category')->create();
 
-    $rows = parseExportCsv($this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, $type->value]))
+    $rows = parseExportCsv(preparedCsvResponse($this, $user, $branch, $type->value)
         ->assertOk()
-        ->streamedContent());
+        ->baseResponse->getFile()->getContent());
 
     expect($rows)->toHaveCount(2)
         ->and($rows[1][$textColumn])->toBe("'=1+1");
@@ -529,4 +517,16 @@ function attachPrompt76Exporter(User $user, Organization $organization, ?Branch 
     }
 
     return $role;
+}
+
+function preparedCsvResponse(TestCase $test, User $user, Branch $branch, string $type): TestResponse
+{
+    $component = Livewire::actingAs($user)->withQueryParams(['branch' => $branch->id])->test(ExportPage::class)
+        ->call('downloadCsv', $branch->id, $type)->assertHasNoErrors()->assertNoFileDownloaded();
+    $grant = array_key_last(session('prepared_downloads'));
+    $url = route('restaurant.files.download', ['grant' => $grant]);
+    $component->assertRedirect($url);
+    session()->save();
+
+    return $test->actingAs($user)->withCookie(config('session.cookie'), session()->getId())->get($url);
 }

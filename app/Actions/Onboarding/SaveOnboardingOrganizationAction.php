@@ -11,6 +11,7 @@ use App\Models\RestaurantOnboarding;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 final readonly class SaveOnboardingOrganizationAction
 {
@@ -61,26 +62,6 @@ final readonly class SaveOnboardingOrganizationAction
                 ->firstOrFail();
         }
 
-        $onboarding = RestaurantOnboarding::query()
-            ->where('user_id', $user->id)
-            ->lockForUpdate()
-            ->first();
-
-        if ($onboarding instanceof RestaurantOnboarding) {
-            return $onboarding;
-        }
-
-        Gate::forUser($user)->authorize('create', RestaurantOnboarding::class);
-
-        $onboarding = RestaurantOnboarding::query()->createOrFirst(
-            ['user_id' => $user->id],
-            ['completed_at' => null],
-        );
-
-        return RestaurantOnboarding::query()
-            ->where('user_id', $user->id)
-            ->whereKey($onboarding->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+        throw ValidationException::withMessages(['creation' => __('center.explicit_creation')]);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Actions\Onboarding;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\QrCodes\StoreQrCodeImageAction;
+use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\QrCode;
@@ -25,7 +26,11 @@ final readonly class GenerateOnboardingQrCodesAction
     public function handle(User $user, int $onboardingId): RestaurantOnboarding
     {
         $result = DB::transaction(function () use ($user, $onboardingId): array {
+            $user = User::query()->whereKey($user->id)->firstOrFail();
             $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->whereKey($onboardingId)->lockForUpdate()->firstOrFail();
+            Gate::forUser($user)->authorize('update', $onboarding);
+            abort_if($onboarding->branch_id === null, 409);
+            abort_if($onboarding->area_node_id === null, 409);
             $branch = Branch::query()
                 ->select(['id', 'organization_id', 'brand_id', 'name'])
                 ->where('organization_id', $onboarding->organization_id)
@@ -33,7 +38,6 @@ final readonly class GenerateOnboardingQrCodesAction
                 ->whereHas('brand', fn ($query) => $query->where('organization_id', $onboarding->organization_id))
                 ->whereKey($onboarding->branch_id)
                 ->firstOrFail();
-            Gate::forUser($user)->authorize('update', $onboarding);
             $area = AreaNode::query()
                 ->select(['id', 'branch_id'])
                 ->where('branch_id', $branch->id)
@@ -43,7 +47,9 @@ final readonly class GenerateOnboardingQrCodesAction
             $points = $onboarding->servicePoints()
                 ->withTrashed()
                 ->select(['service_points.id', 'service_points.branch_id', 'service_points.area_node_id', 'service_points.type', 'service_points.deleted_at'])
-                ->get();
+                ->limit(BulkCreateServicePointsAction::MAX_RANGE_SIZE + 1)->get();
+
+            abort_if($points->count() > BulkCreateServicePointsAction::MAX_RANGE_SIZE, 409);
 
             if ($points->isEmpty()) {
                 throw ValidationException::withMessages([

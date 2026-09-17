@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Branches;
 
+use App\Enums\OrderStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
@@ -13,8 +14,10 @@ use App\Models\Branch;
 use App\Models\ServicePoint;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Validation\ValidationException;
 
 final class ServicePointQueryService
 {
@@ -24,16 +27,61 @@ final class ServicePointQueryService
      */
     public function paginate(Branch $branch, array $filters, int $perPage): Paginator
     {
-        $servicePoints = $branch->servicePoints();
+        $servicePoints = $this->displayQuery($branch);
 
         if (($filters['lifecycle'] ?? 'active') === 'archived') {
             $servicePoints->onlyTrashed();
         }
 
-        $servicePoints
+        $this->applyFilters($servicePoints, $filters);
+
+        $this->applySort($servicePoints, $filters['sort'] ?? 'position');
+
+        $page = $servicePoints->simplePaginate($perPage);
+        foreach ($page->items() as $point) {
+            $point->setRelation('activeTableSession', $point->getRelation('unfinishedTableSession'));
+        }
+
+        return $page;
+    }
+
+    /** @param array<string, string> $filters */
+    public function count(Branch $branch, array $filters): int
+    {
+        $query = $branch->servicePoints();
+        if (($filters['lifecycle'] ?? 'active') === 'archived') {
+            $query->onlyTrashed();
+        }
+        $this->applyFilters($query, $filters);
+
+        return $query->count();
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return EloquentCollection<int, ServicePoint>
+     */
+    public function selected(Branch $branch, array $ids): EloquentCollection
+    {
+        $this->validateIds($ids);
+        $points = $this->displayQuery($branch)->withTrashed()->whereKey($ids)->orderBy('id')->get();
+        if ($points->count() !== count($ids)) {
+            throw ValidationException::withMessages(['servicePointIds' => __('floor.errors.selection_changed')]);
+        }
+        foreach ($points as $point) {
+            $point->setRelation('activeTableSession', $point->getRelation('unfinishedTableSession'));
+        }
+
+        return $points;
+    }
+
+    /** @return HasMany<ServicePoint, Branch> */
+    private function displayQuery(Branch $branch): HasMany
+    {
+        return $branch->servicePoints()
             ->select($this->servicePointColumns())
             ->with([
-                'areaNode' => fn ($query) => $query->select([
+                'areaNode' => fn ($query) => $query->withTrashed()->select([
                     'id',
                     'branch_id',
                     'parent_id',
@@ -42,6 +90,7 @@ final class ServicePointQueryService
                     'icon',
                     'sort_order',
                     'is_active',
+                    'deleted_at',
                 ]),
                 'activeQrCode' => fn ($query) => $query->select([
                     'id',
@@ -51,7 +100,7 @@ final class ServicePointQueryService
                     'status',
                     'created_at',
                 ])->where('status', QrCodeStatus::Active->value),
-                'activeTableSession' => fn ($query) => $query->select([
+                'unfinishedTableSession' => fn ($query) => $query->select([
                     'id',
                     'branch_id',
                     'service_point_id',
@@ -60,7 +109,7 @@ final class ServicePointQueryService
                     'source',
                     'started_at',
                     'created_at',
-                ])->where('status', TableSessionStatus::Active->value),
+                ])->whereIn('status', TableSessionStatus::guestViewableValues()),
                 'activeTableSessionServicePointLinks' => fn ($query) => $query
                     ->select([
                         'id',
@@ -75,15 +124,19 @@ final class ServicePointQueryService
                         'status',
                         'started_at',
                         'created_at',
-                    ])->where('status', TableSessionStatus::Active->value)])
+                    ])->whereIn('status', TableSessionStatus::guestViewableValues())])
                     ->whereNull('unlinked_at'),
             ]);
+    }
 
-        $this->applyFilters($servicePoints, $filters);
-
-        $this->applySort($servicePoints, $filters['sort'] ?? 'position');
-
-        return $servicePoints->simplePaginate($perPage);
+    /** @param array<mixed> $ids */
+    private function validateIds(array $ids): void
+    {
+        if (count($ids) < 1 || count($ids) > 100
+            || array_any($ids, static fn ($id): bool => ! is_int($id) || $id < 1)
+            || count(array_unique($ids)) !== count($ids)) {
+            throw ValidationException::withMessages(['servicePointIds' => __('floor.errors.invalid_selection')]);
+        }
     }
 
     /**
@@ -109,6 +162,34 @@ final class ServicePointQueryService
             ->select($this->servicePointColumns())
             ->whereKey($servicePointId)
             ->firstOrFail();
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return EloquentCollection<int, ServicePoint>
+     */
+    public function mutationRows(Branch $branch, array $ids, bool $withTrashed = false): EloquentCollection
+    {
+        $this->validateIds($ids);
+
+        return $branch->servicePoints()->when($withTrashed, fn ($query) => $query->withTrashed())
+            ->select($this->servicePointColumns())
+            ->withExists([
+                'tableSessions as unfinished_session_exists' => fn ($query) => $query->where('branch_id', $branch->id)->whereIn('status', TableSessionStatus::guestViewableValues()),
+                'tableSessionServicePointLinks as unfinished_link_exists' => fn ($query) => $query->whereNull('unlinked_at')->whereHas('tableSession', fn ($session) => $session->where('branch_id', $branch->id)->whereIn('status', TableSessionStatus::guestViewableValues())),
+                'tableSessionServicePointLinks as linked_active_order_exists' => fn ($query) => $query->whereNull('unlinked_at')->whereHas('tableSession', fn ($session) => $session->where('branch_id', $branch->id)->whereHas('orders', fn ($orders) => $orders->whereIn('status', OrderStatus::activeValues()))),
+                'orders as active_order_exists' => fn ($query) => $query->where('branch_id', $branch->id)->whereIn('status', OrderStatus::activeValues()),
+            ])->whereKey($ids)->orderBy('id')->lockForUpdate()->get();
+    }
+
+    public function mutationRow(Branch $branch, int $id, bool $withTrashed = false): ServicePoint
+    {
+        $point = $this->mutationRows($branch, [$id], $withTrashed)->first();
+        if (! $point instanceof ServicePoint) {
+            throw (new ModelNotFoundException)->setModel(ServicePoint::class, [$id]);
+        }
+
+        return $point;
     }
 
     /**
@@ -193,6 +274,7 @@ final class ServicePointQueryService
             'created_at',
             'updated_at',
             'deleted_at',
+            'structure_version',
         ];
     }
 }

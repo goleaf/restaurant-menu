@@ -11,6 +11,10 @@ No schema migration or account merge is introduced. A card route uses Organizati
 Organization-scoped permission mutations increment the existing organizational access_version when a real override changes. Permission and role fingerprints additionally cover current dependency state and proposed role defaults. Room mutations advance restaurant access_version and record the existing audit action with a typed areas scope. Explicit assignment removal records its audit against the surviving organization membership; earlier branch events remain attributable through their recorded staff_user_id and authorized organization/branch context.
 
 
+## Prompt2 controller migration
+
+No table, migration, model identity, permanent QR or invitation token is changed. Existing Actions retain user/membership/order/report persistence. MFA/reset/invitation attempt credentials remain server-session state; bounded file-cache receipts protect retries without adding a persistent operation table. Prepared download/restore files use the existing private local disk. Factories and idempotent production/demo seeding retain their existing scope; migration tests build only disposable fixtures.
+
 ## Scoped team access migration — 2026-09-15
 
 Two additive migrations introduce organization_id/scope_key on permission_user_overrides and access_version on organization_users/branch_users. Existing overrides retain legacy scope and values. The unique context key avoids SQLite nullable uniqueness ambiguity; organization_id has its own foreign-key index. Rollback refuses to collapse scoped decisions into the legacy global schema. Membership versions start at zero and advance with authorized role/status changes. No invitation plaintext credentials or parallel area-assignment table is introduced.

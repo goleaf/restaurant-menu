@@ -29,13 +29,13 @@ test('recipients retain validation handle rotated forms and switch mismatched ac
     $recipient = visit($invitation->inviteLink().'?lang='.$locale);
     $recipient->assertPathIs(route('invitations.pending', absolute: false))->assertSee($organization->name)->assertSee($branch->name);
     $recipient->fill('input[name="name"]', 'Živilė Новая')->fill('input[name="password"]', 'short')->fill('input[name="password_confirmation"]', 'different');
-    teamRecipientClick($recipient, 'form[action$="/invite/register"] button[type="submit"]');
+    teamRecipientClick($recipient, 'form[wire\\:submit="register"] button[type="submit"]');
     $recipient->assertValue('input[name="name"]', 'Živilė Новая');
     $recipient->assertSee(__('invitations.validation.password_min', ['min' => 8], $locale))
         ->assertSee(__('ui.auth.register.full_name', [], $locale));
     expect(User::query()->where('email', 'recipient.new@example.test')->exists())->toBeFalse();
     $recipient->script("window.dispatchEvent(new Event('offline'))");
-    $recipient->assertDisabled('form[action$="/invite/register"] button[type="submit"]')->assertSee(__('invitations.offline', [], $locale));
+    $recipient->assertDisabled('form[wire\\:submit="register"] button[type="submit"]')->assertSee(__('invitations.offline', [], $locale));
     $recipient->script("window.dispatchEvent(new Event('online'))");
     $recipient->fill('input[name="password"]', 'ValidPassword2026!')->fill('input[name="password_confirmation"]', 'ValidPassword2026!');
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
@@ -49,7 +49,7 @@ test('recipients retain validation handle rotated forms and switch mismatched ac
     $recipient->script("window.scrollTo({ top: 0, left: 0, behavior: 'instant' })");
     $recipient->screenshot(true, 'team-recipient-'.$locale.'-dark');
     $recipient->script("document.documentElement.classList.remove('dark')");
-    teamRecipientClick($recipient, 'form[action$="/invite/register"] button[type="submit"]');
+    teamRecipientClick($recipient, 'form[wire\\:submit="register"] button[type="submit"]');
     $recipient->assertPathIs(route('restaurant.waiter.dashboard', absolute: false))->assertQueryStringHas('branch', (string) $branch->id)
         ->assertAttribute('html[lang]', 'lang', $locale);
     $newUser = User::query()->where('email', 'recipient.new@example.test')->sole();
@@ -60,10 +60,10 @@ test('recipients retain validation handle rotated forms and switch mismatched ac
 
     $stale = $create->handle($organization, $role, $owner->fresh(), ['email' => 'recipient.stale@example.test', 'branch' => $branch]);
     $oldForm = visit($stale->inviteLink().'?lang='.$locale);
-    $oldForm->assertPresent('form[action$="/invite/register"]')->fill('input[name="name"]', 'Stale Recipient')
+    $oldForm->assertPresent('form[wire\\:submit="register"]')->fill('input[name="name"]', 'Stale Recipient')
         ->fill('input[name="password"]', 'ValidPassword2026!')->fill('input[name="password_confirmation"]', 'ValidPassword2026!');
     app(ReissueInvitationAction::class)->handle($owner->fresh(), $organization, $stale->invitation);
-    teamRecipientClick($oldForm, 'form[action$="/invite/register"] button[type="submit"]');
+    teamRecipientClick($oldForm, 'form[wire\\:submit="register"] button[type="submit"]');
     expect(User::query()->where('email', 'recipient.stale@example.test')->exists())->toBeFalse()
         ->and($stale->invitation->fresh()->status)->toBe(InvitationStatus::Pending);
 
@@ -74,11 +74,11 @@ test('recipients retain validation handle rotated forms and switch mismatched ac
     $account->fill('email', $other->email)->fill('password', 'password')->click('@login-button')->assertPathIs('/dashboard');
     $account->navigate($matching->inviteLink())->assertAttribute('html[lang]', 'lang', $locale)
         ->assertSee(__('invitations.states.email_mismatch_title', [], $locale));
-    teamRecipientClick($account, 'form[action$="/invite/switch-account"] button[type="submit"]');
+    teamRecipientClick($account, 'form[wire\\:submit="switchAccount"] button[type="submit"]');
     $account->assertPathIs('/login')->fill('email', $existing->email)->fill('password', 'password')->click('@login-button');
     $account->assertPathIs(route('invitations.pending', absolute: false))->assertSee($organization->name);
     expect(OrganizationUser::query()->where('user_id', $existing->id)->exists())->toBeFalse();
-    teamRecipientClick($account, 'form[action$="/invite/accept"] button[type="submit"]');
+    teamRecipientClick($account, 'form[wire\\:submit="accept"] button[type="submit"]');
     $account->assertPathIs(route('restaurant.waiter.dashboard', absolute: false));
     expect(OrganizationUser::query()->where('user_id', $existing->id)->count())->toBe(1)
         ->and(OrganizationUser::query()->where('user_id', $other->id)->exists())->toBeFalse();

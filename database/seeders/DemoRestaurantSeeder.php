@@ -46,6 +46,8 @@ use RuntimeException;
 
 class DemoRestaurantSeeder extends Seeder
 {
+    private User $structureActor;
+
     public const ORGANIZATION_NAME = 'Demo Food Group';
 
     private const PRIMARY_BRANCH_KEY = 'bella_pizza_old_town';
@@ -76,6 +78,7 @@ class DemoRestaurantSeeder extends Seeder
             $this->demoUser(SystemRole::Superadmin);
 
             $owner = $this->demoUser(SystemRole::Owner);
+            $this->structureActor = $owner;
             $organization = $this->demoOrganization($owner);
             $brands = $this->demoBrands($organization);
             $branches = $this->demoBranches($brands);
@@ -454,7 +457,7 @@ class DemoRestaurantSeeder extends Seeder
             'icon' => $icon,
             'sort_order' => $sortOrder,
             'is_active' => true,
-        ]);
+        ], $this->structureActor);
     }
 
     /**
@@ -616,7 +619,7 @@ class DemoRestaurantSeeder extends Seeder
                 'capacity' => $data['capacity'],
                 'icon' => $data['icon'],
                 'is_active' => true,
-            ]);
+            ], $this->structureActor);
         } elseif ($servicePoint->trashed()) {
             $servicePoint->restore();
         }

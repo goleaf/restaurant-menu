@@ -18,7 +18,12 @@ export function runVerificationProcess(command, { cwd, env, timeout, grace = 5_0
 
         function groupRunning() {
             if (!child.pid) return false;
-            try { process.kill(-child.pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; }
+            try { process.kill(-child.pid, 0); return true; } catch (error) {
+                if (error.code === 'ESRCH') return false;
+                // A denied probe does not establish absence; keep the bounded cleanup checks.
+                if (error.code === 'EPERM') return true;
+                throw error;
+            }
         }
 
         async function cleanGroup() {

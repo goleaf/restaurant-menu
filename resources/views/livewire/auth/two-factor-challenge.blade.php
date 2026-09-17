@@ -1,77 +1,31 @@
-<x-layouts::auth :title="__('ui.auth.two_factor_challenge.two_factor_authentication')">
-    <div class="flex flex-col gap-6">
-        <div
-            class="relative w-full h-auto"
-            x-cloak
-            x-data="twoFactorChallenge" data-recovery="{{ $errors->has('recovery_code') ? 'true' : 'false' }}"
-        >
-            <div x-show="!showRecoveryInput">
-                <x-auth-header
-                    :title="__('ui.auth.two_factor_challenge.authentication_code')"
-                    :description="__('ui.auth.two_factor_challenge.enter_the_authentication_code_provided_by_your')"
-                />
+<div class="flex flex-col gap-6" x-data="twoFactorChallenge" data-recovery="{{ $recovery ? 'true' : 'false' }}">
+    @if ($recovery)
+        <x-auth-header :title="__('ui.auth.two_factor_challenge.recovery_code')" :description="__('ui.auth.two_factor_challenge.please_confirm_access_to_your_account_by_enter')" />
+    @else
+        <x-auth-header :title="__('ui.auth.two_factor_challenge.authentication_code')" :description="__('ui.auth.two_factor_challenge.enter_the_authentication_code_provided_by_your')" />
+    @endif
+
+    <form wire:submit="authenticate" novalidate class="space-y-5">
+        @if ($recovery)
+            <flux:input wire:key="recovery-code" name="recovery_code" x-ref="recovery_code" wire:model="form.recovery_code" error:name="form.recovery_code" :invalid="$errors->has('form.recovery_code')" :label="__('ui.auth.two_factor_challenge.recovery_code')" autocomplete="one-time-code" required />
+        @else
+            <div x-ref="otp">
+                <flux:otp wire:key="authentication-code" name="code" wire:model="form.code" error:name="form.code" :invalid="$errors->has('form.code')" length="6" :label="__('ui.auth.two_factor_challenge.authentication_code')" class="mx-auto" />
             </div>
+        @endif
+        <flux:button type="submit" variant="primary" class="w-full" wire:loading.attr="disabled" wire:offline.attr="disabled">
+            {{ __('ui.actions.continue') }}
+        </flux:button>
+    </form>
 
-            <div x-show="showRecoveryInput">
-                <x-auth-header
-                    :title="__('ui.auth.two_factor_challenge.recovery_code')"
-                    :description="__('ui.auth.two_factor_challenge.please_confirm_access_to_your_account_by_enter')"
-                />
-            </div>
-
-            <form method="POST" action="{{ route('two-factor.login.store') }}">
-                @csrf
-
-                <div class="space-y-5 text-center">
-                    <div x-show="!showRecoveryInput">
-                        <div class="flex items-center justify-center my-5" x-ref="otp">
-                            <flux:otp
-                                x-model="code"
-                                length="6"
-                                name="code"
-                                :label="__('ui.auth.two_factor_challenge.authentication_code')"
-                                label:sr-only
-                                class="mx-auto"
-                             />
-                        </div>
-                    </div>
-
-                    <div x-show="showRecoveryInput">
-                        <div class="my-5">
-                            <flux:input
-                                type="text"
-                                name="recovery_code"
-                                x-ref="recovery_code"
-                                x-bind:required="showRecoveryInput"
-                                autocomplete="one-time-code"
-                                x-model="recovery_code"
-                            />
-                        </div>
-
-                        @error('recovery_code')
-                            <flux:text color="red">
-                                {{ $message }}
-                            </flux:text>
-                        @enderror
-                    </div>
-
-                    <flux:button
-                        variant="primary"
-                        type="submit"
-                        class="w-full"
-                    >
-                        {{ __('ui.actions.continue') }}
-                    </flux:button>
-                </div>
-
-                <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
-                    <span class="opacity-50">{{ __('ui.auth.two_factor_challenge.or_you_can') }}</span>
-                    <button type="button" class="inline font-medium underline cursor-pointer opacity-80" x-on:click="toggleInput()">
-                        <span x-show="!showRecoveryInput">{{ __('ui.auth.two_factor_challenge.login_using_a_recovery_code') }}</span>
-                        <span x-show="showRecoveryInput">{{ __('ui.auth.two_factor_challenge.login_using_an_authentication_code') }}</span>
-                    </button>
-                </div>
-            </form>
-        </div>
+    <div class="text-center text-sm">
+        <span>{{ __('ui.auth.two_factor_challenge.or_you_can') }}</span>
+        <flux:button type="button" variant="ghost" wire:click="toggleRecovery" wire:loading.attr="disabled" wire:offline.attr="disabled">
+            @if ($recovery)
+                {{ __('ui.auth.two_factor_challenge.login_using_an_authentication_code') }}
+            @else
+                {{ __('ui.auth.two_factor_challenge.login_using_a_recovery_code') }}
+            @endif
+        </flux:button>
     </div>
-</x-layouts::auth>
+</div>

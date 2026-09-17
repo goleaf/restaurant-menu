@@ -146,6 +146,7 @@ final readonly class QrPrintQueryService
                     'public_token',
                     'short_code',
                     'status',
+                    'structure_version',
                     'created_at',
                 ])->where('status', QrCodeStatus::Active->value),
             ])
@@ -182,6 +183,7 @@ final readonly class QrPrintQueryService
             'capacity',
             'icon',
             'status',
+            'structure_version',
             'is_active',
         ];
     }
@@ -195,6 +197,7 @@ final readonly class QrPrintQueryService
             'public_token',
             'short_code',
             'status',
+            'structure_version',
             'created_by_user_id',
             'revoked_at',
             'revoked_by_user_id',

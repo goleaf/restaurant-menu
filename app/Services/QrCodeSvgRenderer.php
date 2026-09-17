@@ -12,7 +12,7 @@ class QrCodeSvgRenderer
     public function render(string $content, int $size = 320): string
     {
         $renderer = new ImageRenderer(
-            new RendererStyle($size, 2),
+            new RendererStyle($size, 4),
             new SvgImageBackEnd,
         );
 

@@ -11,6 +11,27 @@
 `PermissionQueryService` remains the read contract for current and projected access, with shared kitchen/bar role-rule metadata from the existing resolvers. `ApplyPermissionDraftAction` applies only changed organization overrides atomically through the existing per-permission Action and management safeguards. Role preview fingerprints are rechecked inside both role Actions. `BranchAssignmentQueryService` describes explicit assignment scope transitions; the corresponding Actions own writes and audit. No impersonation, alternate guard, speculative database write/rollback or new authorization framework is used.
 
 
+## Controller migration — prompt 2, current implementation
+
+Application auth, local/demo identities and invitation operations use class-based Livewire pages with separate Form objects and Blade views. The existing restaurant workspace remains intact. Components invoke focused Actions; no component invokes an old controller, dispatches an internal HTTP request or accepts an arbitrary class/action name. HTTP-aware auth adapters are an explicit boundary; ordinary restaurant Actions remain independent of session and interface feedback.
+
+`AuthRequestAdapter` constructs a separate request containing validated credentials for the installed Fortify pipeline and contracts. It preserves the configured guard/provider, normalization, pipeline callback, named throttling and session preparation, without overwriting the global Livewire request. Password reset uses Laravel's broker and existing password-reset implementation. Sensitive form fields are cleared before dehydration. Vendor auth POST, signed email verification and WebAuthn transports remain framework infrastructure, not another first-party form interface.
+
+The retained first-party controllers have three narrow responsibilities:
+
+| Endpoint / consumer | Retained responsibility and protection | Evidence |
+| --- | --- | --- |
+| GET `/invite/{token}` → invitation recipient | `ShowInvitationController`: resolve credential into session and redirect to tokenless `invitations.pending`; HEAD/prefetch do not accept, register or replace the current attempt; no-store/no-referrer | InvitationLivewireTest; InvitationAcceptanceTest; TeamInvitationLifecycleTest |
+| GET `/restaurant/files/{grant}` → Exports / platform backup panel | `DownloadPreparedFileController`: deliver a previously prepared private file; actor/session/expiry/hash/one-use grant and current resource authorization; HEAD/prefetch/Range do not consume; delete only its file after transfer | PreparedFileTransportTest; LivewireFileOperationsTest; backup suites |
+| POST `/superadmin/backups/sqlite/restore` → reviewed Livewire restore candidate | `RestoreSqliteBackupController`: finalize a grant bound to a verified file, actor, reason and authorization nonce, under the existing exclusive pre-session SQLite barrier; invalidate credentials and finish outside Livewire hydration | SqliteBackupRestoreTest; SqliteRestoreRequestLockTest; RestoreUploadLimitTest |
+
+Token-bearing password-reset GET uses Fortify's own view contract only to establish a session-bound attempt and redirect to the tokenless Livewire form. Original route names used by mail remain. Previous report GETs open `Exports\Index` with checked route branch/export and period; they no longer generate a file on navigation. Previous backup GETs redirect to the existing protected platform panel. Obsolete application mutation POSTs are removed and fail safely; no automatic replay or GET mutation replaces them.
+
+Small, bounded report/QR PDFs use Livewire downloads; CSV and backups are prepared outside the public directory and transferred through the binary boundary, avoiding Base64 expansion. Restore preparation uploads and checks the candidate without replacing the live database. The signed upload endpoint permits the existing 256 MiB maximum only for an authorized superadmin restore attempt with fresh password confirmation; other uploads retain the installed default. The temporary configuration is restored even after validation failure. File-upload errors retain Livewire's native JSON protocol.
+
+Current verification status is in PROGRESS.md; historical inventories below describe earlier checkpoints.
+
+
 ## Restaurant workspace context — prompt 3, 2026-09-16
 
 `WorkspaceContext` is a readonly result, not a tenant singleton. `WorkspaceAccessQuery` reads the existing batch permission and department access contracts. `WorkspaceContextResolver` resolves explicit resource, route and query ownership, rejects conflicting IDs, then considers actor-bound preference and a sole suitable branch. `ApplicationNavigationPresenter` owns authorized stable destinations, active states and search aliases. It does not load reports, menu data or order queues.
@@ -26,9 +47,9 @@ Supported production remains stable PHP 8.5; the isolated PHP 8.6.0beta3 build i
 
 `npm run verify:migration` now requires an explicit PHP binary and Composer path. It snapshots first-party source without credentials/databases/runtime data, copies installed dependencies into a disposable workspace, gives each run owned storage/cache/session paths and a generated test-only key, and propagates the selected PHP/Node/npm into children. Real installed and locked platform checks precede application execution. It records source/lock digests, runtime identity, discovery/execution equality, exit codes/timeouts and strict warnings/deprecations; source changes invalidate the aggregate. Optional Xdebug loading is scoped to the stable coverage child. The test-only HTTP identity route proves the actual serving process and never becomes a production endpoint. Clean lock installation is separate evidence from the copied-dependency run.
 
-New application interfaces must use class-based Livewire plus existing Actions/read services/Policies/Rules/Forms. Existing controller transports are preserved for prompt 2's explicit disposition; their historical allowlist is not blanket permission to retain application MVC screens. No server-side category of Flux controllers exists. Current SCSS and responsive contracts are in requirements.md; historical native-CSS and controller inventories below retain their dated scope.
+New application interfaces must use class-based Livewire plus existing Actions/read services/Policies/Rules/Forms. At the historical prompt1 handoff, existing controller transports were preserved for prompt2's explicit disposition; their historical allowlist is not blanket permission to retain application MVC screens. No server-side category of Flux controllers exists. Current SCSS and responsive contracts are in requirements.md; historical native-CSS and controller inventories below retain their dated scope.
 
-## Prompt 2 controller handoff — current inventory, 2026-09-16
+## Historical prompt 1 handoff inventory — 2026-09-16
 
 There are 14 concrete first-party controllers plus the abstract base Controller. None is migrated or removed by prompt 1. Existing Policies, Actions, requests, session/credential and download contracts must be retained when prompt 2 makes each decision.
 

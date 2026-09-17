@@ -15,7 +15,7 @@ final class SqliteRestoreAuthorization
     ) {}
 
     /**
-     * @return array{issued_at: int, reason: string, user_id: int}
+     * @return array{issued_at: int, nonce: string, reason: string, user_id: int}
      */
     public function handle(Request $request, bool $consume = false): array
     {
@@ -48,6 +48,7 @@ final class SqliteRestoreAuthorization
 
         return [
             'issued_at' => (int) $authorization['issued_at'],
+            'nonce' => (string) $authorization['nonce'],
             'reason' => trim((string) $authorization['reason']),
             'user_id' => (int) $authorization['user_id'],
         ];

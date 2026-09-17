@@ -4,27 +4,33 @@ declare(strict_types=1);
 
 namespace App\Livewire\Superadmin;
 
+use App\Actions\Backups\PrepareBackupDownloadAction;
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
 use App\Actions\System\BuildProductionSafetyReportAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\OrganizationSubscriptionStatus;
+use App\Livewire\Forms\Backups\BackupConfirmationForm;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Models\User;
 use App\Services\Superadmin\SuperadminDashboardQueryService;
+use App\Support\Files\PreparedDownloadAttempt;
 use App\Support\LocalizedDateFormatter;
-use App\Support\PlainText;
-use App\Support\Validation\Common\AuditReasonRules;
 use Flux\Flux;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class Dashboard extends Component
 {
@@ -34,26 +40,24 @@ class Dashboard extends Component
 
     private SuperadminDashboardQueryService $dashboardQueries;
 
+    #[Locked]
+    public string $downloadAttempt = '';
+
     public string $cleanupMessage = '';
 
     public string $organizationSuspendReason = '';
 
-    public string $backupDownloadConfirmation = '';
+    public BackupConfirmationForm $sqliteBackup;
 
-    public string $backupDownloadReason = '';
+    public BackupConfirmationForm $mediaBackup;
 
-    public string $mediaBackupDownloadConfirmation = '';
-
-    public string $mediaBackupDownloadReason = '';
-
-    public string $backupRestoreConfirmation = '';
-
-    public string $backupRestoreReason = '';
+    public BackupConfirmationForm $restoreBackup;
 
     public string $backupRestoreError = '';
 
     public function mount(): void
     {
+        $this->downloadAttempt = PreparedDownloadAttempt::fresh();
         $this->backupRestoreError = (string) session()->pull('sqlite_backup_restore_error', '');
     }
 
@@ -153,87 +157,79 @@ class Dashboard extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.session_cleanup_finished'));
     }
 
-    public function downloadBackup(): void
+    public function downloadBackup(PrepareBackupDownloadAction $prepare, RequirePassword $password, PreparedDownloadAttempt $attempts): void
     {
         $this->authorizeSuperadmin();
+        $reason = $this->sqliteBackup->reasonFor('sqlite');
+        if (! $this->confirmBackupPassword($password)) {
+            return;
+        }
+        try {
+            $grant = $attempts->handle($this->currentUser(), $this->downloadAttempt, 'sqlite', ['reason' => $reason], fn (): string => $prepare->handle($this->currentUser(), request(), 'sqlite', $reason));
+        } catch (RuntimeException $exception) {
+            if ($exception instanceof HttpExceptionInterface) {
+                throw $exception;
+            }
+            report($exception);
+            $this->sqliteBackup->addError('reason', __('ui.files.prepare_failed'));
 
-        $this->backupDownloadReason = trim($this->backupDownloadReason);
-        $validated = $this->validate([
-            ...AuditReasonRules::auditReason('backupDownloadReason'),
-            'backupDownloadConfirmation' => ['required', 'string', 'in:BACKUP'],
-        ], [
-            'backupDownloadReason.required' => __('ui.confirmations.reason.required'),
-            'backupDownloadReason.min' => __('ui.confirmations.reason.min'),
-            'backupDownloadConfirmation.required' => __('ui.confirmations.download_backup.confirmation_required'),
-            'backupDownloadConfirmation.in' => __('ui.confirmations.download_backup.confirmation_match'),
-        ]);
-
-        session()->put('sqlite_backup_download_authorization', [
-            'issued_at' => now()->timestamp,
-            'reason' => PlainText::required((string) $validated['backupDownloadReason'], 500),
-            'user_id' => $this->currentUser()->id,
-        ]);
-
-        $this->reset('backupDownloadConfirmation', 'backupDownloadReason');
+            return;
+        }
+        $this->downloadAttempt = PreparedDownloadAttempt::fresh();
+        $this->sqliteBackup->reset();
         $this->modal('sqlite-backup-download')->close();
-
-        $this->redirectRoute('superadmin.backups.sqlite.download');
+        $this->redirectRoute('restaurant.files.download', ['grant' => $grant]);
     }
 
-    public function downloadMediaBackup(): void
+    public function downloadMediaBackup(PrepareBackupDownloadAction $prepare, RequirePassword $password, PreparedDownloadAttempt $attempts): void
     {
         $this->authorizeSuperadmin();
+        $reason = $this->mediaBackup->reasonFor('media');
+        if (! $this->confirmBackupPassword($password)) {
+            return;
+        }
+        try {
+            $grant = $attempts->handle($this->currentUser(), $this->downloadAttempt, 'media', ['reason' => $reason], fn (): string => $prepare->handle($this->currentUser(), request(), 'media', $reason));
+        } catch (RuntimeException $exception) {
+            if ($exception instanceof HttpExceptionInterface) {
+                throw $exception;
+            }
+            report($exception);
+            $this->mediaBackup->addError('reason', __('ui.superadmin.media_backup.failed'));
 
-        $this->mediaBackupDownloadReason = trim($this->mediaBackupDownloadReason);
-        $validated = $this->validate([
-            ...AuditReasonRules::auditReason('mediaBackupDownloadReason'),
-            'mediaBackupDownloadConfirmation' => ['required', 'string', 'in:MEDIA'],
-        ], [
-            'mediaBackupDownloadReason.required' => __('ui.confirmations.reason.required'),
-            'mediaBackupDownloadReason.min' => __('ui.confirmations.reason.min'),
-            'mediaBackupDownloadConfirmation.required' => __('ui.confirmations.download_media_backup.confirmation_required'),
-            'mediaBackupDownloadConfirmation.in' => __('ui.confirmations.download_media_backup.confirmation_match'),
-        ]);
-
-        session()->put('media_backup_download_authorization', [
-            'issued_at' => now()->timestamp,
-            'nonce' => Str::random(64),
-            'reason' => PlainText::required((string) $validated['mediaBackupDownloadReason'], 500),
-            'user_id' => $this->currentUser()->id,
-        ]);
-
-        $this->reset('mediaBackupDownloadConfirmation', 'mediaBackupDownloadReason');
+            return;
+        }
+        $this->downloadAttempt = PreparedDownloadAttempt::fresh();
+        $this->mediaBackup->reset();
         $this->modal('media-backup-download')->close();
-
-        $this->redirectRoute('superadmin.backups.media.download');
+        $this->redirectRoute('restaurant.files.download', ['grant' => $grant]);
     }
 
     public function prepareBackupRestore(): void
     {
         $this->authorizeSuperadmin();
-
-        $this->backupRestoreReason = trim($this->backupRestoreReason);
-        $validated = $this->validate([
-            ...AuditReasonRules::auditReason('backupRestoreReason'),
-            'backupRestoreConfirmation' => ['required', 'string', 'in:RESTORE'],
-        ], [
-            'backupRestoreReason.required' => __('ui.confirmations.reason.required'),
-            'backupRestoreReason.min' => __('ui.confirmations.reason.min'),
-            'backupRestoreConfirmation.required' => __('ui.confirmations.restore_backup.confirmation_required'),
-            'backupRestoreConfirmation.in' => __('ui.confirmations.restore_backup.confirmation_match'),
-        ]);
-
+        $reason = $this->restoreBackup->reasonFor('restore');
         session()->put('sqlite_backup_restore_authorization', [
             'issued_at' => now()->timestamp,
             'nonce' => Str::random(64),
-            'reason' => PlainText::required((string) $validated['backupRestoreReason'], 500),
+            'reason' => $reason,
             'user_id' => $this->currentUser()->id,
         ]);
-
-        $this->reset('backupRestoreConfirmation', 'backupRestoreReason');
+        $this->restoreBackup->reset();
         $this->modal('sqlite-backup-restore')->close();
-
         $this->redirectRoute('superadmin.backups.sqlite.restore');
+    }
+
+    private function confirmBackupPassword(RequirePassword $password): bool
+    {
+        $response = $password->handle(request(), static fn (): Response => new Response(status: 204));
+        if ($response instanceof Response && $response->getStatusCode() === 204) {
+            return true;
+        }
+        session()->put('url.intended', route('superadmin.dashboard'));
+        $this->redirectRoute('password.confirm');
+
+        return false;
     }
 
     /**

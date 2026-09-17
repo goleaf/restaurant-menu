@@ -56,9 +56,9 @@ test('connectivity and HTTP forms prevent offline or duplicate submissions and r
     assert.equal(form.offline, false);
 });
 
-test('two factor switching waits for x-show frames, clears drafts and cancels focus after destruction', t => {
+test('two factor focus follows server mode changes and cancels stale focus after destruction', t => {
     const ticks = [], frames = new Map(), focused = [];
-    let frameId = 0, visible = 'otp';
+    let frameId = 0, visible = 'otp', modeChanged;
     const originalRequest = globalThis.requestAnimationFrame, originalCancel = globalThis.cancelAnimationFrame;
     globalThis.requestAnimationFrame = callback => { frames.set(++frameId, callback); return frameId; };
     globalThis.cancelAnimationFrame = id => frames.delete(id);
@@ -66,6 +66,7 @@ test('two factor switching waits for x-show frames, clears drafts and cancels fo
     const input = kind => ({ focus() { assert.equal(visible, kind, 'focus must follow x-show visibility'); focused.push(kind); } });
     const component = scope(twoFactorChallenge(), {
         $el: { dataset: { recovery: 'false' }, isConnected: true },
+        $watch: (name, callback) => { assert.equal(name, '$wire.recovery'); modeChanged = callback; },
         $refs: { otp: { querySelector: () => input('otp') }, recovery_code: input('recovery') },
         $nextTick: callback => ticks.push(callback),
     });
@@ -75,26 +76,25 @@ test('two factor switching waits for x-show frames, clears drafts and cancels fo
         const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback());
     };
     component.init(); render('otp'); assert.deepEqual(focused, ['otp']);
-    component.code = '123456'; component.recovery_code = 'secret';
-    component.toggleInput();
+    const toggle = () => modeChanged(!component.showRecoveryInput);
+    toggle();
     assert.equal(component.showRecoveryInput, true);
-    assert.equal(component.code, ''); assert.equal(component.recovery_code, '');
     ticks.splice(0).forEach(callback => callback());
     assert.deepEqual(focused, ['otp']);
     assert.equal(frames.size, 1);
     visible = 'recovery'; const recoveryFrame = [...frames.values()][0]; frames.clear(); recoveryFrame();
     assert.deepEqual(focused, ['otp', 'recovery']);
-    component.toggleInput(); render('otp'); assert.deepEqual(focused, ['otp', 'recovery', 'otp']);
-    component.toggleInput(); ticks.splice(0).forEach(callback => callback());
-    component.toggleInput(); assert.equal(frames.size, 0); render('otp');
-    component.toggleInput(); component.toggleInput(); render('otp');
+    toggle(); render('otp'); assert.deepEqual(focused, ['otp', 'recovery', 'otp']);
+    toggle(); ticks.splice(0).forEach(callback => callback());
+    toggle(); assert.equal(frames.size, 0); render('otp');
+    toggle(); toggle(); render('otp');
     const count = focused.length;
-    component.toggleInput(); ticks.splice(0).forEach(callback => callback());
+    toggle(); ticks.splice(0).forEach(callback => callback());
     const stale = [...frames.values()][0]; component.destroy(); assert.equal(frames.size, 0); stale();
     assert.equal(focused.length, count);
-    const restored = scope(twoFactorChallenge(), { $el: { dataset: { recovery: 'true' }, isConnected: true }, $refs: { recovery_code: input('recovery') }, $nextTick: callback => ticks.push(callback) });
+    const restored = scope(twoFactorChallenge(), { $el: { dataset: { recovery: 'true' }, isConnected: true }, $watch: (name, callback) => { modeChanged = callback; }, $refs: { recovery_code: input('recovery') }, $nextTick: callback => ticks.push(callback) });
     restored.init(); assert.equal(restored.showRecoveryInput, true); render('recovery');
-    restored.toggleInput(); restored.destroy(); render('otp');
+    modeChanged(false); restored.destroy(); render('otp');
     assert.equal(frames.size, 0);
 });
 

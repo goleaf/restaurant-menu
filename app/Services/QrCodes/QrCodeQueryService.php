@@ -9,9 +9,9 @@ use App\Enums\QrCodeStatus;
 use App\Models\Branch;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Contracts\Filesystem\Factory;
 use Illuminate\Support\Collection;
-use App\Support\LocalizedDateFormatter;
 
 final class QrCodeQueryService
 {
@@ -39,7 +39,7 @@ final class QrCodeQueryService
         return [
             'point_name' => $context['point']->name,
             'point_number' => $context['point']->display_number,
-            'area_name' => $context['point']->areaNode?->name ?? __('qr.labels.no_zone'),
+            'area_name' => $context['point']->areaNode->name ?? __('qr.labels.no_zone'),
             'created_at' => $qr === null ? null : LocalizedDateFormatter::dateTime($qr->created_at),
             'short_code' => $qr?->short_code,
             'status_label' => $qr === null ? 'qr.labels.no_qr' : $qr->status->label(),

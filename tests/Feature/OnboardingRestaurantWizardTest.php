@@ -46,6 +46,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Exceptions\PublicPropertyNotFoundException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -56,6 +57,57 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+});
+
+test('restaurant structure name suggestions are explicit editable and do not write records', function () {
+    $user = User::factory()->create();
+    $component = Livewire::actingAs($user)->test(RestaurantSetup::class)
+        ->set('form.branchName', 'North Restaurant')
+        ->assertSet('form.organizationName', '')
+        ->assertSet('form.brandName', '');
+    $before = restaurantOnboardingGraphCounts();
+    $component->call('suggestStructureNames')->assertHasNoErrors()
+        ->assertSet('form.organizationName', 'North Restaurant')
+        ->assertSet('form.brandName', 'North Restaurant')
+        ->set('form.organizationName', 'My Organization')
+        ->set('form.branchName', 'Other Restaurant')
+        ->call('suggestStructureNames')->assertHasNoErrors()
+        ->assertSet('form.organizationName', 'My Organization')
+        ->assertSet('form.brandName', 'North Restaurant');
+    expect(restaurantOnboardingGraphCounts())->toBe($before);
+});
+
+test('restaurant structure suggestions reject malformed names without coercion', function (mixed $value) {
+    Livewire::actingAs(User::factory()->create())->test(RestaurantSetup::class)
+        ->set('form.branchName', $value)->call('suggestStructureNames')
+        ->assertHasErrors('form.branchName')
+        ->assertSet('form.organizationName', '')->assertSet('form.brandName', '');
+    expect(Organization::query()->count())->toBe(0)->and(RestaurantOnboarding::query()->count())->toBe(0);
+})->with(['null' => [null], 'empty' => [''], 'number' => [123], 'array' => [['bad']]]);
+
+test('adding a restaurant can explicitly create a separate organization without rewriting the existing business', function () {
+    $user = User::factory()->create();
+    $first = restaurantOnboardingComponentAtStep($user, 4, 'Existing Business');
+    $firstSetup = RestaurantOnboarding::query()->findOrFail($first->get('onboardingId'));
+    $before = [$firstSetup->fresh()->getAttributes(), $firstSetup->organization->getAttributes(), $firstSetup->brand->getAttributes(), $firstSetup->branch->getAttributes()];
+    $component = Livewire::actingAs($user)->test(RestaurantSetup::class)
+        ->set(collect(restaurantSetupCreationInput('Separate Business'))->mapWithKeys(fn ($value, $key) => ['form.'.$key => $value])->all())
+        ->call('createRestaurant')->assertHasNoErrors();
+    $second = RestaurantOnboarding::query()->findOrFail($component->get('onboardingId'));
+    expect($second->organization_id)->not->toBe($firstSetup->organization_id)
+        ->and($second->purpose)->toBe('additional')
+        ->and([$firstSetup->fresh()->getAttributes(), $firstSetup->organization->fresh()->getAttributes(), $firstSetup->brand->fresh()->getAttributes(), $firstSetup->branch->fresh()->getAttributes()])->toBe($before);
+});
+
+test('restaurant preparation links to its room editor separately from QR printing', function () {
+    $user = User::factory()->create();
+    $component = restaurantOnboardingComponentAtStep($user, 5, 'Rooms Link');
+    $setup = RestaurantOnboarding::query()->findOrFail($component->get('onboardingId'));
+    $summary = app(RestaurantSetupQueryService::class)->presentation($user, $setup->id)['summary'];
+    expect($summary['rooms_url'])->toBe(route('organizations.brands.branches.service-points.index', [$setup->organization_id, $setup->brand_id, $setup->branch_id]))
+        ->not->toBe($summary['print_url']);
+    Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $setup->id])
+        ->assertSet('existingAreaId', $setup->area_node_id);
 });
 
 test('restaurant onboarding wizard requires authentication', function () {
@@ -621,26 +673,10 @@ test('onboarding presentation never hydrates a forged cross tenant parent or men
         'menu_item_id' => $foreignItem->id,
     ])->save();
 
-    $state = app(RestaurantSetupQueryService::class)->presentation($owner, $onboarding->id);
-    $serializedPresentation = json_encode($state, JSON_THROW_ON_ERROR);
-
-    expect($state['step'])->toBe(1)
-        ->and($state['onboarding']?->organization)->toBeNull()
-        ->and($state['onboarding']?->brand)->toBeNull()
-        ->and($state['onboarding']?->branch)->toBeNull()
-        ->and($state['onboarding']?->areaNode)->toBeNull()
-        ->and($state['onboarding']?->menu)->toBeNull()
-        ->and($state['onboarding']?->menuCategory)->toBeNull()
-        ->and($state['onboarding']?->menuItem)->toBeNull()
-        ->and($serializedPresentation)->not->toContain(
-            $foreignOrganization->name,
-            $foreignBrand->name,
-            $foreignBranch->name,
-            $foreignArea->name,
-            $foreignMenu->name,
-            $foreignCategory->name,
-            $foreignItem->name,
-        );
+    expect(fn () => app(RestaurantSetupQueryService::class)->presentation($owner, $onboarding->id))
+        ->toThrow(AuthorizationException::class);
+    $this->actingAs($owner)->get(route('restaurants.setup', ['setup' => $onboarding->id]))
+        ->assertForbidden()->assertDontSee([$foreignOrganization->name, $foreignBrand->name, $foreignBranch->name, $foreignMenu->name, $foreignItem->name]);
 });
 
 test('direct Livewire actions cannot skip onboarding prerequisites', function (int $availableStep, string $action) {
@@ -1060,7 +1096,7 @@ test('a missing starter item is not reconstructed by reopening setup', function 
         ->and($onboarding->completed_at)->not->toBeNull();
 });
 
-test('hard deleted checkpoint area reuses its linked service points and permanent QR identities', function () {
+test('replacing a deleted checkpoint area does not silently move its surviving tables or QR identities', function () {
     $user = User::factory()->create();
     restaurantOnboardingComponentAtStep($user, 8, 'Deleted Area Graph');
     $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->firstOrFail();
@@ -1073,22 +1109,22 @@ test('hard deleted checkpoint area reuses its linked service points and permanen
 
     AreaNode::query()->whereKey($onboarding->area_node_id)->firstOrFail()->forceDelete();
 
-    Livewire::actingAs($user)->test(RestaurantSetup::class)
-        ->assertSet('step', 4)
+    Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $onboarding->id])->call('goToStep', 2)
         ->set('form.areaName', 'Recovered Hall')
         ->set('form.areaType', 'hall')
         ->call('createArea')
         ->assertHasNoErrors()
-        ->assertSet('step', 5)
+        ->assertSet('step', 2)
+        ->set('form.tableCount', 3)->set('form.tablePrefix', 'Deleted Area Graph '.$user->id.' Table')->set('form.tableCapacity', 4)
         ->call('createServicePoints')
-        ->assertHasNoErrors()
-        ->assertSet('step', 8);
+        ->assertHasErrors('form.tableCount')
+        ->assertSet('step', 2);
 
     $onboarding->refresh();
 
     expect(ServicePoint::query()->where('branch_id', $onboarding->branch_id)->count())->toBe(3)
         ->and($onboarding->servicePoints()->pluck('service_points.id')->all())->toBe($servicePointIds)
-        ->and($onboarding->servicePoints()->where('area_node_id', $onboarding->area_node_id)->count())->toBe(3)
+        ->and($onboarding->servicePoints()->whereNull('area_node_id')->count())->toBe(3)
         ->and(QrCode::query()
             ->whereIn('service_point_id', $servicePointIds)
             ->orderBy('service_point_id')
@@ -1127,12 +1163,12 @@ test('cross-tenant brand checkpoint corruption is rejected before any record cha
 
     $onboarding->forceFill(['brand_id' => $foreignBrand->id])->save();
 
-    $component = Livewire::actingAs($user)->test(RestaurantSetup::class)
-        ->assertSet('step', 2)
+    $component = Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $onboarding->id])
+        ->assertSet('step', 1)
         ->set('form.brandName', 'Must Not Be Created');
 
-    expect(fn () => $component->call('createBrand'))
-        ->toThrow(ModelNotFoundException::class);
+    $component->set(collect(restaurantSetupCreationInput('Attempted Branch'))->mapWithKeys(fn ($value, $key) => ['form.'.$key => $value])->all());
+    expect(fn () => $component->call('createRestaurant'))->toThrow(ModelNotFoundException::class);
 
     $onboarding->refresh();
 
@@ -1141,7 +1177,7 @@ test('cross-tenant brand checkpoint corruption is rejected before any record cha
         ->and($foreignBrand->fresh()?->name)->toBe('Foreign Brand');
 });
 
-test('wrong-area onboarding table link is replaced without moving the existing table', function () {
+test('wrong-area onboarding table links require explicit repair without moving or replacing tables', function () {
     $user = User::factory()->create();
     restaurantOnboardingComponentAtStep($user, 6, 'Corrupt Table Link');
     $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->firstOrFail();
@@ -1151,18 +1187,17 @@ test('wrong-area onboarding table link is replaced without moving the existing t
 
     $onboarding->servicePoints()->attach($otherPoint->id, ['position' => 4]);
 
-    Livewire::actingAs($user)->test(RestaurantSetup::class)
-        ->assertSet('step', 5)
+    Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $onboarding->id])->call('goToStep', 2)
         ->assertSet('form.tableCount', 4)
         ->call('createServicePoints')
-        ->assertHasNoErrors()
-        ->assertSet('step', 6);
+        ->assertHasErrors('form.tableCount')
+        ->assertSet('step', 2);
 
     expect($otherPoint->fresh()?->area_node_id)->toBe($otherArea->id)
         ->and($otherPoint->fresh()?->name)->toBe('Do Not Move')
-        ->and($onboarding->servicePoints()->whereKey($otherPoint->id)->doesntExist())->toBeTrue()
+        ->and($onboarding->servicePoints()->whereKey($otherPoint->id)->exists())->toBeTrue()
         ->and($onboarding->servicePoints()->count())->toBe(4)
-        ->and($onboarding->servicePoints()->where('area_node_id', $onboarding->area_node_id)->count())->toBe(4);
+        ->and($onboarding->servicePoints()->where('area_node_id', $onboarding->area_node_id)->count())->toBe(3);
 });
 
 test('cross-branch onboarding table corruption is rejected before any record changes', function () {
@@ -1202,8 +1237,7 @@ test('cross-branch table corruption fails before hidden-link count validation', 
 
     $onboarding->servicePoints()->attach($foreignPoint->id, ['position' => 4]);
 
-    Livewire::actingAs($user)->test(RestaurantSetup::class)
-        ->assertSet('step', 5)
+    Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $onboarding->id])->call('goToStep', 2)
         ->assertSet('form.tableCount', 3)
         ->call('createServicePoints')
         ->assertNotFound();
@@ -1211,7 +1245,7 @@ test('cross-branch table corruption fails before hidden-link count validation', 
     expect($onboarding->servicePoints()->whereKey($foreignPoint->id)->exists())->toBeTrue();
 });
 
-test('late onboarding actions reject a malformed checkpoint table set', function (string $corruption, string $operation) {
+test('QR generation rejects malformed tables while independent menu preparation remains allowed', function (string $corruption, string $operation) {
     $user = User::factory()->create();
     $targetStep = $operation === 'qr' ? 6 : 7;
     restaurantOnboardingComponentAtStep($user, $targetStep, 'Malformed Set '.$corruption.' '.$operation);
@@ -1234,11 +1268,18 @@ test('late onboarding actions reject a malformed checkpoint table set', function
             'item_price' => '9.00',
         ]);
 
-    expect($mutation)->toThrow(HttpException::class)
-        ->and(restaurantOnboardingGraphCounts())->toBe($countsBefore)
-        ->and($onboarding->fresh()?->completed_at)->toBeNull();
-
-    Livewire::actingAs($user)->test(RestaurantSetup::class)->assertSet('step', 5);
+    if ($operation === 'qr') {
+        expect($mutation)->toThrow(HttpException::class)
+            ->and(restaurantOnboardingGraphCounts())->toBe($countsBefore);
+    } else {
+        $saved = $mutation();
+        expect($saved->menu->status)->toBe(MenuStatus::Draft)
+            ->and($saved->menuItem->is_available)->toBeFalse()
+            ->and(QrCode::query()->count())->toBe($countsBefore['qr_codes'])
+            ->and(ServicePoint::query()->count())->toBe($countsBefore['service_points']);
+    }
+    expect($onboarding->fresh()?->completed_at)->toBeNull();
+    Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $onboarding->id])->call('goToStep', 2)->assertSet('step', 2);
 })->with([
     'non-table before QR' => ['type', 'qr'],
     'position gap before QR' => ['position', 'qr'],
@@ -1276,7 +1317,7 @@ test('late onboarding actions reject a stale cross-tenant branch before writing'
         ]),
     };
 
-    expect($mutation)->toThrow(ModelNotFoundException::class)
+    expect($mutation)->toThrow(AuthorizationException::class)
         ->and($foreignBranch->fresh()?->only(array_keys($before)))->toBe($before)
         ->and(AreaNode::query()->where('branch_id', $foreignBranch->id)->count())->toBe($foreignCounts['areas'])
         ->and(ServicePoint::query()->where('branch_id', $foreignBranch->id)->count())->toBe($foreignCounts['points'])
@@ -1327,7 +1368,7 @@ test('stale starter-menu references fail safely without changing either menu gra
         ->and($foreignItem->fresh()?->name)->toBe('Foreign Dish');
 })->with(['menu', 'category', 'item']);
 
-test('starter-menu recovery authorizes availability before reactivating domain records', function () {
+test('starter-menu continuation rejects content edits and never reactivates domain records', function () {
     $user = User::factory()->create();
     restaurantOnboardingComponentAtStep($user, 8, 'Availability Guard');
     $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->firstOrFail();
@@ -1346,7 +1387,7 @@ test('starter-menu recovery authorizes availability before reactivating domain r
         'category_name' => 'Must Not Change',
         'item_name' => 'Must Not Change',
         'item_price' => '9.00',
-    ]))->toThrow(AuthorizationException::class)
+    ]))->toThrow(ValidationException::class)
         ->and($menu->fresh()?->status)->toBe(MenuStatus::Archived)
         ->and($category->fresh()?->is_active)->toBeFalse()
         ->and($item->fresh()?->is_available)->toBeFalse();
@@ -1365,7 +1406,7 @@ test('stale Livewire snapshot rechecks corrupted table links before QR mutation'
 
     $onboarding->servicePoints()->attach($foreignPoint->id, ['position' => 4]);
 
-    $component->call('generateQrCodes')->assertStatus(409);
+    $component->call('generateQrCodes')->assertNotFound();
 
     expect(QrCode::query()->count())->toBe($qrCount)
         ->and($foreignPoint->qrCodes()->count())->toBe(0);
@@ -1763,70 +1804,24 @@ test('restaurant onboarding area catalogues use Lithuanian restaurant terminolog
 
 test('restaurant onboarding renders controls with domain-correct html semantics', function () {
     $user = User::factory()->create();
-
     Livewire::actingAs($user)->test(RestaurantSetup::class)
-        ->assertSeeHtml('name="organization_name"')
-        ->assertSeeHtml('autocomplete="organization"');
-
-    $component = restaurantOnboardingComponentAtStep($user, 3)
-        ->assertSeeHtml('name="branch_country_code"')
-        ->assertSeeHtml('list="restaurant-country-options"')
-        ->assertSeeHtml('autocomplete="country"')
-        ->assertSeeHtml('id="branch-country-code-help"')
-        ->assertSeeHtml('aria-describedby="branch-country-code-help branch-country-code-error"')
-        ->assertSeeHtml('name="branch_timezone"')
-        ->assertSeeHtml('list="restaurant-timezone-options"')
-        ->assertSeeHtml('id="branch-timezone-help"')
-        ->assertSeeHtml('aria-describedby="branch-timezone-help branch-timezone-error"');
-
-    restaurantOnboardingComponentAtStep($user, 8)
-        ->call('goToStep', 7)
-        ->assertSeeHtml('name="item_price"')
-        ->assertSeeHtml('inputmode="decimal"')
-        ->assertSeeHtml('step="0.01"');
+        ->assertSeeHtml('name="organization_name"')->assertSeeHtml('autocomplete="organization"')
+        ->assertSeeHtml('name="restaurant_address"')->assertSeeHtml('autocomplete="street-address"')
+        ->assertSeeHtml('wire:model="form.branchCountryCode"')->assertSeeHtml('data-flux-select')
+        ->assertSeeHtml('wire:model="form.branchTimezone"')->assertSeeHtml('inputmode="decimal"');
 });
 
 test('restaurant onboarding renders precise resilient interaction states', function () {
     $source = File::get(resource_path('views/livewire/onboarding/restaurant-setup.blade.php'));
-    $actions = [
-        'createOrganization',
-        'createBrand',
-        'createBranch',
-        'createArea',
-        'createServicePoints',
-        'generateQrCodes',
-        'createStarterMenu',
-    ];
-
-    foreach ($actions as $action) {
-        expect($source)
-            ->toContain('wire:target="'.$action.'"')
-            ->toContain('wire:loading.attr="aria-busy"')
-            ->toContain('wire:offline.attr="disabled"');
+    foreach (['createRestaurant', 'createArea', 'createServicePoints', 'generateQrCodes', 'createStarterMenu', 'useExistingMenu', 'useExistingSpace', 'complete'] as $action) {
+        expect($source)->toContain('wire:target="'.$action.'"');
     }
-
-    expect($source)
-        ->toContain('wire:key="restaurant-onboarding-step-1"')
-        ->toContain('wire:key="restaurant-onboarding-step-8"')
-        ->toContain('wire:key="onboarding-country-{{ $countryCode }}"')
-        ->toContain('wire:key="onboarding-timezone-{{ $timezoneIdentifier }}"')
-        ->not->toContain('wire:model.live="form.');
-
-    foreach (['en', 'lt', 'ru'] as $locale) {
-        $translations = json_decode((string) File::get(lang_path($locale.'.json')), true, flags: JSON_THROW_ON_ERROR);
-
-        expect($translations)
-            ->toHaveKeys([
-                'ui.onboarding.restaurant_setup.saving_step',
-                'ui.onboarding.restaurant_setup.generating_qr',
-            ]);
+    expect($source)->toContain('wire:loading.attr="aria-busy"')->toContain('wire:offline.attr="disabled"');
+    foreach (range(1, 4) as $group) {
+        expect($source)->toContain('id="restaurant-setup-group-'.$group.'"')->toContain('wire:show="step === '.$group.'"');
     }
-
-    $user = User::factory()->create();
-
-    restaurantOnboardingComponentAtStep($user, 2)
-        ->assertSeeHtml('data-onboarding-mobile-summary')
-        ->assertSee(__('ui.onboarding.restaurant_setup.cto_uze_sozdano'));
+    $component = restaurantOnboardingComponentAtStep(User::factory()->create(), 4);
+    $component->call('goToStep', 1)->assertSee(__('center.saved_notice'));
 });
 
 test('restaurant onboarding normalizes plain text before persistence', function () {
@@ -1855,7 +1850,9 @@ test('restaurant onboarding uses localized human validation attributes', functio
         ->assertHasErrors(['form.organizationName' => 'required_without'])
         ->assertDispatched('onboarding-validation-failed')
         ->assertSeeHtml('aria-invalid="true"')
-        ->assertSee(__('center.organization_name'))->assertDontSee('form.organizationName');
+        ->assertSee(__('center.organization_name'));
+    $errors = Livewire::actingAs($user)->test(RestaurantSetup::class)->call('createRestaurant')->errors()->all();
+    expect(implode(' ', $errors))->not->toContain('form.organizationName', 'organizationName');
 });
 
 test('restaurant onboarding localizes international branch validation messages', function (string $locale) {

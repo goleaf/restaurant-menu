@@ -15,7 +15,7 @@ test('one bootstrap registers every factory before starting Livewire and release
     };
     mock.module('../vendor/livewire/livewire/dist/livewire.esm.js', { exports: {
         Alpine: { data: (name, factory) => providers.set(name, factory), bind: (name, binding) => bindings.set(name, binding) },
-        Livewire: { start() {
+        Livewire: { interceptMessage() {}, start() {
             assert.ok(providers.has('menuWorkspace'));
             assert.ok(providers.has('passkeyVerification'));
             assert.ok(bindings.has('dialogLabel'));

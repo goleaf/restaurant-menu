@@ -4,9 +4,13 @@
 
 # Current version baseline
 
-Current execution stage is the Prompt 3 workspace refresh on `8191bb5`, preserving forty pre-existing Prompt 2 paths. Dependencies and production selection remain unchanged. The current execution ledger is PROGRESS.md; previous accepted snapshots do not certify this combined worktree.
+Current execution stage is Prompt 4 restaurant-center refresh on existing `main`, starting at `0dbbebbd64235aae7b6c36897b3612e38d2be430` with 27 preserved incoming changed paths. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Prompt 3's local tooltip/runtime repairs remain incoming work, not a new package release. Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify the combined worktree.
 
-## Prompt 3 runtime recheck — 2026-09-17
+## Prompt 4 runtime recheck — 2026-09-17
+
+Fresh `restaurant-p4-refresh-b12nr5t1/runtime-preflight-RmLoqm` evidence confirms CLI PHP 8.5.10 and 8.6.0beta3. Stable manifest, installed and lock platform checks pass. Experimental capabilities/manifest checks pass, but both real platform checks fail. Input hashes remain unchanged. No PHP 8.6 application/browser pass or production promotion is inferred. Browser HTTP runtime and final aggregate results are recorded separately in PROGRESS.md.
+
+## Preserved Prompt 3 runtime recheck — 2026-09-17
 
 Fresh isolated probes confirm stable PHP 8.5.10 and experimental PHP 8.6.0beta3 with Composer 2.10.3. Both manifest validations pass; only 8.5 passes the real installed and lock platform requirements. PHP 8.6 remains rejected by the root range, Nette Schema 1.3.6, Nette Utils 4.1.5, Sabberworm PHP CSS Parser 9.4.0 and ParaTest 7.20.0. Required extensions are present. Composer's MB_ONIGURUMA_VERSION deprecation is recorded, not hidden. No application/browser execution on 8.6 is claimed and neither requirement bypass nor production promotion is used. The [official PHP archive](https://www.php.net/archive/2026.php), checked 17 September, still identifies Beta 3 as a test release unsuitable for production.
 

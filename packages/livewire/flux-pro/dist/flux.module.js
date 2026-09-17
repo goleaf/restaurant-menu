@@ -10470,6 +10470,7 @@ var UITooltip = class extends UIElement {
       }
     });
     this.onUnmount(() => {
+      overlay._anchorable.cleanup();
       if (removeInterest) {
         removeInterest();
         removeInterest = null;

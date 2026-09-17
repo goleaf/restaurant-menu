@@ -24,8 +24,8 @@ function declarations(css, selector) {
     return values;
 }
 
-test('all five delivery entries compile with Sass alone', () => {
-    for (const entry of ['app', 'qr-print', 'pdf-qr', 'pdf-report', 'emergency']) {
+test('all six delivery entries compile with Sass alone', () => {
+    for (const entry of ['app', 'restaurant-center', 'qr-print', 'pdf-qr', 'pdf-report', 'emergency']) {
         const css = compileStyles(entry);
         assert.ok(css.length > 100, entry);
         assert.doesNotMatch(css, /@(?:theme|source|utility|apply|reference|use|forward)\b/, entry);
@@ -72,7 +72,6 @@ test('repeated product compositions preserve controls, palette roles and respons
     assert.equal(declarations(css, '.rm-draft-notice--error').color, 'var(--color-red-700)');
     assert.equal(declarations(css, '.rm-draft-notice--rejected').color, 'var(--color-red-800)');
     assert.equal(declarations(css, '.rm-menu-empty').border, '1px dashed var(--color-zinc-300)');
-    assert.equal(declarations(css, '.rm-onboarding-disclosure')['min-height'], 'var(--rm-spacing-touch)');
     assert.equal(declarations(css, '.rm-print-toolbar')['max-width'], '56rem');
     assert.equal(declarations(css, '.rm-print-toolbar')['flex-direction'], 'row');
     assert.match(css, /@media \(width >= 48rem\)/);
@@ -87,7 +86,6 @@ test('repeated product compositions preserve controls, palette roles and respons
         ['livewire/public-qr/guest-entry', ['rm-guest-contact-link']],
         ['livewire/organizations/brands/branches/menu/catalog', ['rm-menu-empty']],
         ['livewire/organizations/brands/branches/availability/stoplist', ['rm-availability__items', 'rm-availability__editor']],
-        ['livewire/onboarding/restaurant-setup', ['rm-onboarding-disclosure', 'rm-onboarding-next-link']],
         ['livewire/departments/ticket-print', ['qr-print-toolbar rm-print-toolbar']],
         ['livewire/organizations/brands/branches/qr/bulk-print', ['qr-print-toolbar rm-print-toolbar']],
         ['livewire/organizations/brands/branches/service-points/qr/print-template', ['qr-print-toolbar rm-print-toolbar']],
@@ -96,6 +94,28 @@ test('repeated product compositions preserve controls, palette roles and respons
         const source = await readFile(`resources/views/${view}.blade.php`, 'utf8');
         for (const name of classes) assert.ok(source.includes(name), `${view}: ${name}`);
     }
+});
+
+test('restaurant setup retains four independently mounted groups and accessible compact center styles', async () => {
+    const css = compileStyles('restaurant-center');
+    const setup = await readFile('resources/views/livewire/onboarding/restaurant-setup.blade.php', 'utf8');
+    const groupIds = [...setup.matchAll(/<section data-setup-group id="restaurant-setup-group-(\d)"[^>]*tabindex="-1"[^>]*wire:show="step === (\d)"/g)];
+    assert.deepEqual(groupIds.map(([, id, step]) => [id, step]), [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']]);
+    assert.match(setup, /aria-current="\$step === \$number \? 'step' : false"/);
+    assert.match(setup, /aria-controls="restaurant-setup-group-{{ \$number }}"/);
+    assert.equal(declarations(css, '.rm-restaurant-center [data-flux-button]')['min-block-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center [data-flux-select-button]')['min-block-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center [data-flux-button]')['white-space'], 'normal');
+    assert.equal(declarations(css, '.rm-restaurant-center__panel:focus-visible').outline, '2px solid var(--rm-focus)');
+    assert.equal(declarations(css, '.rm-restaurant-center__panel:focus-visible')['outline-offset'], '3px');
+    assert.equal(declarations(css, '.rm-restaurant-center[data-editor-open=true] .rm-restaurant-center__results').display, 'none');
+    assert.equal(declarations(css, '.rm-restaurant-center__row')['grid-template-columns'], 'auto minmax(0, 1fr) auto');
+    assert.equal(declarations(css, '.rm-restaurant-center__row > .rm-restaurant-center__actions')['grid-column'], '1/-1');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail')['inline-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail img')['object-fit'], 'contain');
+    assert.match(css, /@container restaurant-center \(max-width: 39\.99rem\)/);
+    assert.match(css, /@media \(forced-colors: active\)/);
+    assert.doesNotMatch(setup, /rm-onboarding-disclosure|rm-onboarding-next-link/);
 });
 
 test('framework palette references in compositions remain declared by the installed Tailwind theme', async () => {

@@ -13,6 +13,7 @@ use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use RuntimeException;
 
 class CreateBranchAction
 {
@@ -35,8 +36,8 @@ class CreateBranchAction
                 ->select(['id', 'owner_user_id', 'deleted_at'])
                 ->whereKey($brand->organization_id)
                 ->firstOrFail();
-            Gate::forUser(User::query()->select(['id'])->whereKey($actor->getKey())->first())
-                ->authorize('create', [Branch::class, $organization]);
+            $actor = User::query()->select(['id'])->whereKey($actor->getKey())->first();
+            Gate::forUser($actor)->authorize('create', [Branch::class, $organization]);
 
             $currency = SupportedCurrency::normalize($data['currency']);
 
@@ -49,11 +50,16 @@ class CreateBranchAction
                 'currency' => $currency,
                 'is_active' => $data['is_active'],
             ]);
-            $branch->forceFill([
+            if ($branch->forceFill([
                 'organization_id' => $brand->organization_id,
-            ])->save();
+            ])->save() !== true) {
+                throw new RuntimeException('The required branch could not be saved.');
+            }
+            Gate::forUser($actor)->authorize('view', $branch);
 
-            $branch->settings()->create(BranchSetting::defaults($branch));
+            if (! $branch->settings()->create(BranchSetting::defaults($branch))->exists) {
+                throw new RuntimeException('The required branch settings could not be saved.');
+            }
             $this->seedKitchenDepartments->handle($branch);
 
             return $branch;

@@ -8,6 +8,8 @@
 
 - Keep account, restaurant-management and platform modes authoritative over incidental restaurant query parameters. Preserve verified restaurant/department context in table and ticket return links, independently of another tab's preference.
 - Prevent pending saves from leaving a different history URL over the current restaurant form. Extend the existing navigation owner with native-index compensation and a bounded fallback, without a second router or automatic retry; retain the documented older-browser unknown-history limitation.
+- Preserve same-Dish section/language history during audited synchronization while blocking ordinary departure and concurrent mutations. Reapply offline controls after a response received before disconnection finishes rendering.
+- Release detached tooltip auto-update observers in the existing local Flux Pro adaptation. Preserve its version/license and original inventory; regenerate artifacts and provenance, then install through normal offline Composer path mirroring. Keep the bounded late-positioning limitation explicit.
 - Update browser consumers to the current restaurant center and floor entry while preserving real switching, dirty-state, two-tab, lifecycle and offline checks. Record reviewed desktop/mobile screenshots and the unchanged direct task-transition count.
 - Preserve previous work and dependency/runtime choices. Current aggregate failures, actual PHP 8.6 platform blockers and measured costs remain explicit in PROGRESS.md; this is not completed acceptance or deployment.
 

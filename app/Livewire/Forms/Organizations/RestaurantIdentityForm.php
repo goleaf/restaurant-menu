@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Support\Validation\Branches\BranchProfileRules;
+use App\Support\Validation\Common\AuditReasonRules;
 use App\Support\Validation\Organizations\OrganizationRules;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
@@ -28,6 +29,8 @@ final class RestaurantIdentityForm extends Form
 
     public mixed $isActive = false;
 
+    public mixed $suspensionReason = '';
+
     public function load(Organization|Brand|Branch $resource): void
     {
         $this->name = $resource->name;
@@ -45,7 +48,13 @@ final class RestaurantIdentityForm extends Form
             $resource instanceof Branch => 'brand_id', $resource instanceof Brand => 'organization_id', default => 'owner_user_id',
         };
         $rules['name'][] = Rule::unique($resource->getTable(), 'name')->where($parent, $resource->getAttribute($parent))->ignore($resource);
+        if ($resource instanceof Branch && $resource->is_active && in_array($this->isActive, [false, 0, '0'], true)) {
+            if (is_string($this->suspensionReason)) {
+                $this->suspensionReason = trim($this->suspensionReason);
+            }
+            $rules = [...$rules, ...AuditReasonRules::auditReason('suspensionReason')];
+        }
 
-        return $this->validate($rules, [], ['name' => __('center.name'), 'address' => __('center.address'), 'city' => __('center.city'), 'country' => __('center.country'), 'timezone' => __('center.timezone'), 'currency' => __('center.currency'), 'isActive' => __('center.administrative_active')]);
+        return $this->validate($rules, [], ['name' => __('center.name'), 'address' => __('center.address'), 'city' => __('center.city'), 'country' => __('center.country'), 'timezone' => __('center.timezone'), 'currency' => __('center.currency'), 'isActive' => __('center.administrative_active'), 'suspensionReason' => __('validation.attributes.suspension_reason')]);
     }
 }

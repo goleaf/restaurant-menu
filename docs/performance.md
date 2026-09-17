@@ -4,6 +4,32 @@
 
 # Performance
 
+## Prompt 3 acceptance refresh — 2026-09-17
+
+This is a matched measurement of the current resolver correction and two operational Back links, not the entire workspace migration. The baseline loads those three files from `8191bb5`; the candidate loads their reviewed current contents. Reflection and the actual ViewFinder record paths and SHA-256 for all six loaded files. The remaining source, dependencies and one current production build are identical. Separate SQLite-memory fixtures, storage and keys have the same fixture digest. Actual PHP is 8.5.10, production/debug-off, CLI OPcache disabled, without Xdebug/PCOV. No browser or coverage suite ran concurrently. Each variant performs the first request and three warmed requests for each of four endpoints: all 32 HTTP responses are 200.
+
+| GET endpoint | Warm SQL before → after | Retrieved model instances | Peak heap growth, bytes | HTML bytes | Embedded snapshot bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Profile with incidental branch query | 51 → 45 | 84 → 78 | 1,256,760 → 1,214,800 | 155,735 → 111,084 | 2,183 → 2,180 |
+| Menu | 174 → 174 | 94 → 94 | 2,473,560 → 2,473,560 | 254,186 → 254,186 | 4,519 → 4,519 |
+| Table detail | 182 → 182 | 135 → 135 | 1,582,336 → 1,582,336 | 185,147 → 185,156 | 10,229 → 10,229 |
+| Ticket print | 30 → 30 | 13 → 13 | 539,944 → 539,992 | 12,499 → 12,525 | 1,014 → 1,014 |
+
+The profile intentionally loses an incorrect restaurant navigation context, so it is not an equivalent-content optimization. The other pages retain their query counts; corrected links add nine and 26 HTML bytes. Models count `eloquent.retrieved` instances, including repeated retrieval of one identity. Memory is PHP heap growth above request start, not RSS. Snapshots are decoded states embedded in the HTML, not Livewire update payloads or transferred network bytes.
+
+| Endpoint | First request ms, before → after | Warm median ms [min–max], before | Warm median ms [min–max], after |
+| --- | ---: | ---: | ---: |
+| Profile | 237.838 → 169.124 | 58.458 [58.349–59.097] | 47.198 [46.776–47.875] |
+| Menu | 142.302 → 145.581 | 97.087 [96.921–98.468] | 99.622 [98.303–100.447] |
+| Table detail | 139.304 → 124.154 | 82.895 [82.700–83.229] | 85.606 [85.599–88.558] |
+| Ticket print | 12.508 → 11.802 | 7.327 [7.288–7.731] | 8.013 [7.777–8.182] |
+
+First means the first endpoint request in an already bootstrapped process, not a cold host/FPM start. Three sequential warm samples under uncontrolled host scheduling do not establish acceleration or a statistically reliable regression; the small increases remain visible above. This measures four HTTP Kernel GETs only, not update requests, browser latency, network compression, a request waterfall or Core Web Vitals. Two rejected setup attempts (an incorrect transient ViewFinder override and a missing bootstrap request) remain in the evidence directory and are excluded from the successful samples. Independent review confirmed loaded sources, fixture parity and all 32 statuses.
+
+These measurements precede the final client-only offline bootstrap and local tooltip repairs; the measured PHP/Blade delta is unchanged, while the final asset totals below include that repair. Evidence: `restaurant-p3-refresh-s_upxwy8/measurement-prepared/summary.json`, baseline/candidate JSON and process logs. The fixture SHA-256 is `92801ed63e13d149b67fbb9f66a0cb61dec423f431ce830425468ca98db72107`; source/build/lock inventories before and after are equal.
+
+The final production build compiles but fails six unchanged Vite asset limits: app SCSS 36,509 raw / 7,212 gzip bytes (limits 31,800 / 6,500), total CSS 380,688 / 53,768 (378,400 / 52,600), and Vite JavaScript 354,603 / 109,240 (348,100 / 109,000). The JavaScript gzip excess of 240 bytes is a new cost of this history/offline protection; the other five failing categories predate this refresh. The separately served local Flux Pro runtime is outside this Vite graph: its tooltip cleanup patch changes production JS303,925→303,949 raw and67,545→67,549 gzip9 bytes; debug JS551,013→551,052 raw and92,662→92,670 gzip9. These are measured file/compression sizes, not browser transfer sizes. No ceiling is raised and no first-party SCSS is changed here. Both HTTP measurement variants used the same earlier build; their inventories are not a before/after transfer benchmark. Acceptance remains blocked as recorded in PROGRESS.md.
+
 ## Prompt 7 availability measurements — 2026-09-17
 
 Measurements use isolated PHP 8.5.10 / SQLite fixtures. They are individual local observations, not production latency guarantees or percentile benchmarks.

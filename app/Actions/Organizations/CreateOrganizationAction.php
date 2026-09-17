@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class CreateOrganizationAction
 {
@@ -26,6 +27,9 @@ class CreateOrganizationAction
                 'owner_user_id' => $owner->id,
                 'name' => $data['name'],
             ]);
+            if (! $organization->exists) {
+                throw new RuntimeException('Required organization could not be saved.');
+            }
             (new EnsureOrganizationSubscriptionAction)->handle($organization);
 
             $owner->roles()->syncWithoutDetachingOrFail([$ownerRole->id]);

@@ -22,12 +22,12 @@ class ResolveWaiterAccessibleBranchIdsAction
      * @param  list<SystemPermission>  $permissions
      * @return array<string, Collection<int, int>>
      */
-    public function handleMany(User $user, array $permissions): array
+    public function handleMany(User $user, array $permissions, bool $includeArchived = false): array
     {
         $codes = array_map(fn (SystemPermission $permission): string => $permission->value, $permissions);
         $singleCode = count($codes) === 1 ? $codes[0] : null;
         if ($user->isSuperadmin()) {
-            $branches = Branch::query()->select(['id'])->orderBy('id')->pluck('id');
+            $branches = Branch::query()->when($includeArchived, fn ($query) => $query->withTrashed())->select(['id'])->orderBy('id')->pluck('id');
 
             return array_fill_keys($codes, $branches);
         }
@@ -51,7 +51,8 @@ class ResolveWaiterAccessibleBranchIdsAction
                 ])]),
             )->get();
         $organizationIds = $memberships->pluck('organization_id')->unique();
-        $branches = Branch::query()->whereIn('organization_id', $organizationIds)->orderBy('id')->pluck('organization_id', 'id');
+        $branches = Branch::query()->when($includeArchived, fn ($query) => $query->withTrashed())
+            ->whereIn('organization_id', $organizationIds)->orderBy('id')->pluck('organization_id', 'id');
         $assignments = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'status'])
             ->where('user_id', $user->id)
             ->whereIn('organization_id', $organizationIds)->get();
@@ -110,9 +111,9 @@ class ResolveWaiterAccessibleBranchIdsAction
     /**
      * @return Collection<int, int>
      */
-    public function handle(User $user, SystemPermission $permissionCode = SystemPermission::ViewOrders): Collection
+    public function handle(User $user, SystemPermission $permissionCode = SystemPermission::ViewOrders, bool $includeArchived = false): Collection
     {
-        return $this->handleMany($user, [$permissionCode])[$permissionCode->value];
+        return $this->handleMany($user, [$permissionCode], $includeArchived)[$permissionCode->value];
     }
 
     /** @param Collection<int,int> $branches @param Collection<int,BranchUser> $assignments @return Collection<int,int> */

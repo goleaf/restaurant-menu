@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionServicePoint;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\Paginator;
@@ -21,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 final class AreaNodeQueryService
 {
     /**
-     * @param array{type?:string,active?:string,sort?:string} $filters
+     * @param  array{type?:string,active?:string,sort?:string}  $filters
      * @return array{rows:list<array<string,mixed>>,paginator:Paginator<int,AreaNode>}
      */
     public function browser(Branch $branch, string $search, ?int $selectedId = null, ?int $excludingId = null, int $perPage = 20, string $lifecycle = 'active', array $filters = []): array
@@ -223,10 +224,10 @@ final class AreaNodeQueryService
     }
 
     /**
-     * @param  HasMany<AreaNode, Branch>  $query
+     * @param  HasMany<AreaNode, Branch>|Builder<AreaNode>  $query
      * @param  array{search: string, type: string, active: string, lifecycle: string, sort: string}  $filters
      */
-    private function applyFilters(HasMany $query, array $filters): void
+    private function applyFilters(HasMany|Builder $query, array $filters): void
     {
         $search = trim($filters['search']);
 
@@ -246,9 +247,9 @@ final class AreaNodeQueryService
     }
 
     /**
-     * @param  HasMany<AreaNode, Branch>  $query
+     * @param  HasMany<AreaNode, Branch>|Builder<AreaNode>  $query
      */
-    private function applySort(HasMany $query, string $sort): void
+    private function applySort(HasMany|Builder $query, string $sort): void
     {
         match ($sort) {
             'name_asc' => $query->orderBy('name')->orderBy('id'),

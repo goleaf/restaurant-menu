@@ -3,6 +3,14 @@ function acceptsNavigationKey(event) {
         && !event.metaKey && !event.altKey && !event.shiftKey;
 }
 
+function isDishNavigationSync(message, actions) {
+    if (message.component.name !== 'organizations.brands.branches.menu.dish' || !actions.every(name => name === '$set')) return false;
+    const fields = Object.keys(message.updates ?? {});
+    // These Dish hooks only normalize URL state and the accompanying deferred form draft.
+    return fields.some(field => field === 'section' || field === 'contentLanguage')
+        && fields.every(field => ['section', 'contentLanguage', 'returnFilters', 'editingItemForm'].includes(field.split('.')[0]));
+}
+
 let historyTracking;
 let historySegment = 0;
 
@@ -61,6 +69,7 @@ export function workspaceNavigation() {
         query: '',
         root: null,
         pending: 0,
+        pendingDishSync: 0,
         blocked: false,
         destroyed: false,
         historyPosition: null,
@@ -84,7 +93,7 @@ export function workspaceNavigation() {
                 event.returnValue = '';
             }, { signal: this.abortController.signal });
             document.addEventListener('livewire:navigate', (event) => {
-                if (this.pending === 0) return;
+                if (this.pending === 0 || (event.detail?.history && this.allowsDishHistory(event.detail.url.toString()))) return;
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 this.blocked = true;
@@ -93,15 +102,21 @@ export function workspaceNavigation() {
                 const actions = Array.from(message.actions).map((action) => action.name);
                 const tracksOperation = !message.component.el.closest('[data-workspace-restaurant], [data-component="notifications-unread-count"]')
                     && !actions.every((name) => name.startsWith('refresh') || name === '$refresh');
-                let sent = false;
+                let sent = false, dishSync = false;
                 onSend(() => {
                     if (!tracksOperation) return;
                     this.stampHistory();
                     sent = true;
+                    dishSync = isDishNavigationSync(message, actions);
                     this.pending++;
+                    if (dishSync) this.pendingDishSync++;
                 });
                 const release = () => {
-                    if (sent) { this.pending--; sent = false; }
+                    if (sent) {
+                        this.pending--;
+                        if (dishSync) this.pendingDishSync--;
+                        sent = false;
+                    }
                     if (this.pending === 0) this.blocked = false;
                 };
                 onSuccess(({ onSync, onRender }) => {
@@ -146,6 +161,15 @@ export function workspaceNavigation() {
             next.hash = '';
             return previous.href === next.href;
         },
+        allowsDishHistory(address) {
+            if (this.pending === 0 || this.pending !== this.pendingDishSync || !this.historyUrl) return false;
+            const previous = new URL(this.historyUrl), next = new URL(address);
+            for (const key of ['section', 'language']) {
+                previous.searchParams.delete(key);
+                next.searchParams.delete(key);
+            }
+            return previous.href === next.href;
+        },
         guardHistory(event) {
             const nativePosition = window.navigation?.currentEntry?.index;
             const position = nativePosition ?? historyPosition(event.state);
@@ -165,7 +189,7 @@ export function workspaceNavigation() {
                 }
                 return;
             }
-            if (this.pending === 0) {
+            if (this.pending === 0 || this.allowsDishHistory(window.location.href)) {
                 this.stampHistory();
                 return;
             }

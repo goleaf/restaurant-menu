@@ -288,3 +288,152 @@ test('teardown preserves a later owner wrapper and makes its retained delegate i
     assert.equal(app.window.history.state, input);
     assert.equal(app.window.listenerCount(), 0);
 });
+
+function stateMessage(app, name, updates, actions = [{ name: '$set' }]) {
+    const original = app.state.interceptors;
+    app.state.interceptors = new Set([...original].map(intercept => context => {
+        context.message.updates = updates;
+        intercept(context);
+    }));
+    try {
+        return app.message({ name, el: new Element() }, actions);
+    } finally {
+        app.state.interceptors = original;
+    }
+}
+
+const dishComponent = 'organizations.brands.branches.menu.dish';
+
+for (const updates of [{ section: 'main', contentLanguage: 'en', 'returnFilters.search': 'Garden', 'returnFilters.availability': '', 'returnFilters.menuId': '1', 'returnFilters.quality': '', 'returnFilters.page': 1 }, { section: 'main', 'editingItemForm.name': 'Unsaved draft' }, { contentLanguage: 'lt' }, { section: 'photos', editingItemForm: { name: 'Draft' } }]) {
+    test(`audited dish URL state sync permits Forward while retaining the draft (${JSON.stringify(updates)})`, async t => {
+        const app = historyWorkspace(t, true);
+        app.push('https://menu.test/restaurant?branch=1&section=photos');
+        app.traverse(-1);
+        const sync = stateMessage(app, dishComponent, updates);
+        sync.send();
+        assert.equal(app.shell.pending, 1);
+        assert.equal(app.shell.pendingDishSync, 1);
+        app.traverse(1);
+        assert.equal(app.swaps.at(-1), 'https://menu.test/restaurant?branch=1&section=photos');
+        assert.deepEqual(app.traversals, []);
+        sync.finish();
+        await Promise.resolve();
+        assert.equal(app.swaps.length, 2);
+    });
+}
+
+for (const [name, updates, actions] of [
+    ['settings.preferences', { section: 'main' }, [{ name: '$set' }]],
+    ['settings.preferences', { theme: 'dark' }, [{ name: '$set' }]],
+    [dishComponent, { section: 'main', unknown: 'write' }, [{ name: '$set' }]],
+    [dishComponent, { section: 'main', 'itemImageUploads.1': [] }, [{ name: '$set' }]],
+    [dishComponent, { 'editingItemForm.name': 'Draft' }, [{ name: '$set' }]],
+    [dishComponent, null, [{ name: '$set' }]],
+    [dishComponent, { section: 'main' }, [{ name: '$set' }, { name: 'saveItem' }]],
+]) {
+    test(`unclassified or mixed property updates remain protected (${name} ${JSON.stringify(updates)} ${JSON.stringify(actions)})`, async t => {
+        const app = historyWorkspace(t, true);
+        app.push('https://menu.test/restaurant?branch=2');
+        const request = stateMessage(app, name, updates, actions);
+        request.send();
+        assert.equal(app.shell.pending, 1);
+        app.traverse(-1);
+        await Promise.resolve();
+        assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=2');
+        assert.deepEqual(app.swaps, []);
+        request.finish();
+        assert.equal(app.shell.pending, 0);
+    });
+}
+
+test('a read-only dish URL sync never releases a concurrent mutation', async t => {
+    const app = historyWorkspace(t, true);
+    app.push('https://menu.test/restaurant?branch=2');
+    const mutation = stateMessage(app, dishComponent, {}, [{ name: 'saveItem' }]);
+    mutation.send();
+    const sync = stateMessage(app, dishComponent, { section: 'photos' });
+    sync.send();
+    assert.equal(app.shell.pending, 2);
+    assert.equal(app.shell.pendingDishSync, 1);
+    sync.sync();
+    sync.finish();
+    app.traverse(-1);
+    await Promise.resolve();
+    assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=2');
+    assert.deepEqual(app.swaps, []);
+    assert.equal(app.shell.pending, 1);
+    mutation.finish();
+});
+
+
+test('audited dish synchronization still blocks explicit page navigation and native departure without replay', async t => {
+    const app = historyWorkspace(t, true);
+    const sync = stateMessage(app, dishComponent, { contentLanguage: 'lt' });
+    sync.send();
+    const navigate = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/dashboard'), history: false } });
+    app.document.dispatchEvent(navigate);
+    assert.equal(navigate.prevented, true);
+    assert.equal(navigate.stopped, true);
+    assert.equal(app.shell.blocked, true);
+    const unload = event({ type: 'beforeunload' });
+    app.window.dispatchEvent(unload);
+    assert.equal(unload.prevented, true);
+    sync.sync();
+    sync.finish();
+    await Promise.resolve();
+    assert.equal(app.shell.pending, 0);
+    assert.equal(app.shell.pendingDishSync, 0);
+    assert.equal(app.shell.blocked, false);
+    assert.deepEqual(app.swaps, []);
+    assert.equal(app.state.navigation, undefined);
+});
+
+for (const address of [
+    'https://menu.test/restaurant?branch=2&section=photos',
+    'https://menu.test/another-dish?branch=1&section=photos',
+    'https://menu.test/restaurant?branch=1&section=photos#changed-fragment',
+    'https://other.test/restaurant?branch=1&section=photos',
+]) {
+    test(`pending dish state permits no history departure outside its section and language (${address})`, async t => {
+        const app = historyWorkspace(t, true);
+        app.push(address);
+        const sync = stateMessage(app, dishComponent, { section: 'photos' });
+        sync.send();
+        app.traverse(-1);
+        await Promise.resolve();
+        assert.equal(app.window.location.href, address);
+        assert.deepEqual(app.swaps, []);
+        assert.deepEqual(app.traversals, [1]);
+        const navigate = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/restaurant?branch=1'), history: true } });
+        app.document.dispatchEvent(navigate);
+        assert.equal(navigate.prevented, true);
+        sync.finish();
+        await Promise.resolve();
+        assert.deepEqual(app.swaps, []);
+    });
+}
+
+test('multiple audited URL requests allow only local history and release their counters once', async t => {
+    const app = historyWorkspace(t, false);
+    app.push('https://menu.test/restaurant?branch=1&section=photos&language=lt');
+    const section = stateMessage(app, dishComponent, { section: 'photos' });
+    const language = stateMessage(app, dishComponent, { contentLanguage: 'lt' });
+    section.send();
+    language.send();
+    assert.equal(app.shell.pending, 2);
+    assert.equal(app.shell.pendingDishSync, 2);
+    app.traverse(-1);
+    assert.equal(app.swaps.at(-1), 'https://menu.test/restaurant?branch=1');
+    section.sync();
+    section.finish();
+    assert.equal(app.shell.pending, 1);
+    assert.equal(app.shell.pendingDishSync, 1);
+    app.traverse(1);
+    assert.equal(app.swaps.length, 2);
+    language.sync();
+    language.finish();
+    await Promise.resolve();
+    assert.equal(app.shell.pending, 0);
+    assert.equal(app.shell.pendingDishSync, 0);
+    assert.deepEqual(app.traversals, []);
+});

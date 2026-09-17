@@ -46,8 +46,8 @@
     },
     {
       "path": "build-runtime.mjs",
-      "bytes": 7137,
-      "sha256": "3d92205a0fda1b50efbec2e23e35182e7fbed93c5af435bc25ad5fa35dfef628"
+      "bytes": 7222,
+      "sha256": "9772e7be7626e572e1355512c8cc78221d389a8ff6e63b9cd743788c666bb9ae"
     },
     {
       "path": "composer.json",
@@ -76,23 +76,23 @@
     },
     {
       "path": "dist/flux.js",
-      "bytes": 551013,
-      "sha256": "4f53d2f3919685ccde48e527367bc20d3966c8e5a0f4b20eea646984977fc1ec"
+      "bytes": 551052,
+      "sha256": "9157e6bd60cf3d2a9ba85a9f592bbde2428e6d751119ec178dce4d65a376bbeb"
     },
     {
       "path": "dist/flux.min.js",
-      "bytes": 303925,
-      "sha256": "70bb52fe3ca0a6c2adb6c2be1e0fdd62d87adcea1a7390cf1f57522106fcc2f0"
+      "bytes": 303949,
+      "sha256": "a1c5f159add80ea15de8a22af87d4cb545a42fa58b5cacada5bef01bded6c162"
     },
     {
       "path": "dist/flux.module.js",
-      "bytes": 522190,
-      "sha256": "473431e552ef2dbc06513d2419e255c55096a13efadfacb1cdedf832b74a8991"
+      "bytes": 522227,
+      "sha256": "20714f2b259173cfbc402446f39238fdab2729416e6254cc5259d0eb85d021fe"
     },
     {
       "path": "dist/manifest.json",
       "bytes": 94,
-      "sha256": "d4e72ba212e85fff5adeb675321c0d214137908bb005fead0376e78d7e144e53"
+      "sha256": "897b98b161bb19b1f1db01d87e22d511b21b29300354a92b04100deecd7e90ad"
     },
     {
       "path": "src/FluxPro.php",
@@ -1464,25 +1464,25 @@
     {
       "path": "dist/flux.js",
       "original_sha256": "17f622d575f62c94dfdbd7f20a7be2d7c1fe608b22315d48a825d2a03ffe7b1e",
-      "local_sha256": "4f53d2f3919685ccde48e527367bc20d3966c8e5a0f4b20eea646984977fc1ec",
+      "local_sha256": "9157e6bd60cf3d2a9ba85a9f592bbde2428e6d751119ec178dce4d65a376bbeb",
       "reason": "Generated IIFE from the reviewed local flux.module.js using build-runtime.mjs; one combined runtime, no additional Alpine or Free bundle."
     },
     {
       "path": "dist/flux.min.js",
       "original_sha256": "2508851ceedcc0ed073816dd6a08fa6de9357ba84c3129bc5548d744136c67aa",
-      "local_sha256": "70bb52fe3ca0a6c2adb6c2be1e0fdd62d87adcea1a7390cf1f57522106fcc2f0",
+      "local_sha256": "a1c5f159add80ea15de8a22af87d4cb545a42fa58b5cacada5bef01bded6c162",
       "reason": "Generated from the same local IIFE by locked rolldown 1.2.5 with class/function names preserved for Mixin lookup. This is a local artifact, not an upstream build."
     },
     {
       "path": "dist/flux.module.js",
       "original_sha256": "ecbcda8c721770df1a75d3d0b916dfd770d0dc42740d8f7724e6af6c6cfc4553",
-      "local_sha256": "473431e552ef2dbc06513d2419e255c55096a13efadfacb1cdedf832b74a8991",
-      "reason": "Readable project-local backports from the installed proprietary Free 2.17.0 runtime: OTP replacement/touch, modal escape policy, tooltip/sidebar listener cleanup, sidebar/menu focus, dropdown scroll/navmenu/reference visibility, disclosure find-in-page and toast lifecycle/link options. Existing Pro runtime and editor assets retained."
+      "local_sha256": "20714f2b259173cfbc402446f39238fdab2729416e6254cc5259d0eb85d021fe",
+      "reason": "Readable project-local backports from the installed proprietary Free 2.17.0 runtime: OTP replacement/touch, modal escape policy, tooltip/sidebar listener cleanup, sidebar/menu focus, dropdown scroll/navmenu/reference visibility, disclosure find-in-page and toast lifecycle/link options. Project-local tooltip unmount also releases its positioning observers and listeners. Existing Pro runtime and editor assets retained."
     },
     {
       "path": "dist/manifest.json",
       "original_sha256": "6da15c5506cfef16728eead298622780e4e565a338e3bdc73c1d3ea4cb95d34c",
-      "local_sha256": "d4e72ba212e85fff5adeb675321c0d214137908bb005fead0376e78d7e144e53",
+      "local_sha256": "897b98b161bb19b1f1db01d87e22d511b21b29300354a92b04100deecd7e90ad",
       "reason": "Local cache identifier derives from all three Flux JavaScript artifacts; original editor entries remain unchanged."
     },
     {
@@ -1518,15 +1518,15 @@
   ],
   "internal_snapshot": {
     "file_count": 140,
-    "total_bytes": 3345743,
-    "inventory_sha256": "bb352cb569800244aaa5a27b19e87b18b3feb9d6280288df4be68a7ac2566bda",
+    "total_bytes": 3345928,
+    "inventory_sha256": "6b92d241dd4a1dfff4f48a08119b867401e987ee98d826205786b62ca82ba140",
     "inventory_format": "UTF-8; bytewise full-path order; path TAB bytes TAB sha256 LF"
   },
   "local_additions": [
     {
       "path": "build-runtime.mjs",
-      "bytes": 7137,
-      "sha256": "3d92205a0fda1b50efbec2e23e35182e7fbed93c5af435bc25ad5fa35dfef628",
+      "bytes": 7222,
+      "sha256": "9772e7be7626e572e1355512c8cc78221d389a8ff6e63b9cd743788c666bb9ae",
       "reason": "Reproducible local distribution build and --check mode, immutable original inventory, donor check, generated artifacts and per-file provenance."
     }
   ],

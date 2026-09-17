@@ -9,8 +9,10 @@ use App\Enums\AuditLogAction;
 use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\User;
+use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class UpdateBranchAction
@@ -42,6 +44,9 @@ class UpdateBranchAction
 
             $currency = SupportedCurrency::normalize($data['currency']);
             $wasActive = (bool) $branch->is_active;
+            if ($wasActive && ! $data['is_active']) {
+                $reason = Validator::make(['form' => ['suspensionReason' => trim((string) $reason)]], AuditReasonRules::auditReason('form.suspensionReason'), attributes: ['form.suspensionReason' => __('validation.attributes.suspension_reason')])->validate()['form']['suspensionReason'];
+            }
 
             $branch->fill([
                 'name' => $data['name'],

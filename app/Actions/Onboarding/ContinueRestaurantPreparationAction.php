@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Onboarding;
 
 use App\Models\Branch;
+use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
@@ -21,6 +22,7 @@ final readonly class ContinueRestaurantPreparationAction
             Gate::forUser($actor)->authorize('update', $branch);
             $organization = Organization::query()->whereKey($branch->organization_id)->firstOrFail();
             Gate::forUser($actor)->authorize('createAdditional', [RestaurantOnboarding::class, $organization]);
+            Brand::query()->select(['id'])->where('organization_id', $organization->id)->whereKey($branch->brand_id)->firstOrFail();
             $existing = RestaurantOnboarding::query()->where('branch_id', $branch->id)->first();
             if ($existing !== null) {
                 Gate::forUser($actor)->authorize('view', $existing);

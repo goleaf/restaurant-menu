@@ -6,7 +6,6 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Livewire\Forms\Floor\BulkPointForm;
-use App\Services\Branches\ServicePointQueryService;
 use App\Support\Floor\FloorOptions;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -18,21 +17,31 @@ use Livewire\Component;
 class BulkCreate extends Component
 {
     use InteractsWithFloorContext;
+
     public BulkPointForm $form;
-    #[Locked] public array $preview = [];
-    #[Locked] public string $fingerprint = '';
-    #[Locked] public string $requestId;
-    #[Locked] public array $baseline = [];
-    #[Locked] public ?array $result = null;
+
+    #[Locked]
+    public array $preview = [];
+
+    #[Locked]
+    public string $fingerprint = '';
+
+    #[Locked]
+    public string $requestId;
+
+    #[Locked]
+    public array $baseline = [];
+
+    #[Locked]
+    public ?array $result = null;
+
     public string $areaSearch = '';
 
     private BulkCreateServicePointsAction $bulkCreateServicePointsAction;
-    private ServicePointQueryService $servicePointQueryService;
 
-    public function boot(BulkCreateServicePointsAction $bulkCreateServicePointsAction, ServicePointQueryService $servicePointQueryService): void
+    public function boot(BulkCreateServicePointsAction $bulkCreateServicePointsAction): void
     {
         $this->bulkCreateServicePointsAction = $bulkCreateServicePointsAction;
-        $this->servicePointQueryService = $servicePointQueryService;
     }
 
     public function mount(int $branchId, ?int $areaId = null): void
@@ -58,7 +67,9 @@ class BulkCreate extends Component
     {
         $branch = $this->branch();
         $data = $this->form->payload($branch);
-        if ($this->fingerprint === '') { throw ValidationException::withMessages(['form.bulkPrefix' => __('floor.review_required')]); }
+        if ($this->fingerprint === '') {
+            throw ValidationException::withMessages(['form.bulkPrefix' => __('floor.review_required')]);
+        }
         $this->result = $this->bulkCreateServicePointsAction->handle($branch, $data, $this->actor(), $this->requestId, $this->fingerprint);
         $this->dispatch('floor-bulk-created', ids: array_slice($this->result['created_ids'], 0, 100));
         $this->dispatch('menu-workspace-dirty', key: 'bulk-preview', dirty: false);
@@ -68,7 +79,9 @@ class BulkCreate extends Component
     public function updated(string $property): void
     {
         if (str_starts_with($property, 'form.')) {
-            $this->preview = []; $this->fingerprint = ''; $this->result = null;
+            $this->preview = [];
+            $this->fingerprint = '';
+            $this->result = null;
             $this->requestId = (string) Str::uuid();
         }
     }
@@ -76,6 +89,7 @@ class BulkCreate extends Component
     public function render(): View
     {
         $branch = $this->branch();
+
         return view('livewire.organizations.brands.branches.service-points.bulk-create', [
             'types' => FloorOptions::types(), 'areas' => $this->areaOptions($this->areaSearch, $this->form->areaNodeId),
         ]);

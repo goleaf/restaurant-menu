@@ -17,3 +17,6 @@ resources/js/app.js imports Livewire's own ESM Alpine, registers all named facto
 
 ## Keep Alpine resource owners independent of directive context
 Capture the owning root element or its immutable configuration in init(); Alpine $el can resolve to a child element when a method is invoked from its directive, including after await. Test child-triggered handlers. When focusing an x-show panel, wait for the reveal animation frame after $nextTick; own and cancel that frame on replacement or destroy, and guard stale callbacks.
+
+## Reapply offline attributes after late Livewire responses
+A response received before disconnection may morph away wire:offline disabled attributes. The single app.js bootstrap reapplies only an offline event from installed Livewire 4.4.1 onRender; never dispatch online on every morph because that can enable another pending operation. Keep cached-navigation connectivity replay, do not retry requests, and retain OfflineResponseLifecycleTest plus the negative online Node test.

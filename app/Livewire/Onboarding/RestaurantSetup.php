@@ -13,6 +13,7 @@ use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
 use App\Actions\Onboarding\UseExistingSetupMenuAction;
 use App\Actions\Onboarding\UseExistingSetupSpaceAction;
 use App\Livewire\Forms\Onboarding\RestaurantSetupForm;
+use App\Models\Organization;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
@@ -44,6 +45,9 @@ final class RestaurantSetup extends Component
 
     #[Locked]
     public string $creationKey;
+
+    #[Locked]
+    public bool $firstLaunch = true;
 
     #[Url(history: true)]
     public int $step = 1;
@@ -81,6 +85,7 @@ final class RestaurantSetup extends Component
         $this->actorId = (int) Auth::id();
         $this->creationKey = (string) Str::uuid();
         $this->onboardingId = $setup;
+        $this->firstLaunch = Gate::forUser($this->actor())->allows('create', RestaurantOnboarding::class);
         $this->form->branchTimezone = RestaurantSetupOptions::defaultTimezone(config('app.timezone'));
         if ($setup !== null) {
             $this->queries->findForUserOrFail($this->actor(), $setup);
@@ -89,6 +94,8 @@ final class RestaurantSetup extends Component
             $this->form->hydrateFromPersistentState($state['form']);
             $this->form->organizationId = $state['onboarding']->organization_id;
             $this->form->brandId = $state['onboarding']->brand_id;
+            $this->existingAreaId = $state['onboarding']->area_node_id ?? '';
+            $this->existingMenuId = $state['onboarding']->menu_id ?? '';
             if ($state['done'][3]) {
                 $this->creationKey = '';
             }
@@ -101,7 +108,7 @@ final class RestaurantSetup extends Component
     public function createRestaurant(CreateRestaurantSetupAction $create): void
     {
         abort_if($this->creationKey === '', 409);
-        $setup = $create->handle($this->actor(), $this->form->validateCreation(), $this->creationKey, $this->onboardingId);
+        $setup = $create->handle($this->actor(), $this->form->validateCreation(), $this->creationKey, $this->onboardingId, $this->firstLaunch);
         abort_if($this->onboardingId !== null && $this->onboardingId !== $setup->id, 409);
         $this->onboardingId = $setup->id;
         $this->setupVersion = $setup->setup_version;
@@ -113,6 +120,13 @@ final class RestaurantSetup extends Component
     public function updatedFormOrganizationId(): void
     {
         $this->form->brandId = null;
+    }
+
+    public function suggestStructureNames(): void
+    {
+        $this->actor();
+        abort_if($this->creationKey === '', 409);
+        $this->form->suggestStructureNames();
     }
 
     public function createArea(SaveOnboardingAreaAction $save): void
@@ -148,7 +162,7 @@ final class RestaurantSetup extends Component
 
     public function useExistingMenu(UseExistingSetupMenuAction $use): void
     {
-        $data = $this->validate(['existingMenuId' => ['required', 'integer', 'min:1']], [], ['existingMenuId' => __('center.menu')]);
+        $data = $this->validate(['existingMenuId' => ['bail', 'required', 'numeric', 'integer', 'min:1']], [], ['existingMenuId' => __('center.menu')]);
         $saved = $use->handle($this->actor(), $this->requiredId(), (int) $data['existingMenuId'], $this->setupVersion);
         $this->setupVersion = $saved->setup_version;
         $this->saved();
@@ -156,7 +170,7 @@ final class RestaurantSetup extends Component
 
     public function useExistingSpace(UseExistingSetupSpaceAction $use): void
     {
-        $data = $this->validate(['existingAreaId' => ['required', 'integer', 'min:1']], [], ['existingAreaId' => __('center.rooms')]);
+        $data = $this->validate(['existingAreaId' => ['bail', 'required', 'numeric', 'integer', 'min:1']], [], ['existingAreaId' => __('center.rooms')]);
         $saved = $use->handle($this->actor(), $this->requiredId(), (int) $data['existingAreaId'], $this->setupVersion);
         $this->setupVersion = $saved->setup_version;
         $this->saved();
@@ -184,15 +198,15 @@ final class RestaurantSetup extends Component
         $state = $this->queries->presentation($actor, $this->onboardingId);
         $organizations = $this->center->creationOrganizations($actor, $this->organizationSearch, $this->form->organizationId);
         $brands = $this->center->creationBrands($actor, $this->form->organizationId, $this->brandSearch, $this->form->brandId);
-        abort_unless($this->onboardingId !== null || Gate::forUser($actor)->allows('create', RestaurantOnboarding::class) || $organizations !== [], 403);
+        abort_unless($this->onboardingId !== null || Gate::forUser($actor)->allows('create', Organization::class) || $organizations !== [], 403);
 
         return view('livewire.onboarding.restaurant-setup', [
             'readiness' => $this->step === 4 && $state['done'][3] ? $this->queries->readiness($actor, $this->requiredId()) : null,
-            'state' => $state, 'areaOptions' => $this->onboardingId !== null && $this->step === 2 ? $this->queries->areaOptions($actor, $this->onboardingId, $this->areaSearch) : [], 'menuOptions' => $this->onboardingId !== null && $this->step === 3 ? $this->queries->menuOptions($actor, $this->onboardingId, $this->menuSearch) : [], 'organizations' => $organizations, 'brands' => $brands,
+            'state' => $state, 'areaOptions' => $this->onboardingId !== null && $this->step === 2 ? $this->queries->areaOptions($actor, $this->onboardingId, $this->areaSearch, $this->existingAreaId) : [], 'menuOptions' => $this->onboardingId !== null && $this->step === 3 ? $this->queries->menuOptions($actor, $this->onboardingId, $this->menuSearch, $this->existingMenuId) : [], 'organizations' => $organizations, 'brands' => $brands,
             'countries' => RestaurantSetupOptions::countryOptions($this->application->getLocale()),
             'currencies' => RestaurantSetupOptions::currencyOptions(), 'timezones' => RestaurantSetupOptions::timezoneOptions(),
             'steps' => [1 => __('center.details'), 2 => __('center.rooms'), 3 => __('center.menu'), 4 => __('center.review')],
-            'canCreateOrganization' => Gate::forUser($actor)->allows('create', RestaurantOnboarding::class),
+            'canCreateOrganization' => Gate::forUser($actor)->allows('create', Organization::class),
         ])->title(__('center.title'));
     }
 

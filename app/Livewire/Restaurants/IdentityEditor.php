@@ -90,9 +90,10 @@ final class IdentityEditor extends Component
         } elseif ($resource instanceof Brand) {
             $saved = $brand->handle($resource, ['name' => $data['name']], $this->actor(), $this->fingerprint);
         } else {
-            $saved = $branch->handle($resource, ['name' => $data['name'], 'address' => $data['address'], 'city' => $data['city'], 'country' => $data['country'], 'timezone' => $data['timezone'], 'currency' => $data['currency'], 'is_active' => (bool) $data['isActive']], $this->actor(), expectedFingerprint: $this->fingerprint);
+            $saved = $branch->handle($resource, ['name' => $data['name'], 'address' => $data['address'], 'city' => $data['city'], 'country' => $data['country'], 'timezone' => $data['timezone'], 'currency' => $data['currency'], 'is_active' => (bool) $data['isActive']], $this->actor(), reason: $data['suspensionReason'] ?? null, expectedFingerprint: $this->fingerprint);
         }
         $this->fingerprint = $saved->identityFingerprint();
+        $this->form->suspensionReason = '';
         $this->dispatch('restaurant-identity-saved');
         Flux::toast(variant: 'success', text: __('center.saved'));
     }
@@ -154,7 +155,11 @@ final class IdentityEditor extends Component
 
         return view('livewire.restaurants.identity-editor', [
             'canEdit' => Gate::forUser($this->actor())->allows('update', $resource),
+            'canContinueSetup' => $resource instanceof Branch && $this->queries->canContinueSetup($this->actor(), $resource),
+            'canSuspend' => $resource instanceof Branch && $resource->is_active && ! $resource->trashed(),
             'title' => $resource->name, 'logoUrl' => $resource->logoUrl(), 'isRestaurant' => $resource instanceof Branch,
+            'organizationName' => $resource instanceof Organization ? null : $resource->organization->name,
+            'brandName' => $resource instanceof Branch ? $resource->brand->name : null,
             'logoPreview' => $this->logo instanceof TemporaryUploadedFile && $this->logo->isPreviewable() ? $this->logo->temporaryUrl() : null,
             'currencies' => RestaurantSetupOptions::currencyOptions(), 'timezones' => RestaurantSetupOptions::timezoneOptions(),
             'archived' => $resource->trashed(),

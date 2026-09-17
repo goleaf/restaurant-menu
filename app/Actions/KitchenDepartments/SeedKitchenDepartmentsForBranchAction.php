@@ -4,6 +4,7 @@ namespace App\Actions\KitchenDepartments;
 
 use App\Enums\KitchenDepartmentType;
 use App\Models\Branch;
+use RuntimeException;
 
 class SeedKitchenDepartmentsForBranchAction
 {
@@ -22,12 +23,14 @@ class SeedKitchenDepartmentsForBranchAction
                 continue;
             }
 
-            $branch->kitchenDepartments()->create([
+            if (! $branch->kitchenDepartments()->create([
                 'type' => $department['type'],
                 'name' => $this->uniqueNameForBranch($branch, $department['name']),
                 'sort_order' => $department['sort_order'],
                 'is_active' => true,
-            ]);
+            ])->exists) {
+                throw new RuntimeException('The required kitchen department could not be saved.');
+            }
         }
     }
 

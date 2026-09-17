@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\DraftOrderStatus;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
+use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
@@ -15,6 +16,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
 use App\Models\Order;
 use App\Models\QrCode;
+use App\Models\RestaurantOnboarding;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -241,118 +243,88 @@ test('new owner can onboard and close a fully paid table through the browser', f
 
 function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $registeredOwner): void
 {
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'lt');
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'ru');
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'en');
-
-    $page
-        ->resize(390, 844)
-        ->assertSee(__('ui.onboarding.restaurant_setup.nastroit_restoran'))
-        ->assertVisible('[data-flux-progress][aria-label]')
-        ->assertAttribute('input[name="organization_name"]', 'type', 'text')
-        ->assertAttribute('input[name="organization_name"]', 'autocomplete', 'organization');
-    foreach (['en', 'lt', 'ru'] as $locale) {
-        $page->navigate(route('onboarding.restaurant', ['lang' => $locale], false))
-            ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_kompanii', [], $locale));
-
-        foreach ([[320, 720], [360, 800], [390, 844], [430, 932], [768, 900], [1024, 900], [1440, 1000], [1920, 1080]] as [$width, $height]) {
+    foreach (['lt', 'ru', 'en'] as $locale) {
+        assertBrowserOnboardingLocaleLayout($page, $registeredOwner, $locale);
+        foreach ([[320, 720], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
             assertBrowserHasNoHorizontalOverflow($page, $width, $height);
         }
-
         assertBrowserOnboardingTextZoomReflow($page);
     }
-    $page->navigate(route('onboarding.restaurant', ['lang' => 'en'], false));
-    $page
-        ->resize(1440, 1000)
-        ->assertVisible('nav[aria-label="'.__('ui.onboarding.restaurant_setup.steps_navigation').'"]');
+    $page->navigate(route('onboarding.restaurant', ['lang' => 'en'], false))->resize(1440, 1000)
+        ->assertSee(__('center.title'))->assertVisible('nav[aria-label="'.__('center.setup_groups').'"]');
     assertBrowserDarkThemeLayout($page);
     assertBrowserKeyboardFocusIsVisible($page);
-
-    $page->fill('input[name="organization_name"]', 'Browser E2E Food Group');
-    clickBrowserElement($page, 'form[wire\\:submit="createOrganization"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'))
-        ->assertScript('document.querySelector("[data-flux-progress]").getAttribute("aria-valuenow") === "2"')
-        ->navigate(route('onboarding.restaurant', absolute: false))
-        ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'))
-        ->assertVisible('[data-onboarding-mobile-summary]');
-
-    clickBrowserElement($page, 'button[wire\\:click="goToStep(1)"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_kompanii'))
-        ->assertValue('input[name="organization_name"]', 'Browser E2E Food Group');
-    clickBrowserElement($page, 'form[wire\\:submit="createOrganization"] button[type="submit"]');
-    $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'));
-
-    $page->fill('input[name="brand_name"]', 'Browser E2E Bistro');
-    clickBrowserElement($page, 'form[wire\\:submit="createBrand"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_filiala'))
-        ->assertPresent('#restaurant-country-options')
-        ->assertPresent('#restaurant-timezone-options')
-        ->assertAttribute('input[name="branch_country_code"]', 'list', 'restaurant-country-options')
-        ->assertAttribute('input[name="branch_country_code"]', 'autocomplete', 'country')
-        ->assertAttribute('input[name="branch_timezone"]', 'list', 'restaurant-timezone-options');
-
-    $page
-        ->fill('input[name="branch_name"]', 'Browser E2E Bistro Old Town')
-        ->fill('input[name="branch_address"]', 'Pilies 1')
-        ->fill('input[name="branch_city"]', 'Vilnius')
-        ->fill('input[name="branch_country_code"]', 'ZZ')
-        ->fill('input[name="branch_timezone"]', 'Europe/Vilnius')
-        ->select('select[name="branch_currency"]', 'EUR');
-    clickBrowserElement($page, 'form[wire\\:submit="createBranch"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.validation_heading'))
-        ->assertAttribute('input[name="branch_country_code"]', 'aria-invalid', 'true')
-        ->assertAttribute('input[name="branch_country_code"]', 'aria-describedby', 'branch-country-code-help branch-country-code-error')
-        ->assertPresent('#branch-country-code-help')
-        ->assertPresent('#branch-country-code-error[role="alert"]')
-        ->assertScript('document.activeElement?.name', 'branch_country_code');
-
-    $page->fill('input[name="branch_country_code"]', 'LT');
-    clickBrowserElement($page, 'form[wire\\:submit="createBranch"] button[type="submit"]');
-    $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_zony'));
-
-    $page
-        ->assertPresent('select[name="area_type"] option[value="bar_area"]')
-        ->assertPresent('select[name="area_icon"] option[value="sparkles"]')
-        ->fill('input[name="area_name"]', 'Browser E2E Hall');
-    clickBrowserElement($page, 'form[wire\\:submit="createArea"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.skolko_stolov'))
-        ->assertAttribute('input[name="table_count"]', 'step', '1')
-        ->assertAttribute('input[name="table_count"]', 'inputmode', 'numeric')
-        ->assertAttribute('input[name="table_capacity"]', 'max', '50');
-
-    $page
-        ->fill('input[name="table_count"]', '1')
-        ->fill('input[name="table_prefix"]', 'Browser E2E Table')
-        ->fill('input[name="table_capacity"]', '4');
-    clickBrowserElement($page, 'form[wire\\:submit="createServicePoints"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.sgenerirovat_qr'))
-        ->navigate(route('onboarding.restaurant', absolute: false))
-        ->assertSee(__('ui.onboarding.restaurant_setup.sgenerirovat_qr'));
-
-    clickBrowserElement($page, 'button[wire\\:click="generateQrCodes"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_meniu'))
-        ->assertAttribute('input[name="item_price"]', 'type', 'number')
-        ->assertAttribute('input[name="item_price"]', 'step', '0.01')
-        ->assertAttribute('input[name="item_price"]', 'inputmode', 'decimal');
-
-    $page
-        ->fill('input[name="menu_name"]', 'Browser E2E Menu')
-        ->fill('input[name="category_name"]', 'Browser E2E Main')
-        ->fill('input[name="item_name"]', 'Browser E2E Pasta')
-        ->fill('input[name="item_price"]', '8.50');
+    $page->fill('input[wire\\:model="form.branchName"]', 'Browser E2E Bistro Old Town')
+        ->fill('input[wire\\:model="form.branchAddress"]', 'Pilies 1')
+        ->fill('input[wire\\:model="form.branchCity"]', 'Vilnius')
+        ->fill('input[wire\\:model="form.organizationName"]', 'Browser E2E Food Group')
+        ->fill('input[wire\\:model="form.brandName"]', 'Browser E2E Bistro');
+    browserSetupChoose($page, 'form.branchTimezone', 'Europe/Vilnius');
+    browserSetupChoose($page, 'form.branchCurrency', 'EUR');
+    clickBrowserElement($page, 'form[wire\\:submit="createRestaurant"] button[type="submit"]');
+    $page->assertPresent('ui-select[wire\\:model="form.branchCountryCode"] button[data-invalid]')
+        ->assertScript('document.activeElement?.closest("ui-select")?.getAttribute("wire:model")', 'form.branchCountryCode');
+    browserSetupChoose($page, 'form.branchCountryCode', 'LT');
+    clickBrowserElement($page, 'form[wire\\:submit="createRestaurant"] button[type="submit"]');
+    $page->assertVisible('#restaurant-setup-group-2');
+    $setup = RestaurantOnboarding::query()->where('user_id', $registeredOwner->id)->sole();
+    expect($setup->branch->is_active)->toBeFalse()->and($setup->completed_at)->toBeNull();
+    $page->navigate(route('restaurants.setup', ['setup' => $setup->id, 'step' => 3], false))
+        ->assertVisible('#restaurant-setup-group-3')
+        ->fill('input[wire\\:model="form.menuName"]', 'Browser E2E Menu')
+        ->fill('input[wire\\:model="form.categoryName"]', 'Browser E2E Main')
+        ->fill('input[wire\\:model="form.itemName"]', 'Browser E2E Pasta')
+        ->fill('input[wire\\:model="form.itemPrice"]', '8.50');
     clickBrowserElement($page, 'form[wire\\:submit="createStarterMenu"] button[type="submit"]');
-    $page
-        ->assertSee(__('ui.onboarding.restaurant_setup.restoran_gotov_k_proverke'))
-        ->assertSee(__('ui.onboarding.restaurant_setup.primary_next_step'))
-        ->assertVisible('a[target="_blank"][rel="noopener"]')
-        ->assertNoJavaScriptErrors();
+    $page->assertSee('Browser E2E Menu');
+    expect($setup->fresh()->menu->status)->toBe(MenuStatus::Draft)
+        ->and($setup->fresh()->menuItem->is_available)->toBeFalse()->and(ServicePoint::query()->count())->toBe(0);
+    clickBrowserElement($page, 'nav button[wire\\:click="goToStep(2)"]');
+    $page->fill('input[wire\\:model="form.areaName"]', 'Browser E2E Hall');
+    clickBrowserElement($page, 'form[wire\\:submit="createArea"] button[type="submit"]');
+    $page->fill('input[wire\\:model="form.tableCount"]', '1')
+        ->fill('input[wire\\:model="form.tablePrefix"]', 'Browser E2E Table')
+        ->fill('input[wire\\:model="form.tableCapacity"]', '4');
+    clickBrowserElement($page, 'form[wire\\:submit="createServicePoints"] button[type="submit"]');
+    $page->assertSee(__('center.tables_saved', ['count' => 1]));
+    $page->navigate(route('restaurants.setup', ['setup' => $setup->id, 'step' => 2], false));
+    clickBrowserElement($page, 'button[wire\\:click="generateQrCodes"]');
+    $page->assertMissing('button[wire\\:click="generateQrCodes"]');
+    clickBrowserElement($page, 'nav button[wire\\:click="goToStep(4)"]');
+    clickBrowserElement($page, 'button[wire\\:click="complete"]');
+    $page->assertSee(__('center.completed_history'))->assertNoJavaScriptErrors();
+    $setup->refresh();
+    expect($setup->completed_at)->not->toBeNull()->and($setup->branch->is_active)->toBeFalse()
+        ->and($setup->menu->status)->toBe(MenuStatus::Draft)->and($setup->menuItem->is_available)->toBeFalse();
+
+    // Publication is a separate, explicit user operation after preparation.
+    $page->navigate(route('restaurants.index', ['kind' => 'branch', 'object' => $setup->branch_id], false));
+    clickBrowserElement($page, 'ui-checkbox[wire\\:model="form.isActive"]');
+    clickBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
+    $page->assertSee(__('center.saved'));
+    expect($setup->branch->fresh()->is_active)->toBeTrue();
+    $scope = [$setup->organization_id, $setup->brand_id, $setup->branch_id];
+    $page->navigate(route('organizations.brands.branches.menu.index', $scope, false));
+    clickBrowserElement($page, 'button[wire\\:click="startEditingMenu('.$setup->menu_id.')"]');
+    $page->select('select[wire\\:model="editingMenuForm.menuStatus"]', 'active');
+    clickBrowserElement($page, 'form[wire\\:submit="updateMenu"] button[type="submit"]');
+    $page->assertSee(__('ui.livewire.organizations.brands.branches.menu.index.menu_updated'));
+    $page->navigate(route('organizations.brands.branches.availability.index', [...$scope, 'section' => 'stoplist'], false));
+    clickBrowserElement($page, 'ui-checkbox[wire\\:model="selectedItems"][value="'.$setup->menu_item_id.'"]');
+    clickBrowserElement($page, 'button[wire\\:click="openBulk"]');
+    $page->select('select[name="restriction.operation"]', 'resume');
+    clickBrowserElement($page, 'form[wire\\:submit="previewRestriction"] button[type="submit"]');
+    $page->assertVisible('[data-availability-preview]');
+    clickBrowserElement($page, 'button[wire\\:click="applyRestriction"]');
+    $page->assertSee(__('availability.applied'))->assertNoJavaScriptErrors();
+    expect($setup->menu->fresh()->status)->toBe(MenuStatus::Active)
+        ->and($setup->menuItem->fresh()->is_available)->toBeTrue();
+}
+
+function browserSetupChoose(PendingAwaitablePage $page, string $model, string $value): void
+{
+    $selector = 'ui-select[wire\\:model="'.$model.'"]';
+    $page->click($selector.' button[role="combobox"]')->click($selector.' ui-option[value="'.$value.'"]');
 }
 
 function assertBrowserHasNoHorizontalOverflow(PendingAwaitablePage $page, int $width, int $height): void

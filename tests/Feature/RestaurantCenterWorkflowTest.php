@@ -4,20 +4,26 @@ declare(strict_types=1);
 
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\RestoreBranchAction;
+use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Organizations\ChangeStructureLifecycleAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Livewire\Onboarding\RestaurantSetup;
 use App\Livewire\Restaurants\IdentityEditor;
 use App\Livewire\Restaurants\Index;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\Organization;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
+use App\Services\Organizations\RestaurantCenterQuery;
 use Database\Seeders\SystemPermissionsSeeder;
 use Dom\HTMLDocument;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -230,4 +236,66 @@ it('renders valid active filter values from the filter contract', function (): v
         $values = array_map(fn ($node) => $node->getAttribute('value'), iterator_to_array($control->querySelectorAll('[value]')));
         expect($values)->toContain('active')->not->toContain('filters.active');
     }
+});
+
+it('center refresh requires an audited reason before suspending from the canonical editor', function (): void {
+    $this->first->update(['is_active' => true]);
+    $page = Livewire::actingAs($this->actor)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $this->first->id])
+        ->set('form.name', 'Unsaved suspension draft')->set('form.isActive', false)
+        ->call('save')->assertHasErrors('form.suspensionReason')->assertSet('form.name', 'Unsaved suspension draft');
+    expect($this->first->fresh()->is_active)->toBeTrue()->and($this->first->fresh()->name)->not->toBe('Unsaved suspension draft');
+    $page->set('form.suspensionReason', 'x')->call('save')->assertHasErrors('form.suspensionReason');
+    $page->set('form.suspensionReason', '  Seasonal closure  ')->call('save')->assertHasNoErrors();
+    expect($this->first->fresh()->is_active)->toBeFalse()->and($this->first->fresh()->name)->toBe('Unsaved suspension draft');
+    $audit = AuditLog::query()->where('entity_type', 'branch')->where('entity_id', $this->first->id)->latest('id')->firstOrFail();
+    expect($audit->new_values['reason'])->toBe('Seasonal closure');
+});
+
+it('center refresh protects direct suspension callers before any identity write', function (?string $reason): void {
+    $this->first->update(['is_active' => true]);
+    $before = $this->first->fresh()->getAttributes();
+    $data = $this->first->only(['name', 'address', 'city', 'country', 'timezone', 'currency']);
+    expect(fn () => app(UpdateBranchAction::class)->handle($this->first, [...$data, 'name' => 'Must not persist', 'is_active' => false], $this->actor, $reason))
+        ->toThrow(ValidationException::class);
+    expect($this->first->fresh()->getAttributes())->toBe($before);
+})->with([null, '', '  ', 'x', str_repeat('x', 501)]);
+
+it('center refresh opens authorized archived organization children without creation lookup failure', function (): void {
+    $this->organization->delete();
+    $this->actingAs($this->actor)->get(route('restaurants.index', ['view' => 'structure', 'organization' => $this->organization->id]))
+        ->assertOk()->assertSee($this->brand->name);
+    $this->actingAs(User::factory()->create())->get(route('restaurants.index', ['view' => 'structure', 'organization' => $this->organization->id]))->assertForbidden();
+});
+
+it('center refresh sorts restaurants and preserves contextual filters while clearing a failed search', function (): void {
+    $this->first->update(['name' => 'Alpha']);
+    Branch::factory()->for($this->organization)->for($this->brand)->create(['name' => 'Zulu']);
+    Livewire::actingAs($this->actor)->test(Index::class)
+        ->set('filters.organizationId', (string) $this->organization->id)->set('filters.brandId', (string) $this->brand->id)
+        ->set('filters.sort', 'name_desc')
+        ->assertViewHas('rows', fn ($rows) => $rows->pluck('name')->all() === ['Zulu', 'Alpha'])
+        ->set('filters.search', 'No match')->assertViewHas('emptyState', 'search')
+        ->call('clearFilters')->assertSet('filters.search', '')->assertSet('filters.sort', 'name_desc')
+        ->assertSet('filters.organizationId', (string) $this->organization->id)->assertSet('filters.brandId', (string) $this->brand->id)
+        ->assertSee('Zulu');
+});
+
+it('center refresh searches bounded parent options beyond the first page and clears a changed parent', function (): void {
+    Brand::factory()->count(22)->for($this->organization)->sequence(fn ($sequence) => ['name' => sprintf('Brand %02d', $sequence->index)])->create();
+    $target = Brand::factory()->for($this->organization)->create(['name' => 'ZZZ selected brand']);
+    Livewire::actingAs($this->actor)->test(Index::class)->set('filters.organizationId', (string) $this->organization->id)
+        ->set('brandSearch', 'ZZZ')->assertViewHas('brands', fn ($rows) => $rows === [$target->id => $target->name])
+        ->set('filters.brandId', (string) $target->id)->set('brandSearch', 'Brand')
+        ->assertViewHas('brands', fn ($rows) => count($rows) === 21 && isset($rows[$target->id]))
+        ->set('filters.organizationId', '')->assertSet('filters.brandId', '')->assertSet('brandSearch', '');
+});
+
+it('center refresh distinguishes empty structure from denied access without exposing foreign names', function (): void {
+    $newActor = User::factory()->create();
+    Livewire::actingAs($newActor)->test(Index::class)->assertViewHas('emptyState', 'empty')->assertDontSee($this->first->name);
+    $this->organization->memberships()->where('user_id', $this->actor->id)->update(['status' => 'suspended']);
+    Livewire::actingAs($this->actor)->test(Index::class)->assertViewHas('emptyState', 'empty')->assertViewHas('canCreateRestaurant', true)->assertDontSee($this->first->name);
+    expect(app(RestaurantCenterQuery::class)->canCreateRestaurant($this->actor, (string) $this->organization->id))->toBeFalse();
+    Gate::before(fn (User $user, string $ability, array $arguments): ?bool => $ability === 'create' && ($arguments[0] ?? null) === Organization::class ? false : null);
+    Livewire::actingAs($this->actor)->test(Index::class)->assertViewHas('emptyState', 'no_access')->assertViewHas('canCreateRestaurant', false);
 });

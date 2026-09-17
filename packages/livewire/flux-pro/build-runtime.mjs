@@ -66,7 +66,7 @@ async function inventory(relative = '') {
 
 const reasons = {
     ...Object.fromEntries(provenance.local_patches.map(patch => [patch.path, patch.reason])),
-    'dist/flux.module.js': 'Readable project-local backports from the installed proprietary Free 2.17.0 runtime: OTP replacement/touch, modal escape policy, tooltip/sidebar listener cleanup, sidebar/menu focus, dropdown scroll/navmenu/reference visibility, disclosure find-in-page and toast lifecycle/link options. Existing Pro runtime and editor assets retained.',
+    'dist/flux.module.js': 'Readable project-local backports from the installed proprietary Free 2.17.0 runtime: OTP replacement/touch, modal escape policy, tooltip/sidebar listener cleanup, sidebar/menu focus, dropdown scroll/navmenu/reference visibility, disclosure find-in-page and toast lifecycle/link options. Project-local tooltip unmount also releases its positioning observers and listeners. Existing Pro runtime and editor assets retained.',
     'dist/flux.js': 'Generated IIFE from the reviewed local flux.module.js using build-runtime.mjs; one combined runtime, no additional Alpine or Free bundle.',
     'dist/flux.min.js': 'Generated from the same local IIFE by locked rolldown 1.2.5 with class/function names preserved for Mixin lookup. This is a local artifact, not an upstream build.',
     'dist/manifest.json': 'Local cache identifier derives from all three Flux JavaScript artifacts; original editor entries remain unchanged.',

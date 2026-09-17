@@ -29,6 +29,15 @@ For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend
 
 `docs/requirements.md` is the canonical active requirement catalogue. `CHANGELOG.md` is historical and must not override current requirements.
 
+## Spec Kit
+
+Spec Kit is initialized for Codex in `.specify/` and `.agents/skills/speckit-*/`.
+Use its specification, planning, task and verification skills for requested feature work;
+read `.specify/memory/constitution.md` alongside the canonical documents first.
+Feature artifacts are scoped working documents linked from the existing implementation plan,
+not another requirement catalogue or product backlog. Preserve the current branch and the
+GitHub push-only restriction; the bundled `speckit-taskstoissues` skill is not permitted here.
+
 ## Maintaining agent rules
 
 - Read every applicable `.ai/rules` entry, including overlapping scopes. Use `infer-conventions` incrementally when auditing conventions; skip decisions already covered by these instructions, scoped rules or active tooling. Repeated code that violates current requirements is a defect, not a convention to preserve.

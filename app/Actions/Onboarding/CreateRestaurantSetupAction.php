@@ -28,14 +28,14 @@ final readonly class CreateRestaurantSetupAction
     public function __construct(private CreateOrganizationAction $organizations, private CreateBrandAction $brands, private CreateBranchAction $branches, private RecordAuditLogAction $audit) {}
 
     /** @param array<string,mixed> $input */
-    public function handle(User $actor, array $input, string $requestId, ?int $continuingId = null): RestaurantOnboarding
+    public function handle(User $actor, array $input, string $requestId, ?int $continuingId = null, bool $firstLaunch = true): RestaurantOnboarding
     {
         $data = Validator::make([...RestaurantCreationRules::normalize($input), 'requestId' => $requestId], [
             ...RestaurantCreationRules::rules(), 'requestId' => ['required', 'uuid'],
         ], attributes: [...RestaurantCreationRules::attributes(), 'requestId' => __('center.creation_request')])->validate();
         $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($actor, $data, $requestId, $hash, $continuingId): RestaurantOnboarding {
+        return DB::transaction(function () use ($actor, $data, $requestId, $hash, $continuingId, $firstLaunch): RestaurantOnboarding {
             $actor = User::query()->whereKey($actor->getKey())->firstOrFail();
             $prior = RestaurantOnboarding::query()->where('creation_key', $requestId)->lockForUpdate()->first();
             if ($prior !== null) {
@@ -57,7 +57,9 @@ final readonly class CreateRestaurantSetupAction
             }
             $first = empty($data['organizationId']);
             if ($first) {
-                Gate::forUser($actor)->authorize('create', RestaurantOnboarding::class);
+                if ($firstLaunch) {
+                    Gate::forUser($actor)->authorize('create', RestaurantOnboarding::class);
+                }
                 Gate::forUser($actor)->authorize('create', Organization::class);
                 Validator::make($data, ['organizationName' => [Rule::unique(Organization::class, 'name')->where('owner_user_id', $actor->id)]], attributes: RestaurantCreationRules::attributes())->validate();
                 $organization = $this->organizations->handle($actor, ['name' => $data['organizationName']]);
@@ -79,7 +81,7 @@ final readonly class CreateRestaurantSetupAction
             ], $actor);
             $setup = $attempt ?? new RestaurantOnboarding;
             $setup->forceFill(['user_id' => $actor->id, 'organization_id' => $organization->id,
-                'brand_id' => $brand->id, 'branch_id' => $branch->id, 'purpose' => $first ? 'first' : 'additional',
+                'brand_id' => $brand->id, 'branch_id' => $branch->id, 'purpose' => $first && $firstLaunch ? 'first' : 'additional',
                 'creation_key' => $requestId, 'creation_hash' => $hash]);
             if (! $setup->save()) {
                 throw new RuntimeException('Required restaurant setup could not be saved.');

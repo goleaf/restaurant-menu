@@ -19,4 +19,13 @@ document.addEventListener('livewire:navigated', () => {
     window.dispatchEvent(new Event(navigator.onLine ? 'online' : 'offline'));
 });
 
+// A response already received before disconnecting can replace offline attributes.
+Livewire.interceptMessage(({ onSuccess }) => {
+    onSuccess(({ onRender }) => {
+        onRender(() => {
+            if (!navigator.onLine) window.dispatchEvent(new Event('offline'));
+        });
+    });
+});
+
 Livewire.start();

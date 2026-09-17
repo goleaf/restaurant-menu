@@ -104,6 +104,7 @@ final class RestaurantSetupQueryService
                 'menu_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch
                     ? ($item instanceof MenuItem ? route('organizations.brands.branches.menu.dish.edit', [$organization, $brand, $branch, $item]) : route('organizations.brands.branches.menu.index', [$organization, $brand, $branch])) : null,
                 'print_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]) : null,
+                'rooms_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]) : null,
             ],
             'form' => $this->formValues(
                 $organizationReference,
@@ -147,7 +148,7 @@ final class RestaurantSetupQueryService
     }
 
     /** @return array<int,string> */
-    public function menuOptions(User $actor, int $setupId, string $search): array
+    public function menuOptions(User $actor, int $setupId, string $search, mixed $selected = null): array
     {
         $setup = RestaurantOnboarding::query()->where('user_id', $actor->id)->whereKey($setupId)->firstOrFail();
         Gate::forUser($actor)->authorize('view', $setup);
@@ -159,11 +160,21 @@ final class RestaurantSetupQueryService
             return [];
         }
 
-        return $branch->menus()->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->pluck('name', 'id')->all();
+        $query = $branch->menus()->select(['id', 'name']);
+        $rows = (clone $query)->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->pluck('name', 'id')->all();
+        $selected ??= $setup->menu_id;
+        if ((is_int($selected) && $selected > 0) || (is_string($selected) && ctype_digit($selected))) {
+            $chosen = $query->whereKey($selected)->first();
+            if ($chosen !== null) {
+                $rows[$chosen->id] = $chosen->name;
+            }
+        }
+
+        return $rows;
     }
 
     /** @return array<int,string> */
-    public function areaOptions(User $actor, int $setupId, string $search): array
+    public function areaOptions(User $actor, int $setupId, string $search, mixed $selected = null): array
     {
         $setup = RestaurantOnboarding::query()->where('user_id', $actor->id)->whereKey($setupId)->firstOrFail();
         Gate::forUser($actor)->authorize('view', $setup);
@@ -171,9 +182,19 @@ final class RestaurantSetupQueryService
             return [];
         }
 
-        return AreaNode::query()->select(['id', 'parent_id', 'name'])->where('branch_id', $setup->branch_id)
-            ->with('parent:id,name')->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->get()
-            ->mapWithKeys(fn (AreaNode $area): array => [$area->id => $area->parent === null ? $area->name : $area->parent->name.' / '.$area->name])->all();
+        $branch = Branch::query()->select(['id'])->where('organization_id', $setup->organization_id)->where('brand_id', $setup->brand_id)->whereKey($setup->branch_id)->firstOrFail();
+        $query = AreaNode::query()->select(['id', 'parent_id', 'name'])->where('branch_id', $branch->id)
+            ->with(['parent' => fn ($query) => $query->select(['id', 'name'])->where('branch_id', $branch->id)]);
+        $areas = (clone $query)->where('name', 'like', '%'.trim($search).'%')->orderBy('name')->limit(20)->get()->keyBy('id');
+        $selected ??= $setup->area_node_id;
+        if ((is_int($selected) && $selected > 0) || (is_string($selected) && ctype_digit($selected))) {
+            $chosen = $query->whereKey($selected)->first();
+            if ($chosen !== null) {
+                $areas->put($chosen->id, $chosen);
+            }
+        }
+
+        return $areas->mapWithKeys(fn (AreaNode $area): array => [$area->id => $area->parent === null ? $area->name : $area->parent->name.' / '.$area->name])->all();
     }
 
     private function organization(RestaurantOnboarding $state, User $user): ?Organization
@@ -340,6 +361,6 @@ final class RestaurantSetupQueryService
     /** @return array<string, string|int|null> */
     private function emptySummary(): array
     {
-        return ['organization' => null, 'brand' => null, 'branch' => null, 'area' => null, 'service_points' => 0, 'qr_codes' => 0, 'menu' => null, 'guest_url' => null, 'branch_url' => null, 'menu_url' => null, 'print_url' => null];
+        return ['organization' => null, 'brand' => null, 'branch' => null, 'area' => null, 'service_points' => 0, 'qr_codes' => 0, 'menu' => null, 'guest_url' => null, 'branch_url' => null, 'menu_url' => null, 'print_url' => null, 'rooms_url' => null];
     }
 }

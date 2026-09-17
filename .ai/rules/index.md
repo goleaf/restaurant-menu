@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Actions,Livewire}/** | .ai/rules/actions-livewire.md |
 | app/Actions/** | .ai/rules/actions.md |
 | app/** | .ai/rules/app.md |
+| resources/js/alpine/components/navigation-search.js, app/Livewire/Organizations/Brands/Branches/Menu/Dish.php | .ai/rules/branches-menu.md |
 | tests/Browser/** | .ai/rules/browser.md |
 | resources/js/alpine/components/** | .ai/rules/components.md |
 | app/Livewire/Workspace/RestaurantSwitcher.php, resources/views/livewire/workspace/restaurant-switcher.blade.php | .ai/rules/dashboard.md |

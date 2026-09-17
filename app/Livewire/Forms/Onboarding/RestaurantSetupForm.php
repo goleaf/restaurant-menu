@@ -70,6 +70,19 @@ final class RestaurantSetupForm extends Form
         return $this->validate(RestaurantCreationRules::rules(), [], RestaurantCreationRules::attributes());
     }
 
+    public function suggestStructureNames(): void
+    {
+        $this->branchName = $this->plainText($this->branchName);
+        $data = $this->validate(['branchName' => BranchProfileRules::onboardingBranch()['branchName']]);
+
+        if (($this->organizationId === null || $this->organizationId === '') && $this->organizationName === '') {
+            $this->organizationName = $data['branchName'];
+        }
+        if (($this->brandId === null || $this->brandId === '') && $this->brandName === '') {
+            $this->brandName = $data['branchName'];
+        }
+    }
+
     /** @return array{organizationName: string} */
     public function validateOrganization(User $user, ?int $existingId = null): array
     {

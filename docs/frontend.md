@@ -2,6 +2,23 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+Current Prompt 3 offline lifecycle: a response already received before disconnection can finish morphing after the browser goes offline. The single application bootstrap uses the installed Livewire message `onRender` callback to reapply only the offline event. It never replays online on each morph, because that could clear another operation's disabled state. Cached navigation retains its existing connectivity replay. Deterministic browser and Node regressions cover the late response, reconnect, one registration and no online re-enabling; see testing.md.
+
+## Prompt 4 center interaction boundary (2026-09-18)
+
+Restaurant discovery and Business structure share one URL-backed center. One selected canonical identity editor receives literal prepared organization/brand labels; list identity thumbnails have a placeholder and no upload control. File commits and identity commits remain separate. The addressable preparation page has four independent groups and the existing shared unsaved-navigation owner. Flux native dialogs explicitly reference their heading; field error IDs, described-by and accessible error color use installed component attributes and existing product styles. Own compositions stay in resources/scss/components/_restaurant-center.scss. Mobile search remains immediate while secondary filters can collapse without duplicating the form.
+
+| Operation | Form / rules | Authorization and Action | Evidence |
+| --- | --- | --- | --- |
+| New restaurant | RestaurantSetupForm / RestaurantCreationRules | RestaurantOnboardingPolicy first/additional; CreateRestaurantSetupAction delegates existing parent/branch Actions | CenterCreation, DomainBoundary, Concurrency |
+| Identity | RestaurantIdentityForm / OrganizationRules, BranchProfileRules, AuditReasonRules | Model update Policy; UpdateOrganization/Brand/BranchAction and identity fingerprint | CenterWorkflow, Interface |
+| Empty parent | StructureCreationForm / OrganizationRules | Organization/Brand create Policy; CreateStructureIdentityAction with receipt | StructureCreation |
+| Room/table/menu preparation | RestaurantSetupForm / AreaRules, ServicePointRules, MenuItemRules | Current preparation and concrete resource Policies; existing scoped onboarding Actions | PreparationConnections, MenuSafety, Selection |
+| Logo | ImageUploadRules | Current model update Policy; UpdateOrganization/Brand/BranchLogoAction with independent media fingerprint | CenterWorkflow/media cases |
+| Archive/restore | Explicit typed identity confirmation and current fingerprint | ChangeStructureLifecycleAction then corresponding domain lifecycle Action | CenterWorkflow, StructureRestoreSafety |
+
+Old organization/brand/branch list addresses use the same center; onboarding resumes only an explicit authorized attempt. Administrative browsing is separate from the immutable working restaurant. Test/browser results remain in PROGRESS.md; this contract is not a claim that every gate passed.
+
 # Frontend architecture
 
 ## Prompt 8 Team navigation and styles
@@ -32,6 +49,8 @@ The existing restaurant task order and one shared Flux Pro selector remain canon
 Current halls navigation uses the existing service-points workspace. Restaurant management uses the existing restaurant center. Browser consumers follow these current routes, their actual form fields and their existing editor lifecycle; legacy links retain the compatibility contracts tested by their own Feature tests. Current verification belongs to PROGRESS.md; older complete workspace runs below are historical.
 
 The existing pending barrier now restores a browser traversal to the confirmed history entry before the old form can acquire a different URL. It preserves dirty guards when idle, disposes listeners and metadata wrappers, and never retries the save or queued transition. The real delayed-response test covers native and forced-fallback history, including a hash entry and multi-entry traversal. Exact recovery from an unknown/ambiguous segment after cancelling native departure in older browsers without Navigation API remains unverified; see DECISIONS.md. Modern tested WebKit exposes the actual entry index.
+
+Read-only Dish section/language/history synchronization, including its deferred main draft and return filters, has an audited history-only exception when all pending requests are that sync and the URL differs only in section/language. Ordinary page navigation and native departure remain blocked; these requests are never removed from global pending. It is not a global `$set` exemption: other components, unknown properties, mixed actions and concurrent saves remain guarded. The real browser test holds the server response while exercising Forward and then verifies the original draft/save/preview journey. Re-review the exception whenever these update hooks gain behavior.
 
 
 ## Shared restaurant workspace — prompt 3, 2026-09-16

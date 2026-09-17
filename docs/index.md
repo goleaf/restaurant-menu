@@ -25,6 +25,10 @@ The user-authorized requirement is `ui-flux-pro-001` in [`requirements.md`](requ
 11. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md), [`PROGRESS.md`](PROGRESS.md), and [`DECISIONS.md`](DECISIONS.md) — the current repository-completion execution plan, observed gate evidence, and scoped audit decisions; none redefine product behaviour.
 12. Root [`ROADMAP.md`](../ROADMAP.md) — the local delivery priority index; [`current-state-audit.md`](current-state-audit.md), [`code-review.md`](code-review.md), and [`known-limitations.md`](known-limitations.md) retain modernization evidence.
 13. [`decisions/`](decisions/) — accepted architecture decisions.
+14. [Spec Kit constitution](../.specify/memory/constitution.md) — project-specific checks for
+    the installed Codex skills. Use `$speckit-specify`, `$speckit-plan`, `$speckit-tasks`,
+    `$speckit-analyze`, `$speckit-implement` and `$speckit-converge` for scoped work while
+    retaining this index's canonical requirements, implementation plan and evidence ledgers.
 
 The active product implementation and current local evidence are the 2026-09-14 product entries in [`testing.md`](testing.md) and [`PROGRESS.md`](PROGRESS.md). [`MIGRATION_AUDIT.md`](MIGRATION_AUDIT.md) records the 89-migration review and rollback limits; [`CURRENT_VERSION.md`](CURRENT_VERSION.md) records the verified locked dependency baseline. Earlier dated test and browser results are historical evidence.
 

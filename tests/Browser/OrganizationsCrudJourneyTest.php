@@ -64,57 +64,48 @@ test('demo owner can complete the organization administration browser journey', 
         ->assertPathIs(route('dashboard', absolute: false))
         ->assertNoJavaScriptErrors();
 
-    $page->navigate(route('organizations.index', absolute: false));
-    assertOrganizationsBrowserPage($page, '[data-page="organizations"]');
-
-    $page->fill('input[wire\\:model="name"]', 'Browser CRUD Temporary Group');
-    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="create"] button[type="submit"]');
-    $page->assertSee('Browser CRUD Temporary Group');
+    $page->navigate(route('restaurants.index', ['view' => 'structure'], false));
+    assertOrganizationsBrowserPage($page, '[data-page="restaurant-center"]');
+    clickOrganizationsBrowserElement($page, 'a[href*="create=organization"]');
+    $page->assertQueryStringHas('create', 'organization')->fill('input[name="structure_name"]', 'Browser CRUD Temporary Group');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
+    $page->assertSee('Browser CRUD Temporary Group')->assertMissing('input[name="structure_name"]');
 
     $temporaryOrganization = Organization::query()
         ->select(['id', 'owner_user_id', 'name'])
         ->where('owner_user_id', $organization->owner_user_id)
         ->where('name', 'Browser CRUD Temporary Group')
-        ->firstOrFail();
-
-    clickOrganizationsBrowserElement(
-        $page,
-        sprintf('button[wire\\:click="startEditing(%d)"]', $temporaryOrganization->id),
-    );
-    $page->fill('input[wire\\:model="editingName"]', 'Browser CRUD Updated Group');
-    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="update"] button[type="submit"]');
+        ->sole();
+    $page->assertQueryStringHas('object', (string) $temporaryOrganization->id)
+        ->fill('input[wire\\:model="form.name"]', 'Browser CRUD Updated Group');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
     $page->assertSee('Browser CRUD Updated Group');
+    expect($temporaryOrganization->fresh()->name)->toBe('Browser CRUD Updated Group')
+        ->and($temporaryOrganization->brands()->exists())->toBeFalse();
 
-    clickOrganizationsBrowserElement(
-        $page,
-        sprintf('button[wire\\:click="confirmDelete(%d)"]', $temporaryOrganization->id),
-    );
-    $page->assertSee(__('structure.confirmations.archive.title'));
-    clickOrganizationsBrowserElement($page, 'button[wire\\:click="delete"]');
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="$set(\'confirming\', true)"]');
+    $page->assertSee(__('center.archive_notice'))->fill('input[wire\\:model="confirmation"]', 'Browser CRUD Updated Group');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="changeLifecycle"] button[type="submit"]');
     $page->assertDontSee('Browser CRUD Updated Group');
+    expect($temporaryOrganization->fresh()->trashed())->toBeTrue();
 
-    expect(Organization::withTrashed()->findOrFail($temporaryOrganization->id)->trashed())->toBeTrue();
-
-    $page
-        ->select('select[wire\\:model\\.live="lifecycle"]', 'archived')
-        ->assertSee('Browser CRUD Updated Group');
-    clickOrganizationsBrowserElement(
-        $page,
-        sprintf('button[wire\\:click="restore(%d)"]', $temporaryOrganization->id),
-    );
+    $page->select('select[wire\\:model\\.live="filters.lifecycle"]', 'archived')->assertSee('Browser CRUD Updated Group');
+    clickOrganizationsBrowserElement($page, sprintf('article[wire\\:key="organization-%d"] a[href*="object=%d"]', $temporaryOrganization->id, $temporaryOrganization->id));
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="$set(\'confirming\', true)"]');
+    $page->assertSee(__('center.restore_notice'))->fill('input[wire\\:model="confirmation"]', 'Browser CRUD Updated Group');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="changeLifecycle"] button[type="submit"]');
     $page->assertDontSee('Browser CRUD Updated Group');
-
-    expect(Organization::query()->findOrFail($temporaryOrganization->id)->trashed())->toBeFalse();
+    expect($temporaryOrganization->fresh()->trashed())->toBeFalse();
 
     $brand = $branch->brand;
     $routeChain = [
-        [route('organizations.index', absolute: false), '[data-page="organizations"]'],
+        [route('organizations.index', absolute: false), '[data-page="restaurant-center"]'],
         [route('organizations.staff.index', [$organization], false), '[data-page="organization-staff"]'],
         [route('organizations.staff.permissions', [$organization, $staffMember], false), '[data-page="employee-card"]'],
-        [route('organizations.brands.index', [$organization], false), '[data-page="organization-brands"]'],
-        [route('organizations.brands.branches.index', [$organization, $brand], false), '[data-page="brand-branches"]'],
+        [route('organizations.brands.index', [$organization], false), '[data-page="restaurant-center"]'],
+        [route('organizations.brands.branches.index', [$organization, $brand], false), '[data-page="restaurant-center"]'],
         [route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false), '[data-page="branch-settings"]'],
-        [route('organizations.brands.branches.areas.index', [$organization, $brand, $branch], false), '[data-page="branch-areas"]'],
+        [route('organizations.brands.branches.areas.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
         [route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
         [route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false), '[data-page="branch-service-point-qr"]'],
         [route('organizations.brands.branches.service-points.qr.print', [$organization, $brand, $branch, $servicePoint, $qrCode], false), '[data-page="qr-print-template"]'],

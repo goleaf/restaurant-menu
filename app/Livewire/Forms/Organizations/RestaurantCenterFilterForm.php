@@ -32,6 +32,9 @@ final class RestaurantCenterFilterForm extends Form
     #[Url(as: 'lifecycle', history: true)]
     public mixed $lifecycle = 'active';
 
+    #[Url(as: 'sort', history: true)]
+    public mixed $sort = 'name_asc';
+
     /** @return array<string, string> */
     public function validated(): array
     {
@@ -43,15 +46,17 @@ final class RestaurantCenterFilterForm extends Form
             'filters.active' => ['required', 'string', Rule::in(['all', 'active', 'inactive'])],
             'filters.setup' => ['required', 'string', Rule::in(['all', 'unfinished'])],
             'filters.lifecycle' => ['required', 'string', Rule::in(['active', 'archived'])],
+            'filters.sort' => ['required', 'string', Rule::in(['name_asc', 'name_desc'])],
         ], attributes: [
             'filters.search' => __('center.search'), 'filters.organizationId' => __('center.organization'),
             'filters.brandId' => __('center.brand'), 'filters.view' => __('center.title'),
             'filters.active' => __('center.administrative_state'), 'filters.setup' => __('center.setup_state'),
             'filters.lifecycle' => __('center.lifecycle'),
+            'filters.sort' => __('center.sort'),
         ])->validate()['filters'];
 
         return ['view' => $data['view'], 'search' => trim($data['search'] ?? ''),
             'organization' => (string) ($data['organizationId'] ?? ''), 'brand' => (string) ($data['brandId'] ?? ''),
-            'active' => $data['active'], 'setup' => $data['setup'], 'lifecycle' => $data['lifecycle']];
+            'active' => $data['active'], 'setup' => $data['setup'], 'lifecycle' => $data['lifecycle'], 'sort' => $data['sort']];
     }
 }

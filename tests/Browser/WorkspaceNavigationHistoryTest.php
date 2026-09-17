@@ -56,6 +56,7 @@ test('pending restaurant settings keep their address and resource through Back a
             }
             return response;
         };
+        void 0;
         JS);
     $page->fill('input[wire\\:model="form.publicName"]', 'Saved B')->click('form[wire\\:submit="save"] button[type="submit"]')
         ->assertScript('window.workspaceHistoryResponseReady === true');
@@ -70,7 +71,7 @@ test('pending restaurant settings keep their address and resource through Back a
                 ->assertScript('Alpine.$data(document.body).pending', 1);
         }
     } finally {
-        $page->script('window.releaseWorkspaceHistoryResponse?.(); window.fetch = window.workspaceHistoryOriginalFetch;');
+        $page->script('window.releaseWorkspaceHistoryResponse?.(); window.fetch = window.workspaceHistoryOriginalFetch; void 0;');
     }
     $page->assertScript('Alpine.$data(document.body).pending', 0)->assertPathIs($paths[1])
         ->assertScript('window.workspaceHistoryRequests', 1);

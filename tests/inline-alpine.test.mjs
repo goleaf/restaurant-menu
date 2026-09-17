@@ -258,6 +258,7 @@ function passkeysHarness(factory) {
     const adapter = { isSupported: () => true, register: async (_owner, data) => calls.push(['register', data]), verify: async (_owner, data) => { calls.push(['verify', data]); return { redirect: '/authorized' }; }, cancel: _owner => calls.push(['cancel']), isCancelled: error => error?.name === 'UserCancelledError' };
     const component = scope(factory(adapter), { $el: { dataset: { failure: 'Localized failure', optionsUrl: '/options', submitUrl: '/submit', fallbackUrl: '/dashboard' }, isConnected: true }, $wire: { async loadPasskeys() { calls.push(['refresh']); } } });
     window.Livewire.navigate = url => calls.push(['navigate', url]);
+    window.location = { assign: url => calls.push(['full-navigation', url]) };
     component.init();
     return { component, adapter, calls };
 }
@@ -276,7 +277,7 @@ test('passkey configuration belongs to its root when a child invokes a controlle
     verification.adapter.verify = async (_owner, options) => { requested = options; return {}; };
     await verification.component.verify();
     assert.deepEqual(requested.routes, { options: '/options', submit: '/submit' });
-    assert.deepEqual(verification.calls.at(-1), ['navigate', '/dashboard']);
+    assert.deepEqual(verification.calls.at(-1), ['full-navigation', '/dashboard']);
 });
 
 test('passkey registration blocks empty/duplicate attempts, clears successful input and localizes failures', async () => {
@@ -306,10 +307,10 @@ test('passkey registration cancel/destroy rejects late state and refreshes only 
     component.supported = false; await component.register();
 });
 
-test('passkey verification uses prepared endpoints, fallback navigation and localized SDK errors', async () => {
+test('passkey verification uses full navigation after authentication and preserves localized SDK errors', async () => {
     const { component, adapter, calls } = passkeysHarness(passkeyVerification);
-    await component.verify(); assert.deepEqual(calls, [['verify', { routes: { options: '/options', submit: '/submit' } }], ['navigate', '/authorized']]);
-    adapter.verify = async () => ({}); await component.verify(); assert.deepEqual(calls.at(-1), ['navigate', '/dashboard']);
+    await component.verify(); assert.deepEqual(calls, [['verify', { routes: { options: '/options', submit: '/submit' } }], ['full-navigation', '/authorized']]);
+    adapter.verify = async () => ({}); await component.verify(); assert.deepEqual(calls.at(-1), ['full-navigation', '/dashboard']);
     adapter.verify = async () => { throw new Error('Private response'); }; await component.verify(); assert.equal(component.error, 'Localized failure');
     adapter.verify = async () => { throw Object.assign(new Error(), { name: 'UserCancelledError' }); }; await component.verify(); assert.equal(component.error, null);
     component.supported = false; await component.verify(); component.destroy();
@@ -319,7 +320,7 @@ test('passkey verification neither duplicates a ceremony nor navigates after des
     const { component, adapter, calls } = passkeysHarness(passkeyVerification);
     const pending = deferred(); adapter.verify = () => pending.promise;
     const verifying = component.verify(); await component.verify(); component.destroy(); pending.resolve({ redirect: '/private' }); await verifying;
-    assert.equal(calls.some(call => call[0] === 'navigate'), false);
+    assert.equal(calls.some(call => ['navigate', 'full-navigation'].includes(call[0])), false);
     const failure = deferred(); adapter.verify = () => failure.promise;
     const retry = component.verify(); component.destroy(); failure.reject(new Error('late')); await retry;
     assert.equal(component.error, null);

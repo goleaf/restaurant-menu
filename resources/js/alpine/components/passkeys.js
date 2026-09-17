@@ -65,7 +65,7 @@ export function passkeyVerification(adapter) {
                     options: this.configuration.optionsUrl,
                     submit: this.configuration.submitUrl,
                 },
-            }, response => window.Livewire.navigate(response.redirect || this.configuration.fallbackUrl));
+            }, response => window.location.assign(response.redirect || this.configuration.fallbackUrl));
         },
     };
 }

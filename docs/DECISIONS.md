@@ -2,6 +2,26 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 3 refresh — route scope and resource-bound returns (2026-09-17)
+
+Retain the existing Entry, RestaurantSwitcher, WorkspaceContext, WorkspaceAccessQuery and ApplicationNavigationPresenter. A named account, structure or platform route owns that mode before incidental restaurant identifiers or the saved preference are considered. Such identifiers do not turn a non-restaurant screen into an overview. Unknown workspace modes remain invalid; aggregate is forbidden on these routes. Concrete restaurant/object routes still reject conflicting route/query IDs and repeat access checks.
+
+Operational Back links carry the verified table/ticket restaurant; ticket returns also retain the permitted department. Another tab's preference must not determine the destination. Existing legacy aggregate views remain clearly labelled and read-only in scope; this refresh does not change their compatibility entry.
+
+Pending history belongs to the existing workspaceNavigation owner. Capture popstate before Livewire's cached handler changes its internal URL; compensate to the confirmed entry without replaying the operation. Prefer the browser's actual Navigation API index. A small metadata adapter records real pushState/replaceState calls for the fallback, preserving native delegation, existing state and owned cleanup; URL differences alone cannot prove a history step. Proven native hash additions receive a position; ambiguous entries start a separate segment. No route resolution, click interception, alternate client router or business context is added.
+
+Capability boundary: exact compensation is verified with Navigation API and with known fallback entries. An untracked cross-resource entry without that API uses a native document departure; cancelling the browser's beforeunload prompt does not prove restoration of the original URL. This older-browser edge remains a limitation, not universal Back/Forward acceptance. The API is [Baseline 2026](https://developer.mozilla.org/en-US/docs/Web/API/Navigation/currentEntry), and the tested Safari/WebKit 26.6 actually exposes an index. Native and forced-fallback delayed-save/hash tests are separate evidence.
+
+## Prompt 2 refresh — credentials and request boundaries (2026-09-17)
+
+Preserve the implemented Livewire migration and three registered transports. Correct actual consumer drift to the existing QR PrintPanel without reviving old controllers or changing the floor product. Keep dependencies, SCSS/Tailwind entrypoints, runtime selection and existing business flows unchanged.
+
+Credential-bearing invite/reset entry URLs must not enter Laravel previous-URL history. Extend native StartSession only at URL storage, preserving native session persistence, priority and lazy cache resolution for blocking. Match privacy headers by route names as well as conventional paths. MFA setup/recovery secrets are private render data; submitted passwords/codes are cleared on every response. Feature-enabled passkeys and account deletion finish with full navigation.
+
+A restored SQLite snapshot cannot revive an MCP credential revoked since backup. Revoke active restored tokens on the explicit restored connection inside the existing transaction; retain prior revoked timestamps and test both final HTTP completion and rollback.
+
+The reused test container must start each native HTTP request with Laravel's native Redirector after a rejected Livewire mount, just as an independent PHP-FPM request does. Reset only a leftover Livewire redirector and its ResponseFactory; do not reset auth, policies or business state to mask failures. Existing HTTP negative tests reproduce this boundary.
+
 ## Prompt 1 refresh — real platform boundaries and complete diagnostics (2026-09-17)
 
 Keep PHP 8.5 as the supported production line while testing an explicitly selected, official-source PHP 8.6 prerelease in an owned prefix. The root range cannot be widened on syntax/native evidence: stable Nette Schema/Utils, Sabberworm and the compatible ParaTest graph still reject 8.6. Preserve one stable lock and report the dependency boundary; do not execute the application by ignoring it.

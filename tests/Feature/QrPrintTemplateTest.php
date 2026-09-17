@@ -9,7 +9,6 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
-use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -33,9 +32,16 @@ test('qr print page requires generate qr permission', function () {
     $this->get($url)->assertRedirect(route('login'));
     $this->actingAs($manager)->get($url)->assertForbidden();
     grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
-    $this->actingAs($manager)->get($url)->assertRedirect(route('organizations.brands.branches.service-points.index', [
-        $organization, $brand, $branch, 'point' => $servicePoint->id, 'panel' => 'print', 'qr_record' => $qrCode->id,
-    ]));
+    $response = $this->actingAs($manager)->get($url)->assertRedirect();
+    $destination = parse_url($response->headers->get('Location'));
+    parse_str($destination['query'] ?? '', $query);
+    unset($destination['query']);
+    ksort($query);
+
+    expect($destination)->toBe(parse_url(route('organizations.brands.branches.service-points.index', [
+        $organization, $brand, $branch,
+    ])));
+    expect($query)->toBe(['panel' => 'print', 'point' => (string) $servicePoint->id, 'qr_record' => (string) $qrCode->id]);
 });
 
 test('qr print template defaults to sticker without table number or area', function () {

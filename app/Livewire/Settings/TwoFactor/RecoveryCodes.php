@@ -7,17 +7,16 @@ namespace App\Livewire\Settings\TwoFactor;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 use Laravel\Fortify\Features;
-use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class RecoveryCodes extends Component
 {
     private User $authenticatedUser;
 
-    #[Locked]
-    public array $recoveryCodes = [];
+    private array $recoveryCodes = [];
 
     public function boot(Request $request): void
     {
@@ -36,21 +35,11 @@ class RecoveryCodes extends Component
     }
 
     /**
-     * Mount the component.
-     */
-    public function mount(): void
-    {
-        $this->loadRecoveryCodes();
-    }
-
-    /**
      * Generate new recovery codes for the user.
      */
     public function regenerateRecoveryCodes(GenerateNewRecoveryCodes $generateNewRecoveryCodes): void
     {
         $generateNewRecoveryCodes($this->authenticatedUser);
-
-        $this->loadRecoveryCodes();
     }
 
     /**
@@ -67,5 +56,14 @@ class RecoveryCodes extends Component
                 $this->recoveryCodes = [];
             }
         }
+    }
+
+    public function render(): View
+    {
+        $this->loadRecoveryCodes();
+
+        return view('livewire.settings.two-factor.recovery-codes', [
+            'recoveryCodes' => $this->recoveryCodes,
+        ]);
     }
 }

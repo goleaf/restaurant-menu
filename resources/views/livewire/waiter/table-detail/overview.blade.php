@@ -6,7 +6,7 @@
         :description="__('guest.table.zone').': '.(data_get($overview, 'zone.name') ?? __('qr.filters.no_zone')).' · '.__('qr.labels.number').': '.(data_get($overview, 'service_point.display_number') ?: __('qr.labels.not_set'))"
     >
         <x-slot:actions>
-            <flux:button class="min-h-touch" icon="arrow-left" :href="route('restaurant.waiter.dashboard')" wire:navigate>
+            <flux:button class="min-h-touch" icon="arrow-left" :href="route('restaurant.waiter.dashboard', ['branch' => $overview['branch']['id']])" wire:navigate>
                 {{ __('ui.waiter.dashboard.waiter_dashboard') }}
             </flux:button>
             <p class="self-center text-sm text-text-muted">

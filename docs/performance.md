@@ -45,6 +45,24 @@ Current reconstructed signed Livewire request envelopes are1,748/1,889/1,912/2,3
 The separate team SCSS entry measures1,781 raw/557 gzip bytes. The isolated HEAD-plus-Team candidate staff asset scenario totals920,589 raw/376,594 gzip bytes; total CSS51,870 gzip bytes remains under the unchanged51,900 ceiling. Shared prompt-2 changes have their own different asset baseline. No polling or employee-wide permissions matrix is introduced. Browser behavior and visual widths are independently exercised by team browser suites; aggregate acceptance remains recorded separately in PROGRESS.md.
 
 
+## Prompt 2 acceptance refresh — 2026-09-17
+
+Matched current delta: baseline `8191bb5` and the reviewed candidate, actual PHP 8.5.10, CLI OPcache off, no Xdebug/PCOV, production/debug-off and bcrypt12. One identical factory user, separate in-memory databases/storage/keys, and verified source roots for every loaded application class. Both variants reference one identical production build; this is not a before/after asset benchmark. Each variant executes one cold and three warm GET/invalid-credential Livewire POST pairs through HTTP Kernel handle/terminate. All sixteen responses are 200 with the expected field error, cleared password and guest guard.
+
+| Metric | Baseline | Candidate |
+| --- | ---: | ---: |
+| GET SQL / HTML bytes | 0 / 26,116 | 0 / 26,182 |
+| Invalid update SQL / JSON bytes | 1 / 16,583 | 1 / 16,650 |
+| GET / update snapshot bytes | 385 / 473 | 385 / 473 |
+| Update request bytes | 651 | 651 |
+| Warm GET median ms [range] | 7.257 [6.944–7.404] | 6.815 [6.741–7.034] |
+| Warm invalid update median ms [range] | 254.456 [252.578–255.487] | 254.792 [254.002–254.835] |
+| Warm peak heap growth GET / update bytes | 676,360 / 699,024 | 682,656 / 705,320 |
+
+Cold GET/update samples are86.804/282.440 ms and52.218/264.821 ms respectively; they include first handling after fixture setup, not application bootstrap. These are uncompressed response bodies and PHP heap growth, not network transfer or RSS. Other checks run concurrently; the small sequential samples and retained noisier preliminary results do not establish acceleration. Passkeys are disabled by the unchanged production configuration in this fixture. Evidence: `/private/tmp/restaurant-p2-login-final-hfjyaxoq/REPORT.md` and raw JSON; candidate measured source digest `58a316ba0573c27ba7a56811b8fa75bc7f7ef435f08cae8c6b8a8e0278e99c56`.
+
+The later targeted passkey wrapping repair adds37 raw /9 gzip bytes to app SCSS; JS is2 raw bytes below the starting output. Existing five aggregate asset-budget failures remain failures; none of their ceilings are raised. Historical migration/capacity measurements below retain their original baseline and are not repeated measurements of this refresh.
+
 ## Application-controller migration — prompt2, 2026-09-16
 
 Three matched HTTP Kernel pairs compare clean `7ed78c69e9722a52fe41ffa25d916667f4957bf4` with source checkpoint `9448132dd88d52b0a9122db3816607440937d18dcff22f846a69c98e9b041802`. PHP8.5.10, production/debug-off, bcrypt12, no coverage/CLI OPcache, one identical factory user, owned memory SQLite/storage and real cookies/CSRF/signed Livewire requests are used. Reflection proves source selection after optimized classmap remapping. Both variants reference the same current build; this is not a baseline asset comparison or browser-network timing result.

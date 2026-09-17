@@ -7,8 +7,7 @@ use App\Enums\DataExportType;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemRole;
 use App\Livewire\Exports\Index as Exports;
-use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint;
-use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
 use App\Livewire\Superadmin\Dashboard;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -57,21 +56,23 @@ test('report downloads reject a different restaurant from their locked page cont
         ->call('downloadPdf', $other->id, DataExportType::Orders->value)->assertForbidden();
 });
 
-test('QR printing downloads a PDF without replacing permanent identity', function (string $componentClass): void {
-    $parameters = ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch];
-    if ($componentClass === PrintTemplate::class) {
-        $parameters += ['servicePoint' => $this->point, 'qrCode' => $this->qr];
+test('QR printing downloads a PDF without replacing permanent identity', function (int $selectionCount): void {
+    $ids = [$this->point->id];
+    if ($selectionCount === 2) {
+        $secondPoint = ServicePoint::factory()->for($this->branch)->create();
+        QrCode::factory()->for($secondPoint)->create(['status' => QrCodeStatus::Active]);
+        $ids[] = $secondPoint->id;
     }
-    $component = Livewire::actingAs($this->owner)->test($componentClass, $parameters);
-    if ($componentClass === BulkPrint::class) {
-        $component->set('selectedServicePointIds', [$this->point->id]);
-    }
-    $component->call('downloadPdf')->assertHasNoErrors()->assertFileDownloaded();
+    $identities = QrCode::query()->orderBy('id')->pluck('public_token', 'id')->all();
+    $component = Livewire::actingAs($this->owner)->test(PrintPanel::class, ['branchId' => $this->branch->id, 'ids' => $ids])
+        ->assertNoFileDownloaded()->call('preparePrint')->assertHasNoErrors()
+        ->call('downloadPdf')->assertHasNoErrors()->assertFileDownloaded(contentType: 'application/pdf');
 
     expect(base64_decode($component->effects['download']['content'], true))->toStartWith('%PDF-')
-        ->and(QrCode::query()->count())->toBe(1)
+        ->and(QrCode::query()->count())->toBe($selectionCount)
+        ->and(QrCode::query()->orderBy('id')->pluck('public_token', 'id')->all())->toBe($identities)
         ->and($this->qr->fresh()->public_token)->toBe($this->qr->public_token);
-})->with(['bulk' => [BulkPrint::class], 'single' => [PrintTemplate::class]]);
+})->with(['single' => [1], 'bulk' => [2]]);
 
 test('CSV preparation finishes database reads before its binary response', function (): void {
     $component = Livewire::actingAs($this->owner)->withQueryParams(['branch' => $this->branch->id])->test(Exports::class)

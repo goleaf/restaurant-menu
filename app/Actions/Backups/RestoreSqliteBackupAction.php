@@ -8,6 +8,7 @@ use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Exceptions\InvalidSqliteBackupException;
 use App\Models\DatabaseSessionRecord;
+use App\Models\McpAccessToken;
 use App\Models\User;
 use App\Support\SqliteRestoreRequestLock;
 use Illuminate\Cache\CacheManager;
@@ -116,6 +117,7 @@ final class RestoreSqliteBackupAction
 
             $this->database->connection($connectionName)->transaction(function () use ($actor, $reason, $safetyBackupPath, $connectionName): void {
                 User::on($connectionName)->newQuery()->update(['remember_token' => null]);
+                McpAccessToken::on($connectionName)->whereNull('revoked_at')->update(['revoked_at' => now()]);
 
                 $restoredActor = User::on($connectionName)
                     ->select(['id', 'email'])

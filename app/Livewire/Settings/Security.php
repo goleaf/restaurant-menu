@@ -13,7 +13,6 @@ use Exception;
 use Flux\Flux;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
@@ -34,11 +33,15 @@ class Security extends Component
 
     private PasskeyQueryService $passkeyQueries;
 
-    public string $current_password = '';
+    private string $qrCodeSvg = '';
 
-    public string $password = '';
+    private string $manualSetupKey = '';
 
-    public string $password_confirmation = '';
+    public mixed $current_password = '';
+
+    public mixed $password = '';
+
+    public mixed $password_confirmation = '';
 
     #[Locked]
     public bool $canManageTwoFactor;
@@ -49,18 +52,12 @@ class Security extends Component
     #[Locked]
     public bool $requiresConfirmation;
 
-    #[Locked]
-    public string $qrCodeSvg = '';
-
-    #[Locked]
-    public string $manualSetupKey = '';
-
     public bool $showModal = false;
 
     public bool $showVerificationStep = false;
 
     #[Validate('required|string|size:6', onUpdate: false)]
-    public string $code = '';
+    public mixed $code = '';
 
     #[Locked]
     public bool $canManagePasskeys;
@@ -118,18 +115,13 @@ class Security extends Component
     {
         try {
             $validated = $this->validate([
-                'current_password' => $this->currentPasswordRules(),
+                'current_password' => ['bail', ...$this->currentPasswordRules()],
                 'password' => $this->passwordRules(),
             ]);
-        } catch (ValidationException $e) {
+            $updatePassword->handle($this->authenticatedUser, $validated['password']);
+        } finally {
             $this->reset('current_password', 'password', 'password_confirmation');
-
-            throw $e;
         }
-
-        $updatePassword->handle($this->authenticatedUser, $validated['password']);
-
-        $this->reset('current_password', 'password', 'password_confirmation');
 
         Flux::toast(variant: 'success', text: __('ui.livewire.settings.security.password_updated'));
     }
@@ -208,8 +200,6 @@ class Security extends Component
             $this->twoFactorEnabled = $this->authenticatedUser->hasEnabledTwoFactorAuthentication();
         }
 
-        $this->loadSetupData();
-
         $this->showModal = true;
     }
 
@@ -224,7 +214,8 @@ class Security extends Component
         } catch (Exception) {
             $this->addError('setupData', __('ui.livewire.settings.security.failed_to_fetch_setup_data'));
 
-            $this->reset('qrCodeSvg', 'manualSetupKey');
+            $this->qrCodeSvg = '';
+            $this->manualSetupKey = '';
         }
     }
 
@@ -249,11 +240,13 @@ class Security extends Component
      */
     public function confirmTwoFactor(ConfirmTwoFactorAuthentication $confirmTwoFactorAuthentication): void
     {
-        abort_unless(Features::canManageTwoFactorAuthentication(), 403);
-
-        $this->validate();
-
-        $confirmTwoFactorAuthentication($this->authenticatedUser, $this->code);
+        try {
+            abort_unless(Features::canManageTwoFactorAuthentication(), 403);
+            $this->validate();
+            $confirmTwoFactorAuthentication($this->authenticatedUser, $this->code);
+        } finally {
+            $this->reset('code');
+        }
 
         $this->closeModal();
 
@@ -289,8 +282,6 @@ class Security extends Component
     {
         $this->reset(
             'code',
-            'manualSetupKey',
-            'qrCodeSvg',
             'showModal',
             'showVerificationStep',
         );
@@ -339,7 +330,22 @@ class Security extends Component
 
     public function render(): View
     {
-        return view('livewire.settings.security')
+        $this->qrCodeSvg = '';
+        $this->manualSetupKey = '';
+
+        if (Features::canManageTwoFactorAuthentication() && $this->showModal && ! $this->showVerificationStep) {
+            $this->loadSetupData();
+        }
+
+        return view('livewire.settings.security', [
+            'qrCodeSvg' => $this->qrCodeSvg,
+            'manualSetupKey' => $this->manualSetupKey,
+        ])
             ->title(__('ui.settings.security.security_settings'));
+    }
+
+    public function dehydrate(): void
+    {
+        $this->reset('current_password', 'password', 'password_confirmation', 'code');
     }
 }

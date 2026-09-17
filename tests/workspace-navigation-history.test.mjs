@@ -1,0 +1,290 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { workspaceNavigation } from '../resources/js/alpine/components/navigation-search.js';
+import { browser, Element, event } from './alpine-support.mjs';
+
+function historyWorkspace(t, native, configure = () => {}) {
+    const app = browser(t), entries = [{ url: 'https://menu.test/restaurant?branch=1', state: { alpine: { snapshotIdx: 'first' }, preserved: true } }];
+    let index = 0, shell;
+    const traversals = [], swaps = [];
+    app.window.location = { href: entries[0].url };
+    app.window.history = {
+        get state() { return entries[index].state; },
+        get length() { return entries.length; },
+        replaceState(state, unused, url = entries[index].url) { entries[index] = { state, url }; app.window.location.href = url; },
+        pushState(state, unused, url) {
+            entries.splice(index + 1);
+            entries.push({ state, url });
+            index++;
+            app.window.location.href = url;
+        },
+        go(delta) { const target = index + delta; traversals.push(delta); queueMicrotask(() => traverse(target - index)); },
+    };
+    if (native) app.window.navigation = { get currentEntry() { return { index }; } };
+    app.window.dispatchEvent = occurrence => {
+        const listeners = [...(app.window.listeners.get(occurrence.type) ?? [])].sort((a, b) => Number(Boolean(b.options.capture)) - Number(Boolean(a.options.capture)));
+        for (const listener of listeners) {
+            if (listener.options.signal?.aborted) continue;
+            listener.listener(occurrence);
+            if (occurrence.stopped) break;
+        }
+    };
+    function mount() { shell = app.component(workspaceNavigation); shell.init(); }
+    function push(url) {
+        shell.destroy();
+        app.window.history.pushState({ alpine: { ...entries[index].state?.alpine, snapshotIdx: url } }, '', url);
+        mount();
+    }
+    function traverse(delta) {
+        index += delta;
+        app.window.location.href = entries[index].url;
+        const pop = event({ type: 'popstate', state: entries[index].state });
+        app.window.dispatchEvent(pop);
+        if (!pop.stopped && entries[index].state?.alpine?.snapshotIdx) {
+            const navigation = event({ type: 'livewire:navigate', detail: { history: true, cached: true, url: new URL(entries[index].url) } });
+            app.document.dispatchEvent(navigation);
+            if (!navigation.prevented) swaps.push(entries[index].url);
+        }
+        return pop;
+    }
+    function hash(url, replace = false) {
+        const oldURL = app.window.location.href;
+        if (replace) entries[index] = { state: null, url };
+        else {
+            entries.splice(index + 1);
+            entries.push({ state: null, url });
+            index++;
+        }
+        app.window.location.href = url;
+        app.window.dispatchEvent(event({ type: 'popstate', state: null }));
+        app.window.dispatchEvent(event({ type: 'hashchange', oldURL, newURL: url }));
+    }
+    configure(app);
+    mount();
+    t.after(async () => { shell.destroy(); await Promise.resolve(); });
+    return { ...app, entries, traversals, swaps, push, traverse, hash, get shell() { return shell; } };
+}
+
+for (const native of [true, false]) {
+    test(`pending clean workspace restores multi-entry Back and Forward without replay (${native ? 'Navigation API' : 'history fallback'})`, async t => {
+        const app = historyWorkspace(t, native);
+        app.push('https://menu.test/restaurant?branch=2');
+        app.push('https://menu.test/restaurant?branch=3');
+        app.push('https://menu.test/restaurant?branch=4');
+        const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+        request.send();
+        app.traverse(-3);
+        await Promise.resolve();
+        assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=4');
+        assert.deepEqual(app.traversals, [3]);
+        assert.deepEqual(app.swaps, []);
+        assert.equal(app.shell.blocked, true);
+        request.finish();
+        await Promise.resolve();
+        assert.deepEqual(app.swaps, []);
+        app.traverse(-2);
+        assert.deepEqual(app.swaps, ['https://menu.test/restaurant?branch=2']);
+        const next = app.message({ el: new Element() }, [{ name: 'save' }]);
+        next.send();
+        app.traverse(2);
+        next.finish();
+        await Promise.resolve();
+        assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=2');
+        assert.deepEqual(app.traversals, [3, -2]);
+        assert.equal(app.swaps.length, 1);
+        assert.equal(app.shell.pending, 0);
+        app.traverse(2);
+        assert.equal(app.swaps.at(-1), 'https://menu.test/restaurant?branch=4');
+    });
+}
+
+test('pending history compensation prevents dirty guards from prompting but leaves clean traversal to them', async t => {
+    const app = historyWorkspace(t, true);
+    app.push('https://menu.test/restaurant?branch=2');
+    let dirtyGuardCalls = 0;
+    app.window.addEventListener('popstate', occurrence => { dirtyGuardCalls++; occurrence.stopImmediatePropagation(); }, { capture: true });
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    app.traverse(-1);
+    await Promise.resolve();
+    assert.equal(dirtyGuardCalls, 0);
+    request.finish();
+    app.traverse(-1);
+    assert.equal(dirtyGuardCalls, 1);
+    app.shell.destroy();
+    assert.equal(app.state.interceptors.size, 0);
+    assert.equal(app.document.listenerCount(), 0);
+    assert.equal(app.window.listenerCount(), 1);
+});
+
+test('fallback counts a proven native hash entry before another page and restores a multi-entry jump', async t => {
+    const app = historyWorkspace(t, false);
+    app.hash('https://menu.test/restaurant?branch=1#main-content');
+    assert.equal(app.window.history.state.alpine.snapshotIdx, 'first');
+    app.push('https://menu.test/restaurant?branch=2');
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    app.traverse(-2);
+    await Promise.resolve();
+    assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=2');
+    assert.deepEqual(app.traversals, [2]);
+    request.finish();
+});
+
+test('ambiguous native hash replacement starts a new segment and never guesses a cross-segment delta', async t => {
+    const app = historyWorkspace(t, false), departures = [];
+    app.window.location.assign = address => departures.push(address);
+    app.push('https://menu.test/restaurant?branch=2');
+    app.hash('https://menu.test/restaurant?branch=2#main-content', true);
+    app.push('https://menu.test/restaurant?branch=3');
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    app.traverse(-2);
+    await Promise.resolve();
+    assert.deepEqual(app.traversals, []);
+    assert.deepEqual(departures, ['https://menu.test/restaurant?branch=1']);
+    assert.deepEqual(app.swaps, []);
+    request.finish();
+    assert.equal(departures.length, 1);
+});
+
+test('a queued response callback cannot write history after its owning shell was destroyed', async t => {
+    const app = historyWorkspace(t, false);
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    app.shell.destroy();
+    const state = app.window.history.state;
+    request.finish();
+    await Promise.resolve();
+    assert.equal(app.window.history.state, state);
+    assert.equal(app.window.listenerCount(), 0);
+});
+
+test('fallback records real query pushes and replacements when branching from the middle of history', async t => {
+    const app = historyWorkspace(t, false);
+    app.push('https://menu.test/menu?section=main');
+    app.push('https://menu.test/restaurant?branch=3');
+    app.traverse(-1);
+    app.window.history.replaceState({ ...app.window.history.state, query: 'retained' }, '', 'https://menu.test/menu?section=main&search=coffee');
+    app.window.history.pushState({ alpine: { ...app.window.history.state.alpine, section: { value: 'photos' } } }, '', 'https://menu.test/menu?section=photos&search=coffee');
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    app.traverse(-2);
+    await Promise.resolve();
+    assert.equal(app.window.location.href, 'https://menu.test/menu?section=photos&search=coffee');
+    assert.deepEqual(app.traversals, [2]);
+    assert.equal(app.entries.length, 3);
+    assert.equal(app.entries[1].state.query, 'retained');
+    assert.deepEqual(app.entries[2].state.alpine.section, { value: 'photos' });
+    request.finish();
+    const address = app.window.location.href;
+    app.window.history.pushState({ ...app.window.history.state }, '', address);
+    const repeated = app.message({ el: new Element() }, [{ name: 'save' }]);
+    repeated.send();
+    app.traverse(-1);
+    await Promise.resolve();
+    assert.equal(app.window.location.href, address);
+    assert.deepEqual(app.traversals, [2, 1]);
+    repeated.finish();
+});
+
+test('native document departure prompts only while an operation is pending and cleanup releases owned resources', async t => {
+    const app = historyWorkspace(t, false);
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    const departure = event({ type: 'beforeunload' });
+    app.window.dispatchEvent(departure);
+    assert.equal(departure.prevented, true);
+    assert.equal(departure.returnValue, '');
+    request.finish();
+    const retry = event({ type: 'beforeunload' });
+    app.window.dispatchEvent(retry);
+    assert.equal(retry.prevented, false);
+    const push = app.window.history.pushState;
+    app.shell.destroy();
+    await Promise.resolve();
+    assert.notEqual(app.window.history.pushState, push);
+    assert.equal(app.window.listenerCount(), 0);
+    assert.equal(app.document.listenerCount(), 0);
+    assert.equal(app.state.interceptors.size, 0);
+});
+
+for (const native of [true, false]) {
+    test(`rapid traversal while compensation is queued does not enqueue competing jumps (${native})`, async t => {
+        const app = historyWorkspace(t, native);
+        app.push('https://menu.test/restaurant?branch=2');
+        app.push('https://menu.test/restaurant?branch=3');
+        const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+        request.send();
+        app.traverse(-1);
+        app.traverse(-1);
+        request.finish();
+        await Promise.resolve();
+        assert.deepEqual(app.traversals, [1]);
+        assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=3');
+        assert.equal(app.shell.returningToPosition, null);
+        assert.deepEqual(app.swaps, []);
+    });
+}
+
+for (const state of [null, {}]) {
+    test(`unknown cross-resource entries without a Livewire snapshot use native departure (${JSON.stringify(state)})`, async t => {
+        const app = historyWorkspace(t, false), departures = [];
+        app.entries[0].state = state;
+        app.window.location.assign = url => departures.push(url);
+        app.push('https://menu.test/restaurant?branch=2');
+        const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+        request.send();
+        app.traverse(-1);
+        await Promise.resolve();
+        assert.deepEqual(departures, ['https://menu.test/restaurant?branch=1']);
+        assert.deepEqual(app.swaps, []);
+        assert.deepEqual(app.traversals, []);
+        request.finish();
+        assert.equal(departures.length, 1);
+    });
+}
+
+test('history adapter preserves native receiver, arguments, return and errors without a second native write', async t => {
+    const calls = [], failure = new Error('native rejection');
+    const app = historyWorkspace(t, false, environment => {
+        const history = environment.window.history, original = history.pushState;
+        history.pushState = function (...args) {
+            calls.push({ receiver: this, args });
+            if (args[1] === 'reject') throw failure;
+            if (this === history) original.apply(this, args);
+            return 'native result';
+        };
+    });
+    const input = { alpine: { section: { value: 'details' } }, retained: true };
+    assert.equal(app.window.history.pushState(input, 'title', 'https://menu.test/restaurant?branch=2', 'extra'), 'native result');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].receiver, app.window.history);
+    assert.deepEqual(calls[0].args.slice(1), ['title', 'https://menu.test/restaurant?branch=2', 'extra']);
+    assert.deepEqual(input, { alpine: { section: { value: 'details' } }, retained: true });
+    assert.equal(app.window.history.state.retained, true);
+    const before = app.window.history.state;
+    assert.throws(() => app.window.history.pushState({}, 'reject', '/rejected'), error => error === failure);
+    assert.equal(app.window.history.state, before);
+    const receiver = {};
+    assert.equal(app.window.history.pushState.call(receiver, input, 'title', '/foreign'), 'native result');
+    assert.equal(calls.at(-1).receiver, receiver);
+    assert.equal(calls.at(-1).args[0], input);
+    app.window.history.pushState(['unsupported'], '', 'https://menu.test/array');
+    assert.deepEqual(app.window.history.state, ['unsupported']);
+    app.window.history.replaceState(null, '', 'https://menu.test/reset');
+    assert.equal(app.window.history.state.alpine.workspaceNavigation.position, 0);
+});
+
+test('teardown preserves a later owner wrapper and makes its retained delegate inactive', async t => {
+    const app = historyWorkspace(t, false), owned = app.window.history.pushState;
+    const later = function (...args) { return owned.apply(this, args); };
+    app.window.history.pushState = later;
+    app.shell.destroy();
+    await Promise.resolve();
+    assert.equal(app.window.history.pushState, later);
+    const input = { retained: true };
+    later.call(app.window.history, input, '', 'https://menu.test/after-destroy');
+    assert.equal(app.window.history.state, input);
+    assert.equal(app.window.listenerCount(), 0);
+});

@@ -164,6 +164,28 @@ test('real Livewire verification notice resends once and logs out through its ow
     expect($observations->safe)->toBeTrue();
 });
 
+test('feature-enabled passkey entry preserves the Livewire email form across locales and viewport sizes', function (): void {
+    $this->enableFortifyFeatures([Features::passkeys()]);
+    $page = visit(route('login', absolute: false));
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $page->navigate(route('login', ['lang' => $locale], false))
+            ->assertPresent('[x-data="passkeyVerification"]')
+            ->assertVisible('.rm-passkey-submit')
+            ->assertAttribute('html[lang]', 'lang', $locale)
+            ->assertVisible('form[wire\\:submit="login"]');
+        foreach ([320, 390, 768, 1024, 1440] as $width) {
+            authWorkflowResize($page, $width);
+            $page->assertScript('document.documentElement.scrollWidth <= innerWidth');
+        }
+        $page->script('document.documentElement.classList.add("dark")');
+        authWorkflowResize($page, 320);
+        $page->assertScript('document.documentElement.scrollWidth <= innerWidth')
+            ->screenshot(filename: 'auth-passkey-'.$locale.'-dark-320')
+            ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+    }
+});
+
 function authWorkflowResize(PendingAwaitablePage $page, int $width): void
 {
     $page->resize($width, 1000);

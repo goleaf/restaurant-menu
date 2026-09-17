@@ -13,11 +13,14 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use App\Services\Navigation\WorkspaceAccessQuery;
 use App\Services\Navigation\WorkspaceContextResolver;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleComponents\Checksum;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -43,6 +46,80 @@ function workspaceRequest(string $route, array $parameters = [], array $query = 
 
     return $request;
 }
+
+test('non restaurant route modes cannot be replaced by query identifiers or a page destination', function (string $route, string $mode): void {
+    $preference = ['actor' => $this->actor->id, 'branch' => $this->branch->id, 'destination' => 'menu'];
+    session()->put('workspace.preference', $preference);
+    $resolver = app(WorkspaceContextResolver::class);
+    $foreign = Branch::factory()->create();
+
+    foreach ([$this->branch->id, $foreign->id, ['invalid']] as $branch) {
+        foreach ([null, 'overview'] as $pageDestination) {
+            $request = workspaceRequest($route, query: ['branch' => $branch, 'department' => ['invalid']]);
+            $context = $resolver->resolve($this->actor, $request, pageDestination: $pageDestination);
+
+            expect($context->mode)->toBe($mode)
+                ->and($context->branchId)->toBeNull()
+                ->and($context->organizationId)->toBeNull()
+                ->and($context->brandId)->toBeNull();
+        }
+    }
+
+    expect(session('workspace.preference'))->toBe($preference);
+})->with([
+    ['profile.edit', 'none'],
+    ['restaurants.index', 'structure'],
+    ['superadmin.dashboard', 'platform'],
+]);
+
+test('non restaurant routes reject unsupported workspace scopes before considering query identifiers', function (string $route, mixed $scope, int $status): void {
+    $request = workspaceRequest($route, query: ['branch' => $this->branch->id, 'workspace' => $scope]);
+
+    expect(fn () => app(WorkspaceContextResolver::class)->resolve($this->actor, $request, pageDestination: 'overview'))
+        ->toThrow(fn (HttpException $exception) => expect($exception->getStatusCode())->toBe($status));
+})->with(['profile.edit', 'restaurants.index', 'superadmin.dashboard'])
+    ->with([
+        ['all', 403],
+        ['invalid', 422],
+        [['all'], 422],
+    ]);
+
+test('an explicit page destination still resolves synthetic component requests', function (bool $matched): void {
+    $request = Request::create('/synthetic-workspace', 'GET', ['branch' => $this->branch->id]);
+    if ($matched) {
+        $route = new Route(['GET'], 'synthetic-workspace', fn () => null);
+        $route->bind($request);
+        $request->setRouteResolver(fn () => $route);
+    }
+    $resolver = app(WorkspaceContextResolver::class);
+    $context = $resolver->resolve($this->actor, $request, pageDestination: 'reports');
+
+    expect($context->mode)->toBe('restaurant')->and($context->branchId)->toBe($this->branch->id)
+        ->and($context->destination)->toBe('reports');
+
+    $request->query->remove('branch');
+    $request->query->set('workspace', 'all');
+    $context = $resolver->resolve($this->actor, $request, pageDestination: 'reports');
+
+    expect($context->mode)->toBe('aggregate')->and($context->branchId)->toBeNull();
+})->with([false, true]);
+
+test('a waiter object determines its restaurant and rejects a conflicting query before preference fallback', function (bool $bound): void {
+    $other = Branch::factory()->for($this->organization)->for($this->brand)->create();
+    $point = ServicePoint::factory()->for($this->branch)->create();
+    $session = TableSession::factory()->forServicePoint($point)->create();
+    session()->put('workspace.preference', ['actor' => $this->actor->id, 'branch' => $other->id, 'destination' => 'menu']);
+    $request = workspaceRequest('restaurant.waiter.tables.show', ['tableSession' => $bound ? $session : (string) $session->id]);
+    $resolver = app(WorkspaceContextResolver::class);
+    $context = $resolver->resolve($this->actor, $request);
+
+    expect($context->mode)->toBe('restaurant')->and($context->branchId)->toBe($this->branch->id)
+        ->and($context->destination)->toBe('waiter');
+
+    $request->query->set('branch', $other->id);
+    expect(fn () => $resolver->resolve($this->actor, $request))
+        ->toThrow(fn (HttpException $exception) => expect($exception->getStatusCode())->toBe(409));
+})->with([false, true]);
 
 test('a route bound restaurant wins over the last preference and rejects conflicting input', function () {
     $other = Branch::factory()->for($this->organization)->for($this->brand)->create();

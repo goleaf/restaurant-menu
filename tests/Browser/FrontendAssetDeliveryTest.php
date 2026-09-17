@@ -52,7 +52,7 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
         [$fixture['dashboardUrl'], '[data-workspace-navigation]', null],
         [$fixture['menuUrl'], '[data-page="branch-menu"]', 'menu'],
         [$fixture['staffUrl'], '[data-staff-workspace]', 'staff'],
-        [route('organizations.index', absolute: false), '[data-page="organizations"]', null],
+        [route('restaurants.index', absolute: false), '[data-page="restaurant-center"]', null],
         [$fixture['menuUrl'].'?section=variants', '[data-page="branch-menu"]', 'menu'],
         [$fixture['staffUrl'], '[data-staff-workspace]', 'staff'],
         [$fixture['menuUrl'], '[data-page="branch-menu"]', 'menu'],
@@ -100,15 +100,15 @@ test('online pages never show offline warnings after loads reloads navigation an
     frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     frontendAssertOnlineWithoutWarning($page);
 
-    frontendAssetNavigate($page, route('organizations.index', absolute: false));
+    frontendAssetNavigate($page, route('restaurants.index', absolute: false));
     frontendAssertOnlineWithoutWarning($page);
     $page->refresh();
     frontendAssertOnlineWithoutWarning($page);
     frontendObserveRequests($page);
-    $page->fill('input[name="search"]', 'Asset Delivery');
+    $page->fill('input[name="filters.search"]', 'Asset Delivery');
     $page->assertScript(<<<'JAVASCRIPT'
         window.frontendRequests.some(request => request.status === 200
-            && JSON.parse(request.body).components.some(component => component.updates.search === 'Asset Delivery'))
+            && JSON.parse(request.body).components.some(component => component.updates['filters.search'] === 'Asset Delivery'))
         JAVASCRIPT);
     frontendAssertOnlineWithoutWarning($page);
 
@@ -146,8 +146,8 @@ test('cached history restores current connectivity instead of stale offline noti
     $fixture = frontendAssetFixture();
     $page = visit(route('login', absolute: false));
     frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
-    $organizations = route('organizations.index', absolute: false);
-    frontendAssetNavigate($page, $organizations);
+    $restaurantCenter = route('restaurants.index', absolute: false);
+    frontendAssetNavigate($page, $restaurantCenter);
     $notice = '[data-staff-workspace] > [wire\\:offline]';
 
     $context = $page->page()->context();
@@ -168,7 +168,7 @@ test('cached history restores current connectivity instead of stale offline noti
             $page->assertScript('navigator.onLine', false)->assertVisible($notice)
                 ->assertVisible('[x-data="connectivity"]');
             $page->script('history.back()');
-            $page->assertPathIs($organizations);
+            $page->assertPathIs($restaurantCenter);
             $setOffline(false);
             frontendAssertOnlineWithoutWarning($page);
             $page->script('history.forward()');
@@ -176,15 +176,15 @@ test('cached history restores current connectivity instead of stale offline noti
             frontendAssertOnlineWithoutWarning($page);
 
             $page->script('history.back()');
-            $page->assertPathIs($organizations);
+            $page->assertPathIs($restaurantCenter);
             $setOffline(true);
-            $page->assertDisabled('input[name="search"]');
+            $page->assertDisabled('[data-workspace-restaurant] button[type="submit"]');
             $page->script('history.forward()');
             $page->assertPathIs($fixture['staffUrl'])->assertVisible($notice);
             $setOffline(false);
             frontendAssertOnlineWithoutWarning($page);
             $page->script('history.back()');
-            $page->assertPathIs($organizations)->assertEnabled('input[name="search"]');
+            $page->assertPathIs($restaurantCenter)->assertEnabled('[data-workspace-restaurant] button[type="submit"]');
             frontendAssertOnlineWithoutWarning($page);
         }
         $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
@@ -781,7 +781,7 @@ function frontendObserveLifecycle(PendingAwaitablePage $page): void
 
 function frontendCaptureWorkspace(PendingAwaitablePage $page): void
 {
-    $page->script('(() => { const previousEditor = document.querySelector("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard]"); window.frontendLifecycle.previous = previousEditor ? Alpine.$data(previousEditor) : null; window.frontendLifecycle.previousShell = Alpine.$data(document.querySelector("[data-workspace-navigation]")); })();');
+    $page->script('(() => { const previousEditor = document.querySelector("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard], [data-page=restaurant-center]"); window.frontendLifecycle.previous = previousEditor ? Alpine.$data(previousEditor) : null; window.frontendLifecycle.previousShell = Alpine.$data(document.querySelector("[data-workspace-navigation]")); })();');
 }
 
 function frontendAssertDisposedWorkspace(PendingAwaitablePage $page): void
@@ -795,7 +795,7 @@ function frontendAssertLifecycle(PendingAwaitablePage $page, string $url): void
     frontendAssertDisposedWorkspace($page);
     $page->assertScript('window.frontendLifecycle.alpine === Alpine && window.frontendLifecycle.livewire === Livewire')
         ->assertScript('window.frontendLifecycle.alpineInitializations', 0)
-        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard], [data-workspace-navigation]").length');
+        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard], [data-page=restaurant-center], [data-workspace-navigation]").length');
     $key = json_encode($url, JSON_THROW_ON_ERROR);
     $page->assertScript("(() => {
         const probe = window.frontendLifecycle;

@@ -22,7 +22,10 @@ class ProtectInvitationResponses
 
     public static function protect(Request $request, Response $response): Response
     {
-        if ($request->hasHeader('X-Livewire') || $request->is(
+        if ($request->hasHeader('X-Livewire') || $request->routeIs(
+            'login', 'login.store', 'logout', 'password.*', 'two-factor.login',
+            'two-factor.login.store', 'verification.*', 'invitations.*', 'demo-login.*',
+        ) || $request->is(
             'invite', 'invite/*', 'login', 'demo-login', 'demo-login/*',
             'local-login/*', 'forgot-password', 'reset-password', 'reset-password/*',
             'two-factor-challenge', 'user/confirm-password', 'email/verify',

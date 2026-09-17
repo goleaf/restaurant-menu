@@ -90,10 +90,11 @@ test('password can be updated', function () {
     $this->actingAs($user);
 
     $response = Livewire::test(Security::class)
-        ->set('current_password', 'password')
-        ->set('password', 'new-password')
-        ->set('password_confirmation', 'new-password')
-        ->call('updatePassword');
+        ->update(calls: [['method' => 'updatePassword', 'params' => [], 'path' => '']], updates: [
+            'current_password' => 'password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
 
     $response->assertHasNoErrors();
 
@@ -108,10 +109,11 @@ test('correct password must be provided to update password', function () {
     $this->actingAs($user);
 
     $response = Livewire::test(Security::class)
-        ->set('current_password', 'wrong-password')
-        ->set('password', 'new-password')
-        ->set('password_confirmation', 'new-password')
-        ->call('updatePassword');
+        ->update(calls: [['method' => 'updatePassword', 'params' => [], 'path' => '']], updates: [
+            'current_password' => 'wrong-password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
 
     $response->assertHasErrors(['current_password']);
 });
@@ -165,8 +167,7 @@ test('enabled two factor authentication can be configured confirmed and disabled
     $secret = decrypt($user->refresh()->two_factor_secret);
     $code = app(Google2FA::class)->getCurrentOtp($secret);
 
-    $component->set('code', $code)
-        ->call('confirmTwoFactor')
+    $component->update(calls: [['method' => 'confirmTwoFactor', 'params' => [], 'path' => '']], updates: ['code' => $code])
         ->assertHasNoErrors()
         ->assertSet('twoFactorEnabled', true);
 
@@ -205,13 +206,17 @@ test('enabled recovery codes can be displayed and regenerated', function () {
     $user = User::factory()->withTwoFactor()->create();
     $oldCodes = $user->two_factor_recovery_codes;
 
-    Livewire::actingAs($user)->test(RecoveryCodes::class)
-        ->assertSet('recoveryCodes', ['recovery-code-1'])
+    $component = Livewire::actingAs($user)->test(RecoveryCodes::class)
+        ->assertSee('recovery-code-1')
         ->call('regenerateRecoveryCodes')
         ->assertHasNoErrors()
-        ->assertSet('recoveryCodes', fn (array $codes): bool => count($codes) === 8 && ! in_array('recovery-code-1', $codes, true));
+        ->assertDontSee('recovery-code-1');
 
     expect($user->refresh()->two_factor_recovery_codes)->not->toBe($oldCodes);
+    expect($user->recoveryCodes())->toHaveCount(8)->not->toContain('recovery-code-1');
+    foreach ($user->recoveryCodes() as $code) {
+        $component->assertSee($code);
+    }
 });
 
 test('recovery codes require configured two factor authentication', function () {

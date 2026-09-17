@@ -8,7 +8,7 @@ Historical external roadmap snapshot from 2026-09-14; its links and statuses are
 
 ## Current state
 
-The restarted series has 14 sequential prompts. Prompt 1 verifies the technology foundation and isolated PHP 8.6 compatibility; its stable verification is accepted while the PHP 8.6 application matrix remains blocked in the local implementation plan. Prompt 2 owns the existing application-controller migration to class-based Livewire and justified transport exceptions. Prompts 3–14 own separately scoped interface changes; their implementation is not implied by this platform work.
+The restarted series has 14 sequential prompts. Prompt 1 verifies the technology foundation and isolated PHP 8.6 compatibility; its current combined-source acceptance is incomplete and the PHP 8.6 application matrix remains blocked in the local implementation plan. Historical successful checkpoints do not certify the present source. Prompt 2 owns the existing application-controller migration to class-based Livewire and justified transport exceptions. Prompts 3–14 own separately scoped interface changes; their implementation is not implied by this platform work.
 
 The accepted Flux Pro extension (`ui-flux-pro-001`) is active after the modernization baseline below. Its local package is installed and its complete original source inventory is preserved. Current P0–P18 status is maintained in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). JavaScript and workflow acceptance precede the clean-release gates and removal of the original root source.
 

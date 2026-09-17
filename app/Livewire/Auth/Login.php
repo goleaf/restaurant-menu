@@ -54,6 +54,7 @@ final class Login extends Component
             'sessionStatus' => session('status'),
             'localDirectoryAvailable' => $localDirectoryAvailable,
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canUsePasskeys' => Features::canManagePasskeys(),
         ])->layout('layouts.auth.simple', ['title' => __('ui.auth.login.log_in'), 'directory' => $localDirectoryAvailable]);
     }
 }

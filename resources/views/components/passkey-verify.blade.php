@@ -15,7 +15,7 @@
                 <flux:button
                     variant="outline"
                     icon="finger-print"
-                    class="w-full"
+                    class="w-full rm-passkey-submit"
                     x-on:click="verify()"
                     x-bind:disabled="loading"
                 >

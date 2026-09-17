@@ -30,10 +30,20 @@ test('the restaurant address heading navigation and edited resource stay togethe
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
         ->assertPathIs(route('dashboard', absolute: false))
         ->navigate(route('organizations.brands.branches.menu.index', [$first->organization_id, $first->brand_id, $first->id], false))->resize(1440, 1000);
-    $page->assertSee($first->name)->assertAttribute('[data-navigation-key="menu"]', 'aria-current', 'page');
+    $page->assertSee($first->name)->assertAttribute('[data-navigation-key="menu"]', 'aria-current', 'page')
+        ->assertVisible('[data-page="branch-menu"]')
+        ->screenshot(false, 'workspace-task-menu');
     $page->click('[data-navigation-key="halls"]')
-        ->assertPathIs(route('organizations.brands.branches.areas.index', [$first->organization_id, $first->brand_id, $first->id], false));
-    $page->click('[data-navigation-key="team"]');
+        ->assertPathIs(route('organizations.brands.branches.service-points.index', [$first->organization_id, $first->brand_id, $first->id], false))
+        ->assertSee($first->name)
+        ->assertVisible('[data-page="branch-service-points"]')
+        ->assertAttribute('[data-navigation-key="halls"]', 'aria-current', 'page')
+        ->screenshot(false, 'workspace-task-floor');
+    $page->click('[data-navigation-key="team"]')
+        ->assertPathIs(route('organizations.brands.branches.staff.index', [$first->organization_id, $first->brand_id, $first->id], false))
+        ->assertSee($first->name)
+        ->assertAttribute('[data-navigation-key="team"]', 'aria-current', 'page')
+        ->screenshot(false, 'workspace-task-team');
     $page->assertNoJavaScriptErrors();
     $page->click('.workspace-restaurant__trigger');
     $page->assertVisible('dialog[data-modal="workspace-restaurant"]')

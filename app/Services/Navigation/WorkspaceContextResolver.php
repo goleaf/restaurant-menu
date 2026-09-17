@@ -23,6 +23,21 @@ final class WorkspaceContextResolver
         $destination = $pageDestination ?? $this->destination($request);
         $route = $request->route();
         $branch = $route?->parameter('branch');
+        $scope = $request->query('workspace');
+        abort_if($scope !== null && $scope !== 'all', 422);
+        $mode = match (true) {
+            $request->routeIs('superadmin.*', 'local.components') => 'platform',
+            $request->routeIs('organizations.*', 'onboarding.*', 'restaurants.*')
+                && ! ($request->routeIs('organizations.brands.branches.*') && $branch !== null) => 'structure',
+            ! $request->routeIs('dashboard', 'restaurant.*', 'organizations.brands.branches.*')
+                && ($pageDestination === null || $route?->getName() !== null) => 'none',
+            default => null,
+        };
+        if ($mode !== null) {
+            abort_if($scope === 'all', 403);
+
+            return new WorkspaceContext($user->id, $mode, $destination);
+        }
         $routeId = $branch instanceof Branch ? $branch->id : $this->identifier($branch);
         $object = $route?->parameter('tableSession') ?? $route?->parameter('servicePoint');
         $objectId = $object instanceof TableSession || $object instanceof ServicePoint ? $object->branch_id : null;
@@ -43,8 +58,6 @@ final class WorkspaceContextResolver
         $ids = array_values(array_unique(array_filter([$objectId, $routeId, $queryId], fn ($id) => $id !== null)));
         abort_if(count($ids) > 1, 409);
         $access = $destinations ?? $this->access->destinations($user);
-        $scope = $request->query('workspace');
-        abort_if($scope !== null && $scope !== 'all', 422);
         if ($scope === 'all') {
             abort_if($ids !== [], 409);
             abort_unless($pageDestination !== null || $request->routeIs('dashboard', 'restaurant.dashboard', 'restaurant.exports.index', 'restaurant.audit-log.index'), 403);
@@ -61,15 +74,6 @@ final class WorkspaceContextResolver
             }
 
             return $this->restaurant($user, $selected, $destination);
-        }
-        if ($request->routeIs('superadmin.*', 'local.components')) {
-            return new WorkspaceContext($user->id, 'platform', $destination);
-        }
-        if ($request->routeIs('organizations.*', 'onboarding.*', 'restaurants.*')) {
-            return new WorkspaceContext($user->id, 'structure', $destination);
-        }
-        if ($pageDestination === null && ! $request->routeIs('dashboard', 'restaurant.*')) {
-            return new WorkspaceContext($user->id, 'none', $destination);
         }
         if ($request->routeIs('restaurant.qr-lookup.*')) {
             return new WorkspaceContext($user->id, 'aggregate', 'halls');

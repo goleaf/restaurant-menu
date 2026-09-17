@@ -11,7 +11,7 @@
         <div class="flex flex-wrap items-center gap-2">
             <flux:button
                 icon="arrow-left"
-                :href="$print['department']['type'] === 'bar' ? route('restaurant.bar.dashboard') : route('restaurant.kitchen.dashboard')"
+                :href="route($print['department']['type'] === 'bar' ? 'restaurant.bar.dashboard' : 'restaurant.kitchen.dashboard', ['branch' => $print['branch']['id'], 'department' => $print['department']['id']])"
                 wire:navigate
             >
                 {{ __('ui.departments.ticket_print.back') }}

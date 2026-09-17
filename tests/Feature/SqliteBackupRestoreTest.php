@@ -5,14 +5,20 @@ declare(strict_types=1);
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Backups\CreateConsistentSqliteBackupAction;
 use App\Actions\Backups\RestoreSqliteBackupAction;
+use App\Actions\Mcp\IssueMcpAccessTokenAction;
+use App\Actions\Mcp\RevokeMcpAccessTokenAction;
 use App\Enums\SystemRole;
 use App\Exceptions\InvalidSqliteBackupException;
 use App\Livewire\Superadmin\Backups\RestoreSqlite;
+use App\Mcp\McpAccess;
 use App\Models\AuditLog;
+use App\Models\Branch;
+use App\Models\McpAccessToken;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\SqliteRestoreRequestLock;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Filesystem\FilesystemManager;
@@ -242,7 +248,15 @@ test('the protected restore endpoint restores sqlite and signs every session out
             ->firstOrFail();
         $superadmin->roles()->syncWithoutDetachingOrFail([$role->id]);
 
+        $branch = Branch::factory()->create();
+        $issued = app(IssueMcpAccessTokenAction::class)->handle($superadmin, $branch, 'Restore credential regression', ['branch_context']);
+        $activeToken = McpAccessToken::factory()->for($superadmin)->for($branch)->create();
+        $expiredToken = McpAccessToken::factory()->for($superadmin)->for($branch)->expired()->create();
+        $previouslyRevokedToken = McpAccessToken::factory()->for($superadmin)->for($branch)->revoked()->create(['revoked_at' => now()->subHour()]);
+        expect(app(McpAccess::class)->resolve($issued->record->id)->token->id)->toBe($issued->record->id);
         $sourceBackup = app(CreateConsistentSqliteBackupAction::class)->handle();
+        app(RevokeMcpAccessTokenAction::class)->handle($superadmin, $issued->record->id);
+        expect(fn () => app(McpAccess::class)->resolve($issued->record->id))->toThrow(AuthenticationException::class);
 
         User::on($sandbox['connection'])
             ->whereKey($superadmin->id)
@@ -284,7 +298,13 @@ test('the protected restore endpoint restores sqlite and signs every session out
                 'initiated_by_user_id' => $superadmin->id,
                 'reason' => 'HTTP disaster recovery verification',
             ])
-            ->and($safetyBackupPath)->toBeFile();
+            ->and($safetyBackupPath)->toBeFile()
+            ->and(McpAccessToken::on($sandbox['connection'])->usable()->where('token_hash', hash('sha256', $issued->plainTextToken))->exists())->toBeFalse()
+            ->and(McpAccessToken::on($sandbox['connection'])->whereNull('revoked_at')->count())->toBe(0)
+            ->and($activeToken->fresh()->revoked_at)->not->toBeNull()
+            ->and($expiredToken->fresh()->revoked_at)->not->toBeNull()
+            ->and($previouslyRevokedToken->fresh()->revoked_at->equalTo($previouslyRevokedToken->revoked_at))->toBeTrue();
+        expect(fn () => app(McpAccess::class)->resolve($issued->record->id))->toThrow(AuthenticationException::class);
     } finally {
         config()->set('database.default', $originalDefault);
         DB::purge($sandbox['connection']);
@@ -320,16 +340,24 @@ test('a restore failure after replacement automatically rolls the live database 
         $restoredUser = User::factory()
             ->connection($sandbox['connection'])
             ->create(['name' => 'Older backup state']);
+        $token = McpAccessToken::factory()->for($restoredUser)->create();
         $sourceBackup = app(CreateConsistentSqliteBackupAction::class)->handle();
+        $revokedAt = now()->subMinute()->startOfSecond();
+        $token->forceFill(['revoked_at' => $revokedAt])->saveOrFail();
+        $liveToken = McpAccessToken::factory()->for($restoredUser)->for($token->branch)->create();
 
         User::on($sandbox['connection'])
             ->whereKey($restoredUser->id)
             ->update(['name' => 'Current live state']);
 
+        $restoredTokensWereRevoked = false;
         $auditLog = Mockery::mock(RecordAuditLogAction::class);
         $auditLog->shouldReceive('handle')
             ->once()
-            ->andThrow(new RuntimeException('Simulated post-replacement failure.'));
+            ->andReturnUsing(function () use ($sandbox, &$restoredTokensWereRevoked): never {
+                $restoredTokensWereRevoked = McpAccessToken::on($sandbox['connection'])->whereNull('revoked_at')->doesntExist();
+                throw new RuntimeException('Simulated post-replacement failure.');
+            });
         app()->instance(RecordAuditLogAction::class, $auditLog);
 
         $actor = User::factory()->make([
@@ -347,7 +375,11 @@ test('a restore failure after replacement automatically rolls the live database 
 
         expect(User::on($sandbox['connection'])->findOrFail($restoredUser->id)->name)
             ->toBe('Current live state')
-            ->and(app(MaintenanceMode::class)->active())->toBeFalse();
+            ->and(app(MaintenanceMode::class)->active())->toBeFalse()
+            ->and(app(SqliteRestoreRequestLock::class)->requiresRecovery())->toBeFalse()
+            ->and($restoredTokensWereRevoked)->toBeTrue()
+            ->and($token->fresh()->revoked_at->equalTo($revokedAt))->toBeTrue()
+            ->and($liveToken->fresh()->revoked_at)->toBeNull();
     } finally {
         app()->forgetInstance(RecordAuditLogAction::class);
         config()->set('database.default', $originalDefault);

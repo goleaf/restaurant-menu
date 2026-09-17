@@ -47,10 +47,32 @@ test('one dish card retains its main draft through sections and history then sav
         ->assertVisible('[data-dish-section="photos"]')->assertMissing('[data-dish-section="main"]')
         ->assertMissing('dialog[data-modal="menu-workspace-unsaved"]');
     expect($this->dish->fresh()->name)->toBe('Garden vegetable soup');
+    $page->script(<<<'JS'
+        window.dishHistoryResponseReady = false;
+        window.dishHistoryOriginalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const querySync = typeof args[1]?.body === 'string' && JSON.parse(args[1].body).components?.some(component =>
+                JSON.parse(component.snapshot).memo.name === 'organizations.brands.branches.menu.dish'
+                && component.updates.section === 'main'
+                && component.calls.every(call => call.method === '$set'));
+            const response = await window.dishHistoryOriginalFetch(...args);
+            if (querySync && !window.dishHistoryResponseReady) {
+                window.dishHistoryResponseReady = true;
+                await new Promise(resolve => { window.releaseDishHistoryResponse = resolve; });
+            }
+            return response;
+        };
+        void 0;
+        JS);
     $page->script('window.history.back()');
     $page->assertVisible('[data-dish-section="main"]')->assertValue($name, 'Garden soup from one card');
-    $page->script('window.history.forward()');
-    $page->assertVisible('[data-dish-section="photos"]')->assertQueryStringHas('section', 'photos');
+    $page->assertScript('window.dishHistoryResponseReady === true');
+    try {
+        $page->script('window.history.forward()');
+        $page->assertVisible('[data-dish-section="photos"]')->assertQueryStringHas('section', 'photos');
+    } finally {
+        $page->script('window.releaseDishHistoryResponse?.(); window.fetch = window.dishHistoryOriginalFetch; void 0;');
+    }
     $page->click('[data-menu-section="main"]')->assertVisible('[data-dish-section="main"]')
         ->assertValue($name, 'Garden soup from one card');
     $page->assertAttribute($prefix.'-tab-en', 'aria-selected', 'true')->assertMissing($prefix.'-panel-ru')

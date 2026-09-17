@@ -1679,7 +1679,7 @@
     "ui.components.passkey_registration.registering": "Регистрация...",
     "ui.components.passkey_verify.authenticating": "Аутентификация...",
     "ui.components.passkey_verify.or_continue_with_email": "Или продолжить по электронной почте",
-    "ui.components.passkey_verify.sign_in_with_a_passkey": "Войти с помощью пароля",
+    "ui.components.passkey_verify.sign_in_with_a_passkey": "Войти с помощью ключа доступа",
     "ui.components.settings.layout.appearance": "Внешний вид",
     "ui.components.settings.layout.security": "Безопасность",
     "ui.confirmations.cancel_invitation.description": "Ссылка и код приглашения перестанут работать, восстановить их будет нельзя.",

@@ -53,6 +53,30 @@ function workspaceBoundaryCall(string $snapshot, string $method, array $paramete
     ]]];
 }
 
+test('non restaurant HTTP pages keep their signed context and do not remember an injected restaurant', function (string $route, string $mode): void {
+    if ($mode === 'platform') {
+        $role = Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail();
+        $this->actor->roles()->syncWithoutDetachingOrFail([$role->id]);
+    }
+    $preference = ['actor' => $this->actor->id, 'branch' => $this->branch->id, 'destination' => 'menu'];
+    $this->withSession(['workspace.preference' => $preference]);
+    $snapshot = workspaceBoundarySnapshot(
+        $this->actingAs($this->actor)->get(route($route, ['branch' => $this->branch->id])),
+        'workspace.restaurant-switcher',
+    );
+    $state = json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR)['data'];
+
+    expect($state['mode'])->toBe($mode)->and($state['branchId'])->toBeNull();
+
+    $this->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, 'remember'), ['X-Livewire' => ''])
+        ->assertOk();
+    expect(session('workspace.preference'))->toBe($preference);
+})->with([
+    ['profile.edit', 'none'],
+    ['restaurants.index', 'structure'],
+    ['superadmin.dashboard', 'platform'],
+]);
+
 test('a signed ordinary workspace snapshot rejects a different authorized actor before its action', function (string $screen): void {
     $secondActor = User::factory()->create();
     OrganizationUser::factory()->forOrganization($this->branch->organization)

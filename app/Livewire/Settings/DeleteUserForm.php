@@ -13,26 +13,35 @@ class DeleteUserForm extends Component
 {
     use PasswordValidationRules;
 
-    public string $password = '';
+    public mixed $password = '';
 
     /**
      * Delete the currently authenticated user.
      */
     public function deleteUser(Logout $logout, DeleteUserAction $deleteUser): void
     {
-        $this->validate([
-            'password' => $this->currentPasswordRules(),
-        ]);
+        try {
+            $this->validate([
+                'password' => ['bail', ...$this->currentPasswordRules()],
+            ]);
 
-        $user = Auth::user();
+            $user = Auth::user();
 
-        if (! $user instanceof User) {
-            abort(401);
+            if (! $user instanceof User) {
+                abort(401);
+            }
+
+            $logout();
+            $deleteUser->handle($user);
+
+            $this->redirect('/', navigate: false);
+        } finally {
+            $this->reset('password');
         }
+    }
 
-        $logout();
-        $deleteUser->handle($user);
-
-        $this->redirect('/', navigate: true);
+    public function dehydrate(): void
+    {
+        $this->reset('password');
     }
 }

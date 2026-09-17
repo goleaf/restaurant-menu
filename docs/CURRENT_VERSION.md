@@ -4,6 +4,14 @@
 
 # Current version baseline
 
+Current execution stage is the Prompt 3 workspace refresh on `8191bb5`, preserving forty pre-existing Prompt 2 paths. Dependencies and production selection remain unchanged. The current execution ledger is PROGRESS.md; previous accepted snapshots do not certify this combined worktree.
+
+## Prompt 3 runtime recheck — 2026-09-17
+
+Fresh isolated probes confirm stable PHP 8.5.10 and experimental PHP 8.6.0beta3 with Composer 2.10.3. Both manifest validations pass; only 8.5 passes the real installed and lock platform requirements. PHP 8.6 remains rejected by the root range, Nette Schema 1.3.6, Nette Utils 4.1.5, Sabberworm PHP CSS Parser 9.4.0 and ParaTest 7.20.0. Required extensions are present. Composer's MB_ONIGURUMA_VERSION deprecation is recorded, not hidden. No application/browser execution on 8.6 is claimed and neither requirement bypass nor production promotion is used. The [official PHP archive](https://www.php.net/archive/2026.php), checked 17 September, still identifies Beta 3 as a test release unsuitable for production.
+
+Evidence: `restaurant-p3-refresh-s_upxwy8/runtime-preflight-YGLHpO/summary.json` and command logs. Manifest, lock and installed metadata hashes remain unchanged.
+
 ## Current Prompt 1 refresh — 2026-09-17
 
 This section supersedes earlier dated runtime observations below. The current checkout starts at `98cc5af` with 352 pre-existing changed paths; earlier prompt results are historical evidence for their recorded snapshots, not acceptance of this combined worktree.
@@ -74,11 +82,15 @@ Available experimental PHP is8.6.0beta2. The fresh isolated verify-migration pre
 
 Final stable acceptance records candidate 3,755 backend tests, 46 browser cases and 94.1% PHP coverage; shared integration 3,903 backend / 60 browser cases. The browser responder is PHP 8.5.10, distinct from the measured Herd FPM 8.5.8. All final changed-browser PHP files also pass the actual 8.6.0beta2 syntax follow-up; the application platform blocker remains unchanged.
 
-## Controller migration prompt2 — current verification in progress
+## Controller migration Prompt 2 refresh — 2026-09-17 (acceptance incomplete)
 
-The installed stack is unchanged from the accepted prompt3 baseline. Current focused backend checks, full Larastan and202 JavaScript tests (100% line coverage) pass; production build passes. The actual browser HTTP runtime probe reports PHP8.5.10 `/opt/homebrew/Cellar/php/8.5.10/bin/php` (Pest responder, CLI SAPI), not the Herd PHP-FPM process. Final aggregate/browser results remain pending in PROGRESS.md. Both browser MCP tools now successfully navigate and inspect the Herd login page with an isolated context; the earlier TLS failure is historical. Boost currently returns `Invalid JSON output`, so installed source and official documentation supply API evidence.
+Current Prompt 2 verification is incomplete: backend 4,341/4,387 pass; browser 64/78 pass with seven failures/seven timeouts; Xdebug coverage exits 124 after one hour without a current percentage. Full results and post-freeze corrections are in PROGRESS.md.
 
-Actual isolated PHP8.6.0beta3 still fails `composer check-platform-reqs --lock` with Nette Schema's8.1–8.5 constraint. Root PHP remains `>=8.5.0 <8.6.0`; no platform bypass, stable dependency upgrade or production-runtime switch is made. Actual Beta3 syntax validation passes116 changed PHP classes/routes/tests (Blade excluded); this is recorded separately from application/backend/browser/coverage acceptance.
+Baseline `8191bb5` already contains the previous controller migration. This refresh changes no dependency manifest, lock or installed graph. The canonical verifier confirms installed dependency integrity and actual stable PHP8.5.10 platform requirements; Composer/npm audits report no advisories. Laravel13.31.0, Livewire4.4.1, Fortify1.39.0, Flux Free2.17.0/local Pro0.1.1 (unknown upstream), Node24.21.0 and explicit npm12.0.2 remain selected. The working Herd/production runtime is not changed.
+
+Current combined-source acceptance is incomplete: Larastan has five floor/QR errors, architecture24/25, JavaScript239/240 at99.83% included line coverage, five asset budgets and the translation audit fail. Successful historical figures below do not certify this source. PHP90% and JS100% thresholds remain unchanged. Current full backend, coverage and browser execution evidence is recorded in PROGRESS.md.
+
+Actual owned PHP8.6.0beta3 at `/private/tmp/restaurant-platform-p1-20260917-vi_yfei6/runtime/bin/php` again fails real installed and locked Composer requirements (ParaTest and Nette Schema respectively). The root range stays `>=8.5.0 <8.6.0`; no bypass is used. Twenty changed non-Blade PHP files pass actual Beta3 syntax checks, with the final browser selector follow-up checked separately. PHP8.6 application, HTTP, coverage and performance remain unperformed. Boost returns `Invalid JSON output`; installed source and official documentation remain the API evidence.
 
 ## Workspace prompt 3 baseline — 2026-09-16
 

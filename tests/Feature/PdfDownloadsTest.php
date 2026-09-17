@@ -9,7 +9,7 @@ use App\Enums\ManualPaymentScope;
 use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
 use App\Livewire\Exports\Index as ExportPage;
-use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\ManualPayment;
@@ -41,8 +41,9 @@ test('authorized staff can download selected branch QR codes as a PDF', function
     });
 
     try {
-        $response = Livewire::actingAs($owner)->test(BulkPrint::class, compact('organization', 'brand', 'branch'))
-            ->set('selectedServicePointIds', [$servicePoint->id])->set('preset', 'restaurant')->set('printTableNumber', true)
+        $response = Livewire::actingAs($owner)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$servicePoint->id], 'expectedQrIds' => [$servicePoint->id => $qrCode->id]])
+            ->set('form.preset', 'restaurant')->set('form.printTableNumber', true)
+            ->call('preparePrint')->assertHasNoErrors()
             ->call('downloadPdf')->assertHasNoErrors()
             ->assertFileDownloaded('restaurant-menu-qr-branch-'.$branch->id.'-2026-08-23-131415.pdf', contentType: 'application/pdf');
     } finally {
@@ -84,9 +85,8 @@ test('QR PDF selection rejects service points from another branch', function ():
         ->for($foreignServicePoint)
         ->create(['status' => QrCodeStatus::Active]);
 
-    Livewire::actingAs($owner)->test(BulkPrint::class, compact('organization', 'brand', 'branch'))
-        ->set('selectedServicePointIds', [$foreignServicePoint->id])->call('downloadPdf')
-        ->assertHasErrors('pdf.service_points.0')->assertNoFileDownloaded();
+    Livewire::actingAs($owner)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$foreignServicePoint->id]])
+        ->assertHasErrors('servicePointIds')->assertNoFileDownloaded();
 });
 
 test('authorized staff can download every existing report type as a PDF', function (): void {
@@ -133,13 +133,11 @@ test('PDF reports preserve branch authorization and date range validation', func
 });
 
 test('QR and report screens expose PDF download controls', function (): void {
-    [$organization, $brand, $branch, $servicePoint, , $owner] = createPdfDownloadContext();
+    [$organization, $brand, $branch, $servicePoint, $qrCode, $owner] = createPdfDownloadContext();
 
     $this->actingAs($owner)
         ->get(route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]))
-        ->assertOk()
-        ->assertSee(__('qr.actions.download_pdf'))
-        ->assertSee('wire:click="downloadPdf"', false);
+        ->assertRedirect(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch, 'zone' => 'all']));
 
     $this->actingAs($owner)
         ->get(route('organizations.brands.branches.service-points.qr.print', [
@@ -147,9 +145,14 @@ test('QR and report screens expose PDF download controls', function (): void {
             $brand,
             $branch,
             $servicePoint,
-            $servicePoint->activeQrCode,
+            $qrCode,
         ]))
-        ->assertOk()
+        ->assertRedirect(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch, 'panel' => 'print', 'point' => $servicePoint->id, 'qr_record' => $qrCode->id]));
+
+    Livewire::actingAs($owner)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$servicePoint->id], 'expectedQrIds' => [$servicePoint->id => $qrCode->id]])
+        ->assertDontSee('wire:click="downloadPdf"', false)->assertNoFileDownloaded()
+        ->call('preparePrint')->assertHasNoErrors()
+        ->assertSee('wire:click="downloadPdf"', false)
         ->assertSee(__('qr.actions.download_pdf'));
 
     $this->actingAs($owner)

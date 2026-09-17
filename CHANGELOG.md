@@ -4,6 +4,20 @@
 
 # Changelog
 
+## 2026-09-17 — Prompt 3 workspace verification refresh (partial)
+
+- Keep account, restaurant-management and platform modes authoritative over incidental restaurant query parameters. Preserve verified restaurant/department context in table and ticket return links, independently of another tab's preference.
+- Prevent pending saves from leaving a different history URL over the current restaurant form. Extend the existing navigation owner with native-index compensation and a bounded fallback, without a second router or automatic retry; retain the documented older-browser unknown-history limitation.
+- Update browser consumers to the current restaurant center and floor entry while preserving real switching, dirty-state, two-tab, lifecycle and offline checks. Record reviewed desktop/mobile screenshots and the unchanged direct task-transition count.
+- Preserve previous work and dependency/runtime choices. Current aggregate failures, actual PHP 8.6 platform blockers and measured costs remain explicit in PROGRESS.md; this is not completed acceptance or deployment.
+
+## 2026-09-17 — Prompt 2 controller migration verification refresh (partial)
+
+- Restored the existing passkey login control, full authentication/account-deletion navigation and responsive translated labels. Cleared sensitive form input on success/failure and moved MFA setup/recovery material out of public Livewire snapshots.
+- Prevented invitation/reset bearer URLs from entering session history while preserving native session locking; applied privacy headers to configured authentication routes.
+- Revoked active bearer tokens from restored databases and tested real HTTP completion/rollback in disposable environments. Updated QR/PDF test consumers to the existing Livewire PrintPanel contract.
+- Preserved the three documented credential/binary/restore transport exceptions. Current full-suite results, failed gates, independent review and PHP 8.6 platform limits are recorded in PROGRESS.md; no completed release or deployment is claimed.
+
 ## 2026-09-17 — Prompt 1 platform verification refresh (partial)
 
 - Updated only Vite's nested Rolldown 1.2.8 → 1.2.9; retained the exact local Pro compiler and PHP graph. Clean installations and byte-identical compiler outputs are recorded in CURRENT_VERSION.md and PROGRESS.md.

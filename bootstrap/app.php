@@ -13,6 +13,7 @@ use App\Http\Middleware\ProtectTwoFactorAttempt;
 use App\Http\Middleware\RequireJsonHealthCheckResponse;
 use App\Http\Middleware\RequireRecentPasswordConfirmation;
 use App\Http\Middleware\SetInterfaceLocale;
+use App\Http\Middleware\StartSessionWithoutCredentialHistory;
 use App\Support\SqliteRestoreRequestLock;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -35,7 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(AssignRequestId::class);
         $middleware->append(ProtectInvitationResponses::class);
 
-        $middleware->web(append: [
+        $middleware->web(replace: [StartSession::class => StartSessionWithoutCredentialHistory::class], append: [
             SetInterfaceLocale::class,
             AuthorizeSqliteRestoreUpload::class,
             ProtectTwoFactorAttempt::class,

@@ -64,7 +64,12 @@ test('report and QR controls generate real Livewire PDFs and an authorized binar
         ->and($observed->binary[0]['content'])->toContain('Browser export table')
         ->and($observed->binary[0]['cache'])->toContain('private', 'no-store');
     $page->navigate(route('organizations.brands.branches.qr.print', [$organization, $brand, $branch], false))
-        ->check('input[type="checkbox"][value="'.$point->id.'"]');
+        ->assertPathIs(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch], false))
+        ->click('[aria-label="'.__('floor.select_table_named', ['name' => $point->name]).'"]')
+        ->click('button[wire\\:click="openSelection(\'print\')"]')
+        ->assertVisible('[data-floor-print-panel]')
+        ->click('form[wire\\:submit="preparePrint"] button[type="submit"]')
+        ->assertVisible('[data-floor-print-labels]');
     fileBrowserObserveEffects($page);
     $page->click('button[wire\\:click="downloadPdf"]')->assertScript('window.fileEffects.downloads', 1)
         ->resize(390, 844)->screenshot(filename: 'files-qr-livewire-390')

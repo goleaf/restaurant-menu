@@ -128,3 +128,9 @@ Every one of the 52 first-party Eloquent models has a factory. The final state/e
 Five additive reversible migrations add `branches.pause_version`, `branches.opening_hours_version`, `menus.schedule_version`, `menus.schedule_is_closed`, `menu_items.availability_version`, `branch_schedule_exceptions` and `availability_commands`. Date exceptions have a unique(branch_id,local_date), closed flag and bounded local intervals; the restaurant hours revision covers the coherent weekly/exception state. Command receipts have unique request UUID, verified branch/actor, kind/target, payload hash and safe result. They never contain credentials. Existing fields/data and order snapshots remain intact; no working database migration is part of local verification.
 
 No effective-availability column is stored. Manual stop, temporary hiding, publication, hours and pause remain separate sources. Factories cover the new models; tenant IDs are excluded from public mass assignment and assigned by authorized relations/Actions.
+
+## Dish resource versions and receipts (Prompt 6)
+
+Additive integer revisions on `menu_items`: `content_version`, `media_version`, `variants_version`, `modifier_links_version`. `modifier_groups.content_version` includes group/options/translations and binding impact. Existing content fingerprints remain available to bulk/import; the card's editor fingerprint excludes independently owned availability and media. Image captions/focal metadata keep their existing UUID revision.
+
+`menu_operations.menu_id` becomes nullable for legitimate restaurant-scoped shared-group commands. Its existing branch, actor, unique request UUID and foreign keys remain. No first menu is synthesized. Down migration refuses while branch-only receipts exist, preserving these records rather than deleting them to force rollback.

@@ -7,6 +7,7 @@ namespace App\Actions\Menus;
 use App\Enums\SupportedLocale;
 use App\Models\MenuItem;
 use App\Support\PlainText;
+use RuntimeException;
 
 final class SyncMenuItemTranslationsAction
 {
@@ -25,15 +26,21 @@ final class SyncMenuItemTranslationsAction
             $description = PlainText::optional($translation['description'] ?? null, 1200);
 
             if ($name === null) {
-                $item->translations()->where('language_code', $languageCode)->delete();
+                $record = $item->translations()->where('language_code', $languageCode)->first();
+                if ($record !== null && $record->delete() !== true) {
+                    throw new RuntimeException('The menu item translation deletion was cancelled.');
+                }
 
                 continue;
             }
 
-            $item->translations()->updateOrCreate(
+            $record = $item->translations()->updateOrCreate(
                 ['language_code' => $languageCode],
                 ['name' => $name, 'description' => $description],
             );
+            if (! $record->exists || $record->isDirty(['name', 'description'])) {
+                throw new RuntimeException('The menu item translation write was cancelled.');
+            }
         }
     }
 }

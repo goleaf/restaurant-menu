@@ -4,6 +4,12 @@
 
 # Restaurant Menu completion decisions
 
+## Prompt 6: one dish context, independent resource commits — 2026-09-17
+
+A directly routed class-based Livewire dish card coordinates Main, Photos, Variants and Extras. It does not inherit the whole catalogue or merge every resource into one transaction. Existing Actions, Forms and media receipts remain authoritative. Main English content is synchronized on the server at explicit save; language selection never changes interface locale. Separate resource revisions and durable command receipts protect conflicts/replays. Shared modifier editing and current-item copying remain explicit operations. Existing availability and order configuration contracts serve preview; no guest/session/order is created.
+
+The dirty-history guard compares a destination with the immutable owning card address, removing only section/language URL state for same-card comparison. Mutable history bookkeeping cannot identify the card: capture-phase popstate updates it before Livewire's cached navigation listener. Native cross-card Back/Forward must swap the actual model and DOM; only same-card URL-state history retains visited drafts. Separate unit and real-browser regressions reproduce and verify both paths, including dirty cancellation and explicit discard.
+
 ## Prompt 7 — independent restrictions, one admission result — 2026-09-17
 
 Use focused temporal interval evaluation and configuration feasibility under one availability result with stable machine reasons, evaluated instant and separate next-condition/next-orderable boundaries. Staff presentation is richer than safe guest messaging; optional readiness warnings are not new global order bans. A menu restriction applies only to its menu and table/QR constraints remain resource scoped.
@@ -380,3 +386,10 @@ Every table-session transition reloads and locks the authoritative database row 
 Kitchen and bar use the same focused dashboard/action pair but always pass disjoint `KitchenDepartmentType` families. `OrderStatus` remains the only aggregate status and `order_status_logs` the unified history. The new `accepted` item state records that staff claimed work; `completed` is derived from a ready item receiving `served_at`, so neither adds a competing order state. Existing direct forward shortcuts remain valid for legacy and rapid-service calls, while the production UI presents the explicit accepted/preparing sequence. An atomic old-status update inside the locked transaction makes a double click or simultaneous request converge without a second history entry.
 
 Active queues sort oldest first; completed/cancelled history sorts newest first. Each filter hydrates at most 24 tickets with explicit columns and eager-loaded relationships, while one aggregate query supplies state counts. Three-second `wire:poll.visible` is the shared-hosting compromise: hidden tabs stop application polling, elapsed timers advance locally, terminal timers freeze, and only a meaningful queue fingerprint enters the screen-reader live region. No kitchen/bar sound is added because the current architecture only has an explicit waiter sound preference; visual state, localized live announcements and the user's existing motion/accessibility settings provide a complete non-audio default without inventing another persistent preference.
+
+
+## Prompt 6 integration contract
+
+Prompt 6 integration follow-up: CSV validates the entire final normalized name set inside its existing import transaction. Only that internal caller marks namesValidatedAsBatch for individual Create/Update steps, allowing atomic name/category swaps; required/type/length, scope, policy and expected-version checks remain. Dish and ordinary Action calls always enforce uniqueness. Optional translation deletion uses model events and detects cancelled writes, preserving revisions and rollback. Completed dish creation rechecks the exact price/availability abilities used by its original command.
+
+Dish styles use the existing app.scss bundle: combining the scoped dish composition with product CSS removes one card request and reduces total gzip bytes compared with two separately compressed entries. The combined entry allocation is 31,800 raw / 6,500 gzip bytes; the separate dish allocation is removed. Existing total CSS (52,600 gzip), scenario, JavaScript and coverage budgets remain unchanged. The final shared build measures 31,701 raw / 6,411 gzip bytes for app.scss and 52,401 gzip bytes across five CSS assets; other pages receive approximately 135 additional gzip bytes.

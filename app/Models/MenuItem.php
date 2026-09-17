@@ -43,6 +43,11 @@ class MenuItem extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'content_version' => 0,
+        'media_version' => 0,
+        'variants_version' => 0,
+        'modifier_links_version' => 0,
+
         'availability_version' => 0,
         'price_cents' => 0,
         'allergens' => '[]',
@@ -57,6 +62,11 @@ class MenuItem extends Model
     protected function casts(): array
     {
         return [
+            'content_version' => 'integer',
+            'media_version' => 'integer',
+            'variants_version' => 'integer',
+            'modifier_links_version' => 'integer',
+
             'availability_version' => 'integer',
             'price_cents' => 'integer',
             'image_presentation' => 'array',
@@ -159,6 +169,18 @@ class MenuItem extends Model
         return hash('sha256', serialize([
             $this->only(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents',
                 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order']),
+            $this->translations->sortBy('language_code')->map(fn (MenuItemTranslation $translation): array => [
+                $translation->language_code, $translation->name, $translation->description,
+            ])->values()->all(),
+        ]));
+    }
+
+    /** Main authoring deliberately excludes independently saved availability and media. */
+    public function editorFingerprint(): string
+    {
+        return hash('sha256', serialize([
+            $this->only(['content_version', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents',
+                'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'sort_order']),
             $this->translations->sortBy('language_code')->map(fn (MenuItemTranslation $translation): array => [
                 $translation->language_code, $translation->name, $translation->description,
             ])->values()->all(),

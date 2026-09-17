@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Enums\SupportedLocale;
+use App\Livewire\Forms\Menus\CatalogFilterForm;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -15,6 +17,8 @@ use Livewire\Attributes\Url;
 
 class Index extends BranchMenuComponent
 {
+    public CatalogFilterForm $legacyFilters;
+
     private CatalogData $menuQueries;
 
     #[Locked]
@@ -39,6 +43,20 @@ class Index extends BranchMenuComponent
         $this->initializeBranchContext($organization->id, $brand->id, $branch->id);
 
         $this->refreshAccess();
+        if (in_array($this->section, ['variants', 'modifiers'], true) && request()->filled('item')) {
+            $this->authorizeBranchAbility('manageMenu');
+            $itemId = request()->query()['item'] ?? null;
+            abort_unless((is_string($itemId) || is_int($itemId)) && ctype_digit((string) $itemId), 404);
+            $item = $this->menuQueries->findBranchItem($this->branchId, (int) $itemId);
+            $query = request()->query();
+            $return = ['q' => $this->legacyFilters->searchTerm(), 'menu' => $this->legacyFilters->menuSelection(),
+                'quality' => $this->legacyFilters->qualityValue(), 'availability' => $this->legacyFilters->availabilityValue(),
+                'page' => $this->legacyFilters->pageNumber(), 'language' => in_array($query['language'] ?? null, SupportedLocale::values(), true) ? $query['language'] : 'en'];
+            $this->redirectRoute('organizations.brands.branches.menu.dish.edit', [
+                'organization' => $this->organizationId, 'brand' => $this->brandId, 'branch' => $this->branchId,
+                'item' => $item->id, 'section' => $this->section, ...array_intersect_key($return, $query),
+            ], navigate: true);
+        }
         $this->normalizeSection();
         $this->redirectAvailabilitySection();
     }
@@ -125,7 +143,6 @@ class Index extends BranchMenuComponent
 
         if ($this->canManageMenu) {
             $sections += [
-                'variants' => ['label' => 'menu.workspace.variants', 'icon' => 'squares-2x2'],
                 'departments' => ['label' => 'menu.workspace.departments', 'icon' => 'fire'],
                 'modifiers' => ['label' => 'menu.workspace.modifiers', 'icon' => 'plus-circle'],
                 'transfer' => ['label' => 'menu.workspace.transfer', 'icon' => 'arrow-up-tray'],

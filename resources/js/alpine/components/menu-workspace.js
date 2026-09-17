@@ -1,5 +1,5 @@
 export function menuWorkspace(configuration = {}) {
-    let ownerRoot;
+    let ownerRoot, ownerAddress;
     return {
         destroyed: false,
         nativeHistoryIndex: null,
@@ -15,15 +15,29 @@ export function menuWorkspace(configuration = {}) {
         historyIndex: 0,
         historyUrl: null,
         returningToIndex: null,
+        focusFrame: null,
         init() {
             ownerRoot = this.$el;
+            ownerAddress = window.location.href;
             this.abortController = new AbortController();
             const options = { signal: this.abortController.signal };
+            if (configuration.invalidEvent) {
+                window.addEventListener(configuration.invalidEvent, () => {
+                    this.$nextTick(() => {
+                        if (this.destroyed) return;
+                        if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
+                        this.focusFrame = requestAnimationFrame(() => {
+                            this.focusFrame = null;
+                            if (!this.destroyed && ownerRoot.isConnected) ownerRoot.querySelector(configuration.invalidSelector)?.focus();
+                        });
+                    });
+                }, options);
+            }
             this.historyId = `${ownerRoot.getAttribute('wire:id')}:${Date.now()}`;
             this.historyUrl = window.location.href;
             this.stampHistory();
             const markDirty = (event) => {
-                if (event.target.closest('[data-menu-item-images], [data-section="catalog-transfer"]')) return;
+                if (event.target.closest('[data-menu-item-images], [data-section="catalog-transfer"]') || event.target.closest('[data-menu-preview]') || event.target.closest('[data-menu-search]')) return;
                 const form = event.target.closest('form[wire\\:submit]');
                 if (!form || !ownerRoot.querySelector(configuration.contentSelector ?? '[data-menu-workspace-content]')?.contains(form)) return;
                 this.dirtyForms.set(form, ++this.revision);
@@ -41,9 +55,13 @@ export function menuWorkspace(configuration = {}) {
                 event.returnValue = '';
             }, options);
             document.addEventListener('livewire:navigate', (event) => {
+                const url = event.detail.url.toString();
+                if (configuration.retainSectionDrafts && event.detail.history && this.retainsDraftsAt(url)) {
+                    event.preventDefault();
+                    return;
+                }
                 if (this.bypassNavigation || !this.hasUnsavedChanges()) return;
                 event.preventDefault();
-                const url = event.detail.url.toString();
                 this.requestNavigation(() => {
                     this.bypassNavigation = true;
                     window.Livewire.navigate(url);
@@ -55,7 +73,7 @@ export function menuWorkspace(configuration = {}) {
                 const actions = Array.from(message.actions).map((action) => action.name);
                 const submitted = Array.from(this.dirtyForms.entries()).filter(([form]) =>
                     form.closest('[wire\\:id]')?.getAttribute('wire:id') === message.component.id
-                    && actions.includes(form.getAttribute('wire:submit')?.split('(')[0].trim())
+                    && actions.some(action => (configuration.cleanFormActions?.[action] ?? action) === form.getAttribute('wire:submit')?.split('(')[0].trim())
                 );
                 onSuccess(({ payload, onRender }) => {
                     onRender(() => {
@@ -75,6 +93,7 @@ export function menuWorkspace(configuration = {}) {
         destroy() {
             this.destroyed = true;
             this.abortController?.abort();
+            if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
             this.unsubscribe?.();
             this.unsubscribe = null;
             this.pendingNavigation = null;
@@ -91,7 +110,7 @@ export function menuWorkspace(configuration = {}) {
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
             event.preventDefault();
             if (this.navigating || !navigator.onLine || section === this.$wire.section) return;
-            return this.requestNavigation(async () => {
+            const proceed = async () => {
                 this.navigating = true;
                 this.setNavigationBusy(true);
                 try {
@@ -105,7 +124,8 @@ export function menuWorkspace(configuration = {}) {
                     this.navigating = false;
                     if (!this.destroyed) this.setNavigationBusy(false);
                 }
-            });
+            };
+            return configuration.retainSectionDrafts ? proceed() : this.requestNavigation(proceed);
         },
         setNavigationBusy(busy) {
             ownerRoot.querySelectorAll('[data-menu-section]').forEach((link) => {
@@ -131,6 +151,17 @@ export function menuWorkspace(configuration = {}) {
             this.$flux.modal(configuration.modal ?? 'menu-workspace-unsaved').close();
             return proceed?.();
         },
+        discardFormLocally(event, model, baseline) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const form = event.currentTarget.closest('form');
+            this.$wire.$set(model, JSON.parse(JSON.stringify(this.$wire.$get(baseline))), false);
+            this.dirtyForms.delete(form);
+            form.querySelectorAll('[role="alert"]').forEach(error => { error.hidden = true; });
+            form.querySelectorAll('[aria-invalid="true"]').forEach(field => field.setAttribute('aria-invalid', 'false'));
+            form.querySelectorAll('[data-invalid="true"]').forEach(panel => panel.setAttribute('data-invalid', 'false'));
+            form.dispatchEvent(new CustomEvent('menu-form-discarded'));
+        },
         stampHistory() {
             if (this.destroyed || !ownerRoot.isConnected || this.returningToIndex !== null) return;
             this.nativeHistoryIndex = window.navigation?.currentEntry?.index ?? null;
@@ -142,6 +173,12 @@ export function menuWorkspace(configuration = {}) {
             }, '', window.location.href);
         },
         guardHistory(event) {
+            if (this.returningToIndex === null && configuration.retainSectionDrafts && this.retainsDraftsAt(window.location.href)) {
+                this.historyIndex = event.state?.menuWorkspace?.index ?? this.historyIndex;
+                this.nativeHistoryIndex = window.navigation?.currentEntry?.index ?? null;
+                this.historyUrl = window.location.href;
+                return;
+            }
             // Restore committed history before Livewire swaps the page. Cancelling
             // Navigation API traversals can desynchronize repeated Back in WebKit.
             if (this.nativeHistoryIndex !== null && window.navigation?.currentEntry) {
@@ -180,6 +217,14 @@ export function menuWorkspace(configuration = {}) {
             }
             this.historyIndex = entry.index;
             this.historyUrl = window.location.href;
+        },
+        retainsDraftsAt(address) {
+            const previous = new URL(ownerAddress), next = new URL(address);
+            for (const key of ['section', 'language']) {
+                previous.searchParams.delete(key);
+                next.searchParams.delete(key);
+            }
+            return previous.href === next.href;
         },
     };
 }

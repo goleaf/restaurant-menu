@@ -33,8 +33,10 @@ final class UpdateMenuItemAction
         MenuItemData $data,
         ?string $expectedVersion = null,
         bool $preserveExistingDepartment = false,
+        bool $contentOnly = false,
+        bool $namesValidatedAsBatch = false,
     ): MenuItem {
-        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data, $expectedVersion, $preserveExistingDepartment): MenuItem {
+        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data, $expectedVersion, $preserveExistingDepartment, $contentOnly, $namesValidatedAsBatch): MenuItem {
             $actor = User::query()->select(['id'])->whereKey($actor->getKey())->first();
             if (! $actor instanceof User) {
                 throw new AuthorizationException;
@@ -54,7 +56,7 @@ final class UpdateMenuItemAction
                 ->where('menu_id', $menu->id)
                 ->whereKey($category->getKey())->firstOrFail();
             $item = MenuItem::query()
-                ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order'])
+                ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'content_version', 'sort_order'])
                 ->with('translations')
                 ->whereKey($item->id)
                 ->where('menu_id', $item->getRawOriginal('menu_id'))
@@ -63,7 +65,7 @@ final class UpdateMenuItemAction
                 ->firstOrFail();
 
             if ($expectedVersion !== null) {
-                if (! hash_equals($item->contentFingerprint(), $expectedVersion)) {
+                if (! hash_equals($contentOnly ? $item->editorFingerprint() : $item->contentFingerprint(), $expectedVersion)) {
                     throw ValidationException::withMessages(['editingItemVersion' => __('menu.editor.conflict')]);
                 }
             }
@@ -77,6 +79,7 @@ final class UpdateMenuItemAction
                 data: $data,
                 existingItem: $item,
                 preserveExistingDepartment: $preserveExistingDepartment,
+                namesValidatedAsBatch: $namesValidatedAsBatch,
             )) !== true) {
                 throw new RuntimeException('The menu item update was cancelled.');
             }

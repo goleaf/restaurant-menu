@@ -144,6 +144,23 @@ test('image metadata notifies its owning workspace and presentation focus follow
     assert.equal(heading.focused, 2);
 });
 
+test('dish photo drafts notify their card and cleanup leaves other sections alone', t => {
+    const app = browser(t), picker = app.component(menuImagePicker, { itemId: 42 }), card = new Element();
+    picker.$el.ancestors.set('[data-page="dish-card"]', card);
+    const dirty = new Set(['variants']);
+    card.addEventListener('menu-workspace-dirty', notification => {
+        if (notification.detail.dirty) dirty.add(notification.detail.key);
+        else dirty.delete(notification.detail.key);
+    });
+    picker.init();
+    picker.metadataDirty = true;
+    picker.notifyDirty();
+    assert.deepEqual([...dirty], ['variants', 'images-42']);
+    picker.destroy();
+    assert.deepEqual([...dirty], ['variants']);
+    assert.equal(app.state.interceptors.size, 0);
+});
+
 test('image presentation keeps its owner root when a child tab invokes locale navigation', t => {
     const app = browser(t), presentation = app.component(menuImagePresentationEditor, { focalX: 50, focalY: 50 });
     const root = presentation.$el, tab = new Element(), invalid = new Element(), panel = new Element();
@@ -210,6 +227,72 @@ test('translations copy only empty target fields, keep user changes and synchron
     assert.equal(app.observer.disconnected, 1);
 });
 
+test('dish language starts from URL state and follows history without replacing translated drafts', t => {
+    const app = translations(t, { languageModel: 'contentLanguage' }), editor = app.instance;
+    app.values.set('contentLanguage', 'lt');
+    app.values.set('translations.lt.name', 'Sriuba draft');
+    editor.init();
+    assert.equal(editor.active, 'lt');
+    editor.activate('ru');
+    assert.deepEqual(app.updates.at(-1), ['contentLanguage', 'ru', true]);
+    const languageWatch = app.watches.find(watch => watch.read() === 'ru');
+    app.values.set('contentLanguage', 'en');
+    languageWatch.callback('en');
+    assert.equal(editor.active, 'en');
+    assert.equal(app.values.get('translations.lt.name'), 'Sriuba draft');
+    languageWatch.callback('invalid');
+    assert.equal(editor.active, 'en');
+    editor.activate('invalid');
+    assert.equal(editor.active, 'en');
+    editor.destroy();
+});
+
+test('local form cancellation clears copied translation notices and owns its reset listener', t => {
+    const app = translations(t), editor = app.instance, form = new Element();
+    editor.$el.ancestors.set('form', form);
+    app.values.set('translations.en.name', 'Original');
+    editor.init();
+    editor.copyOriginal('ru');
+    editor.invalidLocales = ['ru'];
+    assert.equal(editor.hasCopiedText('ru'), true);
+    form.dispatchEvent({ type: 'menu-form-discarded' });
+    assert.equal(editor.hasCopiedText('ru'), false);
+    assert.deepEqual(editor.invalidLocales, []);
+    editor.destroy();
+    assert.equal(form.listenerCount(), 0);
+});
+
+test('nested dish translations share only the parent URL language and retain child field ownership', t => {
+    const app = translations(t, { nameOnly: true }), editor = app.instance, card = new Element();
+    card.setAttribute('wire:id', 'dish-owner');
+    editor.$el.ancestors.set('[data-page="dish-card"]', card);
+    let language = 'lt';
+    const parentUpdates = [];
+    app.window.Livewire.find = id => {
+        assert.equal(id, 'dish-owner');
+        return {
+            $get: path => { assert.equal(path, 'contentLanguage'); return language; },
+            $set: (...args) => { language = args[1]; parentUpdates.push(args); },
+        };
+    };
+    app.values.set('translations.en', 'Small');
+    app.values.set('translations.lt', 'Small child draft');
+    editor.init();
+    assert.equal(editor.active, 'lt');
+    editor.activate('ru');
+    assert.deepEqual(parentUpdates, [['contentLanguage', 'ru', true]]);
+    editor.copyOriginal('ru');
+    assert.equal(app.values.get('translations.ru'), 'Small');
+    assert.equal(app.values.get('translations.lt'), 'Small child draft');
+    assert.ok(app.updates.every(([path]) => path.startsWith('translations.')));
+    const languageWatch = app.watches.find(watch => watch.read() === 'ru');
+    language = 'en';
+    languageWatch.callback('en');
+    assert.equal(editor.active, 'en');
+    assert.equal(app.values.get('translations.lt'), 'Small child draft');
+    editor.destroy();
+});
+
 test('translation tabs reveal changed/repeated server errors and tear down their form subscription', t => {
     const app = translations(t, { nameOnly: true });
     const editor = app.instance;
@@ -218,7 +301,7 @@ test('translation tabs reveal changed/repeated server errors and tear down their
     component.setAttribute('wire:id', 'editor-component');
     editor.$el.ancestors.set('form', form);
     editor.$el.ancestors.set('[wire\\:id]', component);
-    const tabs = ['en', 'lt', 'ru'].map(locale => { const tab = new Element(); tab.dataset.localeTab = locale; editor.$el.children.set(`[data-locale-tab="${locale}"]`, [tab]); return tab; });
+    const tabs = ['en', 'lt', 'ru'].map(locale => { const tab = new Element(); tab.scrolls = []; tab.scrollIntoView = options => tab.scrolls.push(options); tab.dataset.localeTab = locale; editor.$el.children.set(`[data-locale-tab="${locale}"]`, [tab]); return tab; });
     editor.$el.children.set('[data-locale-tab]', tabs);
     const invalid = new Element(), field = new Element();
     invalid.dataset.localePanel = 'ru';
@@ -243,6 +326,7 @@ test('translation tabs reveal changed/repeated server errors and tear down their
         editor.navigate(keypress);
         assert.equal(editor.active, expected);
         assert.equal(keypress.prevented, true);
+        assert.deepEqual(tabs.find(tab => tab.dataset.localeTab === expected).scrolls.at(-1), { block: 'nearest', inline: 'nearest' });
     }
     const otherKey = event({ key: 'Enter' });
     editor.navigate(otherKey);

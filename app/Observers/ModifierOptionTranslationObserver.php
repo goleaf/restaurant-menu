@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
+use App\Actions\Menus\AdvanceDishConfigurationVersionAction;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
@@ -13,6 +14,7 @@ class ModifierOptionTranslationObserver
 {
     public function __construct(
         private readonly ForgetBranchCacheAction $forgetBranchCache,
+        private readonly AdvanceDishConfigurationVersionAction $versions,
     ) {}
 
     /**
@@ -28,6 +30,9 @@ class ModifierOptionTranslationObserver
      */
     public function updated(ModifierOptionTranslation $modifierOptionTranslation): void
     {
+        if (array_diff(array_keys($modifierOptionTranslation->getChanges()), ['updated_at', 'content_version']) === []) {
+            return;
+        }
         $this->forgetGuestMenu($modifierOptionTranslation);
     }
 
@@ -60,6 +65,9 @@ class ModifierOptionTranslationObserver
         $groupId = ModifierOption::query()
             ->whereKey($translation->modifier_option_id)
             ->value('modifier_group_id');
+        if (is_numeric($groupId)) {
+            $this->versions->group((int) $groupId);
+        }
         $branchId = is_numeric($groupId)
             ? ModifierGroup::query()->whereKey((int) $groupId)->value('branch_id')
             : null;

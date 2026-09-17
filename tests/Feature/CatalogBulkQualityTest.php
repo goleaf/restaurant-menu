@@ -8,6 +8,7 @@ use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\KitchenDepartment;
@@ -24,6 +25,7 @@ use App\Models\User;
 use App\Services\Menus\CatalogData;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -141,10 +143,13 @@ test('bulk moves categories only inside the selected menu and rejects name colli
 test('catalogue page selection is exactly bounded and filter changes clear the selection without clearing drafts', function (): void {
     [$owner, $organization, $brand, $branch, $menu, $category] = catalogBulkContext();
     MenuItem::factory()->count(26)->for($menu)->for($category, 'category')->create();
+    $draft = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('editingItemForm.itemTranslations.en.description', 'Unsaved new dish');
     $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemForm.itemDescription', 'Unsaved new dish')->call('selectCatalogPage');
+        ->call('selectCatalogPage');
     expect($component->get('selectedCatalogVersions'))->toHaveCount(24);
-    $component->set('filters.search', 'Narrow')->assertSet('selectedCatalogVersions', [])->assertSet('itemForm.itemDescription', 'Unsaved new dish');
+    $component->set('filters.search', 'Narrow')->assertSet('selectedCatalogVersions', []);
+    $draft->call('$refresh')->assertSet('editingItemForm.itemTranslations.en.description', 'Unsaved new dish');
 });
 
 test('a rejected required save rolls back every selected item and the receipt', function (): void {
@@ -195,26 +200,32 @@ test('bulk permissions are checked again after loading and on completed replay',
 test('archive requires explicit confirmation and lost response replay preserves other drafts', function (): void {
     [$owner, $organization, $brand, $branch, $menu, $category] = catalogBulkContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create();
+    $draft = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('editingItemForm.itemTranslations.en.description', 'Keep my new dish');
     $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemForm.itemDescription', 'Keep my new dish')->call('selectCatalogPage')->set('bulk.operation', 'archive')
+        ->call('selectCatalogPage')->set('bulk.operation', 'archive')
         ->call('applyCatalogBulk')->assertHasErrors('bulk.confirmArchive');
     expect($item->fresh()->trashed())->toBeFalse();
     $component->set('bulk.confirmArchive', true);
     $snapshot = $component->snapshot;
-    $component->call('applyCatalogBulk')->assertHasNoErrors()->assertSet('itemForm.itemDescription', 'Keep my new dish');
+    $component->call('applyCatalogBulk')->assertHasNoErrors();
+    $draft->call('$refresh')->assertSet('editingItemForm.itemTranslations.en.description', 'Keep my new dish');
     $component->snapshot = $snapshot;
-    $component->call('applyCatalogBulk')->assertHasNoErrors()->assertSet('itemForm.itemDescription', 'Keep my new dish');
+    $component->call('applyCatalogBulk')->assertHasNoErrors();
+    $draft->call('$refresh')->assertSet('editingItemForm.itemTranslations.en.description', 'Keep my new dish');
     expect($item->fresh()->trashed())->toBeTrue()->and(MenuOperation::query()->count())->toBe(1);
 });
 
-test('bulk fails safely when the selected dish has an unfinished editor', function (): void {
+test('an independently archived dish cannot be overwritten by its retained unfinished card', function (): void {
     [$owner, $organization, $brand, $branch, $menu, $category] = catalogBulkContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['is_available' => true]);
+    $draft = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->set('editingItemForm.itemTranslations.en.description', 'Keep this editor');
     Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)->set('editingItemForm.itemDescription', 'Keep this editor')->call('selectCatalogPage')
-        ->set('bulk.operation', 'archive')->set('bulk.confirmArchive', true)->call('applyCatalogBulk')->assertHasErrors('bulkSelection')
-        ->assertSet('editingItemForm.itemDescription', 'Keep this editor');
-    expect($item->fresh()->is_available)->toBeTrue();
+        ->call('selectCatalogPage')->set('bulk.operation', 'archive')->set('bulk.confirmArchive', true)->call('applyCatalogBulk')->assertHasNoErrors();
+    expect(fn () => $draft->call('saveItem'))->toThrow(ModelNotFoundException::class);
+    $draft->assertSet('editingItemForm.itemTranslations.en.description', 'Keep this editor');
+    expect($item->fresh()->is_available)->toBeTrue()->and($item->fresh()->trashed())->toBeTrue();
 });
 
 test('catalogue rows do not load galleries or modifier groups until the editor opens', function (): void {

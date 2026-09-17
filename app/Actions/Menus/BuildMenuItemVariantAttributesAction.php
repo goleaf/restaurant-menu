@@ -32,14 +32,14 @@ class BuildMenuItemVariantAttributesAction
         return [
             'type' => MenuItemVariantType::from($data['type'])->value,
             'name' => PlainText::required($data['name'], 160, squish: true),
-            'price_cents' => Gate::forUser($actor)->allows('changeMenuPrices', $branch)
-                ? MoneyFormatter::decimalToCents($data['price'] ?? 0)
+            'price_cents' => array_key_exists('price', $data) && Gate::forUser($actor)->allows('changeMenuPrices', $branch)
+                ? MoneyFormatter::decimalToCents($data['price'])
                 : $existingPriceCents,
             'weight' => $this->optionalString($data['weight']),
             'volume' => $this->optionalString($data['volume']),
             'is_default' => (bool) $data['is_default'],
-            'is_available' => Gate::forUser($actor)->allows('changeMenuAvailability', $branch)
-                ? (bool) ($data['is_available'] ?? true)
+            'is_available' => array_key_exists('is_available', $data) && Gate::forUser($actor)->allows('changeMenuAvailability', $branch)
+                ? (bool) $data['is_available']
                 : $existingAvailability,
             'sort_order' => $data['sort_order'],
         ];

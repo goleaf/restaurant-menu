@@ -4,6 +4,15 @@
 
 # Changelog
 
+## 2026-09-17 — Prompt 6 unified dish card
+
+- Added one scoped, addressable Livewire dish card with Main, Photos, Variants and Modifiers, independent content language, retained drafts and explicit save boundaries.
+- Replaced duplicate catalogue/variant/modifier item selection with direct card links, preserving catalogue filters and selected-item legacy URLs. The shared modifier library remains available.
+- Canonicalized English main content on the server; added unavailable create-and-continue with exact response replay. Onboarding uses the same content Actions.
+- Preserved independent media operations and added durable cleanup continuation, aggregate revisions, bounded variant/option pages, explicit shared-group impact and an atomic independent copy for one dish.
+- Reused the guest availability and configuration-price paths for a read-only saved/draft preview; preserved historical orders and CSV atomic name swaps.
+- Current verification inventories, performance costs and PHP 8.6 dependency limits are recorded in PROGRESS.md, testing.md and CURRENT_VERSION.md.
+
 ## 2026-09-17 — Prompt 7 unified availability and order admission
 
 - Added one class-based Livewire availability workspace with Now, Schedules and Stop-list, scoped entry links, explicit preview/apply and the shared unsaved-change guard.

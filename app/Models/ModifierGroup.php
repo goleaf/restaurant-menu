@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** @property-read int $available_options_count */
 #[Fillable(['name', 'is_required', 'min_select', 'max_select', 'sort_order'])]
 class ModifierGroup extends Model
 {
@@ -22,6 +23,8 @@ class ModifierGroup extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'content_version' => 0,
+
         'is_required' => false,
         'min_select' => 0,
         'max_select' => 1,
@@ -34,6 +37,8 @@ class ModifierGroup extends Model
     protected function casts(): array
     {
         return [
+            'content_version' => 'integer',
+
             'is_required' => 'boolean',
             'min_select' => 'integer',
             'max_select' => 'integer',

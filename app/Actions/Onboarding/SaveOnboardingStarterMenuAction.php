@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Onboarding;
 
+use App\Actions\Menus\CreateMenuItemAction;
+use App\Actions\Menus\UpdateMenuItemAction;
+use App\Data\Menus\MenuItemData;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
 use App\Models\AreaNode;
@@ -14,13 +17,14 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
-use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 final class SaveOnboardingStarterMenuAction
 {
+    public function __construct(private readonly CreateMenuItemAction $createItem, private readonly UpdateMenuItemAction $updateItem) {}
+
     /** @param array{menu_name: string, category_name: string, item_name: string, item_price: string|int} $data */
     public function handle(User $user, int $onboardingId, array $data): RestaurantOnboarding
     {
@@ -134,22 +138,16 @@ final class SaveOnboardingStarterMenuAction
     /** @param array{menu_name: string, category_name: string, item_name: string, item_price: string|int} $data */
     private function item(RestaurantOnboarding $onboarding, Branch $branch, Menu $menu, MenuCategory $category, User $user, array $data): MenuItem
     {
-        $values = [
-            'category_id' => $category->id,
-            'kitchen_department_id' => $this->defaultKitchenDepartmentId($branch),
-            'name' => $data['item_name'],
-            'description' => null,
-            'price_cents' => MoneyFormatter::decimalToCents($data['item_price']),
-            'is_available' => true,
-            'sort_order' => 0,
-        ];
         $item = $onboarding->menu_item_id === null ? null : $menu->items()
             ->withTrashed()
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'is_available', 'sort_order', 'deleted_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'deleted_at'])
             ->where('category_id', $category->id)->whereKey($onboarding->menu_item_id)->firstOrFail();
+        $values = new MenuItemData(name: $data['item_name'], description: null, weight: $item?->weight,
+            volume: $item?->volume, calories: $item?->calories, sortOrder: 0, price: $data['item_price'], isAvailable: true,
+            translations: ['en' => ['name' => $data['item_name'], 'description' => null]]);
 
         if (! $item instanceof MenuItem) {
-            return $menu->items()->create($values);
+            return $this->createItem->handle($user, $branch, $menu, $category, $this->defaultKitchenDepartmentId($branch), $values);
         }
 
         if ($item->trashed()) {
@@ -157,9 +155,7 @@ final class SaveOnboardingStarterMenuAction
             $item->restore();
         }
 
-        $item->fill($values)->save();
-
-        return $item;
+        return $this->updateItem->handle($user, $branch, $item, $menu, $category, $this->defaultKitchenDepartmentId($branch), $values);
     }
 
     private function defaultKitchenDepartmentId(Branch $branch): ?int

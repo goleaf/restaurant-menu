@@ -24,11 +24,11 @@ final class BuildModifierOptionAttributesAction
 
         return [
             'name' => PlainText::required($data['name'], 160, squish: true),
-            'price_delta_cents' => Gate::forUser($actor)->allows('changeMenuPrices', $branch)
-                ? MoneyFormatter::decimalToCents($data['price_delta'] ?? 0)
+            'price_delta_cents' => array_key_exists('price_delta', $data) && Gate::forUser($actor)->allows('changeMenuPrices', $branch)
+                ? MoneyFormatter::decimalToCents($data['price_delta'])
                 : $existingPriceCents,
-            'is_available' => Gate::forUser($actor)->allows('changeMenuAvailability', $branch)
-                ? (bool) ($data['is_available'] ?? true)
+            'is_available' => array_key_exists('is_available', $data) && Gate::forUser($actor)->allows('changeMenuAvailability', $branch)
+                ? (bool) $data['is_available']
                 : $existingAvailability,
             'sort_order' => $data['sort_order'],
         ];

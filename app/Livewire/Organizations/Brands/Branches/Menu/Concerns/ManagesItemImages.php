@@ -9,6 +9,7 @@ use App\Actions\Menus\PromoteMenuItemImageAction;
 use App\Actions\Menus\RemoveMenuItemGalleryImageAction;
 use App\Actions\Menus\RemoveMenuItemImageAction;
 use App\Actions\Menus\ReorderMenuItemImagesAction;
+use App\Actions\Menus\ResumeMenuImageCleanupAction;
 use App\Actions\Menus\UpdateMenuItemImagePresentationAction;
 use App\Enums\MenuOperationKind;
 use App\Livewire\Forms\MenuImagePresentationForm;
@@ -37,10 +38,12 @@ trait ManagesItemImages
     #[Locked]
     public array $imagePresentationContext = [];
 
+    #[Locked]
+    public ?string $pendingImageOperationRequestId = null;
+
     public function editItemImagePresentation(int $itemId, ?int $imageId, string $expectedIdentity): void
     {
-        $this->authorizeMenuManagement();
-        abort_unless($this->editingItemId === $itemId, 403);
+        $this->authorizeImageMutation($itemId);
         if ($this->imagePresentationContext !== []) {
             return;
         }
@@ -73,6 +76,7 @@ trait ManagesItemImages
         $this->imagePresentationForm->setPresentation($presentation);
         $this->imagePresentationContext = [
             'item_id' => $itemId, 'image_id' => $imageId, 'identity' => $expectedIdentity,
+            'request_id' => (string) Str::uuid(),
             'version' => MenuImagePresentation::version($presentation), 'alt' => $item->name,
             'url' => $variants['url'], 'thumbnail_url' => $variants['thumbnail_url'],
             'width' => $variants['width'] ?? 800, 'height' => $variants['height'] ?? 600,
@@ -102,10 +106,11 @@ trait ManagesItemImages
         $this->authorizeMenuManagement();
         $context = $this->imagePresentationContext;
         abort_unless($context !== [] && $this->editingItemId === $context['item_id'], 403);
+        $this->authorizeImageMutation($context['item_id']);
         $this->clearImagePresentationErrors();
         try {
             $update->handle($this->currentUser(), $this->branch, $context['item_id'], $context['image_id'],
-                $context['identity'], $context['version'], $this->imagePresentationForm->all());
+                $context['identity'], $context['version'], $this->imagePresentationForm->all(), $context['request_id']);
         } catch (ValidationException $exception) {
             $locale = null;
             foreach ($exception->errors() as $field => $messages) {
@@ -163,18 +168,18 @@ trait ManagesItemImages
     }
 
     /** @param list<int> $imageIds */
-    public function reorderItemImages(int $itemId, array $imageIds, ReorderMenuItemImagesAction $reorder): void
+    public function reorderItemImages(int $itemId, array $imageIds, string $expectedFingerprint, string $requestId, ReorderMenuItemImagesAction $reorder): void
     {
-        $this->authorizeMenuManagement();
+        $this->authorizeImageMutation($itemId);
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
-        $reorder->handle($this->branch, $item, $imageIds);
-        $this->forgetMenuComputed();
-        Flux::toast(variant: 'success', text: __('uploads.editor.order_saved'));
+        if ($this->performImageMutation($itemId, $requestId, fn (): MenuItem => $reorder->handle($this->currentUser(), $this->branch, $item, $imageIds, $expectedFingerprint, $requestId))) {
+            Flux::toast(variant: 'success', text: __('uploads.editor.order_saved'));
+        }
     }
 
     public function saveItemImages(int $itemId, AddMenuItemImagesAction $addImages): void
     {
-        $this->authorizeMenuManagement();
+        $this->authorizeImageMutation($itemId);
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
         $field = 'itemImageUploads.'.$item->id;
@@ -250,7 +255,7 @@ trait ManagesItemImages
         string $requestId,
         PromoteMenuItemImageAction $promoteImage,
     ): void {
-        $this->authorizeMenuManagement();
+        $this->authorizeImageMutation($itemId);
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
         if ($this->performImageMutation($itemId, $requestId, fn (): MenuItem => $promoteImage->handle(
@@ -267,7 +272,7 @@ trait ManagesItemImages
         string $requestId,
         RemoveMenuItemGalleryImageAction $removeImage,
     ): void {
-        $this->authorizeMenuManagement();
+        $this->authorizeImageMutation($itemId);
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
         $removed = $this->performImageMutation($itemId, $requestId, fn (): MenuItem => $removeImage->handle(
@@ -281,7 +286,7 @@ trait ManagesItemImages
 
     public function removeItemImage(int $itemId, string $expectedImageIdentity, string $requestId, RemoveMenuItemImageAction $removeItemImage): void
     {
-        $this->authorizeMenuManagement();
+        $this->authorizeImageMutation($itemId);
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
 
@@ -311,10 +316,10 @@ trait ManagesItemImages
         } catch (RuntimeException $exception) {
             report($exception);
             $operation = $this->catalogData->operation($this->branch, $this->currentUser(), $requestId);
-            if ($operation !== null && $operation->completed_at === null) {
-                $this->activeCatalogOperationId = $requestId;
-                $this->catalogOperationPaused = true;
-                $this->addError('catalogOperation', __('menu.operations.retry_help'));
+            if ($operation !== null && $operation->completed_at === null
+                && in_array($operation->kind, [MenuOperationKind::ImageRemove, MenuOperationKind::ImagePromote], true)) {
+                $this->pendingImageOperationRequestId = $requestId;
+                $this->addError('pendingImageOperation', __('menu.operations.retry_help'));
             } else {
                 $this->addError('itemImageUploads.'.$itemId, __('uploads.editor.retry_help'));
             }
@@ -327,10 +332,37 @@ trait ManagesItemImages
         return true;
     }
 
+    public function retryItemImageCleanup(ResumeMenuImageCleanupAction $resume): void
+    {
+        $this->authorizeMenuManagement();
+        if ($this->editingItemId === null || $this->pendingImageOperationRequestId === null) {
+            return;
+        }
+        try {
+            $resume->handle($this->currentUser(), $this->branch, $this->editingItemId, $this->pendingImageOperationRequestId);
+        } catch (RuntimeException $exception) {
+            report($exception);
+            $this->addError('pendingImageOperation', __('menu.operations.retry_help'));
+
+            return;
+        }
+        $this->pendingImageOperationRequestId = null;
+        $this->resetValidation('pendingImageOperation');
+        $this->forgetMenuComputed();
+    }
+
+    private function authorizeImageMutation(int $itemId): void
+    {
+        $this->authorizeMenuManagement();
+        abort_unless($this->editingItemId === $itemId, 403);
+        if ($this->pendingImageOperationRequestId !== null) {
+            throw ValidationException::withMessages(['pendingImageOperation' => __('menu.operations.retry_help')]);
+        }
+    }
+
     private function clearItemImageUpload(int $itemId): void
     {
         unset($this->itemImageUploads[$itemId], $this->itemImageRequestIds[$itemId]);
-        $this->closeItemImagePresentation();
         $this->resetValidation([
             'itemImageUploads.'.$itemId,
             'itemImageUploads.'.$itemId.'.*',

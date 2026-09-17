@@ -576,7 +576,8 @@ test('starter menu graph and completion roll back together and retry reuses one 
     expect(Menu::query()->where('branch_id', $onboarding->branch_id)->count())->toBe(1)
         ->and(MenuCategory::query()->where('menu_id', $onboarding->fresh()?->menu_id)->count())->toBe(1)
         ->and(MenuItem::query()->where('menu_id', $onboarding->fresh()?->menu_id)->count())->toBe(1)
-        ->and(MenuItem::query()->whereKey($onboarding->fresh()?->menu_item_id)->value('price_cents'))->toBe(1025);
+        ->and(MenuItem::query()->whereKey($onboarding->fresh()?->menu_item_id)->value('price_cents'))->toBe(1025)
+        ->and(MenuItem::query()->findOrFail($onboarding->fresh()->menu_item_id)->translations()->where('language_code', 'en')->value('name'))->toBe('Rollback Dish');
 });
 
 test('onboarding qr generation safely recovers from a partially completed set', function () {

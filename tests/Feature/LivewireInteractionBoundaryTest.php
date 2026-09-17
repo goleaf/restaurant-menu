@@ -27,6 +27,8 @@ test('every product page route uses its explicit class based Livewire screen', f
         'organizations.brands.branches.index' => Screens\Organizations\Brands\Branches\Index::class,
         'organizations.brands.branches.areas.index' => Screens\Organizations\Brands\Branches\Areas::class,
         'organizations.brands.branches.availability.index' => Screens\Organizations\Brands\Branches\Availability\Index::class,
+        'organizations.brands.branches.menu.dish.create' => Screens\Organizations\Brands\Branches\Menu\Dish::class,
+        'organizations.brands.branches.menu.dish.edit' => Screens\Organizations\Brands\Branches\Menu\Dish::class,
         'organizations.brands.branches.menu.index' => Screens\Organizations\Brands\Branches\Menu\Index::class,
         'organizations.brands.branches.qr.print' => Screens\Organizations\Brands\Branches\Qr\BulkPrint::class,
         'organizations.brands.branches.service-points.index' => Screens\Organizations\Brands\Branches\ServicePoints\Index::class,

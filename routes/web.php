@@ -29,6 +29,7 @@ use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as OrganizationBrandBranchMenuIndex;
 use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint as OrganizationBrandBranchQrBulkPrint;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as OrganizationBrandBranchServicePointsIndex;
@@ -154,6 +155,8 @@ Route::middleware(['auth'])
                             ->name('menu.')
                             ->group(function () {
                                 Route::livewire('/', OrganizationBrandBranchMenuIndex::class)->name('index');
+                                Route::livewire('items/create', Dish::class)->name('dish.create');
+                                Route::livewire('items/{item}', Dish::class)->withoutScopedBindings()->whereNumber('item')->name('dish.edit');
                             });
 
                         Route::prefix('{branch}/availability')

@@ -15,6 +15,8 @@ class SyncMenuItemVariantTranslationsAction
      */
     public function handle(MenuItemVariant $variant, array $translations): void
     {
+        $variant->loadMissing('translations');
+        $existing = $variant->translations->keyBy('language_code');
         foreach (SupportedLocale::values() as $languageCode) {
             if (! array_key_exists($languageCode, $translations)) {
                 continue;
@@ -23,15 +25,19 @@ class SyncMenuItemVariantTranslationsAction
             $name = PlainText::optional($translations[$languageCode] ?? null, 160, squish: true);
 
             if ($name === null) {
-                $variant->translations()->where('language_code', $languageCode)->delete();
+                $translation = $existing->get($languageCode);
+                if ($translation !== null && $translation->delete() !== true) {
+                    throw new \RuntimeException('The variant translation could not be deleted.');
+                }
 
                 continue;
             }
 
-            $variant->translations()->updateOrCreate(
-                ['language_code' => $languageCode],
-                ['name' => $name],
-            );
+            $translation = $existing->get($languageCode) ?? $variant->translations()->make(['language_code' => $languageCode]);
+            $translation->name = $name;
+            if ($translation->save() !== true) {
+                throw new \RuntimeException('The variant translation could not be saved.');
+            }
         }
     }
 }

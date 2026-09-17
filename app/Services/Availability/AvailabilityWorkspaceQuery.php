@@ -210,8 +210,9 @@ final class AvailabilityWorkspaceQuery
                 $settings && $reason['code'] === 'branch_paused' => route('organizations.brands.branches.availability.index', [...$parameters, 'section' => 'now']),
                 $settings && $reason['code'] === 'branch_schedule_closed' => route('organizations.brands.branches.availability.index', [...$parameters, 'section' => 'schedules']),
                 $menu && $reason['code'] === 'menu_schedule_closed' => route('organizations.brands.branches.availability.index', [...$parameters, 'section' => 'schedules', 'menu' => $item->menu_id]),
-                $menu && $reason['code'] === 'required_options_unavailable' => route('organizations.brands.branches.menu.index', [...$parameters, 'section' => 'modifiers']),
-                $menu && in_array($reason['code'], ['menu_unpublished', 'category_inactive', 'variants_unavailable'], true) => route('organizations.brands.branches.menu.index', [...$parameters, 'section' => 'catalog', 'menu' => $item->menu_id, 'q' => $item->name]),
+                $menu && $reason['code'] === 'required_options_unavailable' => route('organizations.brands.branches.menu.dish.edit', [...$parameters, 'item' => $item->id, 'section' => 'modifiers']),
+                $menu && $reason['code'] === 'variants_unavailable' => route('organizations.brands.branches.menu.dish.edit', [...$parameters, 'item' => $item->id, 'section' => 'variants']),
+                $menu && in_array($reason['code'], ['menu_unpublished', 'category_inactive'], true) => route('organizations.brands.branches.menu.index', [...$parameters, 'section' => 'catalog', 'menu' => $item->menu_id, 'q' => $item->name]),
                 default => null,
             };
         }

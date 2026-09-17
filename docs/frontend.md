@@ -198,3 +198,9 @@ Restaurant onboarding keeps the numbered desktop navigation and exposes native p
 Availability is a class-based Livewire workspace with Now, Schedules and Stop-list addressable sections. Flux Pro date/time/search controls use the installed local adaptation; Forms validate actual local times server-side. Weekly drafts support selected-day copy with before/after preview. The stop-list page holds20 dishes and a single selected editor; current/future evaluation labels the source of its result.
 
 The existing menu-workspace dirty guard supplies navigation/offline cancellation. One local timer refreshes temporal status, never one poller per dish; listeners/timers are disposed on navigation. Draft editors are not reloaded by background status refresh. `resources/scss/availability.scss` is loaded through the layout page-scripts stack; no Tailwind entrypoint is processed by Sass.
+
+## Unified dish editing (Prompt 6)
+
+The catalogue opens `/menu/items/{item}`; `section=main|photos|variants|modifiers` and content `language=en|lt|ru` belong to the card URL. Return filters remain bounded and allowlisted. The card retains only visited editor sections, has one main form, and reuses the existing unsaved-navigation guard. Its root avoids `x-ignore` during morph cloning so language-panel bindings survive Back/Forward; initial readiness still uses the single application bootstrap and inert state.
+
+Flux listbox searches are server bounded. Photos use Livewire uploads, with keyboard reordering, per-photo captions and safe retries. Preview explicitly labels saved versus validated draft data and does not expose real cart controls. New composition styles live in `resources/scss/components/_dish.scss`, included in the existing `app.scss` bundle; the card adds no stylesheet request. Whole language labels scroll inside their tab list on narrow screens.

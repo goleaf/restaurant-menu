@@ -4,9 +4,9 @@ import { menuWorkspace } from '../resources/js/alpine/components/menu-workspace.
 import { staffWorkspace, invitationClipboard, staffEditor } from '../resources/js/alpine/components/staff-workspace.js';
 import { browser, Element, Events, event } from './alpine-support.mjs';
 
-function workspace(t, factory) {
+function workspace(t, factory, address = 'https://menu.test/menu?section=catalog') {
     const app = browser(t), history = [], dialogs = [];
-    app.window.location = { href: 'https://menu.test/menu?section=catalog', pathname: '/menu' };
+    app.window.location = { href: address, pathname: new URL(address).pathname };
     app.window.history = { state: { existing: true }, replaceState(value) { this.state = value; history.push(['stamp', value]); }, go(delta) { history.push(['go', delta]); } };
     const instance = app.component(factory);
     instance.$el.setAttribute('wire:id', 'workspace');
@@ -54,6 +54,206 @@ test('menu dirty navigation cancels safely, proceeds once on discard and restore
     menu.$wire.selectSection = async () => { throw new Error('offline'); };
     await menu.navigateSection(event(), 'extras'); assert.equal(menu.navigating, false); assert.equal(target.hasAttribute('aria-disabled'), false);
     menu.destroy();
+});
+
+test('dish section navigation retains drafts while departure still requires an explicit discard', async t => {
+    const app = workspace(t, () => menuWorkspace({ retainSectionDrafts: true })), menu = app.instance;
+    const { form } = dirtyMenu(app);
+    menu.dirtySections.add('images-42');
+    const calls = [];
+    menu.$wire.selectSection = async section => { calls.push(section); menu.$wire.section = section; };
+    await menu.navigateSection(event(), 'photos');
+    assert.deepEqual(calls, ['photos']);
+    assert.equal(menu.dirtyForms.has(form), true);
+    assert.equal(menu.dirtySections.has('images-42'), true);
+    assert.deepEqual(app.dialogs, []);
+    let departures = 0;
+    menu.requestNavigation(() => departures++);
+    assert.equal(departures, 0);
+    menu.cancelNavigation();
+    assert.equal(menu.hasUnsavedChanges(), true);
+    menu.requestNavigation(() => departures++);
+    menu.discardAndNavigate();
+    assert.equal(departures, 1);
+    menu.destroy();
+});
+
+test('dish query history cancels only redundant cached page swaps without discarding section drafts', t => {
+    const app = workspace(t, () => menuWorkspace({ retainSectionDrafts: true }), 'https://menu.test/menu/items/42?q=&page=1&section=photos&language=lt'), menu = app.instance;
+    const { form } = dirtyMenu(app);
+    const cachedHistory = event({ type: 'livewire:navigate', detail: { history: true, cached: true, url: new URL('https://menu.test/menu/items/42?q=&page=1&section=main') } });
+    app.document.dispatchEvent(cachedHistory);
+    assert.equal(cachedHistory.prevented, true);
+    assert.deepEqual(app.dialogs, []);
+    assert.equal(menu.pendingNavigation, null);
+    assert.equal(menu.dirtyForms.has(form), true);
+    menu.dirtyForms.clear();
+    const cleanHistory = event({ type: 'livewire:navigate', detail: { history: true, url: cachedHistory.detail.url } });
+    app.document.dispatchEvent(cleanHistory);
+    assert.equal(cleanHistory.prevented, true);
+    dirtyMenu(app);
+    const otherCard = event({ type: 'livewire:navigate', detail: { history: true, url: new URL('https://menu.test/menu/items/99?q=&page=1&section=main') } });
+    app.document.dispatchEvent(otherCard);
+    assert.equal(otherCard.prevented, true);
+    assert.equal(app.dialogs.length, 1);
+    menu.cancelNavigation();
+    const ordinaryVisit = event({ type: 'livewire:navigate', detail: { history: false, url: cachedHistory.detail.url } });
+    app.document.dispatchEvent(ordinaryVisit);
+    assert.equal(ordinaryVisit.prevented, true);
+    assert.equal(app.dialogs.at(-1)[0], 'show');
+    assert.equal(menu.hasUnsavedChanges(), true);
+    menu.destroy();
+});
+
+test('clean and explicitly discarded cross card history still swaps the actual page after popstate', t => {
+    for (const dirty of [false, true]) {
+        const ownerAddress = 'https://menu.test/menu/items/42?section=main';
+        const targetAddress = 'https://menu.test/menu/items/99?section=main';
+        const app = workspace(t, () => menuWorkspace({ retainSectionDrafts: true }), ownerAddress), menu = app.instance;
+        app.window.navigation = { currentEntry: { index: 5 } };
+        menu.stampHistory();
+        if (dirty) dirtyMenu(app);
+        app.window.location.href = targetAddress;
+        app.window.navigation.currentEntry.index = 4;
+        const backwards = event();
+        menu.guardHistory(backwards);
+        if (dirty) {
+            assert.equal(backwards.stopped, true);
+            assert.deepEqual(app.history.at(-1), ['go', 1]);
+            app.window.location.href = ownerAddress;
+            app.window.navigation.currentEntry.index = 5;
+            menu.guardHistory(event());
+            menu.discardAndNavigate();
+            assert.equal(menu.hasUnsavedChanges(), false);
+            assert.deepEqual(app.history.at(-1), ['go', -1]);
+            app.window.location.href = targetAddress;
+            app.window.navigation.currentEntry.index = 4;
+            menu.guardHistory(event());
+        } else {
+            assert.equal(backwards.stopped, false);
+            assert.deepEqual(app.dialogs, []);
+        }
+        const pageSwap = event({ type: 'livewire:navigate', detail: { history: true, cached: true, url: new URL(targetAddress) } });
+        app.document.dispatchEvent(pageSwap);
+        assert.equal(pageSwap.prevented, false);
+        assert.equal(menu.pendingNavigation, null);
+        menu.destroy();
+    }
+});
+
+test('read only dish preview selections do not become persistent drafts', t => {
+    const app = workspace(t, menuWorkspace), menu = app.instance;
+    const { form, input } = dirtyMenu(app);
+    menu.dirtyForms.clear();
+    input.ancestors.set('[data-menu-preview]', new Element());
+    menu.$el.dispatchEvent({ type: 'input', target: input });
+    assert.equal(menu.dirtyForms.has(form), false);
+    menu.destroy();
+});
+
+test('bounded dish option search does not dirty the editor but its eventual selection does', t => {
+    const app = workspace(t, menuWorkspace), menu = app.instance;
+    const { form, input } = dirtyMenu(app);
+    menu.dirtyForms.clear();
+    input.ancestors.set('[data-menu-search]', new Element());
+    menu.$el.dispatchEvent({ type: 'input', target: input });
+    assert.equal(menu.dirtyForms.has(form), false);
+    input.ancestors.delete('[data-menu-search]');
+    menu.$el.dispatchEvent({ type: 'change', target: input });
+    assert.equal(menu.dirtyForms.has(form), true);
+    menu.destroy();
+});
+
+test('discarding dish main fields leaves child and image drafts protected', t => {
+    const app = workspace(t, () => menuWorkspace({ cleanFormActions: { discardMainChanges: 'saveItem' } })), menu = app.instance;
+    const { form, child } = dirtyMenu(app);
+    const variant = new Element();
+    variant.setAttribute('wire:submit', 'saveVariant');
+    variant.ancestors.set('[wire\\:id]', child);
+    menu.dirtyForms.set(variant, 2);
+    menu.dirtySections.add('images-42');
+    app.message({ id: 'editor', el: child }, [{ name: 'discardMainChanges' }], { snapshot: { memo: { errors: { denied: ['Denied'] } } } }).finish();
+    assert.equal(menu.dirtyForms.has(form), true);
+    app.message({ id: 'other', el: child }, [{ name: 'discardMainChanges' }]).finish();
+    assert.equal(menu.dirtyForms.has(form), true);
+    app.message({ id: 'editor', el: child }, [{ name: 'discardMainChanges' }]).finish();
+    assert.equal(menu.dirtyForms.has(form), false);
+    assert.equal(menu.dirtyForms.has(variant), true);
+    assert.equal(menu.dirtySections.has('images-42'), true);
+    menu.destroy();
+});
+
+test('offline main cancellation restores its baseline without sending a request or clearing photo drafts', t => {
+    const app = workspace(t, menuWorkspace), menu = app.instance;
+    const { form } = dirtyMenu(app), button = new Element(), error = new Element(), field = new Element();
+    button.ancestors.set('form', form);
+    form.children.set('[role="alert"]', [error]);
+    form.children.set('[aria-invalid="true"]', [field]);
+    form.children.set('[data-invalid="true"]', [field]);
+    const baseline = { itemName: 'Saved', itemTranslations: { en: { name: 'Saved' } } }, updates = [];
+    menu.$wire.$get = () => new Proxy(baseline, {});
+    menu.$wire.$set = (...args) => updates.push(args);
+    menu.dirtySections.add('images-42');
+    let resets = 0;
+    form.addEventListener('menu-form-discarded', () => resets++);
+    const click = event({ currentTarget: button });
+    menu.discardFormLocally(click, 'editingItemForm', 'mainBaseline');
+    assert.equal(click.prevented && click.stopped, true);
+    assert.deepEqual(updates, [['editingItemForm', baseline, false]]);
+    assert.notEqual(updates[0][1], baseline);
+    assert.equal(menu.dirtyForms.has(form), false);
+    assert.equal(menu.dirtySections.has('images-42'), true);
+    assert.equal(error.hidden, true);
+    assert.equal(field.getAttribute('aria-invalid'), 'false');
+    assert.equal(field.getAttribute('data-invalid'), 'false');
+    assert.equal(resets, 1);
+    menu.destroy();
+});
+
+test('dish query history preserves drafts only within the same card and supported section state', t => {
+    const app = workspace(t, () => menuWorkspace({ retainSectionDrafts: true })), menu = app.instance;
+    dirtyMenu(app);
+    app.window.location.href = 'https://menu.test/menu?section=photos&language=lt';
+    const same = event({ state: { menuWorkspace: { id: menu.historyId, index: 1 } } });
+    menu.guardHistory(same);
+    assert.equal(same.stopped, false);
+    assert.deepEqual(app.dialogs, []);
+    assert.equal(menu.hasUnsavedChanges(), true);
+    app.window.location.href = 'https://menu.test/menu?section=main&item=99';
+    menu.guardHistory(event({ state: { menuWorkspace: { id: menu.historyId, index: 2 } } }));
+    assert.equal(app.dialogs.at(-1)[0], 'show');
+    app.window.location.href = 'https://menu.test/menu?section=photos&language=lt';
+    const restored = event({ state: { menuWorkspace: { id: menu.historyId, index: 1 } } });
+    menu.guardHistory(restored);
+    assert.equal(restored.stopped, true);
+    assert.equal(menu.returningToIndex, null);
+    menu.cancelNavigation();
+    menu.destroy();
+});
+
+test('dish invalid main fields are focused after reveal and pending focus is cancelled on departure', t => {
+    const frames = new Map(); let sequence = 0;
+    const previousRequest = globalThis.requestAnimationFrame, previousCancel = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = callback => { frames.set(++sequence, callback); return sequence; };
+    globalThis.cancelAnimationFrame = id => frames.delete(id);
+    t.after(() => {
+        if (previousRequest) globalThis.requestAnimationFrame = previousRequest; else delete globalThis.requestAnimationFrame;
+        if (previousCancel) globalThis.cancelAnimationFrame = previousCancel; else delete globalThis.cancelAnimationFrame;
+    });
+    const app = workspace(t, () => menuWorkspace({ invalidEvent: 'dish-main-invalid', invalidSelector: '[data-dish-invalid]' }));
+    const error = new Element();
+    app.instance.$el.children.set('[data-dish-invalid]', [error]);
+    app.instance.$el = new Element();
+    app.window.dispatchEvent({ type: 'dish-main-invalid' });
+    assert.equal(error.focused, 0);
+    assert.equal(frames.size, 1);
+    frames.get(sequence)();
+    assert.equal(error.focused, 1);
+    app.window.dispatchEvent({ type: 'dish-main-invalid' });
+    const pending = frames.get(sequence);
+    app.instance.destroy();
+    pending();
+    assert.equal(error.focused, 1);
 });
 
 test('menu child navigation updates all owner links and focuses owner targets or errors', async t => {

@@ -1,8 +1,11 @@
 <section data-section="menu-item-variants" class="grid gap-4">
+    <flux:error name="configuration" />
+    <flux:text>{{ __('dish.variants.absolute_price_help') }}</flux:text>
     <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <flux:heading size="lg">{{ __('menu.variants.admin.title') }}</flux:heading>
         <flux:text class="mt-1">{{ __('menu.variants.admin.description') }}</flux:text>
 
+        @if ($itemId === null)
         <div class="mt-4 grid gap-3 md:grid-cols-2">
             <flux:select wire:model.live="variantMenuId" :label="__('menu.guest.title')">
                 @forelse ($menuOptions as $option)
@@ -20,6 +23,7 @@
                 @endforelse
             </flux:select>
         </div>
+        @endif
     </div>
 
     @if ($variantItemId !== '')
@@ -32,26 +36,28 @@
             </div>
 
             <div class="mt-4 grid gap-3 md:grid-cols-2">
-                <flux:select wire:model="variantType" :label="__('menu.variants.admin.type')">
+                <flux:select wire:model="variant.variantType" :label="__('menu.variants.admin.type')">
                     @foreach ($variantTypeOptions as $value => $label)
                         <flux:select.option wire:key="new-variant-type-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
                 @if ($canChangePrices)
-                    <flux:input wire:model="variantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
+                    <flux:input wire:model="variant.variantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
                 @endif
-                <flux:input wire:model="variantSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
-                <flux:input wire:model="variantWeight" :label="__('menu.variants.admin.weight')" type="number" min="0" max="999999.99" step="0.01" />
-                <flux:input wire:model="variantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
+                <flux:input wire:model="variant.variantSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                <flux:input wire:model="variant.variantWeight" :label="__('menu.variants.admin.weight')" type="number" min="0" max="999999.99" step="0.01" />
+                <flux:input wire:model="variant.variantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
             </div>
 
-            <x-menu.name-translations id-prefix="variantTranslations" model="variantTranslations" base-name-model="variantName" :language-options="$languageOptions" :name-max="160" />
+            <x-menu.name-translations id-prefix="variant.variantTranslations" model="variant.variantTranslations" base-name-model="variant.variantName" :language-options="$languageOptions" :name-max="160" />
 
             <div class="mt-4 flex flex-wrap gap-4">
-                <flux:switch wire:model="variantIsDefault" :label="__('menu.variants.admin.default')" />
+                @if ($canChangePrices)
+                    <flux:switch wire:model="variant.variantIsDefault" :label="__('menu.variants.admin.default')" />
+                @endif
                 @if ($canChangeAvailability)
-                    <flux:switch wire:model="variantIsAvailable" :label="__('menu.guest.available')" />
+                    <flux:switch wire:model="variant.variantIsAvailable" :label="__('menu.guest.available')" />
                 @endif
             </div>
         </form>
@@ -67,26 +73,28 @@
                         @if ($editingVariantId === $variant['id'])
                             <form wire:submit="updateVariant" novalidate class="grid gap-3">
                                 <div class="grid gap-3 md:grid-cols-2">
-                                    <flux:select wire:model="editingVariantType" :label="__('menu.variants.admin.type')">
+                                    <flux:select wire:model="editingVariant.variantType" :label="__('menu.variants.admin.type')">
                                         @foreach ($variantTypeOptions as $value => $label)
                                             <flux:select.option wire:key="editing-variant-{{ $variant['id'] }}-type-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
 
                                     @if ($canChangePrices)
-                                        <flux:input wire:model="editingVariantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
+                                        <flux:input wire:model="editingVariant.variantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
                                     @endif
-                                    <flux:input wire:model="editingVariantSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
-                                    <flux:input wire:model="editingVariantWeight" :label="__('menu.variants.admin.weight')" type="number" min="0" max="999999.99" step="0.01" />
-                                    <flux:input wire:model="editingVariantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
+                                    <flux:input wire:model="editingVariant.variantSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                                    <flux:input wire:model="editingVariant.variantWeight" :label="__('menu.variants.admin.weight')" type="number" min="0" max="999999.99" step="0.01" />
+                                    <flux:input wire:model="editingVariant.variantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
                                 </div>
 
-                                <x-menu.name-translations id-prefix="editingVariantTranslations" model="editingVariantTranslations" base-name-model="editingVariantName" :language-options="$languageOptions" :name-max="160" />
+                                <x-menu.name-translations id-prefix="editingVariant.variantTranslations" model="editingVariant.variantTranslations" base-name-model="editingVariant.variantName" :language-options="$languageOptions" :name-max="160" />
 
                                 <div class="flex flex-wrap items-center gap-3">
-                                    <flux:switch wire:model="editingVariantIsDefault" :label="__('menu.variants.admin.default')" />
+                                    @if ($canChangePrices)
+                                        <flux:switch wire:model="editingVariant.variantIsDefault" :label="__('menu.variants.admin.default')" />
+                                    @endif
                                     @if ($canChangeAvailability)
-                                        <flux:switch wire:model="editingVariantIsAvailable" :label="__('menu.guest.available')" />
+                                        <flux:switch wire:model="editingVariant.variantIsAvailable" :label="__('menu.guest.available')" />
                                     @endif
                                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateVariant">{{ __('ui.actions.save') }}</flux:button>
                                     <flux:button icon="x-mark" type="button" wire:click="cancelVariantEditing">{{ __('ui.actions.cancel') }}</flux:button>
@@ -125,7 +133,9 @@
 
                                 <div class="flex shrink-0 flex-wrap gap-2 lg:justify-end">
                                     <flux:button icon="pencil" type="button" wire:click="startEditingVariant({{ $variant['id'] }})">{{ __('guest.cart.edit_item') }}</flux:button>
-                                    <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="deleteVariant({{ $variant['id'] }})" wire:confirm="{{ __('menu.variants.admin.delete_confirm') }}" class="rm-action-danger">{{ __('ui.actions.delete') }}</flux:button>
+                                    @if ($canChangePrices)
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="deleteVariant({{ $variant['id'] }})" wire:confirm="{{ __('dish.variants.delete_consequence') }}" class="rm-action-danger">{{ __('ui.actions.delete') }}</flux:button>
+                                    @endif
                                 </div>
                             </div>
                         @endif
@@ -134,6 +144,7 @@
                     <x-ui.empty-state icon="arrows-right-left" :heading="__('menu.variants.admin.empty')" />
                 @endforelse
             </div>
+            <flux:pagination :paginator="$variantPagination" />
         </div>
     @endif
 </section>

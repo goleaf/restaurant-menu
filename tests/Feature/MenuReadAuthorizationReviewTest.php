@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
+use App\Models\Menu;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -20,7 +23,16 @@ test('menu child reads refresh authorization through the original route middlewa
     $membership->role->permissions()->attach($availability, ['enabled' => true]);
     $branch = Branch::factory()->for($organization)->create();
 
-    $page = $this->actingAs($user)->get(route('organizations.brands.branches.menu.index', [$organization, $branch->brand_id, $branch, 'section' => $component]));
+    $parameters = [$organization, $branch->brand_id, $branch, 'section' => $component];
+    $route = 'organizations.brands.branches.menu.index';
+    if ($component === 'variants') {
+        $menu = Menu::factory()->for($branch)->create();
+        $category = MenuCategory::factory()->for($menu)->create();
+        $item = MenuItem::factory()->for($menu)->for($category, 'category')->create();
+        $parameters['item'] = $item->id;
+        $route = 'organizations.brands.branches.menu.dish.edit';
+    }
+    $page = $this->actingAs($user)->get(route($route, $parameters));
     $page->assertOk();
     preg_match_all('/wire:snapshot="([^"]+)"/', $page->getContent(), $matches);
     $snapshot = collect($matches[1])->map(fn (string $value): string => html_entity_decode($value, ENT_QUOTES))

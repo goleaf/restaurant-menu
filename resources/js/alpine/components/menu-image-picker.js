@@ -28,7 +28,7 @@ export function menuImagePicker(config) {
         uploading: false, removing: false, saving: false, offline: false,
         destroyed: false, workspace: null, failed: false, progress: 0, dragging: false, unsubscribe: null, settingsTrigger: null, metadataDirty: false,
         init() {
-            this.workspace = this.$el.closest('[data-page="branch-menu"]');
+            this.workspace = this.$el.closest('[data-page="dish-card"]') ?? this.$el.closest('[data-page="branch-menu"]');
             this.offline = !navigator.onLine;
             this.$watch('previews', () => this.notifyDirty());
             const componentId = this.$wire.$id;

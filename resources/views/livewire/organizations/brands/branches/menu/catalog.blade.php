@@ -111,7 +111,7 @@
     <div data-catalog-create-actions class="flex flex-wrap justify-end gap-2 py-3">
 <flux:modal.trigger name="catalog-create-menu"><flux:button icon="plus">{{ __('ui.organizations.brands.branches.menu.index.new_menu') }}</flux:button></flux:modal.trigger>
 <flux:modal.trigger name="catalog-create-category"><flux:button icon="plus">{{ __('ui.organizations.brands.branches.menu.index.new_category') }}</flux:button></flux:modal.trigger>
-<flux:modal.trigger name="catalog-create-item"><flux:button icon="plus" variant="primary">{{ __('ui.organizations.brands.branches.menu.index.new_dish') }}</flux:button></flux:modal.trigger>
+<flux:button :href="$createItemUrl" wire:navigate icon="plus" variant="primary">{{ __('ui.organizations.brands.branches.menu.index.new_dish') }}</flux:button>
     </div>
 
 
@@ -309,13 +309,13 @@
                                                     @if ($item['is_available'])<flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
                                                     @else<flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>@endif
                                                     @if ($item['is_temporarily_hidden'])<flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until']]) }}</flux:badge>@endif
-                                                    <flux:button type="button" icon="pencil" variant="primary" wire:click="startEditingItem({{ $item['id'] }})" wire:loading.attr="disabled">{{ __('guest.cart.edit_item') }}</flux:button>
+                                                    <flux:button :href="$item['edit_url']" icon="pencil" variant="primary" wire:navigate>{{ __('guest.cart.edit_item') }}</flux:button>
                                                 </div>
                                             </div>
                                             @if ($item['quality_issues'] !== [])
                                                 <div class="mt-2 flex flex-wrap gap-1">
-                                                    @forelse ($item['quality_issues'] as $issue => $label)
-                                                        <flux:button type="button" variant="subtle" icon="exclamation-circle" wire:click="$set('filters.quality', '{{ $issue }}')">{{ $label }}</flux:button>
+                                                    @forelse ($item['quality_links'] as $link)
+                                                        <flux:button :href="$link['href']" variant="subtle" icon="exclamation-circle" wire:navigate>{{ $link['label'] }}</flux:button>
                                                     @empty
                                                     @endforelse
                                                 </div>
@@ -453,99 +453,5 @@
             </form>
 </flux:modal>
 
-    <flux:modal name="catalog-create-item" :closable="false" class="w-full max-w-2xl">
-        <x-modal-close-button :autofocus="true" />
-<form wire:submit="createItem" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex flex-wrap items-center justify-between gap-3 pe-6">
-                    <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_dish') }}</flux:heading>
-                    <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createItem">
-                        {{ __('ui.organizations.brands.branches.menu.index.create') }}
-                    </flux:button>
-                </div>
 
-                <div class="mt-4 grid gap-3">
-                    <flux:select wire:model.live="itemForm.itemMenuId" :label="__('menu.guest.title')">
-                        @forelse ($menuOptions as $option)
-                            <flux:select.option wire:key="item-menu-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
-                        @empty
-                            <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_menu_first') }}</flux:select.option>
-                        @endforelse
-                    </flux:select>
-
-                    <flux:select wire:model="itemForm.itemCategoryId" :label="__('ui.organizations.brands.branches.menu.index.category')">
-                        @forelse ($itemCategoryOptions as $option)
-                            <flux:select.option wire:key="item-category-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
-                        @empty
-                            <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_an_active_category_first') }}</flux:select.option>
-                        @endforelse
-                    </flux:select>
-
-
-
-                    <flux:select wire:model="itemForm.itemKitchenDepartmentId" :label="__('reports.csv.kitchen_department')">
-                        <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:select.option>
-                        @foreach ($kitchenDepartmentOptions as $option)
-                            <flux:select.option wire:key="item-department-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-
-
-
-                    <x-menu.translation-fields
-                        id-prefix="create-menu-item"
-                        model="itemForm.itemTranslations"
- base-name-model="itemForm.itemName"
- base-description-model="itemForm.itemDescription"
-                        :language-options="$languageOptions"
-                        :name-max="180"
-                        :description-max="1200"
-                    />
-
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        @if ($canChangePrices)
-                            <flux:input wire:model="itemForm.itemPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
-                        @endif
-
-                        <flux:input wire:model="itemForm.itemSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
-                    </div>
-
-                    <div class="grid gap-3 sm:grid-cols-3">
-                        <flux:input wire:model="itemForm.itemWeight" :label="__('reports.csv.weight')" type="number" min="0" step="0.01" />
-                        <flux:input wire:model="itemForm.itemVolume" :label="__('reports.csv.volume')" type="number" min="0" step="0.01" />
-                        <flux:input wire:model="itemForm.itemCalories" :label="__('reports.csv.calories')" type="number" min="0" max="999999" />
-                    </div>
-
-                    <x-menu.item-label-fields
-                        id-prefix="create-menu-item"
-                        allergens-model="itemForm.itemAllergens"
-                        dietary-labels-model="itemForm.itemDietaryLabels"
-                        :allergen-options="$allergenOptions"
-                        :dietary-label-options="$dietaryLabelOptions"
-                    />
-
-                    @if ($canChangeAvailability)
-                        <div class="grid gap-3 2xl:grid-cols-2">
-                            <flux:switch wire:model="itemForm.itemIsAvailable" :label="__('menu.guest.available')" />
-                            <flux:input wire:model="itemForm.itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
-                        </div>
-                    @endif
-                </div>
-            </form>
-</flux:modal>
-
-    <flux:modal name="catalog-item-editor" :closable="false" class="w-full max-w-4xl">
-        <x-modal-close-button :autofocus="true" />
-        @if ($editingItem !== null)
-            <div class="mb-5 space-y-1 pe-10">
-                <flux:heading size="lg">{{ __('menu.editor.edit_dish') }}</flux:heading>
-                <p class="text-sm text-text-muted">{{ $editingItem['name'] }}</p>
-            </div>
-            <x-menu.item-editor
-                :item="$editingItem" :menu-options="$menuOptions" :editing-item-category-options="$editingItemCategoryOptions"
-                :active-kitchen-department-options="$activeKitchenDepartmentOptions" :language-options="$languageOptions"
-                :can-change-prices="$canChangePrices" :can-change-availability="$canChangeAvailability"
-                :allergen-options="$allergenOptions" :dietary-label-options="$dietaryLabelOptions" :item-image-uploads="$pendingItemImageUploads" :image-presentation-context="$imagePresentationContext" :image-presentation-form="$imagePresentationForm"
-            />
-        @endif
-    </flux:modal>
 </div>

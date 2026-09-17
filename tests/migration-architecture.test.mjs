@@ -60,7 +60,7 @@ test('styles have canonical Sass sources and only fixed generated HTML inclusion
         }
         assert.doesNotMatch(source, /x-data="\{/, path);
         for (const match of source.matchAll(/\s(?::|x-bind:)?style="([^"]*)"/g)) {
-            assert.ok(['resources/views/components/menu/item-images.blade.php', 'resources/views/livewire/public-qr/guest-menu.blade.php'].includes(path), path);
+            assert.ok(['resources/views/components/menu/item-images.blade.php', 'resources/views/components/menu/dish-preview.blade.php', 'resources/views/livewire/public-qr/guest-menu.blade.php'].includes(path), path);
             assert.match(match[1], /^(?:object-position:\s*\{\{[^}]+\}\}|\{ objectPosition: position \})$/, path);
         }
     }

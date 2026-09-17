@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
+use App\Actions\Menus\AdvanceDishConfigurationVersionAction;
 use App\Actions\Menus\MarkMenuCopySourceChangedAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -15,6 +16,7 @@ class MenuItemVariantTranslationObserver
 {
     public function __construct(
         private readonly ForgetBranchCacheAction $forgetBranchCache,
+        private readonly AdvanceDishConfigurationVersionAction $versions,
         private readonly MarkMenuCopySourceChangedAction $markCopySourceChanged,
     ) {}
 
@@ -25,6 +27,9 @@ class MenuItemVariantTranslationObserver
 
     public function updated(MenuItemVariantTranslation $menuItemVariantTranslation): void
     {
+        if (array_diff(array_keys($menuItemVariantTranslation->getChanges()), ['updated_at', 'content_version']) === []) {
+            return;
+        }
         $this->forgetGuestMenu($menuItemVariantTranslation);
     }
 
@@ -52,6 +57,7 @@ class MenuItemVariantTranslationObserver
 
         $itemId = MenuItemVariant::query()->select('menu_item_id')->whereKey($variantId)->value('menu_item_id');
         if (is_numeric($itemId)) {
+            $this->versions->variants((int) $itemId);
             $this->markCopySourceChanged->handle((int) $itemId);
         }
         $menuId = is_numeric($itemId)

@@ -78,7 +78,7 @@ test('menu workspace mounts only the selected allowlisted section', function (st
     }
 })->with([
     ['catalog', 'catalog'],
-    ['variants', 'variants'],
+    ['transfer', 'catalog-transfer'],
     ['departments', 'kitchen-departments'],
     ['modifiers', 'modifiers'],
 ]);
@@ -126,7 +126,7 @@ test('menu workspace rechecks revoked membership before changing sections', func
     $membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
     $this->actingAs($manager->fresh());
 
-    $component->call('selectSection', 'variants')->assertForbidden();
+    $component->call('selectSection', 'departments')->assertForbidden();
 });
 
 test('menu workspace denies a foreign branch before rendering any child', function (): void {
@@ -142,8 +142,8 @@ test('menu workspace switches one child at a time and publishes section history 
     expect($component->effects['url']['section']['as'])->toBe('section')
         ->and($component->effects['url']['section']['use'])->toBe('push');
 
-    $component->call('selectSection', 'variants')->assertSet('section', 'variants')
-        ->assertSeeLivewire('organizations.brands.branches.menu.variants')
+    $component->call('selectSection', 'departments')->assertSet('section', 'departments')
+        ->assertSeeLivewire('organizations.brands.branches.menu.kitchen-departments')
         ->assertDontSeeLivewire('organizations.brands.branches.menu.catalog')
         ->call('selectSection', 'catalog')->assertSet('section', 'catalog')
         ->assertSeeLivewire('organizations.brands.branches.menu.catalog')

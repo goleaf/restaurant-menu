@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Validation\Menus;
 
 use App\Enums\MenuItemVariantType;
+use App\Enums\SupportedLocale;
 use App\Support\Validation\Common\MoneyRules;
 use App\Support\Validation\Common\RuleFields;
 use Illuminate\Validation\Rule;
@@ -38,5 +39,23 @@ final class MenuVariantRules
         }
 
         return $rules;
+    }
+
+    /** @return array<string,string> */
+    public static function validationAttributes(): array
+    {
+        $attributes = ['variantType' => __('menu.variants.admin.type'),
+            'variantName' => __('menu.translations.name', ['language' => SupportedLocale::English->label()]),
+            'variantPrice' => __('guest.cart.price'),
+            'variantWeight' => __('menu.variants.admin.weight'),
+            'variantVolume' => __('menu.variants.admin.volume'),
+            'variantIsDefault' => __('menu.variants.admin.default'),
+            'variantIsAvailable' => __('menu.guest.available'),
+            'variantSortOrder' => __('ui.departments.dashboard.sort'), 'variantTranslations' => __('menu.translations.heading')];
+        foreach (SupportedLocale::labels() as $locale => $language) {
+            $attributes['variantTranslations.'.$locale] = __('menu.translations.name', ['language' => $language]);
+        }
+
+        return $attributes;
     }
 }

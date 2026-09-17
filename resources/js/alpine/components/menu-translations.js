@@ -6,11 +6,26 @@ export function menuTranslations(config) {
         errorSignature: '',
         observer: null,
         submitHandler: null,
+        resetHandler: null,
         unsubscribe: null,
         form: null,
         editor: null,
+        languageWire: null,
+        languageModel: null,
         init() {
             this.editor = this.$el;
+            this.languageModel = config.languageModel ?? null;
+            this.languageWire = this.languageModel ? this.$wire : null;
+            const card = this.editor.closest('[data-page="dish-card"]');
+            if (!this.languageModel && card) {
+                this.languageWire = window.Livewire.find(card.getAttribute('wire:id'));
+                this.languageModel = 'contentLanguage';
+            }
+            if (this.languageWire) {
+                const setLanguage = value => { if (['en', 'lt', 'ru'].includes(value)) this.active = value; };
+                setLanguage(this.languageWire.$get(this.languageModel));
+                this.$watch(() => this.languageWire.$get(this.languageModel), setLanguage);
+            }
             this.form = this.editor.closest('form');
             if (this.form) {
                 this.submitHandler = () => {
@@ -18,6 +33,12 @@ export function menuTranslations(config) {
                     this.syncPrimary();
                 };
                 this.form.addEventListener('submit', this.submitHandler, true);
+                this.resetHandler = () => {
+                    this.copiedFields = {};
+                    this.invalidLocales = [];
+                    this.errorSignature = '';
+                };
+                this.form.addEventListener('menu-form-discarded', this.resetHandler);
                 const action = this.form.getAttribute('wire:submit')?.split('(')[0].trim();
                 if (action) {
                     const componentId = this.editor.closest('[wire\\:id]')?.getAttribute('wire:id');
@@ -43,6 +64,7 @@ export function menuTranslations(config) {
             this.unsubscribe?.();
             this.observer?.disconnect();
             if (this.form && this.submitHandler) this.form.removeEventListener('submit', this.submitHandler, true);
+            if (this.form && this.resetHandler) this.form.removeEventListener('menu-form-discarded', this.resetHandler);
         },
         name(locale) {
             const value = this.$wire.$get(`${config.model}.${locale}${config.nameOnly ? '' : '.name'}`);
@@ -81,8 +103,14 @@ export function menuTranslations(config) {
             if (config.baseDescriptionModel) this.$wire.$set(config.baseDescriptionModel, this.description('en'), false);
         },
         activate(locale, focus = false) {
+            if (!['en', 'lt', 'ru'].includes(locale)) return;
             this.active = locale;
-            if (focus) this.$nextTick(() => this.editor.querySelector(`[data-locale-tab="${locale}"]`)?.focus());
+            if (this.languageWire && this.languageWire.$get(this.languageModel) !== locale) this.languageWire.$set(this.languageModel, locale, true);
+            if (focus) this.$nextTick(() => {
+                const tab = this.editor.querySelector(`[data-locale-tab="${locale}"]`);
+                tab?.focus();
+                tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            });
         },
         navigate(event) {
             const tabs = Array.from(this.editor.querySelectorAll('[data-locale-tab]'));

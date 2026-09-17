@@ -575,6 +575,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
 
     private function seedMenuAdministration(Organization $organization): void
     {
+        $actor = User::query()->whereKey($organization->owner_user_id)->firstOrFail();
         $branches = Branch::query()
             ->select(['id', 'organization_id', 'brand_id', 'name'])
             ->where('organization_id', $organization->id)
@@ -593,7 +594,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
 
             $this->seedMenuSchedule($menu, 'weekday', 2);
             $this->seedMenuSchedule($menu, 'weekend', 6);
-            $this->seedModifiers($branch, $menu);
+            $this->seedModifiers($actor, $branch, $menu);
         }
 
         $inactiveBranch = $branches->firstWhere('name', self::INACTIVE_BRANCH_NAME);
@@ -622,7 +623,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
         $schedule->forceFill($factory->make()->getAttributes())->save();
     }
 
-    private function seedModifiers(Branch $branch, Menu $menu): void
+    private function seedModifiers(User $actor, Branch $branch, Menu $menu): void
     {
         $required = $this->seedModifierGroup($branch, 'CRUD size choice', 'required', 10);
         $optional = $this->seedModifierGroup($branch, 'CRUD optional extras', 'optional', 20);
@@ -642,7 +643,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
             ->orderBy('id')
             ->firstOrFail();
 
-        $this->assignModifierGroup->handle($branch, $item, $required);
+        $this->assignModifierGroup->handle($actor, $branch, $item, $required);
     }
 
     private function seedModifierGroup(Branch $branch, string $name, string $state, int $sortOrder): ModifierGroup

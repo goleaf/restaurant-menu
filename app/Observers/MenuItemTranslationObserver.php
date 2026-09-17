@@ -74,6 +74,7 @@ class MenuItemTranslationObserver
             return;
         }
 
+        MenuItem::query()->whereKey($itemId)->increment('content_version');
         $this->markCopySourceChanged->handle($itemId);
 
         $menuId = MenuItem::query()

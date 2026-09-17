@@ -399,3 +399,14 @@ test('CSV import does not write into a menu with an unfinished catalogue operati
     expect(fn () => applyCatalogCsv($actor, $branch, $menu, catalogCsvContents([catalogCsvRow($category)])))->toThrow(ValidationException::class);
     expect($menu->items()->count())->toBe(0);
 });
+
+test('CSV permits creating a replacement name before moving its former dish in the same validated batch', function (): void {
+    [$actor, $branch, $menu, $category] = catalogCsvContext();
+    $destination = MenuCategory::factory()->for($menu)->create();
+    $original = MenuItem::factory()->for($menu)->for($category, 'category')->create(['name' => 'Soup']);
+    $contents = catalogCsvContents([catalogCsvRow($category, name: 'Soup'), catalogCsvRow($destination, (string) $original->id, 'Soup')]);
+    applyCatalogCsv($actor, $branch, $menu, $contents);
+    expect($original->fresh()->category_id)->toBe($destination->id)
+        ->and($category->items()->where('name', 'Soup')->count())->toBe(1)
+        ->and($menu->items()->where('name', 'Soup')->count())->toBe(2);
+});

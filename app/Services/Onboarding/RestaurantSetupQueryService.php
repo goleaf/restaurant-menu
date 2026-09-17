@@ -94,7 +94,8 @@ final class RestaurantSetupQueryService
                 'service_points' => $pointsValid ? $points->count() : 0, 'qr_codes' => $qrValid ? $qrCodes->count() : 0, 'menu' => $menu?->name,
                 'guest_url' => $qrCode instanceof QrCode ? route('public.qr.show', ['token' => $qrCode->public_token]) : null,
                 'branch_url' => $organization instanceof Organization && $brand instanceof Brand ? route('organizations.brands.branches.index', [$organization, $brand]) : null,
-                'menu_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]) : null,
+                'menu_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch
+                    ? ($item instanceof MenuItem ? route('organizations.brands.branches.menu.dish.edit', [$organization, $brand, $branch, $item]) : route('organizations.brands.branches.menu.index', [$organization, $brand, $branch])) : null,
                 'print_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]) : null,
             ],
             'form' => $this->formValues(

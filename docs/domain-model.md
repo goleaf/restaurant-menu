@@ -89,3 +89,8 @@ The physical schema is described in [`data-model.md`](data-model.md); executable
 ## Prompt 7: availability distinctions
 
 A restaurant can permit browsing while refusing new orders. An item can be published and visible but fail configuration feasibility or order admission. A manual stop does not hide an item; temporary hiding ends independently. A date exception replaces one local calendar date; it does not override pause or integrity restrictions. An unconfirmed submitted draft remains pending and is revalidated before confirmation. Already accepted cooking, serving and settlement are outside the new-order pause.
+
+
+## Prompt 6 integration contract
+
+The Dish card is a scoped authoring projection, not a new entity. English remains the canonical original name/description. Content, gallery, variant aggregate and modifier links have separate revisions; shared groups keep their own revision and identity. A one-dish group copy duplicates permitted options/translations and replaces only that dish link atomically. Nullable menu_operation.menu_id permits a branch-wide library command without inventing a menu owner.

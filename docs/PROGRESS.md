@@ -4,6 +4,43 @@
 
 # Restaurant Menu completion progress
 
+## Prompt 6 — stable source accepted; PHP 8.6 application gate blocked — 2026-09-17
+
+One addressable class-based Livewire Dish card now owns Main, Photos, Variants and Modifiers. Catalogue rows, content issues, copied dishes, onboarding summaries and legacy selected-item links converge on it. The repeated dish selectors are removed; the shared modifier library remains. The installed local Flux Pro adaptation and separate SCSS/Tailwind bridge are preserved.
+
+Main content and EN/LT/RU translations save together, with canonical English enforced by the server. Media, variants, shared groups and links keep independent explicit saves, monotonic versions, exact command replay and transactional audit. Create-and-continue creates an unavailable dish only on explicit save. Shared-group editing shows its impact; a one-dish copy atomically replaces only that dish's link. Saved/draft preview reuses guest availability and price calculation without creating a session, cart, order or publication.
+
+| Evidence scope | Observed result |
+| --- | --- |
+| Isolated candidate backend inventory | 3,989/3,989 tests; 76,310 assertions; zero failures/errors/skips |
+| Shared working-tree backend inventory | 4,137/4,137 tests; 77,668 assertions; zero failures/errors/skips |
+| Canonical Xdebug coverage | 3,989 tests / 76,310 assertions, identical execution inventory; 32,375/34,611 covered executable lines, 93.5%; unchanged 90% threshold |
+| Final candidate browser inventory | 61/61 cases; 4,535 assertions; zero failures/timeouts/skips; source and build unchanged |
+| Final shared browser inventory | 75/75 cases; 5,595 assertions; zero failures/timeouts/skips; source and build unchanged |
+| JavaScript coverage | Candidate 224/224 and shared 227/227; 100% lines, branches 94.44%/94.54%; no skips |
+| Quality and persistence | Candidate/shared Pint, Larastan, translation audit/scan, JS/SCSS lint, generated styles and production builds pass; isolated fresh migrations, repeated default seed, route/config/view caches pass; separate event-cache probe passes |
+| Dependencies and restrictions | Composer validation/audit and npm audit pass with zero advisories; locks unchanged; all 188 first-party Markdown files retain exactly one push-only restriction block |
+
+Independent server/media/UI reviews closed resource-scope and replay issues, optional-translation deletion revisions/events, durable media cleanup visibility after reload, exact used-price-right replay and CSV final-set name swaps. Real browser regressions fixed same-card cached history and cross-card identity; mobile language labels remain whole and keyboard focus scrolls fully into view. A separate in-flight navigation regression proves retained drafts, no DB write and no automatic replay before a new explicit intent. Final independent reviews report no unresolved confirmed blocking findings. The complete browser inventories above pass after these fixes.
+
+Final candidate measurements from the same isolated PHP process: Main with one dish and with 40 unrelated dishes uses exactly 77 SQL / 16 hydrated models, 137,550-byte HTML and a 2,571-byte snapshot. The selected 100-variant/180-option graph uses 78 SQL / 299 models with the same main HTML/snapshot; availability evaluates that selected graph. Variants/Modifiers first renders use 169/174 SQL, 313,609/528,317-byte HTML and 1,939/4,793-byte embedded child snapshots after pagination. The 100-query guard applies to Main only. Warm main peak memory delta is 1,198,248 bytes; the heavy selected graph is 1,226,400 bytes, with SQL logging included. Server selector search reduces each 21-option projection to two entries, retains the selected item and actual validation error, and measures 76 SQL / 18 models / 2,897-byte snapshot. These are fixture measurements, not timing guarantees or a claim that every card section is under 100 queries.
+
+The final shared build contains five CSS assets totalling 52,401 gzip bytes under the unchanged 52,600-byte cap. Dish styles are included in app.scss, eliminating the separate card stylesheet request; there is no new runtime or theme store. The existing scenario and coverage thresholds remain unchanged.
+
+Coverage source `fcac8ed93da75e4a040fcfc8a5c01977e78d68c49477de41b8203e10fac26d29` remained byte-identical for the complete run. Final candidate/shared application, Unit/Feature/Support, database, configuration, routing and Composer contracts are verified byte-identical to their respective full backend sources (1,200/1,244 files). Later changes affect UI/browser tests and acceptance Markdown; their fresh browser/JS evidence is recorded separately. Coverage belongs to the commit candidate, not the unrelated prompt-2 PHP additions. Browser-accepted candidate source is `a32c7effc73c9114d2bac079d2fa7b0ab289447d5df73769be69f710a1c0e24d`; shared source is `7ef0e10b68d36314b1fc34feee231ceda75501f9dc7292351e42513feed999da`. Final evidence-only Markdown changes follow without changing application or test files.
+
+Stable CLI and the isolated browser HTTP responder use actual PHP 8.5.10. A fresh runtime-only probe of configured Herd FPM returns 8.5.8/fpm-fcgi, memory_limit 500M; the probe was removed without application/database bootstrap. Actual experimental PHP 8.6.0beta2 passes 1,223 first-party non-Blade syntax checks and the final two changed browser files, but complete and no-dev Composer platform checks reject Nette Schema's PHP 8.1–8.5 range. No Beta 3 execution, PHP 8.6 application/browser/coverage acceptance, ignored dependency requirement or runtime promotion is claimed.
+
+Browser evidence includes EN/LT/RU, 320/390/768/1024/1440 pixels, light/dark, CSS zoom 200%, native keyboard actions, offline discard, independent administrator/guest contexts and 68 focused screenshots with representative visual inspection. Forced-colors/reduced-motion use verified browser media emulation. Native browser zoom, a physical mobile keyboard and a real OS high-contrast palette were not separately tested.
+
+Failed diagnostics remain explicit: the initial full backend found obsolete route/variant-read expectations, a deterministic audit count and a missing search translation; the next complete inventories pass. An early coverage run was interrupted and is not accepted coverage. Initial browser inventories completed 60/74 cases with two failures each: navigation was correctly blocked during a pending request before the test expected the dirty dialog. Instrumentation proved the draft remained connected and unsaved; the corrected tests distinguish the existing busy guard from a subsequent explicit departure and add a deterministic real-request regression. No skip/only, suppressed issue, weaker authorization or lower coverage/aggregate asset threshold was added.
+
+The alternate-index delivery preflight selects 148 attributable paths and preserves all 187 foreign staged paths, including 25 shared files. No working database, application key, permanent QR, live account, workflow or deployment is changed. Commit/push results are reported only after execution.
+
+## Prompt 6 initial analysis — 2026-09-17
+
+Current HEAD `524abd0`, main, 187 foreign staged paths and no initial unstaged edits. New baseline index/patch recorded in an owned temporary directory. Independent audits assigned for child-resource contracts, media/translations and UI. Confirmed gaps and executable ownership are recorded in IMPLEMENTATION_PLAN.md. Implementation and fresh acceptance are pending; prior-stage totals are not this stage's results.
+
 ## Prompt 7 — stable source accepted; PHP 8.6 application gate blocked — 2026-09-17
 
 Baseline main `ce0296c`; all 187 staged prompt-2 paths are preserved separately. One class-based Livewire availability center joins Now, Schedules and Stop-list. Dashboard, settings, waiter and menu entry points converge on it; ordinary profile persistence no longer writes pause/hours. The installed local Flux Pro adaptation and existing SCSS/Tailwind bridge remain unchanged.

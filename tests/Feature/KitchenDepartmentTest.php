@@ -13,7 +13,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -119,19 +119,16 @@ test('manager can manage kitchen departments and assign a dish department', func
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $category->id)
-        ->set('itemForm.itemKitchenDepartmentId', (string) $department->id)
-        ->set('itemForm.itemName', 'Grilled salmon')
-        ->set('itemForm.itemTranslations.en.name', 'Grilled salmon')
-        ->set('itemForm.itemTranslations.lt.name', 'Kepta lašiša')
-        ->set('itemForm.itemTranslations.ru.name', 'Лосось на гриле')
-        ->set('itemForm.itemSortOrder', 20)
-        ->call('createItem')
-        ->assertHasNoErrors()
-        ->assertSee('Grilled salmon')
-        ->assertSee('Hot kitchen');
+        ->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->set('editingItemForm.itemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemKitchenDepartmentId', (string) $department->id)
+        ->set('editingItemForm.itemTranslations.en.name', 'Grilled salmon')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Kepta lašiša')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Лосось на гриле')
+        ->set('editingItemForm.itemSortOrder', 20)
+        ->call('saveItem')
+        ->assertHasNoErrors();
 
     $item = MenuItem::query()
         ->where('menu_id', $menu->id)
@@ -139,6 +136,9 @@ test('manager can manage kitchen departments and assign a dish department', func
         ->firstOrFail();
 
     expect($item->kitchen_department_id)->toBe($department->id);
+    Livewire::actingAs($manager)->test(Dish::class, [
+        'organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item,
+    ])->assertSee('Grilled salmon')->assertSee('Hot kitchen');
 
     Livewire::actingAs($manager)
         ->test(MenuKitchenDepartments::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
@@ -187,15 +187,14 @@ test('blank dish department uses default kitchen and department changes clear me
     expect($cache->has($cacheKey))->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $category->id)
-        ->set('itemForm.itemKitchenDepartmentId', '')
-        ->set('itemForm.itemName', 'Prompt 59 Pizza')
-        ->set('itemForm.itemTranslations.en.name', 'Prompt 59 Pizza')
-        ->set('itemForm.itemTranslations.lt.name', 'Prompt 59 Pica')
-        ->set('itemForm.itemTranslations.ru.name', 'Пицца Prompt 59')
-        ->call('createItem')
+        ->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->set('editingItemForm.itemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemKitchenDepartmentId', '')
+        ->set('editingItemForm.itemTranslations.en.name', 'Prompt 59 Pizza')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Prompt 59 Pica')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Пицца Prompt 59')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     $item = MenuItem::query()
@@ -212,10 +211,9 @@ test('blank dish department uses default kitchen and department changes clear me
     expect($cache->has($cacheKey))->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
         ->set('editingItemForm.itemKitchenDepartmentId', (string) $bar->id)
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     expect($item->fresh()->kitchen_department_id)->toBe($bar->id)

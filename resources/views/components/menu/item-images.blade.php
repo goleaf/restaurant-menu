@@ -1,4 +1,4 @@
-@props(['item', 'pendingUploads', 'presentationContext' => [], 'presentationForm' => null])
+@props(['item', 'pendingUploads', 'presentationContext' => [], 'presentationForm' => null, 'hasPendingCleanup' => false])
 
 <section
     data-menu-item-images
@@ -57,10 +57,12 @@
     @if ($item['remaining_image_slots'] === 0 || $presentationContext !== [])
         <flux:error :name="'itemImageUploads.'.$item['id']" :deep="false" class="text-danger!" />
     @endif
-    @error('catalogOperation')
+    @error('pendingImageOperation')
         <p role="alert" class="text-sm font-medium text-danger">{{ $message }}</p>
-        <flux:button type="button" wire:click="resumeCatalogOperation" wire:loading.attr="disabled" icon="arrow-path">{{ __('menu.operations.resume') }}</flux:button>
     @enderror
+    @if ($hasPendingCleanup)
+        <flux:button type="button" wire:click="retryItemImageCleanup" wire:loading.attr="disabled" wire:offline.attr="disabled" icon="arrow-path">{{ __('menu.operations.resume') }}</flux:button>
+    @endif
     <div id="item-images-{{ $item['id'] }}-files-errors" class="grid gap-1">
     @forelse ($pendingUploads as $uploadIndex => $pendingUpload)
         @error('itemImageUploads.'.$item['id'].'.'.$uploadIndex)
@@ -144,8 +146,8 @@
                     @else
                         <flux:button icon="star" type="button" wire:click="{{ $image['promote_action'] }}" wire:loading.attr="disabled" :disabled="$presentationContext !== []">{{ __('uploads.actions.make_primary') }}</flux:button>
                         <div class="grid grid-cols-2 gap-1">
-                            <flux:button type="button" icon="arrow-left" :aria-label="__('uploads.editor.move_before')" wire:click="reorderItemImages({{ $item['id'] }}, {{ json_encode($image['previous_order'], JSON_THROW_ON_ERROR) }})" :disabled="$presentationContext !== [] || ! $image['can_move_before']" />
-                            <flux:button type="button" icon="arrow-right" :aria-label="__('uploads.editor.move_after')" wire:click="reorderItemImages({{ $item['id'] }}, {{ json_encode($image['next_order'], JSON_THROW_ON_ERROR) }})" :disabled="$presentationContext !== [] || ! $image['can_move_after']" />
+                            <flux:button type="button" icon="arrow-left" :aria-label="__('uploads.editor.move_before')" wire:click="{{ $image['reorder_before_action'] }}" :disabled="$presentationContext !== [] || ! $image['can_move_before']" />
+                            <flux:button type="button" icon="arrow-right" :aria-label="__('uploads.editor.move_after')" wire:click="{{ $image['reorder_after_action'] }}" :disabled="$presentationContext !== [] || ! $image['can_move_after']" />
                         </div>
                     @endif
                     <x-dangerous-action-confirmation name="remove-menu-item-image-{{ $item['id'] }}-{{ $image['key'] }}" action="delete_media_file" :confirm-action="$image['remove_action']" confirm-label="ui.actions.confirm" loading-label="ui.actions.removing">

@@ -137,8 +137,8 @@ test('a source edit during copying fails explicitly and cleans only the unpublis
         'translation' => $this->item->translations()->firstOrFail()->update(['name' => 'Changed translation']),
         'variant' => $variant->update(['price_cents' => 9876]),
         'variant translation' => $variant->translations()->firstOrFail()->update(['name' => 'Changed variant']),
-        'attach' => app(AssignModifierGroupToMenuItemAction::class)->handle($this->branch, $this->item, $group),
-        'detach' => app(UnassignModifierGroupFromMenuItemAction::class)->handle($this->branch, $this->item, $group),
+        'attach' => app(AssignModifierGroupToMenuItemAction::class)->handle($this->actor, $this->branch, $this->item, $group),
+        'detach' => app(UnassignModifierGroupFromMenuItemAction::class)->handle($this->actor, $this->branch, $this->item, $group),
     };
     $operation = finishDuplicateOperation($this->actor, $this->branch, $operation);
     expect($operation->phase->value)->toBe('failed')

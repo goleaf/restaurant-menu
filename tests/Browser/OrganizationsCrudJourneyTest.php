@@ -191,7 +191,6 @@ test('demo owner can complete the organization administration browser journey', 
         ->resize(1440, 1000)
         ->navigate(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch], false))
         ->assertPresent('[data-menu-section="availability"]')
-        ->assertPresent('[data-menu-section="variants"]')
         ->assertSee(__('menu.workspace.modifiers'))
         ->assertSee(__('menu.workspace.departments'));
     clickOrganizationsBrowserElement($page, '[data-menu-section=modifiers]');
@@ -203,12 +202,13 @@ test('demo owner can complete the organization administration browser journey', 
 
     clickOrganizationsBrowserElement(
         $page,
-        sprintf('button[wire\\:click="startEditingItem(%d)"]', $menuItem->id),
+        sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $menuItem->id),
     );
-    $page
-        ->assertSee(__('uploads.labels.gallery'))
-        ->assertSee(__('menu.translations.heading'));
-    clickOrganizationsBrowserElement($page, 'button[wire\\:click="cancelItemEditing"]');
+    $page->assertPresent('[data-page="dish-card"]')->assertSee(__('menu.translations.heading'))
+        ->click('[data-menu-section="variants"]')->assertVisible('[data-dish-section="variants"]')
+        ->assertSee(__('menu.variants.admin.title'));
+    $page->click('[data-menu-section="photos"]')->assertSee(__('uploads.labels.gallery'));
+    $page->click('a[href*="section=catalog"]')->assertPresent('[data-section="menu-catalog"]');
 
     $page->navigate(route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false));
     clickOrganizationsBrowserElement($page, 'button[wire\\:click="confirmReissue"]');

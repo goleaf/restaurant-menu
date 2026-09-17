@@ -14,6 +14,7 @@ use App\Livewire\Organizations\Brands\Branches\Availability\Index as Availabilit
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailability;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
 use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
 use App\Livewire\Organizations\Brands\Branches\Menu\Variants as MenuVariants;
@@ -33,7 +34,6 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -129,14 +129,14 @@ test('dependent menu selectors never expose ids from another branch', function (
     ];
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, $parameters)
-        ->set('itemForm.itemMenuId', (string) $foreignMenu->id)
-        ->assertSet('itemForm.itemCategoryId', '');
+        ->test(Dish::class, compact('organization', 'brand', 'branch'))
+        ->set('editingItemForm.itemMenuId', (string) $foreignMenu->id)
+        ->assertSet('editingItemForm.itemCategoryId', '');
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, $parameters)
-        ->set('modifierItemMenuId', (string) $foreignMenu->id)
-        ->assertSet('modifierItemId', '');
+        ->set('assignment.modifierItemMenuId', (string) $foreignMenu->id)
+        ->assertSet('assignment.modifierItemId', '');
 });
 
 test('branch list shows menu link to users with manage menu permission', function () {
@@ -209,24 +209,24 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $category->id)
-        ->set('itemForm.itemName', 'Margherita')
-        ->set('itemForm.itemTranslations.en.name', 'Margherita')
-        ->set('itemForm.itemTranslations.lt.name', 'Margarita')
-        ->set('itemForm.itemTranslations.ru.name', 'Маргарита')
-        ->set('itemForm.itemDescription', 'Tomato, mozzarella, basil')
-        ->set('itemForm.itemPrice', '12.50')
-        ->set('itemForm.itemWeight', '450')
-        ->set('itemForm.itemCalories', '720')
-        ->set('itemForm.itemAllergens', ['gluten', 'milk'])
-        ->set('itemForm.itemDietaryLabels', ['vegetarian'])
-        ->set('itemForm.itemSortOrder', 30)
-        ->set('itemForm.itemIsAvailable', true)
-        ->call('createItem')
+        ->test(Dish::class, compact('organization', 'brand', 'branch'))
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->set('editingItemForm.itemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemName', 'Margherita')
+        ->set('editingItemForm.itemTranslations.en.name', 'Margherita')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Margarita')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Маргарита')
+        ->set('editingItemForm.itemTranslations.en.description', 'Tomato, mozzarella, basil')
+        ->set('editingItemForm.itemPrice', '12.50')
+        ->set('editingItemForm.itemWeight', '450')
+        ->set('editingItemForm.itemCalories', '720')
+        ->set('editingItemForm.itemAllergens', ['gluten', 'milk'])
+        ->set('editingItemForm.itemDietaryLabels', ['vegetarian'])
+        ->set('editingItemForm.itemSortOrder', 30)
+        ->set('editingItemForm.itemIsAvailable', true)
+        ->call('saveItem')
         ->assertHasNoErrors()
-        ->assertSee('Margherita');
+        ->assertSet('editingItemForm.itemName', 'Margherita');
 
     $item = MenuItem::query()
         ->where('menu_id', $menu->id)
@@ -235,8 +235,8 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
+        ->call('selectSection', 'photos')
         ->set('editingItemForm.itemTranslations.en.name', 'Dish')
         ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
         ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
@@ -265,8 +265,6 @@ test('manager can create menu categories dishes and upload local dish photo', fu
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('editingItemForm.itemMenuId', (string) $menu->id)
-        ->assertSet('editingItemForm.itemCategoryId', (string) $category->id)
         ->call('startEditingMenu', $menu->id)
         ->set('editingMenuForm.menuName', 'Evening Menu')
         ->set('editingMenuForm.menuStatus', MenuStatus::Archived->value)
@@ -280,7 +278,9 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->set('editingCategoryForm.categorySortOrder', 50)
         ->set('editingCategoryForm.categoryIsActive', false)
         ->call('updateCategory')
-        ->assertHasNoErrors()
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($manager)->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->call('removeItemImage', $item->id, hash('sha256', $imagePath), (string) Str::uuid())
         ->assertHasNoErrors();
 
@@ -312,9 +312,9 @@ test('menu item image gallery uploads several images only inside dish editing', 
     ];
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, $parameters)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->assertDontSee('id="item-images-'.$item->id.'"', false)
-        ->call('startEditingItem', $item->id)
+        ->call('selectSection', 'photos')
         ->assertSee('id="item-images-'.$item->id.'"', false)
         ->assertSee('multiple', false)
         ->set('itemImageUploads.'.$item->id, [
@@ -354,12 +354,8 @@ test('menu item image gallery enforces the aggregate limit on the exact livewire
     }
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, [
-            'organizationId' => $organization->id,
-            'brandId' => $brand->id,
-            'branchId' => $branch->id,
-        ])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
+        ->call('selectSection', 'photos')
         ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('ninth.jpg')->size(100)])
         ->call('saveItemImages', $item->id)
         ->assertHasErrors(['itemImageUploads.'.$item->id]);
@@ -386,12 +382,8 @@ test('menu item image gallery livewire actions promote and remove owned images',
     }
 
     $component = Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, [
-            'organizationId' => $organization->id,
-            'brandId' => $brand->id,
-            'branchId' => $branch->id,
-        ])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
+        ->call('selectSection', 'photos')
         ->call('promoteItemImage', $item->id, $promoted->id, hash('sha256', $promotedPath), (string) Str::uuid())
         ->assertHasNoErrors();
 
@@ -422,21 +414,13 @@ test('menu item image gallery rejects tampered branch records without storing fi
     $foreignMenu = Menu::factory()->for($foreignBranch)->create();
     $foreignCategory = MenuCategory::factory()->for($foreignMenu)->create();
     $foreignItem = MenuItem::factory()->for($foreignMenu)->for($foreignCategory, 'category')->create();
-    $component = Livewire::actingAs($manager)->test(MenuCatalog::class, [
-        'organizationId' => $organization->id,
-        'brandId' => $brand->id,
-        'branchId' => $branch->id,
-    ]);
+    $component = Livewire::actingAs($manager)->test(Dish::class, compact('organization', 'brand', 'branch'));
 
     $component
         ->set('itemImageUploads.'.$foreignItem->id, [UploadedFile::fake()->image('foreign.jpg')->size(100)])
         ->assertForbidden();
 
-    expect(fn () => Livewire::actingAs($manager)->test(MenuCatalog::class, [
-        'organizationId' => $organization->id,
-        'brandId' => $brand->id,
-        'branchId' => $branch->id,
-    ])->call('saveItemImages', $foreignItem->id))->toThrow(ModelNotFoundException::class);
+    Livewire::actingAs($manager)->test(Dish::class, compact('organization', 'brand', 'branch'))->call('saveItemImages', $foreignItem->id)->assertForbidden();
 
     expect($foreignItem->refresh()->image)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBe([]);
@@ -522,10 +506,10 @@ test('menu item allergen and dietary selections reject unknown values and normal
     ];
 
     $component = Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, $parameters)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->assertSeeText('Gluten-containing cereals')
         ->assertSeeText('Dietary labels')
-        ->call('startEditingItem', $item->id)
+        ->call('selectSection', 'photos')
         ->set('editingItemForm.itemTranslations.en.name', 'Dish')
         ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
         ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
@@ -533,13 +517,13 @@ test('menu item allergen and dietary selections reject unknown values and normal
         ->assertSet('editingItemForm.itemDietaryLabels', ['vegetarian'])
         ->set('editingItemForm.itemAllergens', ['unknown-allergen'])
         ->set('editingItemForm.itemDietaryLabels', ['unknown-diet'])
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasErrors(['editingItemForm.itemAllergens.0', 'editingItemForm.itemDietaryLabels.0']);
 
     $component
         ->set('editingItemForm.itemAllergens', ['milk', 'gluten'])
         ->set('editingItemForm.itemDietaryLabels', ['vegan', 'vegetarian'])
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     expect($item->refresh()->allergens)->toBe(['gluten', 'milk'])
@@ -569,14 +553,14 @@ test('manager can manage modifier groups options and item assignments', function
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('modifierGroupName', 'Pizza size')
-        ->set('modifierGroupTranslations.en', 'Pizza size')
-        ->set('modifierGroupTranslations.lt', 'Picos dydis')
-        ->set('modifierGroupTranslations.ru', 'Размер пиццы')
-        ->set('modifierGroupIsRequired', true)
-        ->set('modifierGroupMinSelect', 1)
-        ->set('modifierGroupMaxSelect', 1)
-        ->set('modifierGroupSortOrder', 10)
+        ->set('group.modifierGroupName', 'Pizza size')
+        ->set('group.modifierGroupTranslations.en', 'Pizza size')
+        ->set('group.modifierGroupTranslations.lt', 'Picos dydis')
+        ->set('group.modifierGroupTranslations.ru', 'Размер пиццы')
+        ->set('group.modifierGroupIsRequired', true)
+        ->set('group.modifierGroupMinSelect', 1)
+        ->set('group.modifierGroupMaxSelect', 1)
+        ->set('group.modifierGroupSortOrder', 10)
         ->call('createModifierGroup')
         ->assertHasNoErrors()
         ->assertSee('Pizza size');
@@ -598,14 +582,14 @@ test('manager can manage modifier groups options and item assignments', function
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('modifierOptionGroupId', (string) $group->id)
-        ->set('modifierOptionName', 'Large')
-        ->set('modifierOptionTranslations.en', 'Large')
-        ->set('modifierOptionTranslations.lt', 'Didelė')
-        ->set('modifierOptionTranslations.ru', 'Большая')
-        ->set('modifierOptionPriceDelta', '3.50')
-        ->set('modifierOptionIsAvailable', true)
-        ->set('modifierOptionSortOrder', 20)
+        ->set('option.modifierOptionGroupId', (string) $group->id)
+        ->set('option.modifierOptionName', 'Large')
+        ->set('option.modifierOptionTranslations.en', 'Large')
+        ->set('option.modifierOptionTranslations.lt', 'Didelė')
+        ->set('option.modifierOptionTranslations.ru', 'Большая')
+        ->set('option.modifierOptionPriceDelta', '3.50')
+        ->set('option.modifierOptionIsAvailable', true)
+        ->set('option.modifierOptionSortOrder', 20)
         ->call('createModifierOption')
         ->assertHasNoErrors()
         ->assertSee('Large');
@@ -627,9 +611,9 @@ test('manager can manage modifier groups options and item assignments', function
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('modifierItemMenuId', (string) $menu->id)
-        ->set('modifierItemId', (string) $item->id)
-        ->set('modifierItemGroupId', (string) $group->id)
+        ->set('assignment.modifierItemMenuId', (string) $menu->id)
+        ->set('assignment.modifierItemId', (string) $item->id)
+        ->set('assignment.modifierItemGroupId', (string) $group->id)
         ->call('attachModifierGroupToItem')
         ->assertHasNoErrors()
         ->assertSee('Pizza size');
@@ -641,23 +625,27 @@ test('manager can manage modifier groups options and item assignments', function
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('refreshData')
         ->call('startEditingModifierGroup', $group->id)
-        ->set('editingModifierGroupName', 'Choose size')
-        ->set('editingModifierGroupMinSelect', 1)
-        ->set('editingModifierGroupMaxSelect', 2)
+        ->set('editingGroup.modifierGroupName', 'Choose size')
+        ->set('editingGroup.modifierGroupMinSelect', 1)
+        ->set('editingGroup.modifierGroupMaxSelect', 2)
         ->call('updateModifierGroup')
         ->assertHasNoErrors()
         ->call('startEditingModifierOption', $option->id)
-        ->set('editingModifierOptionName', 'Extra large')
-        ->set('editingModifierOptionPriceDelta', '5.00')
-        ->set('editingModifierOptionIsAvailable', false)
+        ->set('editingOption.modifierOptionName', 'Extra large')
+        ->set('editingOption.modifierOptionPriceDelta', '5.00')
+        ->set('editingOption.modifierOptionIsAvailable', false)
         ->call('updateModifierOption')
-        ->assertHasNoErrors()
-        ->call('detachModifierGroupFromItem', $item->id, $group->id)
-        ->assertHasNoErrors()
-        ->call('deleteModifierOption', $option->id)
-        ->assertHasNoErrors()
-        ->call('deleteModifierGroup', $group->id)
         ->assertHasNoErrors();
+
+    Livewire::actingAs($manager)->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id, 'itemId' => $item->id])
+        ->call('detachModifierGroupFromItem', $item->id, $group->id)
+        ->assertHasNoErrors()->assertStatus(200);
+
+    Livewire::actingAs($manager)->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('deleteModifierOption', $option->id)
+        ->assertHasNoErrors()->assertStatus(200)
+        ->call('deleteModifierGroup', $group->id)
+        ->assertHasNoErrors()->assertStatus(200);
 
     expect($group->fresh())->toBeNull()
         ->and($option->fresh())->toBeNull()
@@ -685,17 +673,17 @@ test('manager can manage localized dish variants and portion sizes', function ()
 
     Livewire::actingAs($manager)
         ->test(MenuVariants::class, $parameters)
-        ->set('variantMenuId', (string) $menu->id)
-        ->set('variantItemId', (string) $item->id)
+        ->set('variant.variantMenuId', (string) $menu->id)
+        ->set('variant.variantItemId', (string) $item->id)
         ->call('refreshData')
-        ->set('variantType', MenuItemVariantType::Portion->value)
-        ->set('variantName', 'Large')
-        ->set('variantPrice', '18.90')
-        ->set('variantWeight', '650')
-        ->set('variantIsDefault', true)
-        ->set('variantTranslations.en', 'Large')
-        ->set('variantTranslations.lt', 'Didelė')
-        ->set('variantTranslations.ru', 'Большая')
+        ->set('variant.variantType', MenuItemVariantType::Portion->value)
+        ->set('variant.variantName', 'Large')
+        ->set('variant.variantPrice', '18.90')
+        ->set('variant.variantWeight', '650')
+        ->set('variant.variantIsDefault', true)
+        ->set('variant.variantTranslations.en', 'Large')
+        ->set('variant.variantTranslations.lt', 'Didelė')
+        ->set('variant.variantTranslations.ru', 'Большая')
         ->call('createVariant')
         ->assertHasNoErrors()
         ->assertSee('Large')
@@ -710,22 +698,22 @@ test('manager can manage localized dish variants and portion sizes', function ()
 
     Livewire::actingAs($manager)
         ->test(MenuVariants::class, $parameters)
-        ->set('variantMenuId', (string) $menu->id)
-        ->set('variantItemId', (string) $item->id)
-        ->set('variantType', MenuItemVariantType::Portion->value)
-        ->set('variantName', 'Large')
-        ->set('variantPrice', '19.50')
+        ->set('variant.variantMenuId', (string) $menu->id)
+        ->set('variant.variantItemId', (string) $item->id)
+        ->set('variant.variantType', MenuItemVariantType::Portion->value)
+        ->set('variant.variantName', 'Large')
+        ->set('variant.variantPrice', '19.50')
         ->call('createVariant')
-        ->assertHasErrors(['variantName']);
+        ->assertHasErrors(['variant.variantName']);
 
     expect(MenuItemVariant::query()->where('menu_item_id', $item->id)->count())->toBe(1);
 
     Livewire::actingAs($manager)
         ->test(MenuVariants::class, $parameters)
         ->call('startEditingVariant', $variant->id)
-        ->set('editingVariantName', 'Family')
-        ->set('editingVariantPrice', '24.50')
-        ->set('editingVariantTranslations.lt', 'Šeimos')
+        ->set('editingVariant.variantName', 'Family')
+        ->set('editingVariant.variantPrice', '24.50')
+        ->set('editingVariant.variantTranslations.lt', 'Šeimos')
         ->call('updateVariant')
         ->assertHasNoErrors()
         ->assertSee('Family')
@@ -750,17 +738,17 @@ test('price and availability changes require dedicated permissions', function ()
         ]);
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->assertSet('canChangePrices', false)
         ->assertSet('canChangeAvailability', false)
-        ->call('startEditingItem', $item->id)
+        ->call('selectSection', 'photos')
         ->set('editingItemForm.itemTranslations.en.name', 'Soup')
         ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
         ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
         ->set('editingItemForm.itemPrice', '99.99')
         ->set('editingItemForm.itemIsAvailable', false)
         ->set('editingItemForm.itemHiddenUntil', now($branch->timezone)->addHours(2)->format('Y-m-d\TH:i'))
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     $item->refresh();
@@ -781,17 +769,17 @@ test('price and availability changes require dedicated permissions', function ()
     $hiddenUntil = now($branch->timezone)->addHours(2)->seconds(0)->format('Y-m-d\TH:i');
 
     Livewire::actingAs($manager->fresh())
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->assertSet('canChangePrices', true)
         ->assertSet('canChangeAvailability', true)
-        ->call('startEditingItem', $item->id)
+        ->call('selectSection', 'photos')
         ->set('editingItemForm.itemTranslations.en.name', 'Soup')
         ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
         ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
         ->set('editingItemForm.itemPrice', '9.50')
         ->set('editingItemForm.itemIsAvailable', false)
         ->set('editingItemForm.itemHiddenUntil', $hiddenUntil)
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     $item->refresh();
@@ -817,19 +805,19 @@ test('menu price validation rejects incomplete decimals before saving and permit
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['price_cents' => 800]);
 
     $component = Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
+        ->call('selectSection', 'photos')
         ->set('editingItemForm.itemTranslations.en.name', 'Soup')
         ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
         ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
         ->set('editingItemForm.itemPrice', $price)
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasErrors('editingItemForm.itemPrice');
 
     expect($item->refresh()->price_cents)->toBe(800);
 
     $component->set('editingItemForm.itemPrice', '0.29')
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     expect($item->refresh()->price_cents)->toBe(29);

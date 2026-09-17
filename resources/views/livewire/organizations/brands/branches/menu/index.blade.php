@@ -36,8 +36,6 @@
                 <livewire:organizations.brands.branches.menu.catalog :organization-id="$organizationId" :brand-id="$brandId" :branch-id="$branchId" :key="'menu-section-catalog'" />
             @elseif ($section === 'availability')
                 <livewire:organizations.brands.branches.menu.availability :organization-id="$organizationId" :brand-id="$brandId" :branch-id="$branchId" :key="'menu-section-availability'" />
-            @elseif ($section === 'variants')
-                <livewire:organizations.brands.branches.menu.variants :organization-id="$organizationId" :brand-id="$brandId" :branch-id="$branchId" :key="'menu-section-variants'" />
             @elseif ($section === 'departments')
                 <livewire:organizations.brands.branches.menu.kitchen-departments :organization-id="$organizationId" :brand-id="$brandId" :branch-id="$branchId" :key="'menu-section-departments'" />
             @elseif ($section === 'modifiers')

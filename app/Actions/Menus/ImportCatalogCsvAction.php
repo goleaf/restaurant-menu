@@ -85,8 +85,8 @@ final readonly class ImportCatalogCsvAction
                 }
                 $data = $this->attributes($row, $item);
                 $saved = $item instanceof MenuItem
-                    ? $this->updateItem->handle($actor, $branch, $item, $menu, $category, $item->kitchen_department_id, $data, $expectedVersions[$item->id], preserveExistingDepartment: true)
-                    : $this->createItem->handle($actor, $branch, $menu, $category, null, $data);
+                    ? $this->updateItem->handle($actor, $branch, $item, $menu, $category, $item->kitchen_department_id, $data, $expectedVersions[$item->id], preserveExistingDepartment: true, namesValidatedAsBatch: true)
+                    : $this->createItem->handle($actor, $branch, $menu, $category, null, $data, namesValidatedAsBatch: true);
                 if (! $saved->exists) {
                     throw new RuntimeException('The catalogue import item write was cancelled.');
                 }

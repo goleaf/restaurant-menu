@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Services\Availability\AvailabilityEvaluator;
 use App\Support\LocalImageVariants;
 use App\Support\MenuImagePresentation;
+use App\Support\MenuItemMediaState;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -233,7 +234,7 @@ final readonly class CatalogData
     public function findBranchItem(int $branchId, int $itemId): MenuItem
     {
         return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'content_version', 'media_version', 'variants_version', 'modifier_links_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
             ->with([
                 'translations' => fn ($query) => $query
                     ->select(['id', 'menu_item_id', 'language_code', 'name', 'description'])
@@ -272,6 +273,21 @@ final readonly class CatalogData
             ->value('menu_categories.id');
 
         return is_int($categoryId) ? (string) $categoryId : '';
+    }
+
+    public function completedCreation(Branch $branch, User $actor, string $requestId): ?MenuItem
+    {
+        $receipt = $this->operations($branch, $actor)->where('request_id', $requestId)->where('kind', MenuOperationKind::CreateItem)
+            ->whereNotNull('completed_at')->first();
+
+        return $receipt?->result_id === null ? null : $this->findBranchItem($branch->id, $receipt->result_id);
+    }
+
+    public function pendingImageCleanup(Branch $branch, User $actor, int $itemId): ?string
+    {
+        return $this->operations($branch, $actor)->where('target_id', $itemId)
+            ->whereIn('kind', [MenuOperationKind::ImageRemove, MenuOperationKind::ImagePromote])
+            ->whereNull('completed_at')->orderBy('id')->value('request_id');
     }
 
     public function organization(int $organizationId): Organization
@@ -555,7 +571,7 @@ final readonly class CatalogData
     {
         return MenuItem::query()
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'content_version', 'media_version', 'variants_version', 'modifier_links_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
             ->when($withDetails, fn ($query) => $query->with(AvailabilityEvaluator::itemRelations()))
             ->with([
                 'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name', 'is_active', 'deleted_at']),
@@ -755,6 +771,8 @@ final readonly class CatalogData
             $images[] = [
                 ...LocalImageVariants::forPath($galleryImage->path),
                 ...$this->imageMutationPresentation($item->id, $galleryImage->id, $galleryImage->path),
+                'reorder_before_action' => 'reorderItemImages('.$item->id.', '.json_encode($previousOrder, JSON_THROW_ON_ERROR).', '.json_encode(MenuItemMediaState::fingerprint($item), JSON_THROW_ON_ERROR).', '.json_encode((string) Str::uuid(), JSON_THROW_ON_ERROR).')',
+                'reorder_after_action' => 'reorderItemImages('.$item->id.', '.json_encode($nextOrder, JSON_THROW_ON_ERROR).', '.json_encode(MenuItemMediaState::fingerprint($item), JSON_THROW_ON_ERROR).', '.json_encode((string) Str::uuid(), JSON_THROW_ON_ERROR).')',
                 'previous_order' => $previousOrder,
                 'next_order' => $nextOrder,
                 'can_move_before' => $index > 0,
@@ -780,6 +798,7 @@ final readonly class CatalogData
             'availability_url' => route('organizations.brands.branches.availability.index', [$branch->organization_id, $branch->brand_id, $branch->id, 'section' => 'stoplist', 'item' => $item->id]),
             'remaining_image_slots' => MenuItem::MAX_IMAGES - $imageCount,
             'name' => $item->name,
+            'menu_name' => $withDetails && $item->relationLoaded('menu') ? $item->menu->name : '',
             'category_name' => $category instanceof MenuCategory
                 ? $category->name
                 : __('ui.livewire.organizations.brands.branches.menu.index.no_category'),

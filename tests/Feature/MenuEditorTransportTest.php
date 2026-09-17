@@ -6,6 +6,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers;
 use App\Livewire\Organizations\Brands\Branches\Menu\Variants;
 use App\Models\Branch;
@@ -57,15 +58,19 @@ function menuEditorTransportFixture(string $editor, bool $editing): array
     [$componentClass, $subject, $create, $edit, $start, $values] = match ($editor) {
         'menu' => [Catalog::class, $menu, 'createMenu', 'updateMenu', 'startEditingMenu', ['menuName' => 'Transport menu', 'menuStatus' => 'draft', 'menuSortOrder' => '12', 'menuTranslations' => $names]],
         'category' => [Catalog::class, $category, 'createCategory', 'updateCategory', 'startEditingCategory', ['categoryName' => 'Transport category', 'categoryDescription' => '', 'categoryIcon' => 'bookmark', 'categoryIsActive' => '1', 'categorySortOrder' => '12', 'categoryTranslations' => $descriptions]],
-        'item' => [Catalog::class, $item, 'createItem', 'updateItem', 'startEditingItem', ['itemName' => 'Transport dish', 'itemPrice' => '10.25', 'itemIsAvailable' => '1', 'itemSortOrder' => '12', 'itemTranslations' => $descriptions]],
+        'item' => [Dish::class, $item, 'saveItem', 'saveItem', 'discardMainChanges', ['itemName' => 'Transport dish', 'itemPrice' => '10.25', 'itemIsAvailable' => '1', 'itemSortOrder' => '12', 'itemTranslations' => $descriptions]],
         'group' => [Modifiers::class, ModifierGroup::factory()->for($branch)->withTranslations()->create(['name' => 'Original group']), 'createModifierGroup', 'updateModifierGroup', 'startEditingModifierGroup', ['modifierGroupName' => 'Transport group', 'modifierGroupMinSelect' => '0', 'modifierGroupMaxSelect' => '2', 'modifierGroupSortOrder' => '12', 'modifierGroupIsRequired' => '0', 'modifierGroupTranslations' => $names]],
         'option' => [Modifiers::class, ModifierOption::factory()->for(ModifierGroup::factory()->for($branch)->create(), 'group')->withTranslations()->create(['name' => 'Original option']), 'createModifierOption', 'updateModifierOption', 'startEditingModifierOption', ['modifierOptionName' => 'Transport option', 'modifierOptionPriceDelta' => '-1.25', 'modifierOptionIsAvailable' => '1', 'modifierOptionSortOrder' => '12', 'modifierOptionTranslations' => $names]],
         'variant' => [Variants::class, MenuItemVariant::factory()->for($item, 'item')->withTranslations()->create(['name' => 'Original variant']), 'createVariant', 'updateVariant', 'startEditingVariant', ['variantName' => 'Transport variant', 'variantType' => 'portion', 'variantPrice' => '10.25', 'variantIsDefault' => '0', 'variantIsAvailable' => '1', 'variantSortOrder' => '12', 'variantTranslations' => $names]],
     };
-    $component = Livewire::actingAs($user)->test($componentClass, [
+    $parameters = $editor === 'item' ? ['organization' => $organization, 'brand' => $branch->brand, 'branch' => $branch, ...($editing ? ['item' => $item] : [])] : [
         'organizationId' => $organization->id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->assertOk();
-    if ($editing) {
+    ];
+    $component = Livewire::actingAs($user)->test($componentClass, $parameters)->assertOk();
+    if ($editor === 'item' && ! $editing) {
+        $component->set('editingItemForm.itemMenuId', (string) $menu->id)->set('editingItemForm.itemCategoryId', (string) $category->id);
+    }
+    if ($editing && $editor !== 'item') {
         $component->call($start, $subject->id)->assertHasNoErrors();
     }
     $values = collect($values)->mapWithKeys(fn (mixed $value, string $key): array => [menuEditorTransportField($editor, $key, $editing) => $value])->all();
@@ -100,7 +105,7 @@ test('menu editors preserve valid numeric strings and translated values', functi
     $expected = match ($editor) {
         'menu' => ['name' => 'Transport menu', 'sort_order' => 12],
         'category' => ['name' => 'Transport category', 'sort_order' => 12, 'is_active' => true],
-        'item' => ['name' => 'Transport dish', 'price_cents' => 1025, 'sort_order' => 12, 'is_available' => true],
+        'item' => ['name' => 'Transport', 'price_cents' => 1025, 'sort_order' => 12, 'is_available' => $editing],
         'schedule' => ['day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00'],
         'group' => ['name' => 'Transport group', 'min_select' => 0, 'max_select' => 2, 'sort_order' => 12, 'is_required' => false],
         'option' => ['name' => 'Transport option', 'price_delta_cents' => -125, 'sort_order' => 12, 'is_available' => true],
@@ -181,6 +186,7 @@ test('menu selections retain malformed input while dependent reads remain safe',
 
 test('modifier assignment rejects malformed selections without attaching a group', function (string $field, mixed $value): void {
     [$component, , , , $item] = menuEditorTransportFixture('group', false);
+    $field = 'assignment.'.$field;
     $component->update(updates: [$field => $value])->assertOk()->assertSet($field, $value)
         ->call('attachModifierGroupToItem')->assertHasErrors([$field]);
     expect($item->modifierGroups()->exists())->toBeFalse();
@@ -196,27 +202,44 @@ function menuEditorTransportField(string $editor, string $field, bool $editing):
             'scheduleEndsAt' => 'weekly.openingHours.1.intervals.0.closes_at',
         };
     }
-    if (in_array($editor, ['menu', 'category', 'item'], true)) {
+    if ($editor === 'item') {
+        $field = match ($field) {
+            'itemName' => 'itemTranslations.en.name', 'itemDescription' => 'itemTranslations.en.description', default => $field
+        };
+
+        return 'editingItemForm.'.$field;
+    }
+    if (in_array($editor, ['menu', 'category'], true)) {
         $form = $editing ? 'editing'.ucfirst($editor).'Form' : $editor.'Form';
 
         return $form.'.'.$field;
     }
 
-    return $editing ? 'editing'.ucfirst($field) : $field;
+    if ($editor === 'variant' && in_array($field, ['variantMenuId', 'variantItemId'], true)) {
+        return $field;
+    }
+    $form = match ($editor) {
+        'group' => $editing ? 'editingGroup' : 'group',
+        'option' => $editing ? 'editingOption' : 'option',
+        'variant' => $editing ? 'editingVariant' : 'variant',
+    };
+
+    return $form.'.'.$field;
 }
 
-test('new item creation rejects malformed availability without persisting any item', function (): void {
+test('new dish creation ignores forged availability and remains unavailable', function (): void {
     [$component, $subject, $action] = menuEditorTransportFixture('item', false);
     $field = menuEditorTransportField('item', 'itemIsAvailable', false);
     $count = MenuItem::query()->count();
-    $component->update(calls: [['method' => $action, 'params' => [], 'path' => '']], updates: [$field => 'false'])->assertHasErrors([$field]);
-    expect(MenuItem::query()->count())->toBe($count);
+    $component->update(calls: [['method' => $action, 'params' => [], 'path' => '']], updates: [$field => 'false'])->assertHasNoErrors();
+    expect(MenuItem::query()->count())->toBe($count + 1);
+    expect(MenuItem::query()->findOrFail($component->get('editingItemId'))->is_available)->toBeFalse();
 });
 
 test('catalog metadata edits ignore forged stop flags and retain timed hiding', function (): void {
     [$component, $subject, $action] = menuEditorTransportFixture('item', true);
     $subject->forceFill(['is_available' => false, 'hidden_until' => '2027-01-01 12:00:00'])->save();
-    $component->call('cancelItemEditing')->call('startEditingItem', $subject->id)->set(menuEditorTransportField('item', 'itemName', true), 'Transport dish');
+    $component->call('discardMainChanges')->set(menuEditorTransportField('item', 'itemName', true), 'Transport dish');
     $field = menuEditorTransportField('item', 'itemIsAvailable', true);
     $component->update(calls: [['method' => $action, 'params' => [], 'path' => '']], updates: [$field => '1'])->assertHasNoErrors();
     expect($subject->fresh()->name)->toBe('Transport dish')->and($subject->fresh()->is_available)->toBeFalse()

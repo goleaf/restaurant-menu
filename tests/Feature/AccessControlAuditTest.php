@@ -8,7 +8,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
-use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Models\Branch;
@@ -115,14 +115,13 @@ test('waiter can manage menu labels without changing prices when change prices i
         ]);
 
     Livewire::actingAs($waiter->fresh())
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->set('editingItemForm.itemName', 'Prompt 96 Dish Renamed')
         ->set('editingItemForm.itemTranslations.en.name', 'Prompt 96 Dish Renamed')
         ->set('editingItemForm.itemTranslations.lt.name', 'Prompt 96 Dish Renamed LT')
         ->set('editingItemForm.itemTranslations.ru.name', 'Prompt 96 Dish Renamed RU')
         ->set('editingItemForm.itemPrice', '99.99')
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     $item->refresh();

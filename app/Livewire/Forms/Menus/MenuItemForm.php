@@ -8,6 +8,7 @@ use App\Data\Menus\MenuItemData;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Support\MoneyFormatter;
+use App\Support\PlainText;
 use App\Support\Validation\Menus\MenuFieldLabels;
 use App\Support\Validation\Menus\MenuItemRules;
 use App\Support\Validation\Menus\MenuScopeRules;
@@ -51,10 +52,22 @@ final class MenuItemForm extends Form
     ];
 
     /** @return array{menuId: int, categoryId: int, kitchenDepartmentId: ?int, data: MenuItemData} */
-    public function validated(Branch $branch, bool $canChangePrices, bool $canChangeAvailability, ?MenuItem $item = null): array
+    public function validated(Branch $branch, bool $canChangePrices, bool $canChangeAvailability, ?MenuItem $item = null, ?MenuItem $uniquenessTarget = null): array
     {
         $this->itemName = is_string($this->itemName) ? trim($this->itemName) : $this->itemName;
         $this->itemDescription = is_string($this->itemDescription) ? trim($this->itemDescription) : $this->itemDescription;
+        if (is_array($this->itemTranslations)) {
+            foreach ($this->itemTranslations as $locale => $translation) {
+                if (! is_array($translation)) {
+                    continue;
+                }
+                foreach (['name', 'description'] as $field) {
+                    if (isset($translation[$field]) && is_string($translation[$field])) {
+                        $this->itemTranslations[$locale][$field] = PlainText::required($translation[$field], 0, squish: $field === 'name');
+                    }
+                }
+            }
+        }
         $rules = [
             'itemMenuId' => ['bail', 'required', 'numeric', 'integer', MenuScopeRules::menu($branch)],
             'itemCategoryId' => ['bail', 'required', 'numeric', 'integer', MenuScopeRules::category($this->itemMenuId)],
@@ -62,13 +75,14 @@ final class MenuItemForm extends Form
             ...MenuItemRules::menuItem(canChangePrices: $canChangePrices, canChangeAvailability: $canChangeAvailability && $item === null),
             ...MenuTranslationRules::menuTranslations('itemTranslations', 180, 1200),
         ];
-        $unique = MenuScopeRules::itemName($this->itemCategoryId, $item);
+        unset($rules['itemName'], $rules['itemDescription']);
+        $unique = MenuScopeRules::itemName($this->itemCategoryId, $uniquenessTarget ?? $item);
         if ($unique !== null) {
-            $rules['itemName'][] = $unique;
+            $rules['itemTranslations.en.name'][] = $unique;
         }
         $values = $this->validate($rules);
         $data = [
-            'name' => $values['itemName'], 'description' => self::optionalString($values['itemDescription'] ?? null),
+            'name' => $values['itemTranslations']['en']['name'], 'description' => self::optionalString($values['itemTranslations']['en']['description'] ?? null),
             'weight' => self::optionalString($values['itemWeight'] ?? null), 'volume' => self::optionalString($values['itemVolume'] ?? null),
             'calories' => ($values['itemCalories'] ?? '') === '' || $values['itemCalories'] === null ? null : (int) $values['itemCalories'],
             'allergens' => array_values($values['itemAllergens'] ?? []), 'dietary_labels' => array_values($values['itemDietaryLabels'] ?? []),

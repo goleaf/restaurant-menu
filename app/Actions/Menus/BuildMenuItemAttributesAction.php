@@ -16,9 +16,13 @@ use App\Models\MenuItem;
 use App\Models\User;
 use App\Support\MoneyFormatter;
 use App\Support\PlainText;
+use App\Support\Validation\Menus\MenuFieldLabels;
+use App\Support\Validation\Menus\MenuScopeRules;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 
 final class BuildMenuItemAttributesAction
@@ -39,15 +43,24 @@ final class BuildMenuItemAttributesAction
         MenuItemData $data,
         ?MenuItem $existingItem = null,
         bool $preserveExistingDepartment = false,
+        bool $seedMissingDepartment = true,
+        bool $namesValidatedAsBatch = false,
     ): array {
         $this->ensureRelationshipsBelongToBranch($branch, $menu, $category, $existingItem);
+        $name = PlainText::required($data->originalName(), 0, squish: true);
+        $nameField = $data->translations !== null && array_key_exists('en', $data->translations) ? 'itemTranslations.en.name' : 'itemName';
+        $nameRules = ['required', 'string', 'max:180'];
+        if (! $namesValidatedAsBatch) {
+            $nameRules[] = MenuScopeRules::itemName($category->id, $existingItem);
+        }
+        Validator::make(Arr::undot([$nameField => $name]), [$nameField => $nameRules], [], MenuFieldLabels::forEditor('item'))->validate();
 
         $departmentId = $preserveExistingDepartment && $existingItem instanceof MenuItem
             ? $existingItem->kitchen_department_id
             : $kitchenDepartmentId;
         $department = $preserveExistingDepartment && $existingItem instanceof MenuItem && $departmentId === null
             ? null
-            : $this->resolveDepartment($branch, $departmentId);
+            : $this->resolveDepartment($branch, $departmentId, $seedMissingDepartment);
         $canChangePrices = Gate::forUser($actor)->allows('changePrice', $menu);
         $canChangeAvailability = Gate::forUser($actor)->allows('changeAvailability', $menu);
         $existingPriceCents = $existingItem instanceof MenuItem ? $existingItem->price_cents : 0;
@@ -58,8 +71,8 @@ final class BuildMenuItemAttributesAction
             'menu_id' => $menu->id,
             'category_id' => $category->id,
             'kitchen_department_id' => $department?->id,
-            'name' => PlainText::required($data->name, 180, squish: true),
-            'description' => PlainText::optional($data->description, 1200),
+            'name' => $name,
+            'description' => PlainText::optional($data->originalDescription(), 1200),
             'price_cents' => $canChangePrices
                 ? ($data->price === null ? $existingPriceCents : MoneyFormatter::decimalToCents($data->price))
                 : $existingPriceCents,
@@ -100,10 +113,10 @@ final class BuildMenuItemAttributesAction
         }
     }
 
-    private function resolveDepartment(Branch $branch, ?int $departmentId): ?KitchenDepartment
+    private function resolveDepartment(Branch $branch, ?int $departmentId, bool $seedMissingDepartment): ?KitchenDepartment
     {
         if ($departmentId === null) {
-            return $this->resolveDefaultDepartment->handle($branch);
+            return $this->resolveDefaultDepartment->handle($branch, seedIfMissing: $seedMissingDepartment);
         }
 
         $department = KitchenDepartment::query()

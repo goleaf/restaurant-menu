@@ -94,3 +94,7 @@ This file is the canonical deployment contract; operational recovery procedures 
 ## Prompt 7 migration/runtime note
 
 Availability adds five ordinary SQLite migrations and requires no scheduled transition job. Apply migrations through the existing authorized deployment procedure; this local stage does not deploy or migrate working data. Supported production remains PHP8.5. Actual isolated PHP8.6.0beta2 platform checks reject Nette Schema1.3.6's supported PHP range; prerelease syntax checks do not constitute application acceptance. Herd FPM is measured separately from CLI/test HTTP processes in PROGRESS.md.
+
+## Prompt 6 migration note
+
+Apply the two additive dish revisions / branch-scoped receipt migrations through the existing controlled deployment process. No background scheduler or worker is introduced. Reversing the receipt nullability migration is intentionally refused while branch-only receipts exist; preserve those records and restore a compatible application version. Prompt 6 local work does not deploy or migrate the working database.

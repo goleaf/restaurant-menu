@@ -8,6 +8,7 @@ enum AuditLogAction: string
 {
     case McpTokenIssued = 'mcp_token_issued';
     case McpTokenRevoked = 'mcp_token_revoked';
+    case DishConfigurationChanged = 'dish_configuration_changed';
     case MenuPriceChanged = 'menu_price_changed';
     case MenuAvailabilityChanged = 'menu_availability_changed';
     case BranchAvailabilityChanged = 'branch_availability_changed';
@@ -49,6 +50,7 @@ enum AuditLogAction: string
         return match ($this) {
             self::McpTokenIssued => __('mcp.audit.token_issued'),
             self::McpTokenRevoked => __('mcp.audit.token_revoked'),
+            self::DishConfigurationChanged => __('dish.audit.configuration_changed'),
             self::MenuPriceChanged => 'Price changed',
             self::MenuAvailabilityChanged => 'Dish availability changed',
             self::BranchAvailabilityChanged => __('availability.audit.branch_changed'),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -62,32 +63,32 @@ function catalogUnfinishedInput(MenuItem $item): array
             'lt' => ['name' => 'Lietuviškas juodraštis', 'description' => 'Aprašymas'],
             'ru' => ['name' => 'Русский черновик', 'description' => 'Описание'],
         ],
-        'itemForm.itemMenuId' => (string) $item->menu_id,
-        'itemForm.itemCategoryId' => (string) $item->category_id,
-        'categoryForm.categoryMenuId' => (string) $item->menu_id,
     ];
 }
 
 test('finishing a large menu deletion preserves another menu editor and its selections', function (): void {
     [$owner, $branch, $menuA, $categoryA, $itemB] = catalogInputPreservationContext();
     MenuItem::factory()->count(101)->for($menuA)->for($categoryA, 'category')->create();
-    $component = Livewire::actingAs($owner)->test(Catalog::class, [
+    $catalog = Livewire::actingAs($owner)->test(Catalog::class, [
         'organizationId' => $branch->organization_id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->call('deleteMenu', $menuA->id)->call('startEditingItem', $itemB->id);
+    ])->call('deleteMenu', $menuA->id);
+    $component = Livewire::actingAs($owner)->test(Dish::class, [
+        'organization' => $branch->organization, 'brand' => $branch->brand, 'branch' => $branch, 'item' => $itemB,
+    ])->call('selectSection', 'photos');
     expect($menuA->items()->count())->toBe(51);
     $input = catalogUnfinishedInput($itemB);
-    $component->update(updates: $input, calls: []);
+    $component->update(updates: array_diff_key($input, array_flip(['editingItemForm.itemMenuId', 'editingItemForm.itemCategoryId'])), calls: []);
     $component->set('itemImageUploads.'.$itemB->id, [UploadedFile::fake()->image('unfinished.png', 10, 10)]);
     $version = $component->get('editingItemVersion');
     $uploadRequestId = $component->get('itemImageRequestIds')[$itemB->id];
 
-    for ($step = 0; $step < 15 && $component->get('activeCatalogOperationId') !== ''; $step++) {
-        $component->call('advanceCatalogOperation')->assertHasNoErrors();
+    for ($step = 0; $step < 15 && $catalog->get('activeCatalogOperationId') !== ''; $step++) {
+        $catalog->call('advanceCatalogOperation')->assertHasNoErrors();
     }
 
     expect($menuA->fresh()->trashed())->toBeTrue();
-    $component->assertSet('activeCatalogOperationId', '')
-        ->assertSet('editingItemId', $itemB->id)
+    $catalog->assertSet('activeCatalogOperationId', '');
+    $component->assertSet('editingItemId', $itemB->id)
         ->assertSet('editingItemVersion', $version);
     expect($component->get('itemImageUploads')[$itemB->id])->toHaveCount(1)
         ->and($component->get('itemImageRequestIds')[$itemB->id])->toBe($uploadRequestId);
@@ -99,18 +100,21 @@ test('finishing a large menu deletion preserves another menu editor and its sele
 test('finishing a duplicate preserves another draft and offers an explicit action to open the copy', function (): void {
     [$owner, $branch, $menuA, $categoryA, $itemB] = catalogInputPreservationContext();
     $source = MenuItem::factory()->for($menuA)->for($categoryA, 'category')->withTranslations()->create();
-    $component = Livewire::actingAs($owner)->test(Catalog::class, [
+    $catalog = Livewire::actingAs($owner)->test(Catalog::class, [
         'organizationId' => $branch->organization_id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->call('duplicateItem', $source->id)->call('startEditingItem', $itemB->id);
-    $requestId = $component->get('activeCatalogOperationId');
+    ])->call('startEditingCategory', $itemB->category_id)->call('duplicateItem', $source->id);
+    $component = Livewire::actingAs($owner)->test(Dish::class, [
+        'organization' => $branch->organization, 'brand' => $branch->brand, 'branch' => $branch, 'item' => $itemB,
+    ])->call('selectSection', 'photos');
+    $requestId = $catalog->get('activeCatalogOperationId');
     $input = catalogUnfinishedInput($itemB);
-    $component->update(updates: $input, calls: []);
+    $component->update(updates: array_diff_key($input, array_flip(['editingItemForm.itemMenuId', 'editingItemForm.itemCategoryId'])), calls: []);
     $component->set('itemImageUploads.'.$itemB->id, [UploadedFile::fake()->image('unfinished.png', 10, 10)]);
     $version = $component->get('editingItemVersion');
     $uploadRequestId = $component->get('itemImageRequestIds')[$itemB->id];
 
-    for ($step = 0; $step < 15 && $component->get('activeCatalogOperationId') !== ''; $step++) {
-        $component->call('advanceCatalogOperation')->assertHasNoErrors();
+    for ($step = 0; $step < 15 && $catalog->get('activeCatalogOperationId') !== ''; $step++) {
+        $catalog->call('advanceCatalogOperation')->assertHasNoErrors();
     }
 
     $operation = MenuOperation::query()->where('request_id', $requestId)->sole();
@@ -121,18 +125,22 @@ test('finishing a duplicate preserves another draft and offers an explicit actio
     foreach ($input as $property => $value) {
         $component->assertSet($property, $value);
     }
-    $component->assertSee('wire:click="openCompletedCatalogCopy"', false)
+    $catalog->assertSee('wire:click="openCompletedCatalogCopy"', false)
         ->call('openCompletedCatalogCopy')->assertHasNoErrors()
-        ->assertSet('editingItemId', $operation->result_id);
+        ->assertRedirect(route('organizations.brands.branches.menu.dish.edit', [
+            'organization' => $branch->organization_id, 'brand' => $branch->brand_id, 'branch' => $branch->id, 'item' => $operation->result_id,
+            'q' => '', 'menu' => '', 'availability' => '', 'quality' => '', 'page' => 1, 'section' => 'main',
+        ]));
+    $component->assertSet('editingItemId', $itemB->id)->assertSet('editingItemVersion', $version);
 });
 
 test('malformed pending upload state renders safely and removal preserves it until save validation', function (mixed $value): void {
     [$owner, $branch, , , $item] = catalogInputPreservationContext();
     $field = 'itemImageUploads.'.$item->id;
     $originalImage = $item->image;
-    $component = Livewire::actingAs($owner)->test(Catalog::class, [
-        'organizationId' => $branch->organization_id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->call('startEditingItem', $item->id)
+    $component = Livewire::actingAs($owner)->test(Dish::class, [
+        'organization' => $branch->organization, 'brand' => $branch->brand, 'branch' => $branch, 'item' => $item,
+    ])->call('selectSection', 'photos')
         ->update(updates: [$field => $value], calls: [])->assertOk()
         ->call('removePendingItemImage', $item->id, 0)->assertOk()
         ->assertSet($field, $value)
@@ -152,13 +160,18 @@ test('category deletion reconciles vanished or out of scope selections while pre
         'other menu' => $otherMenuItem->category_id,
         'other branch' => MenuCategory::factory()->create()->id,
     };
+    $draft = Livewire::actingAs($owner)->test(Dish::class, [
+        'organization' => $branch->organization, 'brand' => $branch->brand, 'branch' => $branch,
+    ])->set('editingItemForm.itemMenuId', (string) $menu->id)->set('editingItemForm.itemCategoryId', (string) $selectedId)
+        ->set('editingItemForm.itemTranslations', [
+            'en' => ['name' => 'Unfinished new dish', 'description' => ''],
+            'lt' => ['name' => 'Nebaigtas patiekalas', 'description' => ''],
+            'ru' => ['name' => 'Незавершенное блюдо', 'description' => ''],
+        ]);
     $component = Livewire::actingAs($owner)->test(Catalog::class, [
         'organizationId' => $branch->organization_id, 'brandId' => $branch->brand_id, 'branchId' => $branch->id,
-    ])->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $selectedId)
-        ->set('categoryForm.categoryMenuId', (string) $menu->id)
+    ])->set('categoryForm.categoryMenuId', (string) $menu->id)
         ->set('categoryForm.categoryParentId', (string) $selectedId)
-        ->set('itemForm.itemName', 'Unfinished new dish')
         ->set('categoryForm.categoryName', 'Unfinished new category')
         ->call('deleteCategory', $deletedCategory->id)->assertHasNoErrors();
 
@@ -168,10 +181,17 @@ test('category deletion reconciles vanished or out of scope selections while pre
 
     expect($deletedCategory->fresh()->trashed())->toBeTrue();
     $component->assertSet('activeCatalogOperationId', '')
-        ->assertSet('itemForm.itemMenuId', (string) $menu->id)
         ->assertSet('categoryForm.categoryMenuId', (string) $menu->id)
-        ->assertSet('itemForm.itemCategoryId', (string) $survivingCategory->id)
         ->assertSet('categoryForm.categoryParentId', $selection === 'surviving' ? (string) $survivingCategory->id : '')
-        ->assertSet('itemForm.itemName', 'Unfinished new dish')
         ->assertSet('categoryForm.categoryName', 'Unfinished new category');
+    $draft->assertSet('editingItemForm.itemMenuId', (string) $menu->id)
+        ->assertSet('editingItemForm.itemCategoryId', (string) $selectedId)
+        ->assertSet('editingItemForm.itemTranslations.en.name', 'Unfinished new dish');
+    if ($selection === 'surviving') {
+        $draft->call('saveItem')->assertHasNoErrors();
+        expect(MenuItem::query()->where('name', 'Unfinished new dish')->sole()->category_id)->toBe($survivingCategory->id);
+    } else {
+        $draft->call('saveItem')->assertHasErrors('editingItemForm.itemCategoryId');
+        expect(MenuItem::query()->where('name', 'Unfinished new dish')->exists())->toBeFalse();
+    }
 })->with(['deleted', 'surviving', 'other menu', 'other branch']);

@@ -10,7 +10,9 @@ use App\Actions\Menus\MarkMenuCopySourceChangedAction;
 use App\Enums\AuditLogAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
 use App\Models\User;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
 class MenuItemObserver
@@ -23,6 +25,12 @@ class MenuItemObserver
 
     public function updating(MenuItem $menuItem): void
     {
+        if ($menuItem->isDirty(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'sort_order'])) {
+            $menuItem->content_version = (int) MenuItem::query()->whereKey($menuItem->id)->value('content_version') + 1;
+        }
+        if ($menuItem->isDirty('image')) {
+            $menuItem->media_version = (int) MenuItem::query()->whereKey($menuItem->id)->value('media_version') + 1;
+        }
         if ($menuItem->isDirty(['is_available', 'hidden_until']) && ! $menuItem->isDirty('availability_version')) {
             $menuItem->availability_version = (int) $menuItem->getRawOriginal('availability_version') + 1;
         }
@@ -52,6 +60,7 @@ class MenuItemObserver
      */
     public function deleted(MenuItem $menuItem): void
     {
+        $this->invalidateModifierUsage($menuItem);
         $this->forgetGuestMenu($menuItem);
         $this->recordDeletion($menuItem);
     }
@@ -61,6 +70,7 @@ class MenuItemObserver
      */
     public function restored(MenuItem $menuItem): void
     {
+        $this->invalidateModifierUsage($menuItem);
         $this->forgetGuestMenu($menuItem);
     }
 
@@ -70,6 +80,11 @@ class MenuItemObserver
     public function forceDeleted(MenuItem $menuItem): void
     {
         $this->forgetGuestMenu($menuItem);
+    }
+
+    private function invalidateModifierUsage(MenuItem $menuItem): void
+    {
+        ModifierGroup::query()->whereHas('items', fn ($query) => $query->withoutGlobalScope(SoftDeletingScope::class)->whereKey($menuItem->id))->increment('content_version');
     }
 
     private function forgetGuestMenu(MenuItem $menuItem): void

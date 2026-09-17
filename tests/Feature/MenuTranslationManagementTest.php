@@ -4,6 +4,7 @@ use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\MenuStatus;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -92,17 +93,17 @@ test('manager creates category and dish translations for every supported locale'
     $category = MenuCategory::query()->where('menu_id', $menu->id)->where('name', 'Starters')->firstOrFail();
 
     Livewire::actingAs($owner)
-        ->test(MenuCatalog::class, $parameters)
-        ->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $category->id)
-        ->set('itemForm.itemName', 'Cold beet soup')
-        ->set('itemForm.itemTranslations.en.name', 'Cold beet soup')
-        ->set('itemForm.itemTranslations.en.description', 'With herbs')
-        ->set('itemForm.itemTranslations.lt.name', 'Šaltibarščiai')
-        ->set('itemForm.itemTranslations.lt.description', 'Su žalumynais')
-        ->set('itemForm.itemTranslations.ru.name', 'Холодный свекольный суп')
-        ->set('itemForm.itemTranslations.ru.description', 'С зеленью')
-        ->call('createItem')
+        ->test(Dish::class, compact('organization', 'brand', 'branch'))
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->set('editingItemForm.itemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemName', 'Cold beet soup')
+        ->set('editingItemForm.itemTranslations.en.name', 'Cold beet soup')
+        ->set('editingItemForm.itemTranslations.en.description', 'With herbs')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Šaltibarščiai')
+        ->set('editingItemForm.itemTranslations.lt.description', 'Su žalumynais')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Холодный свекольный суп')
+        ->set('editingItemForm.itemTranslations.ru.description', 'С зеленью')
+        ->call('saveItem')
         ->assertHasNoErrors();
 
     $item = MenuItem::query()->where('menu_id', $menu->id)->where('name', 'Cold beet soup')->firstOrFail();
@@ -148,17 +149,18 @@ test('manager reads and updates required translations and invalidates the guest 
         ->assertSet('editingCategoryForm.categoryTranslations.lt.name', 'lt category')
         ->set('editingCategoryForm.categoryTranslations.lt.name', 'Atnaujinta kategorija')
         ->call('updateCategory')
-        ->assertHasNoErrors()
-        ->call('startEditingItem', $item->id)
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($owner)->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
         ->assertSet('editingItemForm.itemTranslations.lt.name', 'Lietuviškas patiekalas')
         ->set('editingItemForm.itemTranslations.lt.name', 'Atnaujintas patiekalas')
         ->set('editingItemForm.itemTranslations.lt.description', "Pirma pastraipa.\n\nAntra pastraipa.")
         ->set('editingItemForm.itemTranslations.ru.name', 'Обновлённое блюдо')
         ->set('editingItemForm.itemTranslations.ru.description', '')
-        ->call('updateItem')
+        ->call('saveItem')
         ->assertHasNoErrors()
-        ->assertSee('Atnaujinta kategorija')
-        ->assertSee('Atnaujintas patiekalas');
+        ->assertSee($category->name)
+        ->assertSet('editingItemForm.itemTranslations.lt.name', 'Atnaujintas patiekalas');
 
     expect($category->translations()->where('language_code', 'lt')->value('name'))->toBe('Atnaujinta kategorija')
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Atnaujintas patiekalas')
@@ -222,31 +224,33 @@ test('menu administration rejects duplicate names inside their owning scope', fu
         ->set('categoryForm.categoryTranslations.lt.name', 'Užkandžiai')
         ->set('categoryForm.categoryTranslations.ru.name', 'Закуски')
         ->call('createCategory')
-        ->assertHasErrors(['categoryForm.categoryName' => 'unique'])
-        ->set('itemForm.itemMenuId', (string) $menu->id)
-        ->set('itemForm.itemCategoryId', (string) $category->id)
-        ->set('itemForm.itemName', 'Soup')
-        ->set('itemForm.itemTranslations.en.name', 'Soup')
-        ->set('itemForm.itemTranslations.lt.name', 'Sriuba')
-        ->set('itemForm.itemTranslations.ru.name', 'Суп')
-        ->call('createItem')
-        ->assertHasErrors(['itemForm.itemName' => 'unique']);
+        ->assertHasErrors(['categoryForm.categoryName' => 'unique']);
+
+    Livewire::actingAs($owner)->test(Dish::class, compact('organization', 'brand', 'branch'))
+        ->set('editingItemForm.itemMenuId', (string) $menu->id)
+        ->set('editingItemForm.itemCategoryId', (string) $category->id)
+        ->set('editingItemForm.itemName', 'Soup')
+        ->set('editingItemForm.itemTranslations.en.name', 'Soup')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Суп')
+        ->call('saveItem')
+        ->assertHasErrors(['editingItemForm.itemTranslations.en.name' => 'unique']);
 
     Livewire::actingAs($owner)
         ->test(MenuModifiers::class, $parameters)
-        ->set('modifierGroupName', 'Extras')
-        ->set('modifierGroupTranslations.en', 'Extras')
-        ->set('modifierGroupTranslations.lt', 'Priedai')
-        ->set('modifierGroupTranslations.ru', 'Добавки')
+        ->set('group.modifierGroupName', 'Extras')
+        ->set('group.modifierGroupTranslations.en', 'Extras')
+        ->set('group.modifierGroupTranslations.lt', 'Priedai')
+        ->set('group.modifierGroupTranslations.ru', 'Добавки')
         ->call('createModifierGroup')
-        ->assertHasErrors(['modifierGroupName' => 'unique'])
-        ->set('modifierOptionGroupId', (string) $group->id)
-        ->set('modifierOptionName', 'Cheese')
-        ->set('modifierOptionTranslations.en', 'Cheese')
-        ->set('modifierOptionTranslations.lt', 'Sūris')
-        ->set('modifierOptionTranslations.ru', 'Сыр')
+        ->assertHasErrors(['group.modifierGroupName' => 'unique'])
+        ->set('option.modifierOptionGroupId', (string) $group->id)
+        ->set('option.modifierOptionName', 'Cheese')
+        ->set('option.modifierOptionTranslations.en', 'Cheese')
+        ->set('option.modifierOptionTranslations.lt', 'Sūris')
+        ->set('option.modifierOptionTranslations.ru', 'Сыр')
         ->call('createModifierOption')
-        ->assertHasErrors(['modifierOptionName' => 'unique']);
+        ->assertHasErrors(['option.modifierOptionName' => 'unique']);
 
     expect(Menu::query()->where('branch_id', $branch->id)->where('name', $menu->name)->count())->toBe(1)
         ->and(MenuCategory::query()->where('menu_id', $menu->id)->where('name', 'Starters')->count())->toBe(1)

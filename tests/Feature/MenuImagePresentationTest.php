@@ -7,7 +7,7 @@ use App\Actions\Menus\PromoteMenuItemImageAction;
 use App\Actions\Menus\RemoveMenuItemImageAction;
 use App\Actions\Menus\UpdateMenuItemImagePresentationAction;
 use App\Actions\Organizations\CreateOrganizationAction;
-use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -22,6 +22,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -50,26 +51,27 @@ function imagePresentationInput(): array
     ]];
 }
 
-function saveImagePresentation(object $test, ?int $imageId, array $input, ?string $version = null): array
+function saveImagePresentation(object $test, ?int $imageId, array $input, ?string $version = null, ?string $requestId = null): array
 {
     return app(UpdateMenuItemImagePresentationAction::class)->handle(
         $test->actor, $test->branch, $test->item->id, $imageId,
         hash('sha256', $imageId === null ? 'media/presentation-primary.webp' : $test->image->path),
-        $version ?? MenuImagePresentation::version(null), $input,
+        $version ?? MenuImagePresentation::version(null), $input, $requestId ?? (string) Str::uuid(),
     );
 }
 
 test('photo presentation saves three languages without modifying image bytes and replays safely', function (bool $primary): void {
     $imageId = $primary ? null : $this->image->id;
     $input = imagePresentationInput();
-    saveImagePresentation($this, $imageId, $input);
+    $requestId = (string) Str::uuid();
+    saveImagePresentation($this, $imageId, $input, requestId: $requestId);
     $stored = $primary ? $this->item->fresh()->image_presentation : $this->image->fresh()->presentation;
     expect(MenuImagePresentation::normalize($stored))->toBe($input)
         ->and($stored['revision'])->toMatch('/^[0-9a-f-]{36}$/')
         ->and(Storage::disk('public')->get($this->item->image))->toBe('Original primary bytes')
         ->and(Storage::disk('public')->get($this->image->path))->toBe('Original secondary bytes');
     ($primary ? MenuItem::class : MenuItemImage::class)::updating(fn (): never => throw new RuntimeException('A replay must not write.'));
-    expect(saveImagePresentation($this, $imageId, $input))->toBe($input);
+    expect(saveImagePresentation($this, $imageId, $input, requestId: $requestId))->toBe($input);
 })->with([true, false]);
 
 test('photo presentation rejects malformed transport without persistence', function (string $field, mixed $value): void {
@@ -95,7 +97,8 @@ test('photo presentation rejects stale values and image identity changes', funct
 });
 
 test('photo presentation reauthorizes before replay and rejects another tenant or image', function (string $case): void {
-    saveImagePresentation($this, null, imagePresentationInput());
+    $requestId = (string) Str::uuid();
+    saveImagePresentation($this, null, imagePresentationInput(), requestId: $requestId);
     if ($case === 'revoked') {
         $this->actor->organizations()->detach($this->branch->organization_id);
     } elseif ($case === 'branch') {
@@ -103,7 +106,7 @@ test('photo presentation reauthorizes before replay and rejects another tenant o
     } else {
         $this->image = MenuItemImage::factory()->create();
     }
-    expect(fn () => saveImagePresentation($this, $case === 'image' ? $this->image->id : null, imagePresentationInput()))
+    expect(fn () => saveImagePresentation($this, $case === 'image' ? $this->image->id : null, imagePresentationInput(), requestId: $requestId))
         ->toThrow(AuthorizationException::class);
 })->with(['revoked', 'branch', 'image']);
 
@@ -148,9 +151,9 @@ test('photo localization sends only selected text and preserves intentional empt
 });
 
 test('photo editor loads one scoped form and preserves invalid translated input before saving', function (): void {
-    $component = Livewire::actingAs($this->actor)->test(Catalog::class, [
-        'organizationId' => $this->branch->organization_id, 'brandId' => $this->branch->brand_id, 'branchId' => $this->branch->id,
-    ])->call('startEditingItem', $this->item->id)
+    $component = Livewire::actingAs($this->actor)->test(Dish::class, [
+        'organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch, 'item' => $this->item,
+    ])->call('selectSection', 'photos')
         ->call('editItemImagePresentation', $this->item->id, $this->image->id, hash('sha256', $this->image->path))
         ->assertSet('imagePresentationContext.image_id', $this->image->id)
         ->assertSeeHtml('data-image-presentation-editor')
@@ -170,9 +173,9 @@ test('photo editor loads one scoped form and preserves invalid translated input 
 });
 
 test('photo editor cannot overwrite another open photo draft and rejects tampered path identity', function (): void {
-    $component = Livewire::actingAs($this->actor)->test(Catalog::class, [
-        'organizationId' => $this->branch->organization_id, 'brandId' => $this->branch->brand_id, 'branchId' => $this->branch->id,
-    ])->call('startEditingItem', $this->item->id)
+    $component = Livewire::actingAs($this->actor)->test(Dish::class, [
+        'organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch, 'item' => $this->item,
+    ])->call('selectSection', 'photos')
         ->call('editItemImagePresentation', $this->item->id, null, hash('sha256', 'wrong-path'))
         ->assertHasErrors(['itemImageUploads.'.$this->item->id])
         ->assertSet('imagePresentationContext', [])
@@ -203,19 +206,20 @@ test('photo presentation retries a post-commit cache failure without rewriting i
         }
     });
     $this->app->instance(ForgetBranchCacheAction::class, $cache);
-    expect(fn () => saveImagePresentation($this, $this->image->id, imagePresentationInput()))->toThrow(RuntimeException::class);
+    $requestId = (string) Str::uuid();
+    expect(fn () => saveImagePresentation($this, $this->image->id, imagePresentationInput(), requestId: $requestId))->toThrow(RuntimeException::class);
     $saved = $this->image->fresh()->presentation;
     MenuItemImage::updating(fn (): never => throw new RuntimeException('Retry must preserve the committed revision'));
-    saveImagePresentation($this, $this->image->id, imagePresentationInput());
+    saveImagePresentation($this, $this->image->id, imagePresentationInput(), requestId: $requestId);
     expect($this->image->fresh()->presentation)->toBe($saved)->and($calls)->toBe(2);
 });
 
 test('the open photo editor reads legacy image dimensions without rewriting its file', function (): void {
     $file = UploadedFile::fake()->image('legacy.png', 640, 360);
     Storage::disk('public')->put($this->item->image, $file->getContent());
-    Livewire::actingAs($this->actor)->test(Catalog::class, [
-        'organizationId' => $this->branch->organization_id, 'brandId' => $this->branch->brand_id, 'branchId' => $this->branch->id,
-    ])->call('startEditingItem', $this->item->id)
+    Livewire::actingAs($this->actor)->test(Dish::class, [
+        'organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch, 'item' => $this->item,
+    ])->call('selectSection', 'photos')
         ->call('editItemImagePresentation', $this->item->id, null, hash('sha256', $this->item->image))
         ->assertSet('imagePresentationContext.width', 640)
         ->assertSet('imagePresentationContext.height', 360);
@@ -223,9 +227,9 @@ test('the open photo editor reads legacy image dimensions without rewriting its 
 });
 
 test('photo focal validation associates native range errors and preserves the other draft fields', function (): void {
-    $component = Livewire::actingAs($this->actor)->test(Catalog::class, [
-        'organizationId' => $this->branch->organization_id, 'brandId' => $this->branch->brand_id, 'branchId' => $this->branch->id,
-    ])->call('startEditingItem', $this->item->id)
+    $component = Livewire::actingAs($this->actor)->test(Dish::class, [
+        'organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch, 'item' => $this->item,
+    ])->call('selectSection', 'photos')
         ->call('editItemImagePresentation', $this->item->id, null, hash('sha256', $this->item->image))
         ->set('imagePresentationForm.focal_x', 101)
         ->set('imagePresentationForm.focal_y', -1)
@@ -246,4 +250,22 @@ test('photo focal validation associates native range errors and preserves the ot
     }
     expect($this->item->fresh()->image_presentation)->toBeNull()
         ->and(Storage::disk('public')->get($this->item->image))->toBe('Original primary bytes');
+});
+
+test('saving a gallery upload preserves independent dish text and photo presentation drafts', function (): void {
+    $component = Livewire::actingAs($this->actor)->test(Dish::class, [
+        'organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch, 'item' => $this->item,
+    ])->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.name', 'Unsaved dish text')
+        ->call('editItemImagePresentation', $this->item->id, null, hash('sha256', $this->item->image))
+        ->set('imagePresentationForm.translations.lt.caption', 'Neišsaugotas nuotraukos tekstas')
+        ->set('itemImageUploads.'.$this->item->id, [UploadedFile::fake()->image('extra.png', 100, 100)])
+        ->call('saveItemImages', $this->item->id)
+        ->assertHasNoErrors()
+        ->assertSet('editingItemForm.itemTranslations.en.name', 'Unsaved dish text')
+        ->assertSet('imagePresentationContext.item_id', $this->item->id)
+        ->assertSet('imagePresentationForm.translations.lt.caption', 'Neišsaugotas nuotraukos tekstas');
+    expect($this->item->fresh()->name)->not->toBe('Unsaved dish text')
+        ->and($this->item->fresh()->image_presentation)->toBeNull()
+        ->and($this->item->galleryImages()->count())->toBe(2);
 });

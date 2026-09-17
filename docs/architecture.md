@@ -253,3 +253,9 @@ Fortify prepares `/login` through `BuildLocalLoginDirectoryAction`. It returns n
 The center uses `/organizations/{organization}/brands/{brand}/branches/{branch}/availability` and URL `section`, `menu`, `item`. Model ownership and the existing actor/restaurant guard bind every request. Dashboard/settings/waiter/catalog links converge here; old menu availability is a redirect, and obsolete schedule/instant editors are removed. Profile saves no longer write availability. Existing MCP mutation transports call the same explicit-version Actions and require version, timezone and request UUID.
 
 Admission Actions reload sources inside SQLite IMMEDIATE transactions. Guest cache content includes evaluated decisions only until its earliest condition boundary and at most60seconds; branch-scoped generation invalidation prevents stale publication after edits. Real orders never trust the cached payload or a preview timestamp.
+
+## Dish card boundaries (Prompt 6)
+
+`Menu\Dish` is a directly routed coordinator with `MenuItemForm`, bounded `DishSearchForm`, `DishPreviewForm`, and the existing media concern. It does not extend Catalog. `DishQuery` prepares selected-resource data; `DishPreviewQuery` combines the shared `GuestMenuItemPresenter`, availability evaluator and existing configuration calculator. Retained visited sections mount independent Variants/Modifiers state without a second dish selector. The shared modifier library remains addressable.
+
+Main content uses Create/UpdateMenuItemAction and normalized English translation data. Variants and modifiers use focused Actions through a short transactional configuration command receipt/audit boundary. No Action is invoked from Blade. Gallery writes keep their existing file lifecycle and independent receipts; the card exposes only safe baseline values for local discard.

@@ -103,17 +103,18 @@ test('direct menu and staff loads retain validation drafts and navigation guards
     frontendObserveRequests($page);
     $page->click('[data-menu-section="catalog"]')->assertPresent('[data-section="menu-catalog"]');
     frontendAssertModuleReady($page, 'menu');
-    $page->click('button[wire\\:click="startEditingItem('.$fixture['item']->id.')"]');
+    $page->click('article[wire\\:key="menu-item-'.$fixture['item']->id.'"] > div:first-child a[wire\\:navigate]');
     $prefix = '#edit-menu-item-'.$fixture['item']->id;
-    $page->assertVisible('dialog[data-modal="catalog-item-editor"]')
+    $page->assertPresent('[data-page="dish-card"]')
         ->click($prefix.'-tab-lt')->fill($prefix.'-panel-lt input[type="text"]', '')
-        ->click('form[wire\\:submit="updateItem"] button[type="submit"]')
+        ->click('form[wire\\:submit="saveItem"] button[type="submit"]')
         ->assertPresent($prefix.'-panel-lt [role="alert"]')
-        ->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true')
-        ->assertPresent('[data-menu-item-images]');
+        ->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true');
+    $page->click('[data-menu-section="photos"]')->assertVisible('[data-menu-item-images]');
     frontendAssertModuleReady($page, 'menu');
     $page->assertScript('typeof Alpine.$data(document.querySelector("[data-menu-item-images]")).clear', 'function');
-    frontendAssertSuccessfulRequest($page, 'updateItem');
+    frontendAssertSuccessfulRequest($page, 'saveItem');
+    $page->click('[data-menu-section="main"]')->assertVisible($prefix.'-panel-lt');
     $page->fill($prefix.'-panel-lt input[type="text"]', 'Unfinished translated dish');
 
     $target = json_encode($fixture['staffUrl'], JSON_THROW_ON_ERROR);
@@ -270,9 +271,11 @@ test('cached back and forward initializes eager providers before unlocking their
         ->assertScript('window.frontendLifecycle.alpineInitializations', 0);
 
     if ($module === 'menu') {
-        $page->click('button[wire\\:click="startEditingItem('.$fixture['item']->id.')"]');
+        $page->click('article[wire\\:key="menu-item-'.$fixture['item']->id.'"] > div:first-child a[wire\\:navigate]');
+        $page->assertPresent('[data-page="dish-card"]');
         $input = '#edit-menu-item-'.$fixture['item']->id.'-panel-lt input[type="text"]';
-        $page->click('#edit-menu-item-'.$fixture['item']->id.'-tab-lt')->fill($input, 'History retains dish draft');
+        $page->click('#edit-menu-item-'.$fixture['item']->id.'-tab-lt')
+            ->assertQueryStringHas('language', 'lt')->fill($input, 'History retains dish draft');
         $draft = 'History retains dish draft';
     } else {
         $input = 'input[name="invitationForm.email"]';
@@ -290,6 +293,46 @@ test('cached back and forward initializes eager providers before unlocking their
     frontendAssertSharedBootstrap($page);
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 })->with(['menu', 'staff']);
+
+test('an in flight dish language change blocks navigation without discarding or replaying its draft', function (): void {
+    $fixture = frontendAssetFixture();
+    $page = visit(route('login', absolute: false));
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
+    frontendAssetNavigate($page, $fixture['menuUrl']);
+    $page->click('article[wire\:key="menu-item-'.$fixture['item']->id.'"] > div:first-child a[wire\:navigate]')
+        ->assertPresent('[data-page="dish-card"]');
+    $input = '#edit-menu-item-'.$fixture['item']->id.'-panel-en input[type=text]';
+    $page->fill($input, 'Draft survives an in flight language change');
+    $destination = json_encode($fixture['dashboardUrl'], JSON_THROW_ON_ERROR);
+    $page->script(<<<JAVASCRIPT
+        (() => {
+            window.frontendPendingDish = { observed: false };
+            const unsubscribe = Livewire.interceptMessage(({ message, onSend }) => {
+                if (!message.component.el.matches('[data-page="dish-card"]')) return;
+                onSend(() => {
+                    unsubscribe();
+                    const shell = Alpine.\$data(document.querySelector('[data-workspace-navigation]'));
+                    const editor = Alpine.\$data(message.component.el);
+                    window.frontendPendingDish = { observed: true, pending: shell.pending, dirty: editor.hasUnsavedChanges() };
+                    Livewire.navigate({$destination});
+                    window.frontendPendingDish.blocked = shell.blocked;
+                });
+            });
+        })()
+        JAVASCRIPT);
+    $page->click('#edit-menu-item-'.$fixture['item']->id.'-tab-lt')->assertQueryStringHas('language', 'lt')
+        ->assertScript('window.frontendPendingDish.observed && window.frontendPendingDish.pending > 0 && window.frontendPendingDish.dirty && window.frontendPendingDish.blocked', true)
+        ->assertPresent('[data-page="dish-card"]')
+        ->assertValue($input, 'Draft survives an in flight language change')
+        ->assertMissing('dialog[data-modal="menu-workspace-unsaved"]');
+    expect($fixture['item']->fresh()->name)->toBe('Asset fixture dish')
+        ->and($fixture['item']->translations()->where('language_code', 'en')->value('name'))->toBe('Asset fixture dish');
+    $page->script('Livewire.navigate('.$destination.');');
+    $page->assertVisible('dialog[data-modal="menu-workspace-unsaved"]')
+        ->click('button[x-on\:click="cancelNavigation"]')
+        ->assertValue($input, 'Draft survives an in flight language change')
+        ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
 
 test('failed shared bootstrap preserves operational state and native reload restores real server controls', function (string $module, string $locale): void {
     $fixture = frontendAssetFixture();

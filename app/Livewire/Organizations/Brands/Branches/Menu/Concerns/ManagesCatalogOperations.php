@@ -112,7 +112,7 @@ trait ManagesCatalogOperations
         }
         if ($operation->kind === MenuOperationKind::DuplicateItem && $operation->result_id !== null) {
             $this->completedCatalogCopyId = $operation->result_id;
-            if ($this->editingItemId === null && $this->editingMenuId === null && $this->editingCategoryId === null) {
+            if ($this->editingMenuId === null && $this->editingCategoryId === null) {
                 $this->openCompletedCatalogCopy();
             }
         } else {
@@ -156,33 +156,25 @@ trait ManagesCatalogOperations
 
     private function reconcileDeletedCatalogContexts(): void
     {
-        $surviving = $this->catalogData->survivingEditors($this->branch, $this->editingMenuId, $this->editingCategoryId, $this->editingItemId);
+        $surviving = $this->catalogData->survivingEditors($this->branch, $this->editingMenuId, $this->editingCategoryId, null);
         if (! $surviving['menu']) {
             $this->cancelMenuEditing();
         }
         if (! $surviving['category']) {
             $this->cancelCategoryEditing();
         }
-        if (! $surviving['item']) {
-            $this->cancelItemEditing();
-        }
         $selections = $this->catalogData->survivingMenuSelections($this->branch, [
-            $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->itemForm->itemMenuId),
+            $this->selectionValue($this->categoryForm->categoryMenuId),
         ]);
         $fallback = $this->catalogData->firstMenuId($this->branch);
         if (! in_array($this->selectionValue($this->categoryForm->categoryMenuId), $selections, true)) {
             $this->categoryForm->categoryMenuId = $fallback;
             $this->categoryForm->categoryParentId = '';
         }
-        if (! in_array($this->selectionValue($this->itemForm->itemMenuId), $selections, true)) {
-            $this->itemForm->itemMenuId = $fallback;
-            $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $fallback);
-        }
+
         if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->categoryForm->categoryParentId))) {
             $this->categoryForm->categoryParentId = '';
         }
-        if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->itemForm->itemMenuId), $this->selectionValue($this->itemForm->itemCategoryId))) {
-            $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemForm->itemMenuId));
-        }
+
     }
 }

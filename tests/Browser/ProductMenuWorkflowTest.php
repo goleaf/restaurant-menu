@@ -47,7 +47,8 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
-    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
+    productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
+    $page->assertPresent('[data-page="dish-card"]');
     $prefix = '#edit-menu-item-'.$item->id;
     $allergens = '[data-flux-checkbox-group-buttons][wire\\:model="editingItemForm.itemAllergens"]';
     foreach ([320, 390, 768, 1024, 1440] as $width) {
@@ -55,7 +56,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
         expect($page->script("getComputedStyle(document.querySelector('[data-flux-checkbox-group-buttons]')).display"))->toBe('grid');
         expect($page->script('document.documentElement.scrollWidth <= innerWidth'))->toBeTrue();
         if (in_array($width, [320, 390, 1440], true)) {
-            $page->script("[...document.forms].find(form => form.getAttribute('wire:submit') === 'updateItem').querySelector('.rm-menu-labels').scrollIntoView({ block: 'start' })");
+            $page->script("[...document.forms].find(form => form.getAttribute('wire:submit') === 'saveItem').querySelector('.rm-menu-labels').scrollIntoView({ block: 'start' })");
             $page->script($width === 390 ? "window.Flux.appearance = 'dark'" : "window.Flux.appearance = 'light'");
             $page->screenshot(false, "product-menu-labels-{$width}");
             $page->script("window.Flux.appearance = 'light'");
@@ -69,13 +70,13 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
         ->keys($prefix.'-tab-lt', 'ArrowRight')->assertAttribute($prefix.'-tab-ru', 'aria-selected', 'true');
     productMenuClick($page, $prefix.'-tab-lt');
     $page->fill($prefix.'-panel-lt input[type="text"]', '');
-    productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
+    productMenuClick($page, 'form[wire\\:submit="saveItem"] button[type="submit"]');
     $page->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true')
         ->assertPresent($prefix.'-panel-lt [role="alert"]');
     expect($page->script("document.querySelector('{$prefix}-panel-lt').closest('form').noValidate"))->toBeTrue();
     productMenuClick($page, $prefix.'-tab-ru');
-    $page->assertEnabled('form[wire\\:submit="updateItem"] button[type="submit"]');
-    productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
+    $page->assertEnabled('form[wire\\:submit="saveItem"] button[type="submit"]');
+    productMenuClick($page, 'form[wire\\:submit="saveItem"] button[type="submit"]');
     $page->wait(1);
     $page->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true');
     productMenuClick($page, $prefix.'-tab-lt');
@@ -89,7 +90,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     productMenuClick($page, $prefix.'-tab-en');
     productMenuFillLocale($page, $prefix, 'en', 'Browser dish', "First line\nSecond line");
     $page->wait(1);
-    productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
+    productMenuClick($page, 'form[wire\\:submit="saveItem"] button[type="submit"]');
     $page->wait(1);
     $item->refresh();
     expect(in_array('milk', $item->allergens ?? [], true))->toBe(! $milkWasSelected);
@@ -97,6 +98,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Naršyklės patiekalas')
         ->and($item->translations()->where('language_code', 'ru')->value('name'))->toBe('Браузерное блюдо');
 
+    $page->assertVisible('[data-dish-saved]')->click('a[href*="section=catalog"]')->assertPresent('[data-section="menu-catalog"]');
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $catalogSpacing = $page->script(<<<'JAVASCRIPT'
@@ -142,26 +144,30 @@ test('workspace protects copied translations and restores sections with browser 
     productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
-    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
+    productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
+    $page->assertPresent('[data-page="dish-card"]');
     $prefix = '#edit-menu-item-'.$item->id;
     productMenuClick($page, $prefix.'-tab-lt');
     productMenuClick($page, $prefix.'-panel-lt [data-copy-original=lt]');
     $page->assertVisible($prefix.'-panel-lt [data-copy-notice=lt]');
-    productMenuClick($page, '[data-menu-section="modifiers"]');
-    $page->assertSee(__('menu.workspace.unsaved_title'));
-    productMenuClick($page, 'button[x-on\\:click="cancelNavigation"]');
-    expect($page->script("document.querySelector('{$prefix}-panel-lt textarea').value"))->toBe('Original to translate');
-    productMenuClick($page, '[data-menu-section="modifiers"]');
-    productMenuClick($page, 'button[x-on\\:click="discardAndNavigate"]');
-    $page->assertAttribute('[data-menu-section="modifiers"]', 'aria-current', 'page');
-    productMenuClick($page, '[data-menu-section="departments"]');
-    $page->assertAttribute('[data-menu-section="departments"]', 'aria-current', 'page');
+    $page->click('[data-menu-section="modifiers"]')->assertVisible('[data-dish-section="modifiers"]')
+        ->assertMissing('dialog[data-modal="menu-workspace-unsaved"]');
+    $page->click('[data-menu-section="photos"]')->assertVisible('[data-dish-section="photos"]');
     $page->script('window.history.back()');
-    $page->wait(1);
     $page->assertAttribute('[data-menu-section="modifiers"]', 'aria-current', 'page');
+    $page->assertMissing('dialog[data-modal="menu-workspace-unsaved"]');
     $page->script('window.history.forward()');
-    $page->wait(1);
-    $page->assertAttribute('[data-menu-section="departments"]', 'aria-current', 'page');
+    $page->assertAttribute('[data-menu-section="photos"]', 'aria-current', 'page')
+        ->assertMissing('dialog[data-modal="menu-workspace-unsaved"]');
+    $page->click('[data-menu-section="main"]');
+    $page->assertVisible($prefix.'-panel-lt [data-copy-notice=lt]');
+    $page->assertValue($prefix.'-panel-lt textarea', 'Original to translate');
+    $page->click('a[href*="section=catalog"]')->assertSee(__('menu.workspace.unsaved_title'));
+    productMenuClick($page, 'button[x-on\\:click="cancelNavigation"]');
+    $page->assertValue($prefix.'-panel-lt textarea', 'Original to translate');
+    $page->click('a[href*="section=catalog"]')->assertVisible('dialog[data-modal="menu-workspace-unsaved"]');
+    productMenuClick($page, 'button[x-on\\:click="discardAndNavigate"]');
+    $page->assertPresent('[data-section="menu-catalog"]');
     expect($item->translations()->where('language_code', 'lt')->value('description'))->toBeNull();
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
@@ -189,8 +195,9 @@ test('owner manages accumulated pending photos without losing image identity', f
     productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
-    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
+    productMenuClick($page, sprintf('article[wire\\:key="menu-item-%d"] > div:first-child a[wire\\:navigate]', $item->id));
 
+    $page->assertPresent('[data-page="dish-card"]')->click('[data-menu-section="photos"]')->assertVisible('[data-dish-section="photos"]');
     $picker = 'section[aria-labelledby="item-'.$item->id.'-photos-heading"]';
     $page->assertPresent('#item-images-'.$item->id);
     productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
@@ -246,8 +253,9 @@ test('owner manages accumulated pending photos without losing image identity', f
 
     productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
     $page->wait(1);
-    productMenuClick($page, 'button[wire\\:click="cancelItemEditing"]');
-    $page->wait(1);
+    $page->click('a[href*="section=catalog"]')->assertVisible('dialog[data-modal="menu-workspace-unsaved"]');
+    productMenuClick($page, 'button[x-on\\:click="discardAndNavigate"]');
+    $page->assertPresent('[data-section="menu-catalog"]');
     $page->assertVisible('[data-menu-section="availability"]')->assertEnabled('[data-menu-section="availability"]')
         ->click('[data-menu-section="availability"]')->assertPresent('[data-page="availability-workspace"]')
         ->assertPathIs(route('organizations.brands.branches.availability.index', [$organization, $branch->brand, $branch], false))
@@ -763,7 +771,7 @@ function productMenuAssertPendingFileCount(PendingAwaitablePage $page, string $p
     $encodedPicker = json_encode($picker, JSON_THROW_ON_ERROR);
     $page->assertScript(<<<JAVASCRIPT
         (() => {
-            const component = document.querySelector({$encodedPicker}).closest('[data-section=menu-catalog]');
+            const component = document.querySelector({$encodedPicker}).closest('[data-page=dish-card]');
             const value = Livewire.find(component.getAttribute('wire:id')).\$get('itemImageUploads')[{$itemId}];
             const files = typeof value === 'string' && value.startsWith('livewire-files:')
                 ? JSON.parse(value.slice('livewire-files:'.length)) : value;
@@ -775,7 +783,7 @@ function productMenuAssertPendingFileCount(PendingAwaitablePage $page, string $p
 /** @return list<string> */
 function productMenuPendingFiles(PendingAwaitablePage $page, string $picker, int $itemId): array
 {
-    $value = $page->script("Livewire.find(document.querySelector('{$picker}').closest('[data-section=menu-catalog]').getAttribute('wire:id')).\$get('itemImageUploads')[{$itemId}]");
+    $value = $page->script("Livewire.find(document.querySelector('{$picker}').closest('[data-page=dish-card]').getAttribute('wire:id')).\$get('itemImageUploads')[{$itemId}]");
     if (is_string($value)) {
         expect($value)->toStartWith('livewire-files:');
 

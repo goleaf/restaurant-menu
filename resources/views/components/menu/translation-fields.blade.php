@@ -7,12 +7,13 @@
     'nameOnly' => false,
     'baseNameModel' => null,
     'baseDescriptionModel' => null,
+    'languageModel' => null,
 ])
 
 <section
     {{ $attributes->class('grid min-w-0 gap-3') }}
     aria-labelledby="{{ $idPrefix }}-translations-heading"
-    x-data="menuTranslations({ model: {{ json_encode($model, JSON_THROW_ON_ERROR) }}, nameOnly: {{ json_encode($nameOnly, JSON_THROW_ON_ERROR) }}, baseNameModel: {{ json_encode($baseNameModel, JSON_THROW_ON_ERROR) }}, baseDescriptionModel: {{ json_encode($baseDescriptionModel, JSON_THROW_ON_ERROR) }} })"
+    x-data="menuTranslations({ model: {{ json_encode($model, JSON_THROW_ON_ERROR) }}, nameOnly: {{ json_encode($nameOnly, JSON_THROW_ON_ERROR) }}, baseNameModel: {{ json_encode($baseNameModel, JSON_THROW_ON_ERROR) }}, baseDescriptionModel: {{ json_encode($baseDescriptionModel, JSON_THROW_ON_ERROR) }}, languageModel: {{ json_encode($languageModel, JSON_THROW_ON_ERROR) }} })"
     data-translation-editor
 >
     <div class="flex flex-wrap items-start justify-between gap-2">
@@ -23,14 +24,14 @@
         <span class="text-xs font-medium text-warning" wire:dirty wire:target="{{ $model }}">{{ __('menu.editor.unsaved') }}</span>
     </div>
 
-    <div class="flex min-w-0 flex-wrap gap-1 rounded-control bg-surface-muted p-1" role="tablist" aria-label="{{ __('menu.translations.heading') }}">
+    <div class="flex min-w-0 gap-1 overflow-x-auto rounded-control bg-surface-muted p-1" role="tablist" aria-label="{{ __('menu.translations.heading') }}">
         @forelse ($languageOptions as $languageCode => $languageLabel)
             <button
                 type="button" role="tab" id="{{ $idPrefix }}-tab-{{ $languageCode }}"
                 aria-controls="{{ $idPrefix }}-panel-{{ $languageCode }}"
                 :aria-selected="active === {{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}" :tabindex="active === {{ json_encode($languageCode, JSON_THROW_ON_ERROR) }} ? 0 : -1"
                 @click="activate({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" @keydown="navigate($event)" data-locale-tab="{{ $languageCode }}"
-                class="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium text-text-muted aria-selected:border-border-subtle aria-selected:bg-surface aria-selected:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="relative inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-control border border-transparent px-3 whitespace-nowrap text-sm font-medium text-text-muted aria-selected:border-border-subtle aria-selected:bg-surface aria-selected:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
                 <span>{{ $languageLabel }}</span>
                 @if ($languageCode === 'en')

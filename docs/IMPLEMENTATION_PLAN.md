@@ -4,6 +4,24 @@
 
 # Restaurant Menu completion implementation plan
 
+## Prompt 6 — unified dish card (stable accepted; PHP 8.6 blocked, 2026-09-17)
+
+Baseline main `524abd0`; 187 pre-existing staged prompt-2 paths are preserved. Prompt 7 availability and prompt 8 team are implemented; their prior checks do not prove this stage. The current catalogue already has MenuItemForm/MenuItemData, one selected modal, content fingerprint and independent media operations. Confirmed gaps: the card is not addressable; saving closes it; variants/modifiers repeat menu/item selection; English/base synchronization exists only in Alpine; creation has no durable response replay; variant/group/link and gallery-order mutations lack independent durable conflict boundaries.
+
+| Step | Exclusive owner / scope | Result and test |
+| --- | --- | --- |
+| P6.1 | Root: Dish coordinator, routes, MenuItemForm/Data, CatalogData, canonical docs, common migrations/models/enums | Addressable existing dish -> edit main content -> same card; scoped context, original English canonicalization, independent version, permission/tamper/conflict tests |
+| P6.2 | team_ui_audit: dish/card Blade, SCSS, local lifecycle JS and UI tests | Four sections, one selected dish, retained drafts, clear independent saves and shared dirty guard; responsive/keyboard/offline/browser checks |
+| P6.3 | access_contract: variant/modifier Actions, dedicated Forms, selected-item child components/read projections/views and tests | Absolute variant prices; scoped shared groups vs one-item copy; aggregate revisions and command receipts, fresh price/availability/tenant authorization |
+| P6.4 | invitations_assignments: image Actions/trait, media state, gallery observer and media tests | Preserve existing upload/identity/replay/cleanup; order conflict/replay, independent metadata save, bounded cleanup continuation |
+| P6.5 | Root: creation/preview and integration, old catalogue/variants/modifier entries, translations | Create-and-continue without empty GET write; existing server configuration/availability preview without guest/cart; preserve filters and remove duplicate editors |
+| P6.6 | Root + independent reviewers after integration | Targeted/full/parallel/coverage/backend/browser/architecture/JS/SCSS/translations/build; exact SQL/models/memory/HTML/payload and runtime evidence |
+| P6.7 | Root | Canonical evidence and limitations, reviewed attributable commit and ordinary origin push; no remote checks or deployment |
+
+Four card sections are Main, Photos, Variants and Extras; preview is a separate read-only mode. Main fields/translations save together. Media, variant and shared modifier operations confirm separately and never reset unrelated drafts. The route owns restaurant/item scope; catalogue return state is bounded and allowlisted. Existing availability evaluation is reused. Variant and modifier selection uses the order server price model; shared changes show affected dishes, while cloning changes only the current link. Monotonic revisions complement fingerprints so ABA writes cannot bypass conflict detection. All fixtures use isolated SQLite/storage.
+
+P6.1–P6.6 are implemented, independently reviewed and accepted on supported PHP 8.5: candidate/shared backend 3,989/4,137, browser 61/75, canonical PHP coverage 93.5%, JavaScript lines 100%, and the complete quality pipelines pass. Exact inventories, metrics and the PHP 8.6 dependency blocker are in PROGRESS.md. P6.7 documentation and alternate-index selection are verified: 148 attributable paths, preserving all 187 foreign staged paths. Commit/push results are reported separately after execution; no deployment is included.
+
 ## Prompt 7 — unified availability and order admission (stable accepted; PHP 8.6 blocked, 2026-09-17)
 
 Baseline main `ce0296c`; preserve all 187 pre-existing prompt-2 paths. The prior team/workspace results remain intact. The current implementation, not the historical prompt snapshot, is authoritative.

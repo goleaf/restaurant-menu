@@ -82,3 +82,12 @@ The executable target contract is 44 CSS pixels for ordinary controls and 56 CSS
 - The 177-assertion restaurant onboarding browser journey covers EN/LT/RU, 320–1,440 CSS-pixel widths, 200% root text scaling, keyboard-visible focus, first-invalid-field focus, backward editing, two refresh/resume checkpoints and the complete successful flow. Native progress and non-color current/completed/future labels remain available, all validation errors are explicitly associated with their controls, and the final run reported no JavaScript errors or horizontal overflow.
 
 Chrome tooling cannot emulate a physical screen reader, switch input or actual touch hardware. That environmental evidence gap is recorded in [`known-limitations.md`](known-limitations.md); it does not waive the automated DOM, keyboard, responsive, contrast and reduced-motion checks that were executed.
+
+
+## Prompt 6 integration contract
+
+The dish card retains one active form per resource, uses URL section history and a distinct content-language owner, restores localized error focus, and keeps simple image-order controls alongside dragging. Server-side bounded Flux selectors preserve the selected entry. Pending media cleanup remains explicitly resumable after reload. The shared dirty guard protects section/context exits; local offline main-form discard does not queue writes.
+
+The focused visual DishCardWorkflowTest run passes 9 cases / 472 assertions and saves 68 screenshots. It covers EN/LT/RU at 320, 390, 768, 1024 and 1440 pixels, light/dark and CSS zoom 200%, native keyboard actions, retained/offline drafts and cross-card Back/Forward. Language labels remain whole in an internal scrollport; keyboard focus scrolls the active label fully into view. Playwright forced-colors/reduced-motion media emulation is verified through actual matchMedia values and visible focus. Representative narrow, wide, dark and focused screenshots were inspected. Native browser zoom, a physical mobile keyboard and a real OS high-contrast palette were not separately tested.
+
+Final complete browser acceptance passes 61 candidate and 75 shared cases. Later test-only refinements distinguish an active-request navigation block from the next explicit departure, preserving the dirty dialog, cancellation and unchanged database assertions.

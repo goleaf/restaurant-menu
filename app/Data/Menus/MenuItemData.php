@@ -27,6 +27,18 @@ final readonly class MenuItemData
         public ?array $translations = null,
     ) {}
 
+    public function originalName(): string
+    {
+        return $this->translations !== null && array_key_exists('en', $this->translations)
+            ? (string) ($this->translations['en']['name'] ?? '') : $this->name;
+    }
+
+    public function originalDescription(): ?string
+    {
+        return $this->translations !== null && isset($this->translations['en']) && array_key_exists('description', $this->translations['en'])
+            ? $this->translations['en']['description'] : $this->description;
+    }
+
     /**
      * @param  array{name: string, description: string|null, weight: string|null, volume: string|null, calories: int|null, sort_order: int, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, is_available?: bool, hidden_until?: string|null, translations?: array<string, array{name?: string|null, description?: string|null}>}  $values
      */

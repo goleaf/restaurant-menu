@@ -10,6 +10,7 @@ use App\Enums\MenuOperationPhase;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\MenuOperation;
+use App\Models\ModifierGroup;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -108,6 +109,10 @@ final class ContinueMenuDuplicationAction
         $groups = $source->modifierGroups()->select(['modifier_groups.id'])->reorder()->where('modifier_groups.branch_id', $operation->branch_id)
             ->where('modifier_groups.id', '>', $operation->cursor)->orderBy('modifier_groups.id')->limit(50)->get();
         $copy->modifierGroups()->attach($groups->modelKeys());
+        if ($groups->isNotEmpty()) {
+            ModifierGroup::query()->whereIn('id', $groups->modelKeys())->increment('content_version');
+            $copy->increment('modifier_links_version');
+        }
         $operation->processed_count += $groups->count();
         if ($groups->isNotEmpty()) {
             $operation->cursor = $groups->last()->id;

@@ -11,8 +11,8 @@
             "gzip": 109000
         },
         "resources/scss/app.scss": {
-            "raw": 31000,
-            "gzip": 6300
+            "raw": 31800,
+            "gzip": 6500
         },
         "resources/scss/qr-print.scss": {
             "raw": 4000,
@@ -106,6 +106,17 @@
             "limits": {
                 "raw": 955700,
                 "gzip": 394600
+            }
+        },
+        "dish": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 959700,
+                "gzip": 395700
             }
         }
     },

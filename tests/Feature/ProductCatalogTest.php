@@ -6,6 +6,7 @@ use App\Actions\Menus\SyncMenuItemTranslationsAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\MenuStatus;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -41,9 +42,9 @@ test('catalogue image mutations replay the same rendered request without touchin
         Storage::disk('public')->put($path, 'owned test image');
     }
 
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
-        ->set('editingItemForm.itemDescription', 'Unfinished image editor text');
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.description', 'Unfinished image editor text');
     $action = match ($operation) {
         'primary' => 'removeItemImage',
         'gallery' => 'removeItemGalleryImage',
@@ -62,7 +63,7 @@ test('catalogue image mutations replay the same rendered request without touchin
     expect($primary)->toBe($operation === 'gallery' ? 'media/primary.jpg' : 'media/second.jpg');
     $component->snapshot = $snapshot;
     $component->call($action, ...$arguments)->assertHasNoErrors()
-        ->assertSet('editingItemForm.itemDescription', 'Unfinished image editor text');
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Unfinished image editor text');
 
     expect($item->fresh()->image)->toBe($primary)
         ->and($item->galleryImages()->pluck('path', 'id')->all())->toBe($paths)
@@ -76,10 +77,10 @@ test('image cleanup failures preserve editor input and resume through the existi
     MenuItemImage::factory()->for($item, 'item')->create(['path' => 'media/keep.jpg']);
     Storage::disk('public')->put('media/old.jpg', 'old image');
     Storage::disk('public')->put('media/keep.jpg', 'keep image');
-    $parameters = ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id];
-    $component = Livewire::actingAs($owner)->test(Catalog::class, $parameters)
-        ->call('startEditingItem', $item->id)
-        ->set('editingItemForm.itemDescription', 'Keep this unsaved description');
+    $parameters = ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item];
+    $component = Livewire::actingAs($owner)->test(Dish::class, $parameters)
+        ->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.description', 'Keep this unsaved description');
     $arguments = productCatalogImageArguments($component->html(), 'removeItemImage');
     $requestId = $arguments[2];
     $disk = Storage::disk('public');
@@ -88,19 +89,18 @@ test('image cleanup failures preserve editor input and resume through the existi
     Storage::set('public', $failingDisk);
 
     $component->call('removeItemImage', ...$arguments)
-        ->assertHasErrors('catalogOperation')
-        ->assertSet('activeCatalogOperationId', $requestId)
-        ->assertSet('catalogOperationPaused', true)
-        ->assertSet('editingItemForm.itemDescription', 'Keep this unsaved description')
+        ->assertHasErrors('pendingImageOperation')
+        ->assertSet('pendingImageOperationRequestId', $requestId)
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Keep this unsaved description')
         ->assertSee(__('menu.operations.resume'));
     expect($item->fresh()->image)->toBe('media/keep.jpg');
     Storage::disk('public')->assertExists('media/old.jpg');
 
     Storage::set('public', $disk);
-    Livewire::actingAs($owner)->test(Catalog::class, $parameters)
-        ->assertSet('activeCatalogOperationId', $requestId)
-        ->call('resumeCatalogOperation')->assertHasNoErrors()
-        ->assertSet('activeCatalogOperationId', '');
+    Livewire::actingAs($owner)->test(Dish::class, $parameters)
+        ->assertSet('pendingImageOperationRequestId', $requestId)
+        ->call('retryItemImageCleanup')->assertHasNoErrors()
+        ->assertSet('pendingImageOperationRequestId', null);
 
     expect($item->fresh()->image)->toBe('media/keep.jpg')
         ->and($menu->fresh()->trashed())->toBeFalse();
@@ -112,13 +112,13 @@ test('stale photo confirmations display a conflict without replacing the dish ed
     Storage::fake('public');
     [$owner, $organization, $brand, $branch, $menu, $category] = productCatalogContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => 'media/current.jpg']);
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)->set('editingItemForm.itemDescription', 'Keep my text');
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')->set('editingItemForm.itemTranslations.en.description', 'Keep my text');
 
     $component->call('removeItemImage', $item->id, hash('sha256', 'media/stale.jpg'), (string) Str::uuid())
         ->assertHasErrors('itemImageUploads.'.$item->id)
         ->assertSee(__('uploads.errors.image_changed'))
-        ->assertSet('editingItemForm.itemDescription', 'Keep my text');
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Keep my text');
 
     expect($item->fresh()->image)->toBe('media/current.jpg');
 });
@@ -197,11 +197,11 @@ test('a stale dish editor reports a conflict without overwriting concurrent chan
     foreach (['en' => 'Soup', 'lt' => 'Sriuba', 'ru' => 'Суп'] as $locale => $name) {
         MenuItemTranslation::factory()->for($item, 'item')->create(['language_code' => $locale, 'name' => $name]);
     }
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)->set('editingItemForm.itemTranslations.lt.name', 'Mano sriuba');
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')->set('editingItemForm.itemTranslations.lt.name', 'Mano sriuba');
     $item->update(['price_cents' => 1800]);
 
-    $component->call('updateItem')->assertHasErrors('editingItemVersion')->assertSet('editingItemForm.itemTranslations.lt.name', 'Mano sriuba');
+    $component->call('saveItem')->assertHasErrors('editingItemVersion')->assertSet('editingItemForm.itemTranslations.lt.name', 'Mano sriuba');
     expect($item->fresh()->price_cents)->toBe(1800)
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Sriuba');
 });
@@ -233,9 +233,9 @@ test('catalogue image save replays a lost response without adding the same batch
     [$owner, $organization, $brand, $branch, $menu, $category] = productCatalogContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => null]);
     $files = array_map(fn (int $index) => UploadedFile::fake()->image('dish-'.$index.'.jpg', 10, 10), range(1, 8));
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
-        ->set('editingItemForm.itemDescription', 'Unfinished description')
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.description', 'Unfinished description')
         ->set('itemImageUploads.'.$item->id, $files);
     $snapshotBeforeSaving = $component->snapshot;
 
@@ -243,7 +243,7 @@ test('catalogue image save replays a lost response without adding the same batch
     $storedPaths = Storage::disk('public')->allFiles();
     $component->snapshot = $snapshotBeforeSaving;
     $component->call('saveItemImages', $item->id)->assertHasNoErrors()
-        ->assertSet('editingItemForm.itemDescription', 'Unfinished description');
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Unfinished description');
 
     expect($item->galleryImages()->count())->toBe(7)
         ->and(Storage::disk('public')->allFiles())->toBe($storedPaths);
@@ -263,9 +263,9 @@ test('permanent image write failure preserves pending uploads and retries the sa
         UploadedFile::fake()->image('new-second.jpg', 800, 400),
     ];
     $field = 'itemImageUploads.'.$item->id;
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
-        ->set('editingItemForm.itemDescription', 'Preserve the unsaved dish description')
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.description', 'Preserve the unsaved dish description')
         ->set($field, $files);
     $requestId = $component->get('itemImageRequestIds.'.$item->id);
     $writes = 0;
@@ -282,7 +282,7 @@ test('permanent image write failure preserves pending uploads and retries the sa
         ->assertHasErrors($field)
         ->assertSee(__('uploads.errors.upload_failed'))
         ->assertSet('itemImageRequestIds.'.$item->id, $requestId)
-        ->assertSet('editingItemForm.itemDescription', 'Preserve the unsaved dish description')
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Preserve the unsaved dish description')
         ->assertNotDispatched('item-images-saved');
 
     expect($writes)->toBe(4)
@@ -312,9 +312,9 @@ test('committed image uploads finish the picker after an observer callback fails
     Storage::fake('public');
     [$owner, $organization, $brand, $branch, $menu, $category] = productCatalogContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => null]);
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingItem', $item->id)
-        ->set('editingItemForm.itemDescription', 'Still editing this dish')
+    $component = Livewire::actingAs($owner)->test(Dish::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'item' => $item])
+        ->call('selectSection', 'photos')
+        ->set('editingItemForm.itemTranslations.en.description', 'Still editing this dish')
         ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('committed.jpg', 800, 400)]);
     $requestId = $component->get('itemImageRequestIds.'.$item->id);
     $snapshot = $component->snapshot;
@@ -328,7 +328,7 @@ test('committed image uploads finish the picker after an observer callback fails
         ->assertDispatched('item-images-saved')
         ->assertSet('itemImageUploads', [])
         ->assertSet('itemImageRequestIds', [])
-        ->assertSet('editingItemForm.itemDescription', 'Still editing this dish');
+        ->assertSet('editingItemForm.itemTranslations.en.description', 'Still editing this dish');
 
     $committedPath = $item->fresh()->image;
     $committedFiles = Storage::disk('public')->allFiles();

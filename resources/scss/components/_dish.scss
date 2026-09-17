@@ -1,0 +1,38 @@
+@use 'sass:map';
+@use '../settings/tokens';
+@use '../settings/breakpoints';
+
+@layer components {
+    .rm-dish {
+        container: dish / inline-size;
+    }
+
+    .rm-dish .grid > * { min-inline-size: 0; }
+
+    .rm-dish__nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: tokens.space(2);
+    }
+
+    .rm-dish :is([data-flux-button], [data-flux-badge]) {
+        max-inline-size: 100%;
+        white-space: normal !important;
+    }
+
+    .rm-dish [data-flux-button] {
+        block-size: auto !important;
+        min-block-size: var(--rm-spacing-touch);
+    }
+
+    @container dish (inline-size >= 52rem) {
+        .rm-dish__layout { grid-template-columns: 11.5rem minmax(0, 1fr); }
+        .rm-dish__nav {
+            flex-direction: column;
+        }
+    }
+
+    @media (width < map.get(breakpoints.$values, 'sm')) {
+        body:has(.rm-dish) [data-flux-header] { position: static !important; }
+    }
+}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
+use App\Actions\Menus\AdvanceDishConfigurationVersionAction;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 
@@ -12,6 +13,7 @@ class ModifierOptionObserver
 {
     public function __construct(
         private readonly ForgetBranchCacheAction $forgetBranchCache,
+        private readonly AdvanceDishConfigurationVersionAction $versions,
     ) {}
 
     /**
@@ -27,6 +29,9 @@ class ModifierOptionObserver
      */
     public function updated(ModifierOption $modifierOption): void
     {
+        if (array_diff(array_keys($modifierOption->getChanges()), ['updated_at', 'content_version']) === []) {
+            return;
+        }
         $this->forgetGuestMenu($modifierOption);
     }
 
@@ -71,6 +76,7 @@ class ModifierOptionObserver
             return;
         }
 
+        $this->versions->group($modifierGroupId);
         $branchId = ModifierGroup::query()
             ->select('branch_id')
             ->whereKey($modifierGroupId)

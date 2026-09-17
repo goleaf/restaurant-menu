@@ -4,6 +4,14 @@
 
 # Current version baseline
 
+## Prompt 6 runtime observation — 2026-09-17
+
+Dish checks select the actual PHP 8.5.10 CLI and isolated browser HTTP responder. A fresh runtime-only request to the configured Herd85 socket returns PHP 8.5.8 / fpm-fcgi with memory_limit 500M; its temporary script was deleted without bootstrapping the application or database. Herd/production selection and dependency locks are unchanged.
+
+The installed experimental binary is PHP 8.6.0beta2. Both complete and non-development `composer check-platform-reqs --lock` fail the Nette Schema PHP 8.1–8.5 requirement. Composer also emits the PHP 8.6 Oniguruma deprecation. PHP.net lists Beta 3 on 10 September and RC1 planned for 24 September: this does not make Beta 3 installed here. The final candidate passes 1,223 first-party non-Blade PHP syntax checks, plus the final two changed browser files, on this actual Beta 2 binary. No experimental application acceptance or production-runtime promotion is claimed.
+
+Canonical supported-runtime coverage passes all 3,989 backend cases / 76,310 assertions at 93.5% application line coverage, with the 90% threshold unchanged and no failures, errors or skips. Complete browser inventories also pass: candidate 61/61 cases / 4,535 assertions and shared 75/75 / 5,595, with the actual PHP 8.5.10 HTTP runtime case included. The distinct Herd FPM version remains 8.5.8.
+
 ## Prompt 7 runtime observation — 2026-09-17
 
 Availability application tests use the actual isolated PHP **8.5.10** CLI and HTTP responder. The independently probed configured Herd FastCGI process reports **8.5.8 / fpm-fcgi**; the runtime-only probe was removed and did not bootstrap the application or open its database. No site PHP selection changed.

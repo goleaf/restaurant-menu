@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\QrCodes\StoreQrCodeImageAction;
+use App\Enums\AuditLogAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\DraftOrderStatus;
@@ -633,8 +634,10 @@ test('demo restaurant seeder is idempotent', function () {
         'kitchen_ticket_items' => 27,
         'manual_payments' => 5,
         'order_status_logs' => 12,
-        'audit_logs' => 4,
+        'audit_logs' => 8,
     ]);
+
+    expect(AuditLog::query()->where('action', AuditLogAction::DishConfigurationChanged)->count())->toBe(4);
 
     $firstOrderIds = Order::query()
         ->whereNotNull('metadata')

@@ -95,3 +95,8 @@ This code change does not repair or reseed an existing application database. In 
 ## Local account inventory — 2026-09-16
 
 The local login directory never seeds on GET. This installation already contained 17 demo users: 12 role-switch identities and five fixed lifecycle/tenant fixtures, so no new users or restaurant graph were created. `DemoAccountCatalog::directoryAccounts()` allowlists all 17 for the local directory while `accounts()` retains exactly 12 role-switch identities. At explicit user request, all 17 known demo passwords were rotated to the local `DEMO_LOGIN_PASSWORD` value. Roles, company membership states and permissions were preserved; ordinary accounts outside that exact catalogue are never changed. Default factories and repeated seed behavior remain random-on-create and preserve-on-repeat. The configured local display is conditional on the current hash and does not turn the demo seeder into a password reset operation.
+
+
+## Prompt 6 integration contract
+
+Prompt 6 fixtures use existing factories for separate tenant graphs, different EN/LT/RU text, shared modifier groups, historical orders, archived children and isolated SQLite concurrency. DishPerformanceTest exercises 40 unrelated dishes plus a selected dish with 100 variants and 180 options. Default/demo seeders retain their existing guarded contracts; no production catalogue is generated or reset.

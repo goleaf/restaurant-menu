@@ -18,14 +18,14 @@ final class MenuScopeRules
 {
     public static function menu(Branch $branch): Exists
     {
-        return Rule::exists(Menu::class, 'id')->where('branch_id', $branch->id);
+        return Rule::exists(Menu::class, 'id')->where('branch_id', $branch->id)->withoutTrashed();
     }
 
     public static function category(mixed $menuId): Exists|In
     {
         $menuId = self::identifier($menuId);
 
-        return $menuId === null ? Rule::in([]) : Rule::exists(MenuCategory::class, 'id')->where('menu_id', $menuId);
+        return $menuId === null ? Rule::in([]) : Rule::exists(MenuCategory::class, 'id')->where('menu_id', $menuId)->withoutTrashed();
     }
 
     public static function department(Branch $branch): Exists

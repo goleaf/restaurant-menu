@@ -17,7 +17,6 @@ use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
-use App\Services\Branches\BranchSettingsQueryService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -29,8 +28,6 @@ use Livewire\WithFileUploads;
 class Settings extends Component
 {
     use WithFileUploads;
-
-    private BranchSettingsQueryService $branchSettingsQueries;
 
     public Organization $organization;
 
@@ -59,11 +56,6 @@ class Settings extends Component
      * @var array<string, string>
      */
     public array $currencyOptions = [];
-
-    public function boot(BranchSettingsQueryService $branchSettingsQueries): void
-    {
-        $this->branchSettingsQueries = $branchSettingsQueries;
-    }
 
     public function mount(
         Organization $organization,
@@ -133,7 +125,7 @@ class Settings extends Component
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.settings', [
-            'openingDays' => $this->form->displayOpeningHours(),
+            'availabilityUrl' => route('organizations.brands.branches.availability.index', [$this->organization, $this->brand, $this->branch]),
             'branchesUrl' => route('organizations.brands.branches.index', [$this->organization, $this->brand]),
             'branchName' => $this->branch->name,
             'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
@@ -143,21 +135,11 @@ class Settings extends Component
         ])->title(__('ui.organizations.brands.branches.settings.branch_settings'));
     }
 
-    public function addOpeningInterval(int $dayOfWeek): void
-    {
-        $this->form->addOpeningInterval($dayOfWeek);
-    }
-
-    public function removeOpeningInterval(int $dayOfWeek, int $intervalIndex): void
-    {
-        $this->form->removeOpeningInterval($dayOfWeek, $intervalIndex);
-    }
-
     private function populateForm(Branch $branch, BranchSetting $settings): void
     {
         $this->branch = $branch;
         $this->settingsId = $settings->id;
-        $this->form->populate($branch, $settings, $this->branchSettingsQueries->openingHours($branch));
+        $this->form->populate($branch, $settings);
         $this->currentLogoUrl = $branch->logoUrl();
         $this->currentCoverImageUrl = $branch->coverImageUrl();
     }

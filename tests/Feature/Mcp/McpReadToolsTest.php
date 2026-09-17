@@ -89,7 +89,7 @@ dataset('mcp read tools', [
 
 test('MCP branch context states exact identity without suggesting token abilities are current rights', function (): void {
     expect(mcpReadPayload(BranchContextTool::class))->toBe([
-        'branch' => ['id' => $this->branch->id, 'name' => $this->branch->name, 'timezone' => 'Europe/Vilnius', 'currency' => 'EUR'],
+        'branch' => ['id' => $this->branch->id, 'name' => $this->branch->name, 'timezone' => 'Europe/Vilnius', 'currency' => 'EUR', 'pause_version' => 0, 'is_temporarily_closed' => false, 'temporary_closed_until' => null],
     ]);
 });
 

@@ -77,7 +77,7 @@ class AddManualWaiterOrderItemAction
                 itemName: $itemName,
                 idempotencyKey: $idempotencyKey?->value,
             );
-        });
+        }, attempts: 3);
     }
 
     private function reloadTableSession(TableSession $tableSession): TableSession

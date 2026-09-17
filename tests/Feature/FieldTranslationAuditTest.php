@@ -120,6 +120,11 @@ function fieldTranslationAuditManifest(): array
             'item_name' => ['label' => 'ui.onboarding.restaurant_setup.pervoe_bliudo', 'attribute' => 'validation.attributes.item_name'],
             'item_price' => ['label' => 'ui.onboarding.restaurant_setup.cena', 'attribute' => 'validation.attributes.item_price'],
         ],
+        'availability pause form' => [
+            'pause.reason' => ['label' => 'availability.public_reason', 'help' => 'availability.public_reason_description', 'attribute' => 'availability.fields.reason'],
+            'pause.untilDate' => ['label' => 'availability.until_date', 'placeholder' => 'availability.choose_date', 'attribute' => 'availability.fields.deadline'],
+            'pause.untilTime' => ['label' => 'availability.until_time', 'placeholder' => 'availability.choose_time', 'attribute' => 'availability.fields.deadline'],
+        ],
         'branch settings form' => [
             'public_name' => ['label' => 'ui.organizations.brands.branches.settings.venue_name', 'attribute' => 'validation.attributes.public_name'],
             'phone' => ['label' => 'ui.organizations.brands.branches.settings.phone', 'placeholder' => 'fields.placeholders.phone_example', 'attribute' => 'validation.attributes.phone'],
@@ -128,8 +133,6 @@ function fieldTranslationAuditManifest(): array
             'instagram_url' => ['label' => 'ui.organizations.brands.branches.settings.instagram_link', 'placeholder' => 'fields.placeholders.instagram_url_example', 'attribute' => 'validation.attributes.instagram_url'],
             'facebook_url' => ['label' => 'ui.organizations.brands.branches.settings.facebook_link', 'placeholder' => 'fields.placeholders.facebook_url_example', 'attribute' => 'validation.attributes.facebook_url'],
             'tiktok_url' => ['label' => 'ui.organizations.brands.branches.settings.tiktok_link', 'placeholder' => 'fields.placeholders.tiktok_url_example', 'attribute' => 'validation.attributes.tiktok_url'],
-            'temporary_closed_reason' => ['label' => 'guest.table.reason', 'placeholder' => 'ui.organizations.brands.branches.settings.texniceskie_raboty', 'attribute' => 'validation.attributes.temporary_closed_reason'],
-            'temporary_closed_until' => ['label' => 'ui.organizations.brands.branches.settings.closed_until_optional', 'attribute' => 'validation.attributes.temporary_closed_until'],
             'service_charge_percent' => ['label' => 'ui.organizations.brands.branches.settings.service_charge_percent', 'attribute' => 'validation.attributes.service_charge_percent'],
             'polling_interval_seconds' => ['label' => 'ui.organizations.brands.branches.settings.polling_interval_seconds', 'attribute' => 'validation.attributes.polling_interval_seconds'],
         ],

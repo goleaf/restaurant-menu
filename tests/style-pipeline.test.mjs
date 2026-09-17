@@ -86,7 +86,7 @@ test('repeated product compositions preserve controls, palette roles and respons
         ['livewire/public-qr/draft-order', ['rm-draft-notice', 'rm-draft-notice--error']],
         ['livewire/public-qr/guest-entry', ['rm-guest-contact-link']],
         ['livewire/organizations/brands/branches/menu/catalog', ['rm-menu-empty']],
-        ['livewire/organizations/brands/branches/menu/availability', ['rm-menu-empty']],
+        ['livewire/organizations/brands/branches/availability/stoplist', ['rm-availability__items', 'rm-availability__editor']],
         ['livewire/onboarding/restaurant-setup', ['rm-onboarding-disclosure', 'rm-onboarding-next-link']],
         ['livewire/departments/ticket-print', ['qr-print-toolbar rm-print-toolbar']],
         ['livewire/organizations/brands/branches/qr/bulk-print', ['qr-print-toolbar rm-print-toolbar']],

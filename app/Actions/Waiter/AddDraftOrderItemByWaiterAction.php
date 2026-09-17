@@ -6,12 +6,11 @@ namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\DraftOrders\CreateDraftOrderItemIdempotentlyAction;
+use App\Actions\DraftOrders\EnsureDraftMenuItemAvailableAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
-use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
-use App\Enums\MenuStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Exceptions\BusinessRuleViolation;
@@ -23,6 +22,7 @@ use App\Models\User;
 use App\Support\Orders\IdempotencyKey;
 use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class AddDraftOrderItemByWaiterAction
@@ -32,7 +32,7 @@ class AddDraftOrderItemByWaiterAction
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
-        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
         private readonly MoveDraftOrderToWaiterReviewAction $moveDraftOrderToWaiterReview,
         private readonly CreateDraftOrderItemIdempotentlyAction $createDraftOrderItemIdempotently,
     ) {}
@@ -131,7 +131,7 @@ class AddDraftOrderItemByWaiterAction
             );
 
             return $draftOrderItem;
-        });
+        }, attempts: 3);
     }
 
     private function reloadDraftOrder(DraftOrder $draftOrder): DraftOrder
@@ -173,29 +173,9 @@ class AddDraftOrderItemByWaiterAction
                 'category_id',
                 'name',
                 'price_cents',
-                'is_available',
+                'is_available', 'hidden_until', 'deleted_at',
             ])
-            ->with([
-                'menu' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'status',
-                ])->with([
-                    'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
-                    'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
-                        'id',
-                        'menu_id',
-                        'day_of_week',
-                        'starts_at',
-                        'ends_at',
-                    ]),
-                ]),
-                'category' => fn ($query) => $query->select([
-                    'id',
-                    'menu_id',
-                    'is_active',
-                ]),
-            ])
+            ->with(EnsureDraftMenuItemAvailableAction::relations())
             ->whereKey($menuItem->id)
             ->firstOrFail();
     }
@@ -229,32 +209,7 @@ class AddDraftOrderItemByWaiterAction
 
     private function ensureMenuItemCanBeAdded(DraftOrder $draftOrder, MenuItem $menuItem): void
     {
-        $tableSession = $draftOrder->tableSession;
-
-        if ($tableSession === null
-            || $menuItem->menu->branch_id !== $tableSession->branch_id
-            || $menuItem->menu->status !== MenuStatus::Active
-            || ! $menuItem->category->is_active
-            || ! $menuItem->is_available) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::ItemUnavailable,
-                'addingMenuItemId',
-                __('ui.actions.waiter.adddraftorderitembywaiteraction.eto_bliudo_seicas_nedostu'),
-            );
-        }
-
-        $availability = $this->getMenuAvailabilityStatus->handle($menuItem->menu);
-
-        if (! $availability['is_available']) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::ItemUnavailable,
-                'addingMenuItemId',
-                __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
-                    'label' => $availability['label'],
-                    'detail' => $availability['detail'],
-                ]),
-            );
-        }
+        $this->ensureMenuItemAvailable->handle($menuItem, (int) $draftOrder->tableSession->branch_id, 'addingMenuItemId', CarbonImmutable::now());
     }
 
     private function snapshotName(MenuItem $menuItem): string

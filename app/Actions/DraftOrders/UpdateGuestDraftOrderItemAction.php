@@ -9,12 +9,11 @@ use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Models\DraftOrderItem;
-use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
 use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class UpdateGuestDraftOrderItemAction
 {
@@ -26,7 +25,7 @@ class UpdateGuestDraftOrderItemAction
     ) {}
 
     /**
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      */
     public function handle(
         DraftOrderItem $draftOrderItem,
@@ -41,21 +40,15 @@ class UpdateGuestDraftOrderItemAction
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $guest = $this->reloadGuest($guest);
             $this->ensureGuestOwnsEditableDraftItem->handle($draftOrderItem, $guest);
-            $menuItem = $draftOrderItem->menuItem;
-
-            if (! $menuItem instanceof MenuItem) {
-                throw ValidationException::withMessages([
-                    'draft_item' => __('menu.guest.item_no_longer_available'),
-                ]);
-            }
-
-            $this->ensureMenuItemAvailable->handle(
-                $menuItem,
-                (int) $draftOrderItem->draftOrder->tableSession->branch_id,
-            );
-
             $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
-            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId, $languageCode);
+            $preservesSelection = $quantity <= $draftOrderItem->quantity
+                && $this->calculateLinePrice->keepsSelection($draftOrderItem, $selectedModifierOptions, $menuItemVariantId);
+            if (! $preservesSelection) {
+                $this->ensureMenuItemAvailable->selection($draftOrderItem, (int) $draftOrderItem->draftOrder->tableSession->branch_id,
+                    $selectedModifierOptions, $menuItemVariantId, CarbonImmutable::now());
+            }
+            $linePrice = $preservesSelection ? $this->calculateLinePrice->preservingSelection($draftOrderItem, $quantity)
+                : $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId, $languageCode);
             $normalizedComment = $this->normalizeComment($comment);
 
             if ($draftOrderItem->alreadyMatchesSelection($linePrice, $quantity, $normalizedComment)) {
@@ -89,7 +82,7 @@ class UpdateGuestDraftOrderItemAction
             );
 
             return $draftOrderItem->refresh();
-        });
+        }, attempts: 3);
     }
 
     private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): DraftOrderItem
@@ -133,23 +126,8 @@ class UpdateGuestDraftOrderItemAction
                                 ]),
                             ]),
                     ]),
-                'menuItem' => fn ($query) => $query
-                    ->select(['id', 'menu_id', 'category_id', 'is_available', 'hidden_until'])
-                    ->with([
-                        'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'is_active']),
-                        'menu' => fn ($menuQuery) => $menuQuery
-                            ->select(['id', 'branch_id', 'status'])
-                            ->with([
-                                'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
-                                'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
-                                    'id',
-                                    'menu_id',
-                                    'day_of_week',
-                                    'starts_at',
-                                    'ends_at',
-                                ]),
-                            ]),
-                    ]),
+                'menuItem' => fn ($query) => $query->select(['id', 'menu_id', 'category_id', 'name', 'is_available', 'hidden_until', 'deleted_at'])
+                    ->with(EnsureDraftMenuItemAvailableAction::relations()),
             ])
             ->whereKey($draftOrderItem->id)
             ->lockForUpdate()

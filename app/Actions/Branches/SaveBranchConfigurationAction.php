@@ -43,9 +43,6 @@ use Illuminate\Support\Facades\Gate;
  *     facebook_url: string|null,
  *     tiktok_url: string|null
  *   },
- *   closure: array{closed: bool, reason: string|null, until: string|null},
- *   opening_hours: list<array{day_of_week: int, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>,
- *   opening_hours_configured: bool,
  *   logo: UploadedFile|null,
  *   cover: UploadedFile|null
  * }
@@ -56,8 +53,6 @@ final class SaveBranchConfigurationAction
         private readonly BranchSettingsQueryService $settingsQueries,
         private readonly UpdateBranchSettingsAction $updateSettings,
         private readonly UpdateBranchPublicProfileAction $updateProfile,
-        private readonly UpdateBranchOpeningHoursAction $updateOpeningHours,
-        private readonly UpdateBranchTemporaryClosureAction $updateClosure,
         private readonly UpdateBranchLogoAction $updateLogo,
         private readonly UpdateBranchCoverImageAction $updateCover,
     ) {}
@@ -93,13 +88,6 @@ final class SaveBranchConfigurationAction
             }
 
             $branch = $this->updateProfile->handle($branch, $data['profile']);
-            $branch = $this->updateClosure->handle(
-                $branch,
-                $data['closure']['closed'],
-                $data['closure']['reason'],
-                $data['closure']['until'],
-            );
-            $this->updateOpeningHours->handle($branch, $data['opening_hours'], $data['opening_hours_configured']);
 
             return ['branch' => $branch, 'settings' => $settings];
         });

@@ -1,125 +1,93 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Branches;
 
 use App\Models\Branch;
-use App\Models\BranchOpeningHour;
+use App\Services\Availability\OpeningIntervalEvaluator;
 use App\Support\LocalizedDateFormatter;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
+/** @phpstan-import-type Layer from OpeningIntervalEvaluator */
 class GetBranchOpeningStatusAction
 {
-    /**
-     * @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string}
-     */
+    public function __construct(private readonly OpeningIntervalEvaluator $evaluator) {}
+
+    /** @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string, reason_codes: list<string>, evaluated_at: string, next_change_at: string|null, next_orderable_at: string|null} */
     public function handle(Branch $branch, ?CarbonInterface $now = null): array
     {
-        $timezone = $this->timezoneFor($branch);
-        $currentTime = $now instanceof CarbonInterface
-            ? Carbon::instance($now->toDateTime())->setTimezone($timezone)
-            : now($timezone);
-        $temporaryClosedStatus = $this->temporaryClosedStatus($branch, $currentTime, $timezone);
-
-        if ($temporaryClosedStatus !== null) {
-            return $temporaryClosedStatus;
+        $instant = $now === null ? CarbonImmutable::now() : CarbonImmutable::instance($now);
+        $timezone = $branch->timezone ?: config('app.timezone', 'UTC');
+        $layer = $this->temporalLayer($branch);
+        $until = $branch->temporaryClosedUntilForBranch();
+        $until = $until === null ? null : CarbonImmutable::instance($until);
+        $paused = (bool) $branch->is_temporarily_closed && ($until === null || $until->greaterThan($instant));
+        $result = $this->evaluator->evaluate([$layer], $timezone, $instant, $paused ? $until : null, $paused && $until === null);
+        $configured = ! $layer['empty_allows'] || $layer['exceptions'] !== [];
+        $allowed = $result['allows_now'];
+        $next = $allowed ? null : $result['next_orderable_at'];
+        $closes = $result['current_closes_at'];
+        $reason = $paused ? 'branch_paused' : (! $allowed ? 'branch_schedule_closed' : null);
+        if ($paused) {
+            $label = __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt');
+            $detail = trim((string) $branch->temporary_closed_reason);
+            $detail .= ($detail === '' ? '' : '. ').($until === null
+                ? __('ui.actions.branches.getbranchopeningstatusaction.otkroemsia_pozze')
+                : __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => LocalizedDateFormatter::dateTime($until->setTimezone($timezone))]));
+        } elseif (! $configured) {
+            $label = __('ui.actions.branches.getbranchopeningstatusaction.casy_raboty_ne_ukazany');
+            $detail = __('ui.actions.branches.getbranchopeningstatusaction.mozno_smotret_meniu_zakaz');
+        } elseif ($allowed) {
+            $label = __('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto');
+            $detail = $closes === null ? __('availability.open_without_deadline') : __('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => LocalizedDateFormatter::time($closes)]);
+        } else {
+            $label = __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto');
+            $detail = $next === null ? __('ui.actions.branches.getbranchopeningstatusaction.segodnia_zakryto')
+                : __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $this->openingLabel($next, $instant->setTimezone($timezone))]);
         }
 
-        $openingHours = $this->openingHoursFor($branch);
-
-        if ($openingHours->isEmpty()) {
-            return [
-                'is_configured' => false,
-                'is_open' => false,
-                'can_accept_orders' => true,
-                'label' => __('ui.actions.branches.getbranchopeningstatusaction.casy_raboty_ne_ukazany'),
-                'detail' => __('ui.actions.branches.getbranchopeningstatusaction.mozno_smotret_meniu_zakaz'),
-                'tone' => 'muted',
-                'next_opens_at' => null,
-                'closes_at' => null,
-                'timezone' => $timezone,
-            ];
-        }
-
-        $openInterval = $this->currentOpenInterval($openingHours, $currentTime);
-
-        if ($openInterval !== null) {
-            return [
-                'is_configured' => true,
-                'is_open' => true,
-                'can_accept_orders' => true,
-                'label' => __('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto'),
-                'detail' => __('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => $openInterval['closes_at']]),
-                'tone' => 'success',
-                'next_opens_at' => null,
-                'closes_at' => $openInterval['closes_at'],
-                'timezone' => $timezone,
-            ];
-        }
-
-        $nextOpening = $this->nextOpening($openingHours, $currentTime);
-
-        return [
-            'is_configured' => true,
-            'is_open' => false,
-            'can_accept_orders' => false,
-            'label' => __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'),
-            'detail' => $nextOpening === null
-                ? __('ui.actions.branches.getbranchopeningstatusaction.segodnia_zakryto')
-                : __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $nextOpening['label']]),
-            'tone' => 'warning',
-            'next_opens_at' => $nextOpening['time'] ?? null,
-            'closes_at' => null,
-            'timezone' => $timezone,
-        ];
+        return ['is_configured' => $paused || $configured, 'is_open' => ! $paused && $configured && $allowed,
+            'can_accept_orders' => $allowed, 'label' => $label, 'detail' => $detail,
+            'tone' => $paused ? 'danger' : (! $configured ? 'muted' : ($allowed ? 'success' : 'warning')),
+            'next_opens_at' => $next?->toIso8601String(), 'closes_at' => $closes === null ? null : LocalizedDateFormatter::time($closes),
+            'timezone' => $timezone, 'reason_codes' => $reason === null ? [] : [$reason],
+            'evaluated_at' => $instant->toIso8601String(), 'next_change_at' => $result['next_change_at']?->toIso8601String(),
+            'next_orderable_at' => $result['next_orderable_at']?->toIso8601String()];
     }
 
-    /**
-     * @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string}|null
-     */
-    private function temporaryClosedStatus(Branch $branch, CarbonInterface $now, string $timezone): ?array
+    /** @return Layer */
+    public function temporalLayer(Branch $branch): array
     {
-        if (! (bool) $branch->getAttribute('is_temporarily_closed')) {
-            return null;
-        }
-
-        $closedUntil = $branch->temporaryClosedUntilForBranch();
-
-        if ($closedUntil instanceof CarbonInterface) {
-            if ($closedUntil->lessThanOrEqualTo($now)) {
-                return null;
+        $branch->loadMissing([
+            'openingHours:id,branch_id,day_of_week,is_closed,opens_at,closes_at,sort_order',
+            'scheduleExceptions:id,branch_id,local_date,is_closed,intervals',
+        ]);
+        $weekly = [];
+        foreach ($branch->openingHours as $hour) {
+            if (! $hour->is_closed && is_string($hour->opens_at) && is_string($hour->closes_at)) {
+                $weekly[] = ['day_of_week' => $hour->day_of_week, 'opens_at' => $hour->opens_at, 'closes_at' => $hour->closes_at];
             }
         }
-
-        $reason = str((string) $branch->getAttribute('temporary_closed_reason'))->squish()->toString();
-        $detailParts = [];
-
-        if ($reason !== '') {
-            $detailParts[] = $reason;
+        $exceptions = [];
+        foreach ($branch->scheduleExceptions as $exception) {
+            $exceptions[] = ['local_date' => $exception->local_date, 'is_closed' => $exception->is_closed, 'intervals' => $exception->intervals ?? []];
         }
 
-        if ($closedUntil instanceof CarbonInterface) {
-            $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', [
-                'time' => $closedUntil->isSameDay($now)
-                    ? LocalizedDateFormatter::time($closedUntil)
-                    : LocalizedDateFormatter::dateTime($closedUntil),
-            ]);
-        } else {
-            $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.otkroemsia_pozze');
-        }
+        return ['weekly' => $weekly, 'exceptions' => $exceptions, 'empty_allows' => $branch->openingHours->isEmpty()];
+    }
 
-        return [
-            'is_configured' => true,
-            'is_open' => false,
-            'can_accept_orders' => false,
-            'label' => __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'),
-            'detail' => implode('. ', $detailParts),
-            'tone' => 'danger',
-            'next_opens_at' => $closedUntil instanceof CarbonInterface ? $closedUntil->toIso8601String() : null,
-            'closes_at' => null,
-            'timezone' => $timezone,
-        ];
+    private function openingLabel(CarbonImmutable $next, CarbonImmutable $instant): string
+    {
+        if ($next->isSameDay($instant)) {
+            return LocalizedDateFormatter::time($next);
+        }
+        $key = ['pn', 'vt', 'sr', 'ct', 'pt', 'sb', 'vs'][$next->isoWeekday() - 1];
+
+        $translationKey = 'ui.actions.branches.getbranchopeningstatusaction.'.$key;
+
+        return __($translationKey).' '.LocalizedDateFormatter::time($next);
     }
 
     public static function dayLabels(): array
@@ -133,157 +101,5 @@ class GetBranchOpeningStatusAction
             6 => __('ui.actions.branches.getbranchopeningstatusaction.subbota'),
             7 => __('ui.actions.branches.getbranchopeningstatusaction.voskresene'),
         ];
-    }
-
-    /**
-     * @return Collection<int, BranchOpeningHour>
-     */
-    private function openingHoursFor(Branch $branch): Collection
-    {
-        return $branch->openingHours()
-            ->select([
-                'id',
-                'branch_id',
-                'day_of_week',
-                'is_closed',
-                'opens_at',
-                'closes_at',
-                'sort_order',
-            ])
-            ->get();
-    }
-
-    /**
-     * @param  Collection<int, BranchOpeningHour>  $openingHours
-     * @return array{closes_at: string}|null
-     */
-    private function currentOpenInterval(Collection $openingHours, CarbonInterface $now): ?array
-    {
-        foreach ([-1, 0] as $offset) {
-            $date = $now->copy()->startOfDay()->addDays($offset);
-            $dayOfWeek = (int) $date->isoWeekday();
-
-            foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
-                $interval = $this->intervalOnDate($openingHour, $date);
-
-                if ($interval === null) {
-                    continue;
-                }
-
-                if ($now->greaterThanOrEqualTo($interval['start']) && $now->lessThan($interval['end'])) {
-                    return ['closes_at' => LocalizedDateFormatter::time($interval['end'])];
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  Collection<int, BranchOpeningHour>  $openingHours
-     * @return array{time: string, label: string}|null
-     */
-    private function nextOpening(Collection $openingHours, CarbonInterface $now): ?array
-    {
-        for ($offset = 0; $offset <= 7; $offset++) {
-            $date = $now->copy()->startOfDay()->addDays($offset);
-            $dayOfWeek = (int) $date->isoWeekday();
-            $nextStart = null;
-
-            foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
-                $interval = $this->intervalOnDate($openingHour, $date);
-
-                if ($interval === null) {
-                    continue;
-                }
-
-                $start = $interval['start'];
-
-                if ($start->greaterThan($now) && ($nextStart === null || $start->lessThan($nextStart))) {
-                    $nextStart = $start;
-                }
-            }
-
-            if ($nextStart !== null) {
-                return [
-                    'time' => $nextStart->toIso8601String(),
-                    'label' => $offset === 0
-                        ? LocalizedDateFormatter::time($nextStart)
-                        : $this->shortDayLabel($dayOfWeek).' '.LocalizedDateFormatter::time($nextStart),
-                ];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  Collection<int, BranchOpeningHour>  $openingHours
-     * @return Collection<int, BranchOpeningHour>
-     */
-    private function openIntervalsForDay(Collection $openingHours, int $dayOfWeek): Collection
-    {
-        return $openingHours
-            ->filter(fn (BranchOpeningHour $openingHour): bool => $openingHour->day_of_week === $dayOfWeek
-                && ! $openingHour->is_closed
-                && is_string($openingHour->opens_at)
-                && is_string($openingHour->closes_at))
-            ->sortBy([
-                ['opens_at', 'asc'],
-                ['sort_order', 'asc'],
-                ['id', 'asc'],
-            ])
-            ->values();
-    }
-
-    /**
-     * @return array{start: CarbonInterface, end: CarbonInterface}|null
-     */
-    private function intervalOnDate(BranchOpeningHour $openingHour, CarbonInterface $date): ?array
-    {
-        $opensAt = substr((string) $openingHour->opens_at, 0, 5);
-        $closesAt = substr((string) $openingHour->closes_at, 0, 5);
-        $closingDate = $date->copy();
-
-        if ($closesAt <= $opensAt) {
-            $closingDate = $closingDate->addDay();
-        }
-
-        $start = $this->dateAtTime($date, $opensAt);
-        $end = $this->dateAtTime($closingDate, $closesAt);
-
-        if ($end->lessThanOrEqualTo($start)) {
-            return null;
-        }
-
-        return ['start' => $start, 'end' => $end];
-    }
-
-    private function dateAtTime(CarbonInterface $date, string $time): CarbonInterface
-    {
-        [$hours, $minutes] = array_pad(explode(':', substr($time, 0, 5)), 2, 0);
-
-        return $date->copy()->setTime((int) $hours, (int) $minutes);
-    }
-
-    private function timezoneFor(Branch $branch): string
-    {
-        $timezone = $branch->getAttribute('timezone');
-
-        return is_string($timezone) && $timezone !== '' ? $timezone : config('app.timezone', 'UTC');
-    }
-
-    private function shortDayLabel(int $dayOfWeek): string
-    {
-        return match ($dayOfWeek) {
-            1 => __('ui.actions.branches.getbranchopeningstatusaction.pn'),
-            2 => __('ui.actions.branches.getbranchopeningstatusaction.vt'),
-            3 => __('ui.actions.branches.getbranchopeningstatusaction.sr'),
-            4 => __('ui.actions.branches.getbranchopeningstatusaction.ct'),
-            5 => __('ui.actions.branches.getbranchopeningstatusaction.pt'),
-            6 => __('ui.actions.branches.getbranchopeningstatusaction.sb'),
-            7 => __('ui.actions.branches.getbranchopeningstatusaction.vs'),
-            default => '',
-        };
     }
 }

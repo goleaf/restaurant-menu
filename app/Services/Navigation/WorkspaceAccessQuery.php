@@ -46,7 +46,7 @@ final class WorkspaceAccessQuery
             'kitchen' => $kitchen,
             'bar' => $bar,
             'menu' => $union([Permission::ManageMenu]),
-            'availability' => $union([Permission::ChangeAvailability]),
+            'availability' => $union([Permission::ChangeAvailability, Permission::ManageMenu, Permission::ManageSettings, Permission::ManageBranches]),
             'halls' => $union([Permission::ManageZones]),
             'tables' => $union([Permission::ManageServicePoints]),
             'qr' => $union([Permission::GenerateQr]),

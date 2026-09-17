@@ -31,7 +31,7 @@ final class McpAccess
 
     public function authorizedBranch(User $user, int $branchId, int $organizationId): Branch
     {
-        $branch = Branch::query()->select(['id', 'organization_id', 'brand_id', 'name', 'timezone', 'currency', 'is_active', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until', 'deleted_at'])
+        $branch = Branch::query()->select(['id', 'organization_id', 'brand_id', 'name', 'timezone', 'currency', 'is_active', 'is_temporarily_closed', 'pause_version', 'temporary_closed_reason', 'temporary_closed_until', 'deleted_at'])
             ->whereKey($branchId)->where('organization_id', $organizationId)->where('is_active', true)
             ->whereHas('organization', fn (Builder $query) => $query->whereNull('organizations.deleted_at'))
             ->whereHas('brand', fn (Builder $query) => $query->whereNull('brands.deleted_at')->where('organization_id', $organizationId))

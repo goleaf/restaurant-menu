@@ -90,3 +90,7 @@ This file is the canonical deployment contract; operational recovery procedures 
 ## Local directory configuration — 2026-09-16
 
 `DEMO_LOGIN_PASSWORD` is blank in `.env.example` and belongs only in an explicitly enabled local demo installation. Do not set it for deployed environments. The local inventory requires resolved/configured `APP_ENV=local`, `DEMO_LOGIN_ENABLED=true` and an allowlisted `DEMO_LOGIN_HOSTS` request host. The user-selected `restaurant-menu.test` host was added only to this installation's ignored `.env`; production and staging do not render the inventory even when the flag is set.
+
+## Prompt 7 migration/runtime note
+
+Availability adds five ordinary SQLite migrations and requires no scheduled transition job. Apply migrations through the existing authorized deployment procedure; this local stage does not deploy or migrate working data. Supported production remains PHP8.5. Actual isolated PHP8.6.0beta2 platform checks reject Nette Schema1.3.6's supported PHP range; prerelease syntax checks do not constitute application acceptance. Herd FPM is measured separately from CLI/test HTTP processes in PROGRESS.md.

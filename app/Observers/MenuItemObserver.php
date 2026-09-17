@@ -21,6 +21,13 @@ class MenuItemObserver
         private readonly MarkMenuCopySourceChangedAction $markCopySourceChanged,
     ) {}
 
+    public function updating(MenuItem $menuItem): void
+    {
+        if ($menuItem->isDirty(['is_available', 'hidden_until']) && ! $menuItem->isDirty('availability_version')) {
+            $menuItem->availability_version = (int) $menuItem->getRawOriginal('availability_version') + 1;
+        }
+    }
+
     /**
      * Handle the MenuItem "created" event.
      */
@@ -34,7 +41,9 @@ class MenuItemObserver
      */
     public function updated(MenuItem $menuItem): void
     {
-        $this->forgetGuestMenu($menuItem);
+        if ($menuItem->restrictionAuditContext === null) {
+            $this->forgetGuestMenu($menuItem);
+        }
         $this->recordAuditedChanges($menuItem);
     }
 
@@ -93,6 +102,16 @@ class MenuItemObserver
 
     private function recordAuditedChanges(MenuItem $menuItem): void
     {
+        $explicit = $menuItem->restrictionAuditContext;
+        if ($explicit !== null) {
+            $this->recordAuditLog->handle(AuditLogAction::MenuAvailabilityChanged, 'menu_item', $menuItem->id,
+                actorUser: $explicit->actor, organizationId: $explicit->organizationId, branchId: $explicit->branchId,
+                oldValues: ['is_available' => (bool) $menuItem->getOriginal('is_available'), 'hidden_until' => $menuItem->getOriginal('hidden_until'), 'availability_version' => $menuItem->getOriginal('availability_version')],
+                newValues: ['is_available' => $menuItem->is_available, 'hidden_until' => $menuItem->hidden_until, 'availability_version' => $menuItem->availability_version,
+                    'operation' => $explicit->operation, 'reason' => $explicit->reason]);
+
+            return;
+        }
         if (! $menuItem->wasChanged(['price_cents', 'is_available'])) {
             return;
         }

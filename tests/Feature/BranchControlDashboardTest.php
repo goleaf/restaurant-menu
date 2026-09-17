@@ -18,6 +18,7 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Dom\HTMLDocument;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -105,11 +106,12 @@ test('branch control URL dates are bounded and foreign identifiers cannot select
 
 test('ordering pause is explicit replayable and reauthorizes a stale screen', function () {
     $action = app(SaveDashboardOrderingAction::class);
-    $action->handle($this->owner, $this->branch->id, true, 'Private event', null);
-    $action->handle($this->owner, $this->branch->id, true, 'Private event', null);
+    $requestId = (string) Str::uuid();
+    $action->handle($this->owner, $this->branch->id, true, 'Private event', null, 0, $this->branch->timezone, $requestId);
+    $action->handle($this->owner, $this->branch->id, true, 'Private event', null, 0, $this->branch->timezone, $requestId);
     expect($this->branch->refresh()->is_temporarily_closed)->toBeTrue();
     $this->membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
-    expect(fn () => $action->handle($this->owner, $this->branch->id, false, null, null))
+    expect(fn () => $action->handle($this->owner, $this->branch->id, false, null, null, 1, $this->branch->timezone, (string) Str::uuid()))
         ->toThrow(AuthorizationException::class);
     expect($this->branch->refresh()->is_temporarily_closed)->toBeTrue();
 });

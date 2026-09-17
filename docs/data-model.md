@@ -122,3 +122,9 @@ The automated schema audit verifies that every FK-column sequence has a matching
 ## Factory and seed coverage
 
 Every one of the 52 first-party Eloquent models has a factory. The final state/exemption inventory and idempotent seeding contract live in [`seeding.md`](seeding.md). Factory defaults must satisfy every non-null foreign key and must not implicitly create unexpectedly large graphs. `MenuItemImage` is opt-in from its parent graph, stores one generated relative path and an integer order, and never changes the legacy `menu_items.image` primary path during migration. Menu translation factories remain opt-in states so ordinary parent factories stay small while tests and demo seeders can require complete locale graphs explicitly.
+
+## Prompt 7: availability persistence
+
+Five additive reversible migrations add `branches.pause_version`, `branches.opening_hours_version`, `menus.schedule_version`, `menus.schedule_is_closed`, `menu_items.availability_version`, `branch_schedule_exceptions` and `availability_commands`. Date exceptions have a unique(branch_id,local_date), closed flag and bounded local intervals; the restaurant hours revision covers the coherent weekly/exception state. Command receipts have unique request UUID, verified branch/actor, kind/target, payload hash and safe result. They never contain credentials. Existing fields/data and order snapshots remain intact; no working database migration is part of local verification.
+
+No effective-availability column is stored. Manual stop, temporary hiding, publication, hours and pause remain separate sources. Factories cover the new models; tenant IDs are excluded from public mass assignment and assigned by authorized relations/Actions.

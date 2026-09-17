@@ -79,6 +79,13 @@ final class BranchPolicy
         return $this->hasPermission($user, $branch, SystemPermission::ManageMenu);
     }
 
+    public function viewAvailabilityCenter(User $user, Branch $branch): bool
+    {
+        return $this->manageSettings($user, $branch)
+            || $this->manageMenu($user, $branch)
+            || $this->changeMenuAvailability($user, $branch);
+    }
+
     public function changeMenuPrices(User $user, Branch $branch): bool
     {
         return $this->hasPermission($user, $branch, SystemPermission::ChangePrices);

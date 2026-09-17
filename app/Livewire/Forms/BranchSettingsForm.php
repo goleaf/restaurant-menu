@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms;
 
-use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Branches\SaveBranchConfigurationAction;
 use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
@@ -14,10 +13,8 @@ use App\Models\BranchSetting;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\Branches\BranchProfileRules;
 use App\Support\Validation\Branches\BranchSettingsRules;
-use App\Support\Validation\Branches\OpeningHoursRules;
 use App\Support\Validation\Media\ImageUploadRules;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Validation\ValidationException;
 use Livewire\Form;
 
 /** @phpstan-import-type ConfigurationData from SaveBranchConfigurationAction */
@@ -73,24 +70,10 @@ final class BranchSettingsForm extends Form
 
     public mixed $coverImage = null;
 
-    public mixed $temporarilyClosed = false;
-
-    public mixed $temporaryClosedReason = '';
-
-    public mixed $temporaryClosedUntil = '';
-
-    public mixed $openingHoursConfigured = false;
-
-    public mixed $openingHours = [];
-
-    /** @param array{configured: bool, days: list<array<string, mixed>>} $schedule */
-    public function populate(Branch $branch, BranchSetting $settings, array $schedule): void
+    public function populate(Branch $branch, BranchSetting $settings): void
     {
         $this->fillFromSettings($settings);
         $this->fillFromBranchProfile($branch);
-        $this->fillFromTemporaryClosure($branch);
-        $this->openingHoursConfigured = $schedule['configured'];
-        $this->openingHours = $schedule['days'];
     }
 
     /** @return ConfigurationData */
@@ -101,10 +84,6 @@ final class BranchSettingsForm extends Form
         }
 
         $validated = $this->validate($this->rules(), $this->imageValidationMessages());
-        $openingHoursConfigured = (bool) $validated['openingHoursConfigured'];
-        $openingHours = $openingHoursConfigured
-            ? $this->validatedOpeningHours($validated['openingHours'] ?? [])
-            : [];
 
         return [
             'settings' => [
@@ -134,105 +113,9 @@ final class BranchSettingsForm extends Form
                 'facebook_url' => $validated['facebookUrl'],
                 'tiktok_url' => $validated['tiktokUrl'],
             ],
-            'closure' => [
-                'closed' => (bool) $validated['temporarilyClosed'],
-                'reason' => $validated['temporaryClosedReason'],
-                'until' => $validated['temporaryClosedUntil'],
-            ],
-            'opening_hours' => $openingHours,
-            'opening_hours_configured' => $openingHoursConfigured,
             'logo' => $validated['publicLogo'] instanceof UploadedFile ? $validated['publicLogo'] : null,
             'cover' => $validated['coverImage'] instanceof UploadedFile ? $validated['coverImage'] : null,
         ];
-    }
-
-    /** @return list<array{day_of_week: int, label: string, is_closed: bool, can_add_interval: bool, intervals: list<array{opens_at: string, closes_at: string}>}> */
-    public function displayOpeningHours(): array
-    {
-        $days = is_array($this->openingHours) ? $this->openingHours : [];
-        $result = [];
-
-        foreach (GetBranchOpeningStatusAction::dayLabels() as $dayOfWeek => $label) {
-            $day = $days[$dayOfWeek - 1] ?? [];
-            $day = is_array($day) ? $day : [];
-            $intervals = is_array($day['intervals'] ?? null) ? $day['intervals'] : [];
-            $displayIntervals = [];
-
-            foreach (array_slice(array_values($intervals), 0, 4) as $interval) {
-                $displayIntervals[] = [
-                    'opens_at' => is_array($interval) && is_string($interval['opens_at'] ?? null) ? $interval['opens_at'] : '',
-                    'closes_at' => is_array($interval) && is_string($interval['closes_at'] ?? null) ? $interval['closes_at'] : '',
-                ];
-            }
-
-            $result[] = [
-                'day_of_week' => $dayOfWeek,
-                'label' => $label,
-                'is_closed' => in_array($day['is_closed'] ?? false, [true, 1, '1'], true),
-                'can_add_interval' => count($intervals) < 4,
-                'intervals' => $displayIntervals,
-            ];
-        }
-
-        return $result;
-    }
-
-    public function addOpeningInterval(int $dayOfWeek): void
-    {
-        $this->openingHoursConfigured = true;
-
-        if (! is_array($this->openingHours)) {
-            return;
-        }
-
-        foreach ($this->openingHours as $index => $day) {
-            if (! is_array($day)) {
-                continue;
-            }
-            if ((int) ($day['day_of_week'] ?? 0) !== $dayOfWeek) {
-                continue;
-            }
-
-            $this->openingHours[$index]['intervals'] = is_array($day['intervals'] ?? null) ? $day['intervals'] : [];
-
-            if (count($this->openingHours[$index]['intervals']) >= 4) {
-                return;
-            }
-
-            $this->openingHours[$index]['is_closed'] = false;
-            $this->openingHours[$index]['intervals'][] = [
-                'opens_at' => '10:00',
-                'closes_at' => '22:00',
-            ];
-
-            return;
-        }
-    }
-
-    public function removeOpeningInterval(int $dayOfWeek, int $intervalIndex): void
-    {
-        if (! is_array($this->openingHours)) {
-            return;
-        }
-
-        foreach ($this->openingHours as $index => $day) {
-            if (! is_array($day)) {
-                continue;
-            }
-            if ((int) ($day['day_of_week'] ?? 0) !== $dayOfWeek) {
-                continue;
-            }
-
-            if (! is_array($day['intervals'] ?? null)) {
-                return;
-            }
-
-            unset($this->openingHours[$index]['intervals'][$intervalIndex]);
-            $this->openingHours[$index]['intervals'] = array_values($this->openingHours[$index]['intervals']);
-            $this->openingHours[$index]['is_closed'] = $this->openingHours[$index]['intervals'] === [];
-
-            return;
-        }
     }
 
     protected function rules(): array
@@ -242,8 +125,6 @@ final class BranchSettingsForm extends Form
             ...BranchProfileRules::branchProfile(),
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
-            ...BranchSettingsRules::temporaryClosure(in_array($this->temporarilyClosed, [true, 1, '1'], true)),
-            ...OpeningHoursRules::openingHours(in_array($this->openingHoursConfigured, [true, 1, '1'], true)),
         ];
     }
 
@@ -276,80 +157,6 @@ final class BranchSettingsForm extends Form
         $this->instagramUrl = (string) ($branch->instagram_url ?? '');
         $this->facebookUrl = (string) ($branch->facebook_url ?? '');
         $this->tiktokUrl = (string) ($branch->tiktok_url ?? '');
-    }
-
-    private function fillFromTemporaryClosure(Branch $branch): void
-    {
-        $this->temporarilyClosed = (bool) $branch->is_temporarily_closed;
-        $this->temporaryClosedReason = (string) ($branch->temporary_closed_reason ?? '');
-        $temporaryClosedUntil = $branch->temporaryClosedUntilForBranch();
-        $this->temporaryClosedUntil = $temporaryClosedUntil === null
-            ? ''
-            : $temporaryClosedUntil->format('Y-m-d\TH:i');
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $openingHours
-     * @return list<array{day_of_week: int, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>
-     */
-    private function validatedOpeningHours(array $openingHours): array
-    {
-        $errors = [];
-        $normalizedDays = [];
-
-        foreach ($openingHours as $dayIndex => $day) {
-            $dayOfWeek = (int) ($day['day_of_week'] ?? 0);
-            $isClosed = (bool) ($day['is_closed'] ?? false);
-            $intervals = [];
-
-            if ($dayOfWeek < 1 || $dayOfWeek > 7) {
-                continue;
-            }
-
-            if (! $isClosed) {
-                foreach (($day['intervals'] ?? []) as $intervalIndex => $interval) {
-                    $opensAt = substr((string) ($interval['opens_at'] ?? ''), 0, 5);
-                    $closesAt = substr((string) ($interval['closes_at'] ?? ''), 0, 5);
-
-                    if ($opensAt === '' || $closesAt === '') {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.opens_at"] = __('ui.livewire.organizations.brands.branches.settings.ukazite_nacalo_i_konec_i');
-
-                        continue;
-                    }
-
-                    if ($opensAt === $closesAt) {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.closes_at"] = __('ui.livewire.organizations.brands.branches.settings.vremia_zakrytiia_dolzno');
-
-                        continue;
-                    }
-
-                    $intervals[] = [
-                        'opens_at' => $opensAt,
-                        'closes_at' => $closesAt,
-                    ];
-                }
-
-                if ($intervals === []) {
-                    $errors["openingHours.$dayIndex.intervals"] = __('ui.livewire.organizations.brands.branches.settings.dobavte_interval_ili_otm');
-                }
-            }
-
-            $normalizedDays[] = [
-                'day_of_week' => $dayOfWeek,
-                'is_closed' => $isClosed,
-                'intervals' => $intervals,
-            ];
-        }
-
-        if ($errors !== []) {
-            foreach ($errors as $key => $message) {
-                $this->addError($key, $message);
-            }
-
-            throw ValidationException::withMessages($this->getComponent()->getErrorBag()->messages());
-        }
-
-        return $normalizedDays;
     }
 
     /**

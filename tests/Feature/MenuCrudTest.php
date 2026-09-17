@@ -10,6 +10,7 @@ use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityCenter;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailability;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
@@ -81,7 +82,7 @@ test('menu workflow children independently enforce their permissions', function 
 
     Livewire::actingAs($manager)
         ->test(MenuAvailability::class, $parameters)
-        ->assertOk();
+        ->assertRedirect(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'stoplist']));
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, $parameters)
@@ -769,8 +770,8 @@ test('price and availability changes require dedicated permissions', function ()
         ->and($item->hidden_until)->toBeNull();
 
     Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('setItemAvailability', $item->id, false)
+        ->test(AvailabilityCenter::class, compact('organization', 'brand', 'branch'))
+        ->call('openItem', $item->id)
         ->assertForbidden();
 
     grantMenuCrudPermissions($manager, $organization, [
@@ -791,24 +792,21 @@ test('price and availability changes require dedicated permissions', function ()
         ->set('editingItemForm.itemIsAvailable', false)
         ->set('editingItemForm.itemHiddenUntil', $hiddenUntil)
         ->call('updateItem')
-        ->assertHasNoErrors()
-        ->assertSee('Unavailable')
-        ->assertSeeText(__('menu.admin.hidden_until_value', ['date' => $hiddenUntil]));
+        ->assertHasNoErrors();
 
     $item->refresh();
 
     expect($item->price_cents)->toBe(950)
-        ->and($item->is_available)->toBeFalse()
-        ->and($item->hidden_until?->setTimezone($branch->timezone)->format('Y-m-d\TH:i'))->toBe($hiddenUntil);
+        ->and($item->is_available)->toBeTrue()->and($item->hidden_until)->toBeNull();
 
-    Livewire::actingAs($manager->fresh())
-        ->test(MenuAvailability::class, [
-            'organizationId' => $organization->id,
-            'brandId' => $brand->id,
-            'branchId' => $branch->id,
-        ])
-        ->call('refreshItems')
-        ->assertOk();
+    $center = Livewire::actingAs($manager->fresh())->withQueryParams(['section' => 'stoplist'])
+        ->test(AvailabilityCenter::class, compact('organization', 'brand', 'branch'));
+    $center->call('openItem', $item->id)->set('restriction.operation', 'stop')->call('previewRestriction')->call('applyRestriction')->assertHasNoErrors();
+    $center->call('openItem', $item->id)->set('restriction.operation', 'hide')
+        ->set('restriction.untilDate', substr($hiddenUntil, 0, 10))->set('restriction.untilTime', substr($hiddenUntil, 11, 5))
+        ->call('previewRestriction')->call('applyRestriction')->assertHasNoErrors();
+    expect($item->fresh()->is_available)->toBeFalse()
+        ->and($item->fresh()->hidden_until?->setTimezone($branch->timezone)->format('Y-m-d\TH:i'))->toBe($hiddenUntil);
 });
 
 test('menu price validation rejects incomplete decimals before saving and permits correction', function (string $price): void {
@@ -919,22 +917,12 @@ test('head chef can manage stop list without menu crud access', function () {
 
     $this->actingAs($headChef->fresh())
         ->get(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]))
-        ->assertOk()
-        ->assertSeeText('Stop-list')
-        ->assertSeeText('Currently out of stock')
-        ->assertSeeText('Available dishes')
-        ->assertSeeText('Sold out steak')
-        ->assertSeeText('Grilled fish')
-        ->assertDontSeeText('New dish');
-
-    Livewire::actingAs($headChef->fresh())
-        ->test(MenuAvailability::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->assertSee('data-section="menu-stop-list"', false)
-        ->assertSee('Add to stop-list')
-        ->assertSee('Return to menu')
-        ->assertDontSee('New dish')
-        ->call('setItemAvailability', $availableItem->id, false)
-        ->assertHasNoErrors();
+        ->assertRedirect(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'stoplist']));
+    Livewire::actingAs($headChef->fresh())->withQueryParams(['section' => 'stoplist'])
+        ->test(AvailabilityCenter::class, compact('organization', 'brand', 'branch'))
+        ->assertSee('Sold out steak')->assertSee('Grilled fish')->assertDontSee('New dish')
+        ->call('openItem', $availableItem->id)->set('restriction.operation', 'stop')
+        ->call('previewRestriction')->call('applyRestriction')->assertHasNoErrors();
 
     $availableItem->refresh();
 
@@ -954,8 +942,8 @@ test('head chef can manage stop list without menu crud access', function () {
     expect($guestItemPayload['is_available'])->toBeFalse();
 
     Livewire::actingAs($headChef->fresh())
-        ->test(MenuAvailability::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('setItemAvailability', $availableItem->id, true)
+        ->withQueryParams(['section' => 'stoplist'])->test(AvailabilityCenter::class, compact('organization', 'brand', 'branch'))
+        ->call('openItem', $availableItem->id)->set('restriction.operation', 'resume')->call('previewRestriction')->call('applyRestriction')
         ->assertHasNoErrors();
 
     expect($availableItem->refresh()->is_available)->toBeTrue()

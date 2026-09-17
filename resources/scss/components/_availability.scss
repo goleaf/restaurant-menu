@@ -1,0 +1,79 @@
+@use 'sass:map';
+@use '../settings/tokens';
+@use '../settings/breakpoints';
+
+@layer components {
+    .rm-availability {
+        container: availability / inline-size;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: tokens.space(5);
+        min-inline-size: 0;
+
+        [hidden] { display: none; }
+    }
+
+    .rm-availability__section,
+    .rm-availability__editor,
+    .rm-availability__preview,
+    .rm-availability__result,
+    .rm-availability__item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: tokens.space(4);
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+
+        > * { min-inline-size: 0; }
+    }
+
+    .rm-availability__nav,
+    .rm-availability__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: tokens.space(3);
+        align-items: center;
+    }
+
+    .rm-availability__items,
+    .rm-availability__filters,
+    .rm-availability__comparison {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+        gap: tokens.space(4);
+        min-inline-size: 0;
+    }
+
+    .rm-availability__editor,
+    .rm-availability__preview {
+        padding: tokens.space(5);
+        border: 1px solid var(--rm-border-strong);
+        border-radius: var(--rm-radius-control);
+    }
+
+    .rm-availability__preview { background: var(--rm-surface-selected); }
+
+    .rm-availability [data-flux-button] {
+        max-inline-size: 100%;
+        block-size: auto !important;
+        min-block-size: var(--rm-spacing-touch);
+        white-space: normal !important;
+    }
+
+    .rm-availability [data-flux-badge] {
+        max-inline-size: 100%;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    @container availability (inline-size < 24rem) {
+        .rm-availability__editor,
+        .rm-availability__preview { padding: tokens.space(2); }
+    }
+
+    @media (width < map.get(breakpoints.$values, 'sm')) {
+        body:has(.rm-availability) [data-flux-header] {
+            position: static !important;
+        }
+    }
+}

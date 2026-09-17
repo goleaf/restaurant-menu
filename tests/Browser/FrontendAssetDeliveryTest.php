@@ -46,7 +46,7 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
     frontendObserveLifecycle($page);
 
     $visits = [
-        [$fixture['menuUrl'].'?section=availability', '[data-page="branch-menu"]', 'menu'],
+        [$fixture['availabilityUrl'], '[data-page="availability-workspace"]', null],
         [$fixture['staffUrl'], '[data-staff-workspace]', 'staff'],
         [$fixture['dashboardUrl'], '[data-workspace-navigation]', null],
         [$fixture['menuUrl'], '[data-page="branch-menu"]', 'menu'],
@@ -64,6 +64,8 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
         $page->assertPresent($selector)->assertScript('window.frontendAssetDocument', 'same-document');
         if ($module !== null) {
             frontendAssertModuleReady($page, $module);
+        } elseif ($url === $fixture['availabilityUrl']) {
+            frontendAssertAvailabilityReady($page);
         }
         $page->assertScript('document.querySelectorAll("[data-component=notifications-unread-count]").length', 1)
             ->assertScript('document.querySelectorAll("[data-workspace-navigation]").length', 1);
@@ -92,7 +94,10 @@ test('direct menu and staff loads retain validation drafts and navigation guards
     $fixture = frontendAssetFixture();
     $page = visit(route('login', absolute: false));
     frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
-    $page->navigate($fixture['menuUrl'].'?section=availability');
+    $page->navigate($fixture['menuUrl'].'?section=availability')->assertPathIs($fixture['availabilityUrl']);
+    frontendAssertAvailabilityReady($page);
+    frontendAssertSharedBootstrap($page);
+    frontendAssetNavigate($page, $fixture['menuUrl'].'?section=variants');
     frontendAssertModuleReady($page, 'menu');
     frontendAssertSharedBootstrap($page);
     frontendObserveRequests($page);
@@ -414,7 +419,7 @@ test('migrated styles retain five viewport theme contrast and real 44 and 56 pix
 });
 
 /**
- * @return array{owner: User, organization: Organization, branch: Branch, item: MenuItem, qr: QrCode, menuUrl: string, staffUrl: string, dashboardUrl: string}
+ * @return array{owner: User, organization: Organization, branch: Branch, item: MenuItem, qr: QrCode, menuUrl: string, availabilityUrl: string, staffUrl: string, dashboardUrl: string}
  */
 function frontendAssetFixture(): array
 {
@@ -435,6 +440,7 @@ function frontendAssetFixture(): array
         'qr' => $qr,
         'dashboardUrl' => route('restaurant.dashboard', ['branch' => $branch->id], false),
         'menuUrl' => route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false),
+        'availabilityUrl' => route('organizations.brands.branches.availability.index', [$organization, $branch->brand, $branch], false),
         'staffUrl' => route('organizations.brands.branches.staff.index', [$organization, $branch->brand, $branch], false),
     ];
 }
@@ -462,6 +468,17 @@ function frontendAssertModuleReady(PendingAwaitablePage $page, string $module): 
         ->assertAttributeMissing($selector, 'x-ignore')
         ->assertScript("typeof Alpine.\$data(document.querySelector({$encoded})).{$method}", 'function')
         ->assertMissing('[data-page-module-status="'.$module.'"]');
+}
+
+function frontendAssertAvailabilityReady(PendingAwaitablePage $page): void
+{
+    $manifest = frontendAssetManifest();
+    $stylesheet = json_encode('/build/'.$manifest['resources/scss/availability.scss']['file'], JSON_THROW_ON_ERROR);
+    $page->assertPresent('[data-page="availability-workspace"]')
+        ->assertScript('typeof Alpine.$data(document.querySelector("[data-page=availability-workspace]")).hasUnsavedChanges', 'function')
+        ->assertScript('typeof Alpine.$data(document.querySelector("[data-page=availability-workspace]")).cancelDraft', 'function')
+        ->assertScript("[...document.styleSheets].some(sheet => sheet.href && new URL(sheet.href).pathname === {$stylesheet})")
+        ->assertScript('getComputedStyle(document.querySelector("[data-page=availability-workspace]")).display', 'grid');
 }
 
 function frontendAssertModuleBlocked(PendingAwaitablePage $page, string $module): void
@@ -605,7 +622,7 @@ function frontendObserveLifecycle(PendingAwaitablePage $page): void
 
 function frontendCaptureWorkspace(PendingAwaitablePage $page): void
 {
-    $page->script('(() => { const previousEditor = document.querySelector("[data-page-module], [data-layout=restaurant-dashboard]"); window.frontendLifecycle.previous = previousEditor ? Alpine.$data(previousEditor) : null; window.frontendLifecycle.previousShell = Alpine.$data(document.querySelector("[data-workspace-navigation]")); })();');
+    $page->script('(() => { const previousEditor = document.querySelector("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard]"); window.frontendLifecycle.previous = previousEditor ? Alpine.$data(previousEditor) : null; window.frontendLifecycle.previousShell = Alpine.$data(document.querySelector("[data-workspace-navigation]")); })();');
 }
 
 function frontendAssertDisposedWorkspace(PendingAwaitablePage $page): void
@@ -619,7 +636,7 @@ function frontendAssertLifecycle(PendingAwaitablePage $page, string $url): void
     frontendAssertDisposedWorkspace($page);
     $page->assertScript('window.frontendLifecycle.alpine === Alpine && window.frontendLifecycle.livewire === Livewire')
         ->assertScript('window.frontendLifecycle.alpineInitializations', 0)
-        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module], [data-layout=restaurant-dashboard], [data-workspace-navigation]").length');
+        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module], [data-page=availability-workspace], [data-layout=restaurant-dashboard], [data-workspace-navigation]").length');
     $key = json_encode($url, JSON_THROW_ON_ERROR);
     $page->assertScript("(() => {
         const probe = window.frontendLifecycle;

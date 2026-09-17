@@ -4,6 +4,34 @@
 
 # Restaurant Menu completion progress
 
+## Prompt 7 — stable source accepted; PHP 8.6 application gate blocked — 2026-09-17
+
+Baseline main `ce0296c`; all 187 staged prompt-2 paths are preserved separately. One class-based Livewire availability center joins Now, Schedules and Stop-list. Dashboard, settings, waiter and menu entry points converge on it; ordinary profile persistence no longer writes pause/hours. The installed local Flux Pro adaptation and existing SCSS/Tailwind bridge remain unchanged.
+
+The shared immutable-time result distinguishes visibility, configuration feasibility and admission of new orders, with stable reason codes, safe guest messages and separate next-change/next-orderable timestamps. Independent stop/hide restrictions, weekly/menu windows and local-date exceptions remain separate sources. Version/timezone/dependency checks, scoped UUID replay and audit commit/rollback protect each operation. New obligations are rechecked inside SQLite write transactions; submitted drafts, accepted service, historical authors/prices and payments are retained.
+
+Independent review closed subscription transitions failing to invalidate warm guest decisions: existing status writes now atomically update state, audit and only their organization's branch cache generations. Real browser testing also exposed a shared navigation defect: the correct server redirect was cancelled because the pending-request guard released the completed request after its effects. Release now runs at Livewire onSync, retaining concurrent-request guards and onFinish cleanup. Red/green JavaScript and real catalogue-entry regressions prove the repair. Final independent reviews report no unresolved confirmed P1/P2.
+
+| Final evidence scope | Observed result |
+| --- | --- |
+| Isolated HEAD plus 207 attributable paths | 3,884/3,884 backend tests; 75,041 assertions; zero failures/errors/skips; two workers, 273.08 seconds |
+| Candidate browser inventory | 51/51 cases; 4,028 assertions; zero failures/timeouts/skips |
+| Canonical Xdebug coverage | 3,884 tests / 75,041 assertions; 93.8% application line coverage; unchanged 90% threshold; source unchanged |
+| Shared working-tree integration | 4,032/4,032 backend tests / 76,399 assertions, 269.98 seconds; browser 65/65 / 5,088; zero failures/errors/skips/timeouts |
+| JavaScript coverage | Candidate 211/211 and shared 214/214; 100% lines; branches 94.24%/94.35%; no skips |
+| Other quality gates | Candidate/shared Pint, Larastan, translation audit/scan, JS/SCSS lint, generated-style checks and production build/budgets pass; final working-tree dirty Pint changes no source |
+| Database and dependencies | Isolated migrations, last-five rollback/reapply, double default seed and config/route/event/view caches pass; Composer validation/platform/audits and npm audit pass on stable dependencies, zero reported vulnerabilities |
+
+The tested candidate inventory is `80cafdf07aeeef7cbdcb1c3c6705187f635ef8721677711f6d499e0f89b37956`; shared integration is `0eba0138947ccb2d8720fedb380e16de2f4337fa42822f85a08360f828dd84ae`. Coverage completed on `32b9934973582023bce7159beb8baeb9917ab260d7a87f96b65621e15e8cd395`: all application PHP and Unit/Feature/Support files are byte-identical to the final candidate. Later browser-test and navigation-JavaScript changes receive the fresh complete browser and JavaScript inventories above. Acceptance-only Markdown updates follow without changing application/test sources. Coverage belongs to the commit candidate, not to unrelated uncommitted prompt-2 PHP classes.
+
+AvailabilityWorkflowTest contributes five tests / 388 assertions and 63 saved, inspected screenshots: EN/LT/RU, widths 320/390/768/1024/1440, light/dark and CSS zoom 200%. Independent real administrator/guest sessions exercise pause, matching public reason, new-order refusal, logical expiry and schedule re-evaluation without cron. Keyboard, offline discard, separate tabs and preserved order/draft workflows pass. CSS zoom is not native browser zoom; an actual virtual mobile keyboard was not separately tested.
+
+Stable CLI and isolated browser HTTP use actual PHP 8.5.10. The configured live Herd FastCGI process was independently measured as PHP 8.5.8/fpm-fcgi with a removed runtime-only probe, without bootstrapping the app or opening its database. Actual experimental PHP 8.6.0beta2 passes 1,229 first-party syntax checks and the three final changed-browser-file checks; Composer rejects installed Nette Schema 1.3.6's PHP 8.1–8.5 range. No PHP 8.6 application/browser/coverage pass, Beta 3 execution, dependency bypass or production-runtime change is claimed.
+
+Failed diagnostics remain separate evidence: initial shared/candidate runs found obsolete UI and translation contracts; candidate `4EI63D` backend executed 3,884 cases but 31 errored with ENOSPC. Early browser runs stopped incomplete and exposed stale editor selectors plus the real navigation defect. An interrupted initial coverage run is not a coverage result. No skip/only, suppressed issue or lower threshold was introduced. Only verified inactive owned dependency copies and generated caches/fixtures were removed for disk recovery; source records, XML, logs and screenshots remain. Final heavy suites ran sequentially with bounded concurrency.
+
+Evidence roots: `restaurant-availability-p7-91og3vr0` (quality, coverage, migrations, sources and locale screenshots); `restaurant-p7-parallel-LRaVcw` and `restaurant-p7-parallel-ZNDyAx` (backend); `restaurant-availability-p7-full-browser-UW2yUR` and `restaurant-availability-p7-full-browser-42puN9` (full browser). Costs and limits are in performance.md. The reviewed 207-path delivery selection preserves all 187 foreign staged paths, including 31 shared files, and excludes workflows, manifests and credentials. This source records the verified delivery selection. Local commit and ordinary origin push results are reported separately after execution; no remote verification or deployment follows. The working database, accounts, application key, permanent QR and Herd runtime were not changed.
+
 ## Prompt 8 — stable source accepted; PHP 8.6 application gate blocked — 2026-09-17
 
 The existing shared Staff Index and Forms remain the foundation. One typed OrganizationUser card now joins overview, roles/access, rooms and permitted audit history with explicit organization/restaurant URL state. Lists and accepted invitations open that card; legacy permission URLs resolve the same scoped member. Inherited restaurant access is shown without creating BranchUser rows. Global account identity/security remains outside Team.

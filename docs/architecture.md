@@ -245,3 +245,11 @@ Important long-lived architecture choices are recorded in [`decisions/`](decisio
 ## Local login directory — 2026-09-16
 
 Fortify prepares `/login` through `BuildLocalLoginDirectoryAction`. It returns null before querying unless both resolved and configured environments are local, demo mode is enabled and the host is allowlisted. Otherwise it selects 25 users per page and eagerly loads roles, company memberships, ownership, role grants and scoped overrides; only prepared arrays reach the anonymous `auth.local-user-directory` Blade component. The password column checks the canonical demo email, exact role and configured password against the current hash. GET does not seed or change users. Role defaults and individual exceptions are labelled separately; resource policies remain authoritative.
+
+## Prompt 7: availability ownership
+
+`AvailabilityEvaluator` produces `AvailabilityResult`/`AvailabilityReason` from an explicit immutable instant. `OpeningIntervalEvaluator` handles calendar intersections; branch/menu status Actions expose compatibility fields from that calculation. No persisted effective flag exists. `AvailabilityWorkspaceQuery` prepares bounded presentation data; the class-based Availability Index and Forms own input/navigation only. Policies authorize each resource operation. Focused pause/week/menu/date/stop Actions share `RunAvailabilityCommandAction` solely for transaction/receipt semantics, and audits roll back with changes.
+
+The center uses `/organizations/{organization}/brands/{brand}/branches/{branch}/availability` and URL `section`, `menu`, `item`. Model ownership and the existing actor/restaurant guard bind every request. Dashboard/settings/waiter/catalog links converge here; old menu availability is a redirect, and obsolete schedule/instant editors are removed. Profile saves no longer write availability. Existing MCP mutation transports call the same explicit-version Actions and require version, timezone and request UUID.
+
+Admission Actions reload sources inside SQLite IMMEDIATE transactions. Guest cache content includes evaluated decisions only until its earliest condition boundary and at most60seconds; branch-scoped generation invalidation prevents stale publication after edits. Real orders never trust the cached payload or a preview timestamp.

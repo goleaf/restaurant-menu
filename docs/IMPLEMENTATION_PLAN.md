@@ -4,6 +4,28 @@
 
 # Restaurant Menu completion implementation plan
 
+## Prompt 7 — unified availability and order admission (stable accepted; PHP 8.6 blocked, 2026-09-17)
+
+Baseline main `ce0296c`; preserve all 187 pre-existing prompt-2 paths. The prior team/workspace results remain intact. The current implementation, not the historical prompt snapshot, is authoritative.
+
+| Step | Owner and exclusive files | Expected behavior / evidence |
+| --- | --- | --- |
+| P7.1 | Root: AvailabilityResult/Reason/Evaluator, models, additive migrations, receipts, stop-list Actions, readiness, shared navigation/routes/translations | One fixed server instant; independent visibility/configuration/new-order decisions and safe public reasons; atomic versioned commands with replay and audit rollback tests |
+| P7.2 | access_contract: branch/menu time Actions, OpeningIntervalEvaluator, temporal Rules, pause/week/menu/date-exception mutation Actions, temporal tests | First vertical slice: pause -> staff/guest reason -> new-order refusal -> logical expiry -> weekly interval; intersection/DST/overnight/closed/unconfigured/date exception matrix |
+| P7.3 | invitations_assignments: guest menu cache Action, draft/guest/waiter admission Actions and line selection validation, new order/cache tests | Recheck selected configuration inside final write transaction; generation/time-bound cache; preserve accepted service and permit safe draft decreases/removal; independent SQLite race tests |
+| P7.4 | team_ui_audit: Availability Livewire Index/Forms/read query/Blade/SCSS/local JS, old settings/dashboard/waiter/menu entry migration and focused UI tests | One Now/Schedules/Stop-list workspace with page-local restaurant, narrow abilities, bounded lists, preview/apply, one dirty guard and no obsolete profile overwrite of pause/hours |
+| P7.5 | Root + independent reviewer | Unified consumers, real EN/LT/RU validation, current/future read-only evaluation, bounded bulk intent, audit/idempotency/version/timezone/security matrix |
+| P7.6 | Root + browser reviewer | Targeted/full/backend/parallel/coverage/browser/JS/SCSS/architecture/translations/build; SQL/memory/HTML/payload/time-boundary metrics; actual stable and experimental runtimes |
+| P7.7 | Root | Canonical docs and exact blockers; scoped reviewed commit and ordinary origin push only, preserve foreign changes; no deployment/remote verification |
+
+P7.1–P7.6 are implemented and accepted on supported PHP 8.5; exact candidate/shared inventories, reviewed fixes and runtime limits are in PROGRESS.md. P7.7 documentation and scoped delivery selection are verified; this source records the verified selection, while commit/push results are reported separately after execution. PHP 8.6 application acceptance remains blocked by the installed dependency contract.
+
+Initial confirmed discrepancies, now covered by fixes and regression tests: stop-list buckets inspect only `is_available`; readiness uses a different dish predicate; branch pause expiry is returned as opening without the weekly intersection; menu DST normalization can turn a collapsed interval into a full-day occurrence; create/update menu schedule validation disagrees; generic profile save overwrites pause/hours; waiter admission/confirmation omits several current menu/configuration/restaurant checks; guest menu caches computed time decisions for 60 seconds.
+
+Implementation contracts: keep legacy no-hours/no-menu-schedule unrestricted; distinguish explicit closed menu mode. Date exceptions replace a restaurant-local date including an overnight tail from the previous day. Use separate pause/hour/menu-schedule/item restriction revisions, a scoped durable command receipt, immutable audit and one transaction. No effective-state column, cron or global clock override. Reject ambiguous/nonexistent one-off local times. A submitted but unconfirmed draft is retained and must satisfy current admission rules at confirmation; accepted preparation/serving/payment/history remain unchanged. Forecasts are conditional and never authorize a real order.
+
+
+
 ## Prompt 8 — unified employee card (stable accepted; PHP 8.6 blocked, 2026-09-17)
 
 Baseline `main` at `7ed78c6`; pre-existing prompt-2 auth/file changes and staged shared rules are preserved. Current code already shares organization/branch Index and Forms. Confirmed gaps: role/status/areas/permissions are separate entry points; branch list omits inherited members; permissions-only administrators lack Team navigation; first branch assignment narrows inherited scope without preview; cancellation omits invitation version; area changes lack audit/revision.

@@ -4,6 +4,12 @@
 
 # Operations
 
+## Availability operation boundaries — prompt 7
+
+Use the canonical restaurant availability center for pauses, weekly/menu hours, date exceptions and manual item restrictions. Removing a pause does not open outside the schedule; resuming a dish clears only its manual stop, while removing temporary hiding clears only that deadline. Preview timestamps are read-only and never accepted by order creation. Existing accepted cooking, serving and payment workflows remain available.
+
+Existing MCP availability commands call the same versioned Actions: callers must supply `expected_version`, the current restaurant timezone and a unique `request_id`. Read projections provide `pause_version` or `availability_version` together with the corresponding source state. A retry uses the same reviewed payload and UUID; changed input requires a deliberate new operation. Stale versions/timezones/dependencies require refreshing and reviewing the new state. No automatic background resend, toggle, scheduler or worker is required.
+
 ## Health and diagnostics
 
 `/up` is the no-cache production readiness endpoint. It always returns a self-contained JSON body (`{"status":"up"}` or `{"status":"down"}`) and never renders an HTML page or requests fonts, scripts, styles, icons or other network assets. It returns `200` only after the application boots and verifies the migrated SQLite schema, a write/read/delete cycle on the default cache, a write/read/delete cycle on private local storage and a write/read/delete cycle in the log directory. Dependency failures return a generic `500`; the response never exposes the failing path, credentials or exception message. Disable an individual check only when the deployment intentionally does not use that dependency and the exception is documented through the corresponding `HEALTH_CHECK_*` key.

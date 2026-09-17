@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
-use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
 use App\Actions\Menus\ApplyCatalogBulkAction;
 use App\Actions\Menus\CreateMenuAction;
 use App\Actions\Menus\CreateMenuCategoryAction;
 use App\Actions\Menus\CreateMenuItemAction;
 use App\Actions\Menus\DeleteMenuItemAction;
-use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Actions\Menus\UpdateMenuAction;
 use App\Actions\Menus\UpdateMenuCategoryAction;
 use App\Actions\Menus\UpdateMenuItemAction;
@@ -20,10 +18,8 @@ use App\Livewire\Forms\Menus\CatalogFilterForm;
 use App\Livewire\Forms\Menus\CategoryForm;
 use App\Livewire\Forms\Menus\MenuForm;
 use App\Livewire\Forms\Menus\MenuItemForm;
-use App\Livewire\Forms\Menus\MenuScheduleForm;
 use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\ManagesCatalogOperations;
 use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\ManagesItemImages;
-use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\ManagesMenuSchedules;
 use App\Services\Menus\CatalogData;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -38,7 +34,6 @@ class Catalog extends BranchMenuComponent
 {
     use ManagesCatalogOperations;
     use ManagesItemImages;
-    use ManagesMenuSchedules;
     use WithFileUploads;
 
     public CatalogFilterForm $filters;
@@ -56,10 +51,6 @@ class Catalog extends BranchMenuComponent
     public MenuItemForm $itemForm;
 
     public MenuItemForm $editingItemForm;
-
-    public MenuScheduleForm $scheduleForm;
-
-    public MenuScheduleForm $editingScheduleForm;
 
     #[Locked]
     public string $catalogPageFingerprint = '';
@@ -180,17 +171,12 @@ class Catalog extends BranchMenuComponent
         $this->clearCatalogSelection();
     }
 
-    private ForgetBranchCacheAction $forgetBranchCache;
-
     private CatalogData $catalogData;
 
     private ResolveDefaultKitchenDepartmentAction $resolveDefaultKitchenDepartment;
 
     #[Locked]
     public ?int $editingMenuId = null;
-
-    #[Locked]
-    public ?int $editingScheduleId = null;
 
     #[Locked]
     public ?int $editingCategoryId = null;
@@ -214,11 +200,9 @@ class Catalog extends BranchMenuComponent
     public bool $canChangeAvailability = false;
 
     public function boot(
-        ForgetBranchCacheAction $forgetBranchCache,
         CatalogData $catalogData,
         ResolveDefaultKitchenDepartmentAction $resolveDefaultKitchenDepartment,
     ): void {
-        $this->forgetBranchCache = $forgetBranchCache;
         $this->catalogData = $catalogData;
         $this->resolveDefaultKitchenDepartment = $resolveDefaultKitchenDepartment;
     }
@@ -235,7 +219,6 @@ class Catalog extends BranchMenuComponent
 
         if ($firstMenuId !== '') {
             $this->categoryForm->categoryMenuId = $firstMenuId;
-            $this->scheduleForm->scheduleMenuId = $firstMenuId;
             $this->itemForm->itemMenuId = $firstMenuId;
             $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemForm->itemMenuId));
             $this->itemForm->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
@@ -435,27 +418,6 @@ class Catalog extends BranchMenuComponent
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.dish_removed'));
     }
 
-    public function setItemAvailability(int $itemId, bool $isAvailable, SetMenuItemAvailabilityAction $setAvailability): void
-    {
-        $this->authorizeAvailabilityChange();
-
-        $setAvailability->handle(
-            $this->currentUser(),
-            $this->branch,
-            $this->catalogData->findBranchItem($this->branchId, $itemId),
-            $isAvailable,
-        );
-
-        $this->forgetMenuComputed();
-
-        Flux::toast(
-            variant: 'success',
-            text: $isAvailable
-                ? __('ui.livewire.organizations.brands.branches.menu.index.dish_returned_to_the_m')
-                : __('ui.livewire.organizations.brands.branches.menu.index.dish_added_to_the_stop'),
-        );
-    }
-
     public function render(): View
     {
         $this->authorizeBranchAbility('manageMenu');
@@ -506,11 +468,6 @@ class Catalog extends BranchMenuComponent
         $this->authorizeBranchAbility('manageMenu');
     }
 
-    private function authorizeAvailabilityChange(): void
-    {
-        $this->authorizeBranchAbility('changeMenuAvailability');
-    }
-
     private function refreshMutationCapabilities(): void
     {
         $this->canChangePrices = $this->branchAllows('changeMenuPrices');
@@ -520,11 +477,6 @@ class Catalog extends BranchMenuComponent
     private function forgetMenuComputed(): void
     {
         $this->dispatch('branch-menu-updated');
-    }
-
-    private function forgetBranchMenuCache(): void
-    {
-        $this->forgetBranchCache->handle((int) $this->branch->id);
     }
 
     protected function catalogData(): CatalogData

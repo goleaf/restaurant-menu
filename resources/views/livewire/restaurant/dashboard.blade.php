@@ -53,23 +53,7 @@
                         </x-ui.status-badge>
                     </div>
                     @if ($dashboard['ordering']['can_manage'])
-                        <details wire:ignore.self class="mt-3" data-ordering-controls>
-                            <summary class="flex min-h-touch w-fit cursor-pointer items-center rounded-control text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">{{ __('dashboard.control.ordering.manage') }}</summary>
-                            <form wire:submit="saveOrdering" novalidate data-dashboard-ordering-form class="mt-2 grid min-w-0 gap-4 rounded-control bg-surface-muted p-4">
-                                <flux:checkbox wire:model="closure.temporarilyClosed" name="closure.temporarilyClosed" :label="__('dashboard.control.ordering.pause')" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
-                                <flux:error name="closure.temporarilyClosed" />
-                                <p class="text-sm leading-6 text-text-muted">{{ __('dashboard.control.ordering.pause_description') }}</p>
-                                <div class="grid min-w-0 gap-4 md:grid-cols-2 [&>[data-flux-field]]:min-w-0 [&_[data-flux-control]]:min-w-0 [&_[data-flux-control]]:max-w-full">
-                                    <flux:input wire:model="closure.temporaryClosedReason" name="closure.temporaryClosedReason" :label="__('dashboard.control.ordering.reason')" maxlength="255" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
-                                    <flux:input wire:model="closure.temporaryClosedUntil" name="closure.temporaryClosedUntil" type="datetime-local" :label="__('dashboard.control.ordering.until')" :description="__('dashboard.control.ordering.until_description')" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
-                                </div>
-                                <div class="flex min-w-0 flex-wrap items-center gap-3">
-                                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.save') }}</flux:button>
-                                    <flux:button wire:click="discardOrdering" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.discard') }}</flux:button>
-                                    <span wire:loading.delay wire:target="saveOrdering" role="status" class="text-sm text-text-muted">{{ __('dashboard.control.ordering.saving') }}</span>
-                                </div>
-                            </form>
-                        </details>
+                        <flux:button :href="$dashboard['ordering']['availability_url']" wire:navigate class="mt-3">{{ __('availability.open_center') }}</flux:button>
                     @endif
                 </div>
             @else

@@ -167,7 +167,7 @@ trait ManagesCatalogOperations
             $this->cancelItemEditing();
         }
         $selections = $this->catalogData->survivingMenuSelections($this->branch, [
-            $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->itemForm->itemMenuId), $this->selectionValue($this->scheduleForm->scheduleMenuId),
+            $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->itemForm->itemMenuId),
         ]);
         $fallback = $this->catalogData->firstMenuId($this->branch);
         if (! in_array($this->selectionValue($this->categoryForm->categoryMenuId), $selections, true)) {
@@ -177,9 +177,6 @@ trait ManagesCatalogOperations
         if (! in_array($this->selectionValue($this->itemForm->itemMenuId), $selections, true)) {
             $this->itemForm->itemMenuId = $fallback;
             $this->itemForm->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $fallback);
-        }
-        if (! in_array($this->selectionValue($this->scheduleForm->scheduleMenuId), $selections, true)) {
-            $this->scheduleForm->scheduleMenuId = $fallback;
         }
         if (! $this->catalogData->categorySelectionExists($this->branch, $this->selectionValue($this->categoryForm->categoryMenuId), $this->selectionValue($this->categoryForm->categoryParentId))) {
             $this->categoryForm->categoryParentId = '';

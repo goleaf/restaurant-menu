@@ -32,6 +32,8 @@ use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
@@ -569,6 +571,9 @@ function createPrompt61KitchenScenario(): array
             'name' => 'Prompt 61 Coffee',
             'price_cents' => 300,
         ]);
+    $pizzaGroup = ModifierGroup::factory()->for($branch)->create(['name' => 'Size']);
+    $pizzaOption = ModifierOption::factory()->for($pizzaGroup, 'modifierGroup')->available()->create(['name' => 'Large', 'price_delta_cents' => 200]);
+    $pizza->modifierGroups()->attach($pizzaGroup);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create([
@@ -589,6 +594,8 @@ function createPrompt61KitchenScenario(): array
             'total_price_cents' => 1300,
             'selected_modifiers' => [
                 [
+                    'group_id' => $pizzaGroup->id,
+                    'option_id' => $pizzaOption->id,
                     'group_name' => 'Size',
                     'option_name' => 'Large',
                     'price_delta_cents' => 200,

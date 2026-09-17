@@ -13,7 +13,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
-use App\Livewire\Organizations\Brands\Branches\Settings;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Models\Brand;
@@ -52,21 +52,20 @@ test('branches store temporary closed mode fields', function () {
     ]))->toBeTrue();
 });
 
-test('owner can enable and disable temporary closed mode from branch settings', function () {
+test('owner can enable and disable temporary closed mode from the availability center', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-04 10:00:00', 'Europe/Vilnius'));
 
     [$organization, $brand, $branch, $owner] = createPrompt103Branch();
 
     Livewire::actingAs($owner)
-        ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('form.temporarilyClosed', false)
-        ->set('form.temporarilyClosed', true)
-        ->set('form.temporaryClosedReason', 'Частное мероприятие')
-        ->set('form.temporaryClosedUntil', '2026-06-04T18:00')
-        ->call('save')
+        ->test(AvailabilityIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('openPause')->assertSet('pause.mode', 'indefinite')
+        ->set('pause.mode', 'until')->set('pause.reason', 'Частное мероприятие')
+        ->set('pause.untilDate', '2026-06-04')->set('pause.untilTime', '18:00')
+        ->call('previewPause')->call('applyPause')
         ->assertHasNoErrors()
-        ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
-        ->assertSee('Settings saved.');
+        ->assertSee(__('availability.reasons.branch_paused'))
+        ->assertSet('editor', '');
 
     $branch->refresh();
 
@@ -75,9 +74,9 @@ test('owner can enable and disable temporary closed mode from branch settings', 
         ->and($branch->temporaryClosedUntilForBranch()?->format('Y-m-d H:i'))->toBe('2026-06-04 18:00');
 
     Livewire::actingAs($owner)
-        ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('form.temporarilyClosed', false)
-        ->call('save')
+        ->test(AvailabilityIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('openPause')->assertSet('pause.mode', 'resume')
+        ->call('previewPause')->call('applyPause')
         ->assertHasNoErrors();
 
     $branch->refresh();
@@ -110,7 +109,7 @@ test('temporary closed mode has priority over opening hours and can expire', fun
         ->and($status['can_accept_orders'])->toBeFalse()
         ->and($status['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->and($status['detail'])->toContain('Кухня закрыта')
-        ->and($status['detail'])->toContain(__('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => '6:00 PM']));
+        ->and($status['detail'])->toContain(__('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => '06/04/2026 6:00 PM']));
 
     $expiredStatus = app(GetBranchOpeningStatusAction::class)->handle($branch->fresh(), Carbon::parse('2026-06-04 18:01:00', 'Europe/Vilnius'));
 
@@ -147,7 +146,7 @@ test('temporary closed mode blocks guest draft item creation and sending draft t
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'));
+    ))->toThrow(ValidationException::class, __('availability.guest.paused'));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -159,13 +158,13 @@ test('temporary closed mode blocks guest draft item creation and sending draft t
         ->create(['item_name' => 'Margherita']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'));
+        ->toThrow(ValidationException::class, __('availability.guest.paused'));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
     expect($branch->fresh()->is_temporarily_closed)->toBeTrue();
 });
 
-test('waiter with manage settings permission can disable temporary closed mode from dashboard', function () {
+test('waiter with manage settings permission can disable temporary closed mode through the availability link from the dashboard', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-04 10:00:00', 'Europe/Vilnius'));
 
     [$organization, , $branch] = createPrompt103Branch(withOwner: false);
@@ -188,11 +187,10 @@ test('waiter with manage settings permission can disable temporary closed mode f
         ->test(WaiterDashboard::class)
         ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSee('Ресторан закрыт сегодня')
-        ->assertSee(__('ui.waiter.dashboard.otkryt_zakazy'))
-        ->call('disableTemporaryClosure', $branch->id)
-        ->assertHasNoErrors()
-        ->assertSee(__('ui.livewire.waiter.dashboard.restoran_snova_otkryt_dlia_zakazov'))
-        ->assertDontSee(__('ui.waiter.dashboard.otkryt_zakazy'));
+        ->assertSee(__('availability.open_center'))
+        ->assertSeeHtml(route('organizations.brands.branches.availability.index', [$organization, $branch->brand, $branch]));
+    Livewire::actingAs($waiter)->test(AvailabilityIndex::class, ['organization' => $organization, 'brand' => $branch->brand, 'branch' => $branch])
+        ->call('openPause')->assertSet('pause.mode', 'resume')->call('previewPause')->call('applyPause')->assertHasNoErrors();
 
     $branch->refresh();
 

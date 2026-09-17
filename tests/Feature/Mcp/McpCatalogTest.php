@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Mcp\IssueMcpAccessTokenAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\McpAbility;
@@ -52,7 +52,7 @@ test('native tool search exposes nineteen authorized specialist tools with compl
     $catalog = json_decode($response->json('result.content.0.text'), true, flags: JSON_THROW_ON_ERROR);
     expect($catalog['ok'])->toBeTrue()->and($catalog['hasMore'])->toBeFalse()->and($catalog['tools'])->toHaveCount(19);
     $pause = collect($catalog['tools'])->firstWhere('name', 'set_ordering_pause');
-    expect($pause['inputSchema']['required'])->toContain('confirmed', 'idempotency_key', 'closed')
+    expect($pause['inputSchema']['required'])->toContain('confirmed', 'idempotency_key', 'closed', 'expected_version', 'timezone', 'request_id')
         ->and($pause['inputSchema']['additionalProperties'])->toBeFalse()
         ->and($pause['annotations']['idempotentHint'])->toBeTrue();
 });
@@ -69,7 +69,7 @@ test('native tool search hides disabled mutations and stale abilities', function
 
 test('native execution has bounded batches and preserves earlier committed results on failure', function (): void {
     $key = (string) Str::uuid();
-    $call = ['name' => 'set_ordering_pause', 'arguments' => ['closed' => true, 'reason' => 'Break', 'confirmed' => true, 'idempotency_key' => $key]];
+    $call = ['name' => 'set_ordering_pause', 'arguments' => ['closed' => true, 'reason' => 'Break', 'confirmed' => true, 'idempotency_key' => $key, 'request_id' => $key, 'expected_version' => 0, 'timezone' => $this->branch->timezone]];
     $response = ($this->call)('execute_tools', ['calls' => [$call, ['name' => 'nonexistent'], $call]])->assertOk();
     $result = json_decode($response->json('result.content.0.text'), true, flags: JSON_THROW_ON_ERROR);
     expect($result['ok'])->toBeFalse()->and($result['results'])->toHaveCount(2)
@@ -88,11 +88,11 @@ test('real MCP HTTP execution sanitizes unexpected action failures and restores 
     $browserUser = User::factory()->create();
     $this->actingAs($browserUser, 'web');
     app()->setLocale('lt');
-    $mock = Mockery::mock(UpdateBranchTemporaryClosureAction::class);
+    $mock = Mockery::mock(RecordAuditLogAction::class);
     $mock->shouldReceive('handle')->once()->andThrow(new RuntimeException('fixture-private-credential-message'));
-    app()->instance(UpdateBranchTemporaryClosureAction::class, $mock);
+    app()->instance(RecordAuditLogAction::class, $mock);
     $response = ($this->call)('execute_tools', ['calls' => [[
-        'name' => 'set_ordering_pause', 'arguments' => ['closed' => true, 'reason' => 'Break', 'confirmed' => true, 'idempotency_key' => (string) Str::uuid()],
+        'name' => 'set_ordering_pause', 'arguments' => ['closed' => true, 'reason' => 'Break', 'confirmed' => true, 'idempotency_key' => (string) Str::uuid(), 'request_id' => (string) Str::uuid(), 'expected_version' => 0, 'timezone' => $this->branch->timezone],
     ]]])->assertOk()->assertJsonPath('result.isError', true);
     expect($response->getContent())->not->toContain('fixture-private-credential-message')
         ->and(Auth::getDefaultDriver())->toBe('web')->and(Auth::guard('web')->id())->toBe($browserUser->id)
@@ -101,3 +101,38 @@ test('real MCP HTTP execution sanitizes unexpected action failures and restores 
     Exceptions::assertReported(fn (RuntimeException $reported): bool => $reported->getMessage() === 'Restaurant MCP operation failed.' && $reported->getPrevious() === null);
     $this->assertDatabaseCount('mcp_mutation_receipts', 0);
 })->with([true, false]);
+
+test('MCP pause preview exposes a version and stale commands preserve the latest state', function (): void {
+    ($this->call)('branch_context')->assertOk()->assertJsonPath('result.structuredContent.branch.pause_version', 0)
+        ->assertJsonPath('result.structuredContent.branch.timezone', $this->branch->timezone);
+    $request = (string) Str::uuid();
+    $arguments = ['closed' => true, 'reason' => 'Approved maintenance', 'confirmed' => true,
+        'expected_version' => 0, 'timezone' => $this->branch->timezone, 'request_id' => $request, 'idempotency_key' => $request];
+    ($this->call)('execute_tools', ['calls' => [['name' => 'set_ordering_pause', 'arguments' => $arguments]]])->assertOk()->assertJsonPath('result.isError', false);
+    expect($this->branch->fresh()->pause_version)->toBe(1);
+    $arguments['closed'] = false;
+    $arguments['idempotency_key'] = (string) Str::uuid();
+    $arguments['request_id'] = (string) Str::uuid();
+    ($this->call)('execute_tools', ['calls' => [['name' => 'set_ordering_pause', 'arguments' => $arguments]]])->assertOk()->assertJsonPath('result.isError', true);
+    expect($this->branch->fresh()->pause_version)->toBe(1)->and($this->branch->fresh()->is_temporarily_closed)->toBeTrue();
+    $this->assertDatabaseCount('availability_commands', 1);
+});
+
+test('MCP pause requires a version timezone and immutable availability request identifier', function (string $missing): void {
+    $request = (string) Str::uuid();
+    $arguments = ['closed' => true, 'reason' => 'Approved maintenance', 'confirmed' => true,
+        'expected_version' => 0, 'timezone' => $this->branch->timezone, 'request_id' => $request, 'idempotency_key' => $request];
+    unset($arguments[$missing]);
+    ($this->call)('execute_tools', ['calls' => [['name' => 'set_ordering_pause', 'arguments' => $arguments]]])->assertOk()->assertJsonPath('result.isError', true);
+    expect($this->branch->fresh()->pause_version)->toBe(0)->and($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
+    $this->assertDatabaseCount('availability_commands', 0);
+})->with(['expected_version', 'timezone', 'request_id']);
+
+test('MCP pause rejects malformed versions before invoking the temporal action', function (mixed $version): void {
+    $request = (string) Str::uuid();
+    $arguments = ['closed' => true, 'reason' => 'Approved maintenance', 'confirmed' => true,
+        'expected_version' => $version, 'timezone' => $this->branch->timezone, 'request_id' => $request, 'idempotency_key' => $request];
+    ($this->call)('execute_tools', ['calls' => [['name' => 'set_ordering_pause', 'arguments' => $arguments]]])->assertOk()->assertJsonPath('result.isError', true);
+    expect($this->branch->fresh()->pause_version)->toBe(0);
+    $this->assertDatabaseCount('availability_commands', 0);
+})->with([true, -1, 'zero']);

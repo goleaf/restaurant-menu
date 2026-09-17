@@ -4,6 +4,26 @@
 
 # Performance
 
+## Prompt 7 availability measurements — 2026-09-17
+
+Measurements use isolated PHP 8.5.10 / SQLite fixtures. They are individual local observations, not production latency guarantees or percentile benchmarks.
+
+| Surface / fixture | Observed result |
+| --- | --- |
+| Guest menu cold / warm | 13 → 22 / 2 → 3 SQL; additional generation/calendar checks preserve current decisions; counts stay bounded for 1 versus 40 dishes |
+| Guest menu, 40 dishes and 366 future exceptions | 11,029.20 → 385.61 ms; menu temporal evaluations 42 → 3 after request-local batching |
+| Guest menu, 101 dishes | 545.15 ms; four temporal evaluations; batches contain at most 100 items |
+| Indefinite restaurant pause, 1 versus 201 dishes | Six SQL in both cases, previously 18 → 42; skip irrelevant future-catalog scans |
+| All dishes manually stopped, 1 versus 201 | Seven SQL in both cases, previously 18 → 42 |
+| Dashboard cold / fresh comparison against HEAD | 105/93 → 109/97 SQL; standalone analytics remains 23/11 |
+| Stop-list page, 20 versus 80 stored dishes | 214/214 SQL including full shell and authorization; 20 rendered dishes |
+| Stop-list response with 80 stored dishes | HTML 321,102 bytes; Livewire snapshots 3,916 bytes; 136.08 ms for request and extraction |
+| Test process memory | Peak 73,924,608 bytes includes application bootstrap and fixture creation; not incremental request memory |
+| Batch preview, 20 selected dishes | Tested SQL budget: at most the selected-item count plus four queries; no per-row full resolver |
+| Availability-only CSS | 1,533 raw / 546 gzip bytes; new entry budget 1,800/700 |
+
+Guest caching uses a scoped generation and an expiry bounded by the next temporal boundary. Stable payload and time evaluation remain distinct; order writes always re-evaluate. Request-local item batches reuse one menu decision at one immutable instant without a persistent authorization cache. The new CSS entry adds only its explicit budget to aggregate CSS; existing page/JavaScript/overall budgets are unchanged. Full current build evidence is recorded in PROGRESS.md.
+
 ## Prompt 8 team measurements — 2026-09-17
 
 Five warmed PHP8.5.8 / SQLite-memory Livewire samples use 31 organizational members, ten explicit restaurant assignments and ten areas. The baseline loads Staff Index, StaffQueryService and its Blade view from local HEAD7ed78c6 in an isolated test-only loader, with current unchanged dependencies; it never rewrites working source or data. These are component-response measurements, not full-page network timing or production latency.

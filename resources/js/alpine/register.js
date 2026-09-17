@@ -1,4 +1,5 @@
 import { branchPickerDisabled } from './components/branch-picker.js';
+import { availabilityWorkspace } from './components/availability-workspace.js';
 import { connectivity } from './components/connectivity.js';
 import { guestDishDialog, guestMenu } from './components/guest-menu.js';
 import { guestInvite } from './components/guest-invite.js';
@@ -25,7 +26,7 @@ export function registerAlpineComponents(Alpine) {
 
     const passkeys = createPasskeysAdapter();
     const providers = {
-        branchPickerDisabled, connectivity, guestDishDialog, guestInvite, guestMenu, httpForm,
+        availabilityWorkspace, branchPickerDisabled, connectivity, guestDishDialog, guestInvite, guestMenu, httpForm,
         invitationClipboard, kitchenTimers, menuImagePicker, menuImagePresentationEditor,
         menuTranslations, menuWorkspace, notificationPanel, securityClipboard, staffEditor,
         staffWorkspace, twoFactorChallenge, waiterSounds, workspaceNavigation,

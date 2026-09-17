@@ -48,12 +48,17 @@ class Branch extends Model
     /** @use HasFactory<BranchFactory> */
     use HasFactory, HasLocalLogo, SoftDeletes;
 
+    /** @var array<string, mixed> */
+    protected $attributes = ['pause_version' => 0, 'opening_hours_version' => 0];
+
     /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
+            'pause_version' => 'integer',
+            'opening_hours_version' => 'integer',
             'is_active' => 'boolean',
             'is_temporarily_closed' => 'boolean',
             'temporary_closed_until' => 'datetime',
@@ -116,6 +121,12 @@ class Branch extends Model
         }
 
         return null;
+    }
+
+    /** @return HasMany<BranchScheduleException, $this> */
+    public function scheduleExceptions(): HasMany
+    {
+        return $this->hasMany(BranchScheduleException::class)->orderBy('local_date');
     }
 
     public function publicDisplayName(): string

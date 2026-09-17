@@ -63,12 +63,17 @@
                                                     <x-menu.item-images :item="$item" :pending-uploads="$itemImageUploads[$item['id']] ?? []" :presentation-context="$imagePresentationContext" :presentation-form="$imagePresentationForm" />
 
                                                     <div class="flex items-center justify-between gap-3">
-                                                        @if ($canChangeAvailability)
-                                                            <div class="grid gap-3 sm:grid-cols-2">
-                                                                <flux:switch wire:model="editingItemForm.itemIsAvailable" :label="__('menu.guest.available')" />
-                                                                <flux:input wire:model="editingItemForm.itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
-                                                            </div>
-                                                        @endif
+                                                        <div>
+                                                            <flux:heading>{{ __('availability.effective') }}</flux:heading>
+                                                            @forelse ($item['effective_availability']['reasons'] as $reason)
+                                                                <flux:text>{{ $reason['label'] }} · {{ $reason['detail'] }}</flux:text>
+                                                            @empty
+                                                                <flux:text>{{ __('availability.guest.available') }}</flux:text>
+                                                            @endforelse
+                                                            @if ($canChangeAvailability)
+                                                                <flux:button :href="$item['availability_url']" wire:navigate>{{ __('availability.open_item') }}</flux:button>
+                                                            @endif
+                                                        </div>
 
                                                         <div class="flex flex-wrap gap-2">
                                                             <flux:button icon="check" variant="primary" type="submit" :disabled="$imagePresentationContext !== []" wire:loading.attr="disabled" wire:target="updateItem">

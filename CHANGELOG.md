@@ -4,6 +4,16 @@
 
 # Changelog
 
+## 2026-09-17 — Prompt 7 unified availability and order admission
+
+- Added one class-based Livewire availability workspace with Now, Schedules and Stop-list, scoped entry links, explicit preview/apply and the shared unsaved-change guard.
+- Unified restaurant/menu/item/configuration reasons and time boundaries; preserved independent publication, manual stop and temporary hiding.
+- Added versioned, replay-safe pause/schedule/item commands, minimal date exceptions and transactional audit; ordinary profile saves no longer write availability.
+- Recheck every new order obligation against current rules, retain submitted drafts and accepted service, and invalidate guest decisions at time/generation boundaries without cron.
+- Removed duplicate menu schedule editors and migrated legacy availability entry points. MCP availability writes now require the expected source version, restaurant timezone and request UUID.
+- Fixed the shared pending-request guard to release completed Livewire requests after state sync and before redirect effects, retaining protection for other active requests.
+- Final test inventories, performance costs and runtime limits are recorded in PROGRESS.md, testing.md and CURRENT_VERSION.md. PHP 8.6 application acceptance remains blocked by dependency constraints.
+
 ## 2026-09-17 - Prompt 8 unified employee card
 
 - Added one addressable organization/restaurant employee card with overview, access, rooms and typed audit history; lists and legacy permission links converge on it.

@@ -85,3 +85,7 @@ Only Actions may perform multi-record transitions. Transition validation is repe
 - Backup, role, permission, payment correction, QR reissue, suspension and destructive operations require explicit privileged authorization and audit records.
 
 The physical schema is described in [`data-model.md`](data-model.md); executable state behavior is mapped in [`requirements.md`](requirements.md).
+
+## Prompt 7: availability distinctions
+
+A restaurant can permit browsing while refusing new orders. An item can be published and visible but fail configuration feasibility or order admission. A manual stop does not hide an item; temporary hiding ends independently. A date exception replaces one local calendar date; it does not override pause or integrity restrictions. An unconfirmed submitted draft remains pending and is revalidated before confirmation. Already accepted cooking, serving and settlement are outside the new-order pause.

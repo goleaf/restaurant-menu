@@ -30,6 +30,7 @@ use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
@@ -95,12 +96,16 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
         SystemPermission::SendToKitchen,
     ]);
 
-    DraftOrderItem::query()
+    $pizzaLine = DraftOrderItem::query()
         ->where('draft_order_id', $draftOrder->id)
         ->where('item_name', 'Prompt 60 Pizza')
-        ->firstOrFail()
-        ->forceFill(['variant_name' => 'Large portion'])
-        ->save();
+        ->firstOrFail();
+    $variant = MenuItemVariant::factory()->available()->create([
+        'menu_item_id' => $pizzaLine->menu_item_id,
+        'name' => 'Large portion',
+        'price_cents' => $pizzaLine->unit_price_cents,
+    ]);
+    $pizzaLine->update(['menu_item_variant_id' => $variant->id, 'variant_name' => $variant->name]);
 
     $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
 

@@ -72,8 +72,6 @@
                     <flux:select wire:model.live="bulk.operation" :label="__('menu.bulk.action')">
                         <flux:select.option value="">{{ __('menu.bulk.choose_action') }}</flux:select.option>
                         @if ($canChangeAvailability)
-                            <flux:select.option value="available">{{ __('menu.bulk.available') }}</flux:select.option>
-                            <flux:select.option value="unavailable">{{ __('menu.bulk.unavailable') }}</flux:select.option>
                         @endif
                         <flux:select.option value="move">{{ __('menu.bulk.move') }}</flux:select.option>
                         <flux:select.option value="archive">{{ __('menu.bulk.archive') }}</flux:select.option>
@@ -184,81 +182,11 @@
                             </div>
                         @endif
 
-                        <details class="rounded-control border border-border-subtle p-3" @if ($editingScheduleId !== null) open @endif><summary class="min-h-11 cursor-pointer py-2 text-sm font-semibold text-text-primary">{{ __('ui.organizations.brands.branches.menu.index.menu_schedule') }}</summary>
-                            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                                <div class="min-w-0">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.menu_schedule') }}</p>
-                                        <flux:badge :color="$menu['availability_color']">
-                                            {{ $menu['availability_label'] }}
-                                        </flux:badge>
-                                    </div>
-
-                                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $menu['availability_detail'] }}</p>
-                                </div>
-                            </div>
-
-                            <div class="mt-3 grid gap-2">
-                                @forelse ($menu['schedules'] as $schedule)
-                                    <div wire:key="menu-schedule-{{ $schedule['id'] }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
-                                        @if ($editingScheduleId === $schedule['id'])
-                                            <form wire:submit="updateMenuSchedule" class="grid min-w-0 flex-1 gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-                                                <flux:select wire:model="editingScheduleForm.scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
-                                                    @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
-                                                        <flux:select.option wire:key="editing-menu-schedule-{{ $schedule['id'] }}-day-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
-                                                    @endforeach
-                                                </flux:select>
-
-                                                <flux:input wire:model="editingScheduleForm.scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
-                                                <flux:input wire:model="editingScheduleForm.scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
-
-                                                <div class="flex flex-wrap gap-2">
-                                                    <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateMenuSchedule">
-                                                        {{ __('ui.actions.save') }}
-                                                    </flux:button>
-                                                    <flux:button icon="x-mark" type="button" wire:click="cancelMenuScheduleEditing">
-                                                        {{ __('ui.actions.cancel') }}
-                                                    </flux:button>
-                                                </div>
-                                            </form>
-                                        @else
-                                            <div class="flex flex-wrap items-center gap-2 text-sm">
-                                                <flux:badge>{{ $schedule['day_label'] }}</flux:badge>
-                                                <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $schedule['time_range'] }}</span>
-                                            </div>
-
-                                            <div class="flex flex-wrap gap-2">
-                                                <flux:button icon="pencil" type="button" wire:click="startEditingMenuSchedule({{ $schedule['id'] }})">
-                                                    {{ __('menu.schedules.actions.edit') }}
-                                                </flux:button>
-                                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})" class="rm-action-danger">
-                                                    {{ __('ui.actions.delete') }}
-                                                </flux:button>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @empty
-                                    <p class="rm-menu-empty">
-                                        {{ __('menu.empty.no_schedule') }}
-                                    </p>
-                                @endforelse
-                            </div>
-
-                            <form wire:submit="createMenuSchedule({{ $menu['id'] }})" class="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-                                <flux:select wire:model="scheduleForm.scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
-                                    @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
-                                        <flux:select.option wire:key="menu-schedule-day-{{ $menu['id'] }}-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
-                                    @endforeach
-                                </flux:select>
-
-                                <flux:input wire:model="scheduleForm.scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
-                                <flux:input wire:model="scheduleForm.scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
-
-                                <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenuSchedule({{ $menu['id'] }})">
-                                    {{ __('ui.organizations.brands.branches.menu.index.add_interval') }}
-                                </flux:button>
-                            </form>
-                        </details>
+                        <flux:callout :heading="__('availability.menu_schedule')" :text="$menu['availability_detail']">
+                            <x-slot:actions>
+                                <flux:button :href="route('organizations.brands.branches.availability.index', [$organizationId, $brandId, $branchId, 'section' => 'schedules', 'menu' => $menu['id']])" wire:navigate>{{ __('availability.edit_schedule') }}</flux:button>
+                            </x-slot:actions>
+                        </flux:callout>
 
                         <div class="grid min-w-0 gap-4">
                             <details class="rounded-control border border-border-subtle p-3" @if ($editingCategoryId !== null) open @endif><summary class="min-h-11 cursor-pointer py-2 text-sm font-semibold text-text-primary">{{ __('menu.guest.categories') }}</summary>
@@ -405,13 +333,7 @@
                                                     <p class="text-xs text-text-muted">{{ $item['department_name'] ?: __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }} · {{ __('reports.csv.weight') }}: {{ $item['weight'] }} · {{ __('reports.csv.volume') }}: {{ $item['volume'] }} · {{ __('reports.csv.calories') }}: {{ $item['calories'] }}</p>
                                                     <div class="flex flex-wrap gap-2">
                                                         @if ($canChangeAvailability)
-                                                            @if ($item['is_available'])
-                                                                <x-dangerous-action-confirmation name="disable-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="setItemAvailability({{ $item['id'] }}, false)" confirm-label="ui.actions.confirm" loading-label="ui.actions.saving">
-                                                                    <x-slot:trigger><flux:button icon="eye-slash" type="button">{{ __('ui.actions.disable') }}</flux:button></x-slot:trigger>
-                                                                </x-dangerous-action-confirmation>
-                                                            @else
-                                                                <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item['id'] }}, true)">{{ __('ui.organizations.brands.branches.menu.index.enable') }}</flux:button>
-                                                            @endif
+                                                            <flux:button :href="route('organizations.brands.branches.availability.index', [$organizationId, $brandId, $branchId, 'section' => 'stoplist', 'item' => $item['id']])" wire:navigate>{{ __('availability.explain_edit') }}</flux:button>
                                                         @endif
                                                         <flux:button icon="document-duplicate" type="button" wire:click="duplicateItem({{ $item['id'] }})" wire:loading.attr="disabled" :disabled="$activeCatalogOperationId !== ''">{{ __('menu.operations.duplicate') }}</flux:button>
                                                         <x-dangerous-action-confirmation name="delete-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="deleteItem({{ $item['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
@@ -429,7 +351,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+                    <div class="rm-menu-empty px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
                         {{ __('menu.empty.no_menus') }}
                     </div>
                 @endforelse

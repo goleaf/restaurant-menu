@@ -148,10 +148,11 @@ test('preparation departments cannot change the restaurant through the departmen
 
 test('an already open ordering form saves only its own restaurant after another tab remembers a different one', function () {
     $other = Branch::factory()->for($this->organization)->for($this->brand)->create();
-    $tab = Livewire::actingAs($this->actor)->withQueryParams(['branch' => $this->branch->id])
-        ->test(App\Livewire\Restaurant\Dashboard::class);
+    $tab = Livewire::actingAs($this->actor)
+        ->test(App\Livewire\Organizations\Brands\Branches\Availability\Index::class, ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch])
+        ->call('openPause')->set('pause.mode', 'indefinite')->set('pause.reason', 'Closed for cleaning')->call('previewPause');
     session()->put('workspace.preference', ['actor' => $this->actor->id, 'branch' => $other->id, 'destination' => 'overview']);
-    $tab->set('closure.temporarilyClosed', true)->set('closure.temporaryClosedReason', 'Closed for cleaning')->call('saveOrdering')->assertHasNoErrors();
+    $tab->call('applyPause')->assertHasNoErrors();
     expect($this->branch->fresh()->is_temporarily_closed)->toBeTrue()->and($other->fresh()->is_temporarily_closed)->toBeFalse();
 });
 
@@ -178,7 +179,8 @@ test('aggregate overview is explicit and never turns a conflicting restaurant qu
 test('aggregate mode never selects a mutation target even when only one branch remains', function () {
     Livewire::actingAs($this->actor)->withQueryParams(['workspace' => 'all'])
         ->test(App\Livewire\Restaurant\Dashboard::class)->assertSet('aggregate', true)->assertSet('selectedBranchId', '')
-        ->call('saveOrdering')->assertHasErrors('selectedBranchId');
+        ->assertDontSee('wire:submit="applyPause"', false);
+    $this->get(route('organizations.brands.branches.availability.index', [$this->organization, $this->brand, $this->branch, 'workspace' => 'all']))->assertStatus(409);
     expect($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
 });
 

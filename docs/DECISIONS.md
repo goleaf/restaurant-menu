@@ -4,6 +4,23 @@
 
 # Restaurant Menu completion decisions
 
+## Prompt 7 — independent restrictions, one admission result — 2026-09-17
+
+Use focused temporal interval evaluation and configuration feasibility under one availability result with stable machine reasons, evaluated instant and separate next-condition/next-orderable boundaries. Staff presentation is richer than safe guest messaging; optional readiness warnings are not new global order bans. A menu restriction applies only to its menu and table/QR constraints remain resource scoped.
+
+Keep existing fields for manual item stop and temporary hiding. Their commands never clear each other. Preserve inherited unrestricted schedules; add only explicit menu-closed state, per-domain revisions, date exceptions and durable replay receipts. The receipt and audit share the mutation transaction, and every replay reauthorizes. Weekly and exception edits share the restaurant-hours revision; timezone is a preview dependency. Remove closure/hours from ordinary profile persistence rather than retaining a stale compatibility writer.
+
+The pause/expiry/order vertical slice uses real independent administrator/guest contexts. Reuse the current shared restaurant context and unsaved guard. No accepted order, price snapshot, author or payment is changed by availability. No new-order Action accepts a preview clock from the browser.
+
+Weekly intervals are anchored to the local starting day, start-inclusive/end-exclusive, with adjacent windows joined. Existing equal endpoints retain their legacy full-day meaning; new ambiguous equal-time input is rejected. A fully closed date removes the previous day's overnight tail. Repeated DST gaps omit collapsed occurrences and folds use the earlier offset; one-off nonexistent or ambiguous local deadlines are rejected instead of silently normalized.
+
+Use request-local menu decision batches of at most 100 items, preserving one immutable evaluation instant. Cache generations prevent late builders publishing current data, while deadline checks enforce temporal boundaries. Subscription state became an admission dependency, so its existing status Action now commits state, audit and only the affected organization's branch invalidations together; no competing subscription model or background worker is added.
+
+Release the completed shared navigation request at Livewire 4 onSync, after the server snapshot is applied and before redirect effects execute. The installed onEffect hook runs too late for those redirects. Keep the guard for other pending requests, the idempotent onFinish fallback and explicit fresh navigation after a blocked attempt; never replay a queued mutation. A real catalogue-entry browser failure and a concurrent-request JavaScript regression establish this lifecycle contract.
+
+Final candidate and shared integration use separate immutable copies. Production code remains frozen during acceptance. PHP 8.6 platform rejection, CSS rather than native browser zoom and the untested virtual mobile keyboard are explicit limitations; full test discovery, skipped counts and coverage remain separate evidence.
+
+
 ## Prompt 8 - one person, explicit membership scope
 
 - Use OrganizationUser as card identity and branch-specific routes as immutable context. Keep global account identity/security outside Team.

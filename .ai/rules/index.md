@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Actions/** | .ai/rules/actions.md |
 | app/** | .ai/rules/app.md |
 | tests/Browser/** | .ai/rules/browser.md |
+| resources/js/alpine/components/** | .ai/rules/components.md |
 | resources/views/components/dashboard/branch-picker.blade.php | .ai/rules/dashboard.md |
 | database/factories/** | .ai/rules/factories.md |
 | packages/livewire/flux-pro/** | .ai/rules/flux-pro.md |

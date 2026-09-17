@@ -24,6 +24,8 @@ use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -192,6 +194,9 @@ function createPrompt62BarScenario(): array
             'name' => 'Prompt 62 Coffee',
             'price_cents' => 400,
         ]);
+    $coffeeGroup = ModifierGroup::factory()->for($branch)->create(['name' => 'Milk']);
+    $coffeeOption = ModifierOption::factory()->for($coffeeGroup, 'modifierGroup')->available()->create(['name' => 'Oat', 'price_delta_cents' => 50]);
+    $coffee->modifierGroups()->attach($coffeeGroup);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create([
@@ -225,6 +230,8 @@ function createPrompt62BarScenario(): array
             'total_price_cents' => 1000,
             'selected_modifiers' => [
                 [
+                    'group_id' => $coffeeGroup->id,
+                    'option_id' => $coffeeOption->id,
                     'group_name' => 'Milk',
                     'option_name' => 'Oat',
                     'price_delta_cents' => 50,

@@ -95,7 +95,6 @@ test('concurrent waiter confirmations create one order and one department dispat
             ->for($draftOrder, 'draftOrder')
             ->for($guest, 'guest')
             ->create([
-                'menu_item_id' => null,
                 'item_name' => 'Concurrent Soup',
                 'unit_price_cents' => 700,
                 'modifier_total_cents' => 0,

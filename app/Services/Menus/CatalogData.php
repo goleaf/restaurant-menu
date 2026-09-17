@@ -24,16 +24,18 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Availability\AvailabilityEvaluator;
 use App\Support\LocalImageVariants;
 use App\Support\MenuImagePresentation;
 use App\Support\MoneyFormatter;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Str;
 
 final readonly class CatalogData
 {
-    public function __construct(private GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus) {}
+    public function __construct(private GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus, private AvailabilityEvaluator $availability) {}
 
     public function pendingOperationId(Branch $branch, User $actor): string
     {
@@ -191,7 +193,7 @@ final readonly class CatalogData
     public function findBranchMenu(Branch $branch, int $menuId): Menu
     {
         return $branch->menus()
-            ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
+            ->select(['id', 'branch_id', 'name', 'status', 'schedule_version', 'schedule_is_closed', 'sort_order', 'created_at', 'updated_at'])
             ->with(['translations' => fn ($query) => $query
                 ->select(['id', 'menu_id', 'language_code', 'name'])
                 ->orderBy('language_code')])
@@ -231,7 +233,7 @@ final readonly class CatalogData
     public function findBranchItem(int $branchId, int $itemId): MenuItem
     {
         return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order', 'created_at', 'updated_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
             ->with([
                 'translations' => fn ($query) => $query
                     ->select(['id', 'menu_item_id', 'language_code', 'name', 'description'])
@@ -553,7 +555,8 @@ final readonly class CatalogData
     {
         return MenuItem::query()
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order', 'created_at', 'updated_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
+            ->when($withDetails, fn ($query) => $query->with(AvailabilityEvaluator::itemRelations()))
             ->with([
                 'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name', 'is_active', 'deleted_at']),
                 'translations' => fn ($translationQuery) => $translationQuery
@@ -583,12 +586,13 @@ final readonly class CatalogData
     private function menus(Branch $branch, EloquentCollection $items): EloquentCollection
     {
         return $branch->menus()
-            ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
+            ->select(['id', 'branch_id', 'name', 'status', 'schedule_version', 'schedule_is_closed', 'sort_order', 'created_at', 'updated_at'])
             ->with([
                 'translations' => fn ($query) => $query
                     ->select(['id', 'menu_id', 'language_code', 'name'])
                     ->orderBy('language_code'),
-                'branch' => fn ($query) => $query->select(['id', 'timezone']),
+                'branch' => fn ($query) => $query->select(AvailabilityEvaluator::branchColumns()),
+                'branch.openingHours', 'branch.scheduleExceptions',
                 'availabilitySchedules' => fn ($query) => $query
                     ->select(['id', 'menu_id', 'day_of_week', 'starts_at', 'ends_at', 'created_at', 'updated_at']),
                 'categories' => fn ($query) => $query
@@ -772,6 +776,8 @@ final readonly class CatalogData
             'images' => $images,
             'image_count' => $imageCount,
             'max_image_count' => MenuItem::MAX_IMAGES,
+            'effective_availability' => $withDetails ? $this->availability->item($item, CarbonImmutable::now())->toArray() : null,
+            'availability_url' => route('organizations.brands.branches.availability.index', [$branch->organization_id, $branch->brand_id, $branch->id, 'section' => 'stoplist', 'item' => $item->id]),
             'remaining_image_slots' => MenuItem::MAX_IMAGES - $imageCount,
             'name' => $item->name,
             'category_name' => $category instanceof MenuCategory

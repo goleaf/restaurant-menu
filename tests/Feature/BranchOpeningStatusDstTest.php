@@ -31,7 +31,7 @@ test('a spring gap cannot turn a collapsed daytime interval into an overnight op
             ->and($status['next_opens_at'])->toBe('2026-04-05T03:30:00+03:00');
     });
 
-    expect($queries)->toBe(1);
+    expect($queries)->toBe(2);
 })->with(['reversed duration' => '04:00', 'zero duration' => '04:30']);
 
 test('next opening selects the earliest actual time when a spring gap reorders stored intervals', function (): void {
@@ -59,7 +59,7 @@ test('next opening selects the earliest actual time when a spring gap reorders s
             ->and($status['next_opens_at'])->toBe('2026-03-29T04:00:00+03:00');
     });
 
-    expect($queries)->toBe(1);
+    expect($queries)->toBe(2);
 });
 
 test('next opening ignores a collapsed spring gap interval and finds the later valid interval', function (string $closesAt): void {

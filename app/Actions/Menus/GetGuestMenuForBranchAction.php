@@ -21,8 +21,13 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
+use App\Services\Availability\AvailabilityEvaluator;
+use App\Support\Availability\AvailabilityResult;
+use App\Support\BranchReportCacheVersion;
 use App\Support\LocalImageVariants;
 use App\Support\MenuImagePresentation;
+use Carbon\CarbonImmutable;
+use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -38,8 +43,13 @@ class GetGuestMenuForBranchAction
 
     private const LOCK_WAIT_SECONDS = 3;
 
+    private CarbonImmutable $evaluatedAt;
+
+    private CarbonImmutable $cacheUntil;
+
     public function __construct(
         private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        private readonly AvailabilityEvaluator $availability,
     ) {}
 
     /**
@@ -50,8 +60,13 @@ class GetGuestMenuForBranchAction
         $defaultLanguage = $this->defaultLanguageForBranch($branchId);
         $languageCode = self::normalizeLanguageCode($languageCode, $defaultLanguage);
         $cache = self::cache();
+        $at = CarbonImmutable::now();
+        if (! $cache instanceof Repository) {
+            return $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage, $at);
+        }
+        $generation = BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branchId]));
         $cacheKey = self::cacheKey($branchId, $languageCode);
-        $cachedPayload = $cache->get($cacheKey);
+        $cachedPayload = $this->cachedPayload($cache, $cacheKey, $generation, $at);
 
         if (is_array($cachedPayload)) {
             return $cachedPayload;
@@ -60,18 +75,18 @@ class GetGuestMenuForBranchAction
         try {
             return $cache->withoutOverlapping(
                 self::lockKey($branchId, $languageCode),
-                fn (): array => $this->rememberFreshPayload($cache, $branchId, $languageCode, $defaultLanguage),
+                fn (): array => $this->rememberFreshPayload($cache, $branchId, $languageCode, $defaultLanguage, $generation, $at),
                 self::LOCK_SECONDS,
                 self::LOCK_WAIT_SECONDS,
             );
         } catch (LockTimeoutException) {
-            return $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage);
+            return $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage, $at);
         }
     }
 
     public static function cacheKey(int $branchId, string $languageCode = 'en'): string
     {
-        return 'guest-menu:v7:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v8:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
@@ -96,6 +111,10 @@ class GetGuestMenuForBranchAction
         return [
             ...array_map(
                 fn (string $languageCode): string => self::cacheKey($branchId, $languageCode),
+                self::supportedLanguageCodes(),
+            ),
+            ...array_map(
+                fn (string $languageCode): string => 'guest-menu:v7:branch:'.$branchId.':language:'.$languageCode,
                 self::supportedLanguageCodes(),
             ),
             ...array_map(
@@ -158,18 +177,20 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
      */
-    private function rememberFreshPayload(CacheRepository $cache, int $branchId, string $languageCode, string $defaultLanguage): array
+    private function rememberFreshPayload(CacheRepository $cache, int $branchId, string $languageCode, string $defaultLanguage, string $generation, CarbonImmutable $at): array
     {
         $cacheKey = self::cacheKey($branchId, $languageCode);
-        $cachedPayload = $cache->get($cacheKey);
+        $cachedPayload = $this->cachedPayload($cache, $cacheKey, $generation, $at);
 
         if (is_array($cachedPayload)) {
             return $cachedPayload;
         }
 
-        $payload = $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage);
+        $payload = $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage, $at);
 
-        $cache->put($cacheKey, $payload, self::CACHE_SECONDS);
+        if ($this->cacheUntil->greaterThan($at)) {
+            $cache->put($cacheKey, ['generation' => $generation, 'valid_until' => $this->cacheUntil->toIso8601String(), 'payload' => $payload], $this->cacheUntil);
+        }
 
         return $payload;
     }
@@ -177,8 +198,15 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
      */
-    private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage): array
+    private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage, CarbonImmutable $at): array
     {
+        $this->evaluatedAt = $at;
+        $this->cacheUntil = $at->addSeconds(self::CACHE_SECONDS);
+        $hiddenUntil = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId)->where('status', MenuStatus::Active->value))
+            ->where('hidden_until', '>', $at)->min('hidden_until');
+        if (is_string($hiddenUntil)) {
+            $this->includeBoundary(CarbonImmutable::parse($hiddenUntil));
+        }
         $availabilityResult = $this->availableMenusForBranch($branchId, $languageCode);
         /** @var EloquentCollection<int, Menu> $availableMenus */
         $availableMenus = $availabilityResult['available_menus'];
@@ -207,7 +235,7 @@ class GetGuestMenuForBranchAction
                 'id',
                 'branch_id',
                 'name',
-                'status',
+                'status', 'schedule_is_closed', 'schedule_version', 'deleted_at',
                 'sort_order',
             ])
             ->addSelect([
@@ -228,6 +256,7 @@ class GetGuestMenuForBranchAction
                         'icon',
                         'sort_order',
                         'is_active',
+                        'deleted_at',
                     ])
                     ->addSelect([
                         'localized_name' => MenuCategoryTranslation::query()
@@ -264,6 +293,7 @@ class GetGuestMenuForBranchAction
                             'calories',
                             'is_available',
                             'hidden_until',
+                            'deleted_at',
                             'sort_order',
                         ])
                             ->addSelect([
@@ -280,7 +310,7 @@ class GetGuestMenuForBranchAction
                             ])
                             ->where(fn ($visibilityQuery) => $visibilityQuery
                                 ->whereNull('hidden_until')
-                                ->orWhere('hidden_until', '<=', now()))
+                                ->orWhere('hidden_until', '<=', $this->evaluatedAt))
                             ->withExists([
                                 'translations as has_localized_content' => fn ($translationQuery) => $translationQuery
                                     ->where('language_code', $languageCode),
@@ -319,7 +349,6 @@ class GetGuestMenuForBranchAction
                                                 ->where('language_code', $languageCode)
                                                 ->limit(1),
                                         ])
-                                        ->where('is_available', true)
                                         ->orderBy('sort_order')
                                         ->orderBy('name')
                                         ->orderBy('id'),
@@ -339,7 +368,23 @@ class GetGuestMenuForBranchAction
             ->orderBy('id')
             ->get();
 
+        foreach ($menus as $menu) {
+            $context = $availableMenus->firstWhere('id', $menu->id);
+            $menu->setRelation('branch', $context->branch);
+            $menu->setRelation('availabilitySchedules', $context->availabilitySchedules);
+            foreach ($menu->categories as $category) {
+                foreach ($category->items as $item) {
+                    $item->setRelation('menu', $menu);
+                    $item->setRelation('category', $category);
+                }
+            }
+        }
         $this->loadAvailableVariants($menus, $languageCode);
+        $itemDecisions = [];
+        $items = $menus->flatMap(fn (Menu $menu) => $menu->categories->flatMap(fn (MenuCategory $category) => $category->items));
+        foreach ($items->chunk(100) as $batch) {
+            $itemDecisions += $this->availability->items($batch, $at);
+        }
 
         if ($menus->isEmpty()) {
             return [
@@ -359,6 +404,7 @@ class GetGuestMenuForBranchAction
                 $menu,
                 $availableMenuStatuses[$menu->id] ?? $this->emptyAvailabilityStatus(),
                 $languageCode,
+                $itemDecisions,
             ))
             ->values()
             ->all();
@@ -394,7 +440,7 @@ class GetGuestMenuForBranchAction
                 'id',
                 'branch_id',
                 'name',
-                'status',
+                'status', 'schedule_is_closed', 'schedule_version', 'deleted_at',
                 'sort_order',
             ])
             ->addSelect([
@@ -405,7 +451,10 @@ class GetGuestMenuForBranchAction
                     ->limit(1),
             ])
             ->with([
-                'branch' => fn ($query) => $query->select(['id', 'timezone']),
+                'branch' => fn ($query) => $query->select(AvailabilityEvaluator::branchColumns()),
+                'branch.openingHours', 'branch.scheduleExceptions',
+                'branch.organization:id,deleted_at', 'branch.organization.subscription:id,organization_id,status',
+                'branch.brand:id,organization_id,deleted_at',
                 'availabilitySchedules' => fn ($query) => $query->select([
                     'id',
                     'menu_id',
@@ -422,12 +471,23 @@ class GetGuestMenuForBranchAction
             ->get();
 
         foreach ($menus as $menu) {
-            $availability = $this->getMenuAvailabilityStatus->handle($menu);
+            $availability = $this->getMenuAvailabilityStatus->handle($menu, $this->evaluatedAt);
+            foreach (['next_change_at', 'next_available_at'] as $key) {
+                if (is_string($availability[$key] ?? null)) {
+                    $this->includeBoundary(CarbonImmutable::parse($availability[$key]));
+                }
+            }
 
-            if ($availability['is_available']) {
+            $decision = $this->availability->menu($menu, $this->evaluatedAt);
+            $ownScheduleClosed = in_array('menu_schedule_closed', $availability['reason_codes'], true);
+            if ($decision->visible && ! $ownScheduleClosed) {
                 $availableMenus->push($menu);
                 $availableStatuses[$menu->id] = $availability;
-                $firstAvailableStatus ??= $availability;
+                if ($availability['is_available']) {
+                    $firstAvailableStatus ??= $availability;
+                } elseif ($this->statusIsSooner($availability, $nextUnavailableStatus)) {
+                    $nextUnavailableStatus = $availability;
+                }
 
                 continue;
             }
@@ -453,7 +513,7 @@ class GetGuestMenuForBranchAction
             'available_statuses' => $availableStatuses,
             'unavailable_menus' => $unavailableMenus,
             'availability' => $this->aggregateAvailabilityStatus(
-                availableMenuCount: $availableMenus->count(),
+                availableMenuCount: count(array_filter($availableStatuses, fn (array $status): bool => $status['is_available'])),
                 firstAvailableStatus: $firstAvailableStatus,
                 nextUnavailableStatus: $nextUnavailableStatus,
             ),
@@ -543,9 +603,10 @@ class GetGuestMenuForBranchAction
     }
 
     /**
+     * @param  array<int, AvailabilityResult>  $itemDecisions
      * @return array{id: int, name: string, availability: array<string, mixed>, categories: list<array<string, mixed>>}
      */
-    private function menuPayload(Menu $menu, array $availability, string $languageCode): array
+    private function menuPayload(Menu $menu, array $availability, string $languageCode, array $itemDecisions): array
     {
         return [
             'id' => $menu->id,
@@ -557,16 +618,17 @@ class GetGuestMenuForBranchAction
             ),
             'availability' => $availability,
             'categories' => $menu->categories
-                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category, $languageCode))
+                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category, $languageCode, $itemDecisions))
                 ->values()
                 ->all(),
         ];
     }
 
     /**
+     * @param  array<int, AvailabilityResult>  $itemDecisions
      * @return array{id: int, name: string, description: string|null, icon: string|null, items: list<array<string, mixed>>}
      */
-    private function categoryPayload(MenuCategory $category, string $languageCode): array
+    private function categoryPayload(MenuCategory $category, string $languageCode, array $itemDecisions): array
     {
         return [
             'id' => $category->id,
@@ -581,7 +643,7 @@ class GetGuestMenuForBranchAction
                 : $category->description,
             'icon' => $category->icon,
             'items' => $category->items
-                ->map(fn (MenuItem $item): array => $this->itemPayload($item, $languageCode))
+                ->map(fn (MenuItem $item): array => $this->itemPayload($item, $languageCode, $itemDecisions[$item->id]))
                 ->values()
                 ->all(),
         ];
@@ -590,8 +652,9 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{id: int, name: string, description: string|null, price_cents: int, allergens: list<array{value: string, label: string}>, dietary_labels: list<array{value: string, label: string}>, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool, variants: list<array<string, mixed>>, modifier_groups: list<array<string, mixed>>}
      */
-    private function itemPayload(MenuItem $item, string $languageCode): array
+    private function itemPayload(MenuItem $item, string $languageCode, AvailabilityResult $decision): array
     {
+        $this->includeBoundary($decision->nextChangeAt);
         $imageVariants = LocalImageVariants::forPath($item->image);
         $imagePresentation = MenuImagePresentation::localized($item->image_presentation, $languageCode, (string) ($item->getAttribute('localized_name') ?: $item->name));
 
@@ -616,11 +679,10 @@ class GetGuestMenuForBranchAction
             'weight' => $item->weight,
             'volume' => $item->volume,
             'calories' => $item->calories,
-            'is_available' => $item->is_available && (
-                ! (bool) $item->getAttribute('has_variants')
-                || (bool) $item->getAttribute('has_available_variants')
-            ),
-            'variants' => $item->variants
+            'is_available' => $decision->acceptsNewOrders,
+            'availability_reason' => $decision->acceptsNewOrders ? null : $decision->publicMessage(),
+            'availability_label' => $decision->primaryCode() === 'item_stopped' ? __('menu.guest.out_of_stock') : __('menu.guest.unavailable'),
+            'variants' => $item->variants->where('is_available', true)
                 ->map(fn (MenuItemVariant $variant): array => [
                     'id' => $variant->id,
                     'type' => $variant->type->value,
@@ -660,7 +722,7 @@ class GetGuestMenuForBranchAction
         );
 
         $itemsWithoutVariants = $items->filter(
-            fn (MenuItem $item): bool => ! (bool) $item->getAttribute('has_available_variants'),
+            fn (MenuItem $item): bool => ! (bool) $item->getAttribute('has_variants'),
         );
 
         $itemsWithoutVariants->each(
@@ -668,10 +730,12 @@ class GetGuestMenuForBranchAction
         );
 
         $itemsWithVariants = $items->filter(
-            fn (MenuItem $item): bool => (bool) $item->getAttribute('has_available_variants'),
+            fn (MenuItem $item): bool => (bool) $item->getAttribute('has_variants'),
         );
 
         if ($itemsWithVariants->isEmpty()) {
+            $items->loadMissing(AvailabilityEvaluator::itemRelations());
+
             return;
         }
 
@@ -695,9 +759,28 @@ class GetGuestMenuForBranchAction
                         ->whereColumn('menu_item_variant_id', 'menu_item_variants.id')
                         ->where('language_code', $languageCode)
                         ->limit(1),
-                ])
-                ->where('is_available', true),
+                ]),
         ]);
+        $items->loadMissing(AvailabilityEvaluator::itemRelations());
+    }
+
+    /** @return array<string,mixed>|null */
+    private function cachedPayload(CacheRepository $cache, string $key, string $generation, CarbonImmutable $at): ?array
+    {
+        $entry = $cache->get($key);
+        if (! is_array($entry) || ($entry['generation'] ?? null) !== $generation
+            || ! is_string($entry['valid_until'] ?? null) || ! is_array($entry['payload'] ?? null)) {
+            return null;
+        }
+
+        return $at->lessThan(CarbonImmutable::parse($entry['valid_until'])) ? $entry['payload'] : null;
+    }
+
+    private function includeBoundary(?CarbonImmutable $boundary): void
+    {
+        if ($boundary !== null && $boundary->greaterThan($this->evaluatedAt) && $boundary->lessThan($this->cacheUntil)) {
+            $this->cacheUntil = $boundary;
+        }
     }
 
     /**
@@ -747,7 +830,7 @@ class GetGuestMenuForBranchAction
             'is_required' => $modifierGroup->is_required,
             'min_select' => $modifierGroup->min_select,
             'max_select' => $modifierGroup->max_select,
-            'options' => $modifierGroup->options
+            'options' => $modifierGroup->options->where('is_available', true)
                 ->map(fn (ModifierOption $modifierOption): array => [
                     'id' => $modifierOption->id,
                     'name' => $this->translatedText(

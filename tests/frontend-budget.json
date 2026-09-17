@@ -21,6 +21,10 @@
         "resources/scss/team.scss": {
             "raw": 2400,
             "gzip": 800
+        },
+        "resources/scss/availability.scss": {
+            "raw": 1800,
+            "gzip": 700
         }
     },
     "scenarios": {
@@ -91,12 +95,24 @@
                 "raw": 959700,
                 "gzip": 395700
             }
+        },
+        "availability": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/scss/availability.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
         }
     },
     "totals": {
         "css": {
-            "raw": 376600,
-            "gzip": 51900
+            "raw": 378400,
+            "gzip": 52600
         },
         "js": {
             "raw": 348100,

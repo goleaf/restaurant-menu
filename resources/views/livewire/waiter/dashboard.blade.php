@@ -169,17 +169,7 @@
                                 </flux:callout.text>
                                 @if ($branch['can_manage_settings'])
                                 <x-slot:actions class="flex-wrap">
-                                    <flux:button
-                                        class="min-h-touch"
-                                        size="sm"
-                                        icon="check"
-                                        type="button"
-                                        wire:click="disableTemporaryClosure({{ $branch['id'] }})"
-                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
-                                        wire:target="disableTemporaryClosure({{ $branch['id'] }})"
-                                    >
-                                        {{ __('ui.waiter.dashboard.otkryt_zakazy') }}
-                                    </flux:button>
+                                    <flux:button size="sm" :href="$availabilityUrl" wire:navigate>{{ __('availability.open_center') }}</flux:button>
                                 </x-slot:actions>
                                 @endif
                             </flux:callout>

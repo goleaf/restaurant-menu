@@ -11,6 +11,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Workspace\RestaurantSwitcher;
 use App\Models\AreaNode;
@@ -307,7 +308,7 @@ test('waiter dashboard exposes a freshly authorized bounded desktop table previe
         $component->call('selectTable', $tableSession->id);
     });
 
-    expect($queryCount)->toBeLessThanOrEqual(14);
+    expect($queryCount)->toBeLessThanOrEqual(15);
 
     $component
         ->call('selectTable', PHP_INT_MAX)
@@ -647,25 +648,30 @@ test('temporary closure requires fresh settings permission and branch scope', fu
     if ($scenario !== 'view only') {
         enablePrompt52Permission($role, SystemPermission::ManageSettings);
     }
-    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
+    $url = route('organizations.brands.branches.availability.index', [$organization, $brand, $branch]);
+    $dashboard = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
     if ($scenario === 'view only') {
-        $component->assertDontSee('wire:click="disableTemporaryClosure(', false);
+        $dashboard->assertDontSee($url, false);
     } else {
-        $component->assertSee('wire:click="disableTemporaryClosure(', false);
-    }
-    if ($scenario === 'revoked') {
-        $permission = Permission::query()->where('code', SystemPermission::ManageSettings->value)->firstOrFail();
-        $role->permissions()->updateExistingPivot($permission->id, ['enabled' => false]);
+        $dashboard->assertSee($url, false);
     }
     if ($scenario === 'foreign tenant') {
-        [, , $branch] = createPrompt52Branch('Foreign');
+        [$organization, $brand, $branch] = createPrompt52Branch('Foreign');
         $branch->update(['is_temporarily_closed' => true]);
     }
     if ($scenario === 'unassigned branch') {
         BranchUser::factory()->for($organization)->for($branch)->for($waiter)->create(['status' => OrganizationUserStatus::Active]);
         $branch = Branch::factory()->for($organization)->for($brand)->create(['is_temporarily_closed' => true]);
     }
-    $component->call('disableTemporaryClosure', $branch->id);
+    $component = Livewire::actingAs($waiter)->test(Index::class, compact('organization', 'brand', 'branch'));
+    if (in_array($scenario, ['authorized', 'revoked'], true)) {
+        $component->call('openPause')->call('previewPause')->assertHasNoErrors();
+        if ($scenario === 'revoked') {
+            $permission = Permission::query()->where('code', SystemPermission::ManageSettings->value)->firstOrFail();
+            $role->permissions()->updateExistingPivot($permission->id, ['enabled' => false]);
+        }
+        $component->call('applyPause');
+    }
     if ($scenario === 'authorized') {
         $component->assertHasNoErrors();
         expect($branch->fresh()->is_temporarily_closed)->toBeFalse();

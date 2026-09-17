@@ -13,6 +13,20 @@ class ResolveMenuItemVariantSelectionAction
 {
     public function handle(MenuItem $menuItem, ?int $variantId, ?string $languageCode = null): ?MenuItemVariant
     {
+        if ($menuItem->relationLoaded('variants') && $languageCode === null) {
+            if ($variantId === null && $menuItem->variants->isEmpty()) {
+                return null;
+            }
+            $selected = $variantId === null ? null : $menuItem->variants->firstWhere('id', $variantId);
+            if ($selected instanceof MenuItemVariant && $selected->is_available && array_key_exists('price_cents', $selected->getAttributes())) {
+                return $selected;
+            }
+            if ($selected === null || ! $selected->is_available) {
+                throw ValidationException::withMessages([
+                    'selectedItemVariantId' => __($variantId === null ? 'menu.variants.validation.required' : 'menu.variants.validation.unavailable'),
+                ]);
+            }
+        }
         if ($variantId === null) {
             if (! $menuItem->variants()->exists()) {
                 return null;

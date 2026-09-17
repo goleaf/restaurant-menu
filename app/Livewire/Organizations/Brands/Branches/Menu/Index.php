@@ -26,6 +26,9 @@ class Index extends BranchMenuComponent
     #[Url(as: 'section', history: true)]
     public mixed $section = 'catalog';
 
+    #[Locked]
+    public bool $redirectingAvailability = false;
+
     public function boot(CatalogData $menuQueries): void
     {
         $this->menuQueries = $menuQueries;
@@ -37,6 +40,7 @@ class Index extends BranchMenuComponent
 
         $this->refreshAccess();
         $this->normalizeSection();
+        $this->redirectAvailabilitySection();
     }
 
     public function hydrate(): void
@@ -48,6 +52,7 @@ class Index extends BranchMenuComponent
     public function updatedSection(): void
     {
         $this->normalizeSection();
+        $this->redirectAvailabilitySection();
     }
 
     public function selectSection(mixed $section): void
@@ -60,6 +65,7 @@ class Index extends BranchMenuComponent
 
         $this->authorizeBranchAbility($section === 'availability' ? 'changeMenuAvailability' : 'manageMenu');
         $this->section = $section;
+        $this->redirectAvailabilitySection();
     }
 
     private function refreshAccess(): void
@@ -77,9 +83,24 @@ class Index extends BranchMenuComponent
         $this->normalizeSection();
         $this->authorizeBranchAbility($this->section === 'availability' ? 'changeMenuAvailability' : 'manageMenu');
 
+        if ($this->redirectingAvailability) {
+            return view('livewire.organizations.brands.branches.menu.availability');
+        }
+
         return view('livewire.organizations.brands.branches.menu.index', [
             'sections' => $this->sections(),
         ])->title(__('navigation.menu'));
+    }
+
+    private function redirectAvailabilitySection(): void
+    {
+        $this->redirectingAvailability = $this->section === 'availability';
+        if ($this->redirectingAvailability) {
+            $this->authorizeBranchAbility('changeMenuAvailability');
+            $this->redirectRoute('organizations.brands.branches.availability.index', [
+                'organization' => $this->organizationId, 'brand' => $this->brandId, 'branch' => $this->branchId, 'section' => 'stoplist',
+            ], navigate: true);
+        }
     }
 
     private function normalizeSection(): void

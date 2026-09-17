@@ -665,7 +665,6 @@ function createPrompt81DraftOrder(TableSession $tableSession, TableSessionGuest 
         ->for($draftOrder, 'draftOrder')
         ->for($guest, 'guest')
         ->create([
-            'menu_item_id' => null,
             'item_name' => 'Prompt 81 Soup',
             'quantity' => 1,
             'unit_price_cents' => 850,

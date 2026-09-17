@@ -63,10 +63,10 @@ final class McpReadQueries
     public function handle(McpContext $context, McpAbility $ability, array $arguments): array
     {
         return match ($ability) {
-            McpAbility::BranchContext => ['branch' => $this->project($context->branch, ['id', 'name', 'timezone', 'currency'])],
+            McpAbility::BranchContext => ['branch' => $this->project($context->branch, ['id', 'name', 'timezone', 'currency', 'pause_version', 'is_temporarily_closed', 'temporary_closed_until'])],
             McpAbility::ListMenuItems => ['currency' => $context->branch->currency, ...$this->page(
                 MenuItem::query()->whereIn('menu_id', Menu::query()->select(['id'])->where('branch_id', $context->branch->id)),
-                ['id', 'menu_id', 'category_id', 'name', 'description', 'price_cents', 'is_available', 'hidden_until'], $arguments,
+                ['id', 'menu_id', 'category_id', 'name', 'description', 'price_cents', 'is_available', 'hidden_until', 'availability_version'], $arguments,
             )],
             McpAbility::ListTables => $this->page(ServicePoint::query()->where('branch_id', $context->branch->id),
                 ['id', 'area_node_id', 'type', 'name', 'display_number', 'capacity', 'status', 'is_active'], $arguments),

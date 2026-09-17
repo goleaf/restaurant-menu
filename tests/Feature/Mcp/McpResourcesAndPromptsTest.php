@@ -64,7 +64,7 @@ test('MCP context resource uses the exact safe branch projection', function (): 
     $response = app(BranchContextResource::class)->handle(new Request);
     expect($response)->toBeInstanceOf(Response::class)
         ->and(json_decode((string) $response->content(), true, flags: JSON_THROW_ON_ERROR))->toBe([
-            'branch' => ['id' => $this->branch->id, 'name' => 'Authorized restaurant', 'timezone' => $this->branch->timezone, 'currency' => $this->branch->currency],
+            'branch' => ['id' => $this->branch->id, 'name' => 'Authorized restaurant', 'timezone' => $this->branch->timezone, 'currency' => $this->branch->currency, 'pause_version' => 0, 'is_temporarily_closed' => false, 'temporary_closed_until' => null],
         ])
         ->and((string) $response->content())->not->toContain($this->user->email, $this->issued->plainTextToken, $this->issued->record->token_hash);
 });

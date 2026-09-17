@@ -6,6 +6,7 @@ use App\Actions\Menus\ApplyCatalogBulkAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -179,16 +180,16 @@ test('bulk permissions are checked again after loading and on completed replay',
     [$owner, $organization, $brand, $branch, $menu, $category] = catalogBulkContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['is_available' => true]);
     $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('selectCatalogPage')->set('bulk.operation', 'unavailable');
+        ->call('selectCatalogPage')->set('bulk.operation', 'archive')->set('bulk.confirmArchive', true);
     $snapshot = $component->snapshot;
     if ($replay) {
         $component->call('applyCatalogBulk')->assertHasNoErrors();
-        $item->fresh()->update(['is_available' => true]);
+        $item->fresh()->restore();
     }
     $organization->users()->updateExistingPivot($owner->id, ['status' => 'suspended']);
     $component->snapshot = $snapshot;
     $component->call('applyCatalogBulk')->assertForbidden();
-    expect($item->fresh()->is_available)->toBeTrue();
+    expect($item->fresh()->trashed())->toBeFalse();
 })->with([false, true]);
 
 test('archive requires explicit confirmation and lost response replay preserves other drafts', function (): void {
@@ -211,7 +212,7 @@ test('bulk fails safely when the selected dish has an unfinished editor', functi
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['is_available' => true]);
     Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)->set('editingItemForm.itemDescription', 'Keep this editor')->call('selectCatalogPage')
-        ->set('bulk.operation', 'unavailable')->call('applyCatalogBulk')->assertHasErrors('bulkSelection')
+        ->set('bulk.operation', 'archive')->set('bulk.confirmArchive', true)->call('applyCatalogBulk')->assertHasErrors('bulkSelection')
         ->assertSet('editingItemForm.itemDescription', 'Keep this editor');
     expect($item->fresh()->is_available)->toBeTrue();
 });
@@ -240,11 +241,11 @@ test('invalid URL filter shapes render bounded safe defaults', function (): void
 test('revoking availability permission after page selection blocks the batch', function (): void {
     [$owner, $organization, $brand, $branch, $menu, $category] = catalogBulkContext();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['is_available' => true]);
-    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('selectCatalogPage')->set('bulk.operation', 'unavailable');
+    $component = Livewire::actingAs($owner)->withQueryParams(['section' => 'stoplist'])->test(Index::class, compact('organization', 'brand', 'branch'))
+        ->set('selectedItems', [(string) $item->id])->call('openBulk')->set('restriction.operation', 'stop')->call('previewRestriction');
     $permission = Permission::query()->where('code', SystemPermission::ChangeAvailability->value)->firstOrFail();
     PermissionUserOverride::factory()->forUser($owner)->forPermission($permission)->denied()->create();
-    $component->call('applyCatalogBulk')->assertForbidden();
+    $component->call('applyRestriction')->assertForbidden();
     expect($item->fresh()->is_available)->toBeTrue();
 });
 

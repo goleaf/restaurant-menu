@@ -4,6 +4,10 @@
 
 # Factories and seeding
 
+## Prompt 7 availability fixtures — 2026-09-17
+
+BranchScheduleExceptionFactory and AvailabilityCommandFactory create valid tenant-linked records. Existing branch, menu, item, variant, modifier and guest/order factories compose availability scenarios explicitly; ordinary factory defaults do not hide invalid historical selections. New order tests persist real selected variant/option IDs rather than fabricated IDs. Temporal and race fixtures use SQLite memory or owned temporary files. The five additive availability migrations preserve current data; default seed/idempotency checks run only against disposable databases. No working restaurants, accounts, invitations, menu restrictions or permanent QR are changed.
+
 ## Prompt 8 Team fixtures
 
 Team acceptance tests use the existing factories in isolated SQLite databases. Cases include a shared User across independent organizations, inherited and explicit restaurant scope, independently suspended organization/restaurant memberships, organization overrides, archived rooms, typed accepted invitation identity and concurrent SQLite writers. No real invitation, account, role, permanent QR or canonical database is created or changed for this stage. Demo seeder behavior and production guards remain unchanged.

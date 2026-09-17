@@ -231,7 +231,6 @@ test('first order moves the table through staff confirmation without allowing a 
         'status' => DraftOrderStatus::Draft,
     ]);
     DraftOrderItem::factory()->for($draftOrder)->for($guest, 'guest')->create([
-        'menu_item_id' => null,
         'menu_item_variant_id' => null,
         'item_name' => 'Lifecycle item',
     ]);

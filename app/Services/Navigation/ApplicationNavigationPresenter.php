@@ -80,14 +80,14 @@ final class ApplicationNavigationPresenter
         $id = $context->branchId;
         $allows = static fn (string $key): bool => in_array($id, $access[$key] ?? [], true);
         $nested = ['organization' => $context->organizationId, 'brand' => $context->brandId, 'branch' => $id];
-        $menu = $allows('menu') ? [] : ['section' => 'availability'];
         $hallsRoute = $allows('halls') ? 'areas.index' : ($allows('tables') ? 'service-points.index' : 'qr.print');
         $definitions = [
             ['overview', 'squares-2x2', 'restaurant.dashboard', ['branch' => $id], $allows('overview')],
             ['waiter', 'clipboard-document-list', 'restaurant.waiter.dashboard', ['branch' => $id], $allows('waiter')],
             ['kitchen', 'fire', 'restaurant.kitchen.dashboard', ['branch' => $id], $allows('kitchen')],
             ['bar', 'beaker', 'restaurant.bar.dashboard', ['branch' => $id], $allows('bar')],
-            ['menu', 'book-open', 'organizations.brands.branches.menu.index', [...$nested, ...$menu], $allows('menu') || $allows('availability')],
+            ['menu', 'book-open', 'organizations.brands.branches.menu.index', $nested, $allows('menu')],
+            ['availability', 'clock', 'organizations.brands.branches.availability.index', $nested, $allows('availability')],
             ['halls', 'qr-code', 'organizations.brands.branches.'.$hallsRoute, $nested, $allows('halls') || $allows('tables') || $allows('qr')],
             ['team', 'users', 'organizations.brands.branches.staff.index', $nested, $allows('team')],
             ['reports', 'arrow-down-tray', $allows('reports') ? 'restaurant.exports.index' : 'restaurant.dashboard', $allows('reports') ? ['branch' => $id] : ['branch' => $id, 'workspace_section' => 'reports'], $allows('reports') || $allows('report_view')],
@@ -146,8 +146,8 @@ final class ApplicationNavigationPresenter
         $key = $preferred !== null && in_array($preferred, $keys, true) ? $preferred : null;
         if ($key === null) {
             $order = in_array($context->branchId, $access['management'] ?? [], true)
-                ? ['overview', 'menu', 'team', 'settings', 'reports', 'waiter', 'kitchen', 'bar', 'halls', 'audit']
-                : ['waiter', 'kitchen', 'bar', 'menu', 'team', 'settings', 'overview', 'halls', 'reports', 'audit'];
+                ? ['overview', 'menu', 'availability', 'team', 'settings', 'reports', 'waiter', 'kitchen', 'bar', 'halls', 'audit']
+                : ['waiter', 'kitchen', 'bar', 'menu', 'availability', 'team', 'settings', 'overview', 'halls', 'reports', 'audit'];
             foreach ($order as $candidate) {
                 if (in_array($candidate, $keys, true)) {
                     $key = $candidate;

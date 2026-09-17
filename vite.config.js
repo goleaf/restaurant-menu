@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/scss/app.scss',
                 'resources/scss/team.scss',
+                'resources/scss/availability.scss',
                 'resources/scss/qr-print.scss',
                 'resources/js/app.js',
             ],

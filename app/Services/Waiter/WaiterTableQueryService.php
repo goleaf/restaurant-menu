@@ -164,7 +164,7 @@ final class WaiterTableQueryService
     public function branch(int $branchId): Branch
     {
         return Branch::query()
-            ->select(['id', 'timezone', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until'])
+            ->select(['id', 'organization_id', 'brand_id', 'timezone', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until'])
             ->whereKey($branchId)
             ->firstOrFail();
     }

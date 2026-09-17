@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\DraftOrders\EnsureDraftMenuItemAvailableAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
@@ -23,6 +24,7 @@ use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\DraftOrderConfirmedNotification;
 use App\Support\Orders\OrderItemQuantity;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -36,6 +38,7 @@ class ConfirmDraftOrderByWaiterAction
         private readonly RecordAuditLogAction $recordAuditLog,
         private readonly SendOrderToKitchenBarAction $sendOrderToKitchenBar,
         private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $confirmedBy): Order
@@ -53,6 +56,7 @@ class ConfirmDraftOrderByWaiterAction
                 return $this->sendOrderToKitchenBar->handleAfterWaiterConfirmation($draftOrder->order, $confirmedBy);
             }
 
+            $this->ensureMenuItemAvailable->draft($draftOrder, CarbonImmutable::now(), 'draft_review');
             $previousStatus = $draftOrder->status;
             $currency = $draftOrder->tableSession->branch->currency;
             $lineTotals = $draftOrder->items

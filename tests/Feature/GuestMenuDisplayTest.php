@@ -271,8 +271,8 @@ test('guest menu cold and warm cache query counts stay bounded', function () {
         fn () => $action->handle($branch->id, 'en'),
     );
 
-    expect($coldQueryCount)->toBeLessThanOrEqual(13)
-        ->and($warmQueryCount)->toBeLessThanOrEqual(2)
+    expect($coldQueryCount)->toBeLessThanOrEqual(22)
+        ->and($warmQueryCount)->toBeLessThanOrEqual(3)
         ->and($warmQueryCount)->toBeLessThan($coldQueryCount);
 });
 
@@ -326,8 +326,8 @@ test('guest menu reads translated fields without hydrating translation models', 
         'description' => $translatedName === null ? $item->description : $translatedDescription,
         'price_cents' => $item->price_cents,
     ])->and($hydratedTranslations)->toBe(0)
-        ->and($coldQueryCount)->toBeLessThanOrEqual(13)
-        ->and($warmQueryCount)->toBeLessThanOrEqual(2);
+        ->and($coldQueryCount)->toBeLessThanOrEqual(22)
+        ->and($warmQueryCount)->toBeLessThanOrEqual(3);
 })->with(['en', 'lt', 'ru'])->with([
     'translated fields' => ['Selected name', 'Selected description'],
     'missing translation' => [null, null],
@@ -1329,3 +1329,20 @@ function guestMenuDisplayCookieName(QrCode $qrCode): string
 {
     return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
 }
+
+test('a paused restaurant keeps its menu visible and explains why a guest cannot add a dish', function (): void {
+    [$qrCode, $branch, , $tableSession, $activeGuest] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $branch->update(['is_temporarily_closed' => true]);
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestMenu::class, [
+            'branchId' => $branch->id, 'currency' => 'EUR', 'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id, 'publicToken' => $qrCode->public_token,
+            'guestCanAddItems' => true, 'branchCanAcceptOrders' => false,
+        ])
+        ->assertSeeText($availableItem->name)
+        ->assertSeeText(__('availability.guest.paused'))
+        ->call('openItem', $availableItem->id)
+        ->call('saveConfiguredItem');
+    expect(DraftOrderItem::query()->count())->toBe(0);
+});

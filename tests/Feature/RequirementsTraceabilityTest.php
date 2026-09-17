@@ -24,7 +24,7 @@ test('requirements traceability covers every canonical requirement with consiste
     $compliance = collect($complianceMatches)
         ->mapWithKeys(fn (array $match): array => [$match['id'] => trim($match['status'])]);
 
-    expect($canonical)->toHaveCount(55)
+    expect($canonical)->toHaveCount(56)
         ->and($traced->keys()->all())->toBe($canonical->keys()->all())
         ->and($traced->all())->toBe($canonical->all())
         ->and($compliance->keys()->all())->toBe($canonical->keys()->all())

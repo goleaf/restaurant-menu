@@ -138,6 +138,9 @@ test('demo owner can complete the organization administration browser journey', 
         }
     }
 
+    $openingHoursBeforeProfile = $branch->openingHours()->select(['day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])
+        ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray();
+    $openingHoursVersion = $branch->fresh()->opening_hours_version;
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false));
     clickOrganizationsBrowserElement($page, '[wire\\:model\\.live="form.serviceChargeEnabled"]');
     $page->assertEnabled('input[wire\\:model="form.serviceChargePercent"]');
@@ -148,24 +151,41 @@ test('demo owner can complete the organization administration browser journey', 
         ->assertNoJavaScriptErrors();
 
     expect($branch->fresh()->public_name)->toBe('Browser verified restaurant')
-        ->and($branch->settings()->sole()->service_charge_basis_points)->toBe(1250);
+        ->and($branch->settings()->sole()->service_charge_basis_points)->toBe(1250)
+        ->and($branch->fresh()->opening_hours_version)->toBe($openingHoursVersion)
+        ->and($branch->openingHours()->select(['day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])
+            ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray())->toBe($openingHoursBeforeProfile);
 
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false))
         ->assertValue('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
         ->assertValue('input[wire\\:model="form.serviceChargePercent"]', '12.50');
 
     $mondayIntervalCount = $branch->openingHours()->where('day_of_week', 1)->where('is_closed', false)->count();
-    clickOrganizationsBrowserElement($page, 'button[wire\\:click="addOpeningInterval(1)"]');
-    $page->fill('input[wire\\:model="form.publicName"]', 'Overlapping schedule must not persist');
-    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
-    $page->assertSee(__('branches.opening_hours.errors.overlap'))->assertNoJavaScriptErrors();
-    expect($branch->fresh()->public_name)->toBe('Browser verified restaurant');
+    $page->navigate(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'schedules'], false))
+        ->assertPresent('[data-page="availability-workspace"]');
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="openHours"]');
+    $page->assertVisible('form[wire\\:submit="previewSchedule"]');
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="addInterval(0)"]');
+    $page->assertPresent(sprintf('button[wire\\:click="removeInterval(0, %d)"]', $mondayIntervalCount));
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="previewSchedule"] button[type="submit"]');
+    $page->assertSee(__('branches.opening_hours.errors.overlap'))->assertMissing('[data-availability-preview]')
+        ->assertMissing('button[wire\\:click="applySchedule"]')->assertNoJavaScriptErrors();
+    expect($branch->fresh()->public_name)->toBe('Browser verified restaurant')
+        ->and($branch->settings()->sole()->service_charge_basis_points)->toBe(1250)
+        ->and($branch->fresh()->opening_hours_version)->toBe($openingHoursVersion)
+        ->and($branch->openingHours()->select(['day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])
+            ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray())->toBe($openingHoursBeforeProfile);
 
-    clickOrganizationsBrowserElement($page, sprintf('button[wire\\:click="removeOpeningInterval(1, %d)"]', $mondayIntervalCount));
-    $page->fill('input[wire\\:model="form.publicName"]', 'Browser verified restaurant');
-    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
-    $page->assertDontSee(__('branches.opening_hours.errors.overlap'))
-        ->assertSee(__('ui.livewire.organizations.brands.branches.settings.settings_saved'));
+    clickOrganizationsBrowserElement($page, sprintf('button[wire\\:click="removeInterval(0, %d)"]', $mondayIntervalCount));
+    $page->assertMissing(sprintf('button[wire\\:click="removeInterval(0, %d)"]', $mondayIntervalCount));
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="previewSchedule"] button[type="submit"]');
+    $page->assertDontSee(__('branches.opening_hours.errors.overlap'))->assertVisible('[data-availability-preview]');
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="applySchedule"]');
+    $page->assertMissing('[data-availability-preview]')->assertNoJavaScriptErrors();
+    expect($branch->fresh()->public_name)->toBe('Browser verified restaurant')
+        ->and($branch->fresh()->opening_hours_version)->toBe($openingHoursVersion + 1)
+        ->and($branch->openingHours()->select(['day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])
+            ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray())->toBe($openingHoursBeforeProfile);
 
     $page
         ->resize(1440, 1000)

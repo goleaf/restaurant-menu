@@ -225,7 +225,6 @@ function createOrderLifecycleDraft(): array
         ->for($draftOrder, 'draftOrder')
         ->for($guest, 'guest')
         ->create([
-            'menu_item_id' => null,
             'item_name' => 'Lifecycle Soup',
             'quantity' => 1,
             'unit_price_cents' => 900,

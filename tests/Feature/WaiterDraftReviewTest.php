@@ -2,6 +2,7 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
@@ -16,6 +17,10 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\Menu;
+use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Permission;
@@ -202,6 +207,11 @@ function createPrompt54SentDraftScenario(): array
             'guest_name' => 'Zara',
             'status' => TableSessionGuestStatus::Active,
         ]);
+    $menu = Menu::factory()->for($branch)->create(['status' => MenuStatus::Active]);
+    $pizza = MenuItem::factory()->for($menu)->create(['name' => 'Margherita', 'price_cents' => 1050]);
+    $group = ModifierGroup::factory()->for($branch)->create(['name' => 'Pizza size']);
+    $option = ModifierOption::factory()->for($group, 'modifierGroup')->available()->create(['name' => 'Large', 'price_delta_cents' => 200]);
+    $pizza->modifierGroups()->attach($group);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create([
@@ -214,7 +224,7 @@ function createPrompt54SentDraftScenario(): array
         ->for($draftOrder, 'draftOrder')
         ->for($zara, 'guest')
         ->create([
-            'menu_item_id' => null,
+            'menu_item_id' => $pizza->id,
             'item_name' => 'Margherita',
             'quantity' => 1,
             'unit_price_cents' => 1050,
@@ -222,6 +232,8 @@ function createPrompt54SentDraftScenario(): array
             'total_price_cents' => 1250,
             'selected_modifiers' => [
                 [
+                    'group_id' => $group->id,
+                    'option_id' => $option->id,
                     'group_name' => 'Pizza size',
                     'option_name' => 'Large',
                     'price_delta_cents' => 200,
@@ -234,7 +246,6 @@ function createPrompt54SentDraftScenario(): array
         ->for($draftOrder, 'draftOrder')
         ->for($ana, 'guest')
         ->create([
-            'menu_item_id' => null,
             'item_name' => 'Water',
             'quantity' => 1,
             'unit_price_cents' => 1000,

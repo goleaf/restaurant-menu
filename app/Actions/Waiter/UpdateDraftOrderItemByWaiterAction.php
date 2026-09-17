@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\DraftOrders\EnsureDraftMenuItemAvailableAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
@@ -13,12 +14,14 @@ use App\Models\DraftOrderItem;
 use App\Models\User;
 use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class UpdateDraftOrderItemByWaiterAction
 {
     public function __construct(
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
@@ -43,7 +46,14 @@ class UpdateDraftOrderItemByWaiterAction
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
 
             $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
-            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
+            $preservesSelection = $quantity <= $draftOrderItem->quantity
+                && $this->calculateLinePrice->keepsSelection($draftOrderItem, $selectedModifierOptions, $menuItemVariantId);
+            if (! $preservesSelection) {
+                $this->ensureMenuItemAvailable->selection($draftOrderItem, (int) $draftOrder->tableSession->branch_id,
+                    $selectedModifierOptions, $menuItemVariantId, CarbonImmutable::now(), 'draft_edit');
+            }
+            $linePrice = $preservesSelection ? $this->calculateLinePrice->preservingSelection($draftOrderItem, $quantity)
+                : $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
             $normalizedComment = $this->normalizeComment($comment);
 
             $previousStatus = $draftOrder->status;
@@ -105,7 +115,7 @@ class UpdateDraftOrderItemByWaiterAction
             );
 
             return $draftOrderItem->refresh();
-        });
+        }, attempts: 3);
     }
 
     private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): DraftOrderItem
@@ -143,7 +153,8 @@ class UpdateDraftOrderItemByWaiterAction
                             ])
                             ->with(['branch:id,organization_id']),
                     ]),
-                'menuItem' => fn ($query) => $query->select(['id']),
+                'menuItem' => fn ($query) => $query->select(['id', 'menu_id', 'category_id', 'name', 'is_available', 'hidden_until', 'deleted_at'])
+                    ->with(EnsureDraftMenuItemAvailableAction::relations()),
             ])
             ->whereKey($draftOrderItem->id)
             ->lockForUpdate()

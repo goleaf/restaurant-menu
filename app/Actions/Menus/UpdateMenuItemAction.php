@@ -54,7 +54,7 @@ final class UpdateMenuItemAction
                 ->where('menu_id', $menu->id)
                 ->whereKey($category->getKey())->firstOrFail();
             $item = MenuItem::query()
-                ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])
+                ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order'])
                 ->with('translations')
                 ->whereKey($item->id)
                 ->where('menu_id', $item->getRawOriginal('menu_id'))

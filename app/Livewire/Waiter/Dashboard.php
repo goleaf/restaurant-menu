@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter;
 
-use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\MarkWaiterCallHandledAction;
@@ -260,29 +259,6 @@ class Dashboard extends Component
         $this->refreshDashboard();
     }
 
-    public function disableTemporaryClosure(
-        mixed $branchId,
-        UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
-        ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
-    ): void {
-        $user = $this->currentUser();
-        $branchId = $this->positiveIdentifier($branchId);
-        abort_unless($branchId === $this->selectedBranchId, 403);
-        $branchIds = $resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ManageSettings);
-
-        if (! $branchIds->contains($branchId)) {
-            abort(403);
-        }
-
-        $branch = $this->waiterQueries->branch($branchId);
-
-        $updateBranchTemporaryClosure->handle($branch, false);
-        $this->tableActionMessage = __('ui.livewire.waiter.dashboard.restoran_snova_otkryt_dlia_zakazov');
-
-        $this->refreshDashboard();
-    }
-
     public function render(): View
     {
         $this->validateSelections();
@@ -298,7 +274,10 @@ class Dashboard extends Component
 
         $attentionLabels = ['all' => __('operations.attention.all'), 'pending' => __('operations.attention.pending'), 'ready' => __('operations.attention.ready'), 'calls' => __('operations.attention.calls'), 'bills' => __('operations.attention.bills')];
 
+        $availabilityBranch = $this->waiterQueries->branch($this->selectedBranchId);
+
         return view('livewire.waiter.dashboard', [
+            'availabilityUrl' => route('organizations.brands.branches.availability.index', [$availabilityBranch->organization_id, $availabilityBranch->brand_id, $availabilityBranch->id]),
             'branchOverviewUrl' => route('restaurant.dashboard', ['branch' => $this->selectedBranchId]),
             'attentionOptions' => array_map(fn (string $type): array => ['value' => $type, 'label' => $attentionLabels[$type]], WaiterTableQueryService::ATTENTION_TYPES),
             'attentionReason' => $this->attention !== 'all' ? __('operations.attention.reason', ['type' => $attentionLabels[$this->attention]]) : null,

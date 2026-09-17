@@ -437,3 +437,29 @@ test('completed operations can navigate during response effects while another pe
     second.finish(); assert.equal(instance.pending, 0);
     instance.destroy();
 });
+
+
+test('a server redirect is released after state sync before effects while unrelated requests remain guarded', t => {
+    const app = browser(t), instance = app.component(workspaceNavigation);
+    instance.init();
+    const unrelated = app.message({ el: new Element() }, [{ name: 'saveItem' }]);
+    const transition = app.message({ el: new Element() }, [{ name: 'selectSection' }]);
+    unrelated.send(); transition.send();
+    assert.equal(instance.pending, 2);
+    transition.sync();
+    assert.equal(instance.pending, 1);
+    const premature = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(premature);
+    assert.equal(premature.prevented, true);
+    transition.effect(); transition.finish();
+    assert.equal(instance.pending, 1);
+    unrelated.sync();
+    assert.equal(instance.pending, 0);
+    const redirect = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(redirect);
+    assert.equal(redirect.prevented, false);
+    unrelated.effect(); unrelated.finish();
+    assert.equal(instance.pending, 0);
+    assert.equal(app.state.navigation, undefined);
+    instance.destroy();
+    assert.equal(app.state.interceptors.size, 0);
+    assert.equal(app.document.listenerCount(), 0);
+});

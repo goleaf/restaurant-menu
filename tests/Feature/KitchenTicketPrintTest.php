@@ -23,6 +23,8 @@ use App\Models\KitchenTicket;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -187,6 +189,12 @@ function createPrompt127TicketScenario(): array
             'name' => 'Prompt 127 Coffee',
             'price_cents' => 300,
         ]);
+    $pizzaGroup = ModifierGroup::factory()->for($branch)->create(['name' => 'Size']);
+    $pizzaOption = ModifierOption::factory()->for($pizzaGroup, 'modifierGroup')->available()->create(['name' => 'Large', 'price_delta_cents' => 200]);
+    $pizza->modifierGroups()->attach($pizzaGroup);
+    $coffeeGroup = ModifierGroup::factory()->for($branch)->create(['name' => 'Milk']);
+    $coffeeOption = ModifierOption::factory()->for($coffeeGroup, 'modifierGroup')->available()->create(['name' => 'Oat', 'price_delta_cents' => 50]);
+    $coffee->modifierGroups()->attach($coffeeGroup);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create([
@@ -207,6 +215,8 @@ function createPrompt127TicketScenario(): array
             'total_price_cents' => 1300,
             'selected_modifiers' => [
                 [
+                    'group_id' => $pizzaGroup->id,
+                    'option_id' => $pizzaOption->id,
                     'group_name' => 'Size',
                     'option_name' => 'Large',
                     'price_delta_cents' => 200,
@@ -227,6 +237,8 @@ function createPrompt127TicketScenario(): array
             'total_price_cents' => 700,
             'selected_modifiers' => [
                 [
+                    'group_id' => $coffeeGroup->id,
+                    'option_id' => $coffeeOption->id,
                     'group_name' => 'Milk',
                     'option_name' => 'Oat',
                     'price_delta_cents' => 50,

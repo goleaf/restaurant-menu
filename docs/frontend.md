@@ -192,3 +192,9 @@ Staff dashboards present one ordered operational queue. The waiter dashboard val
 Guest table screens keep venue/table context above the journey, expose category anchors in an internally scrollable labelled navigation, use flat menu-item rows and keep totals/actions in the existing safe-area-aware mobile action dock. Offline state is explicit and content remains browseable where the domain allows it.
 
 Restaurant onboarding keeps the numbered desktop navigation and exposes native progress plus a collapsible created-resource summary on narrow screens. Every mutation has an action-specific busy announcement and disabled loading/offline control, while the server remains responsible for authorization and idempotency. Validation focuses the first invalid field, falling back to the error summary, and successful step changes focus the new heading. Base grid tracks use shrinkable columns and inherited emergency word wrapping so native input sizing and long EN/LT/RU or tenant-provided names cannot create horizontal overflow at 200% text size.
+
+## Prompt 7: availability center
+
+Availability is a class-based Livewire workspace with Now, Schedules and Stop-list addressable sections. Flux Pro date/time/search controls use the installed local adaptation; Forms validate actual local times server-side. Weekly drafts support selected-day copy with before/after preview. The stop-list page holds20 dishes and a single selected editor; current/future evaluation labels the source of its result.
+
+The existing menu-workspace dirty guard supplies navigation/offline cancellation. One local timer refreshes temporal status, never one poller per dish; listeners/timers are disposed on navigation. Draft editors are not reloaded by background status refresh. `resources/scss/availability.scss` is loaded through the layout page-scripts stack; no Tailwind entrypoint is processed by Sass.

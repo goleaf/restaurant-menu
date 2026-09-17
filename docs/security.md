@@ -170,3 +170,9 @@ Security regression coverage is mapped under the `sec-*` requirements in [`compl
 ## Explicit local demo password display — 2026-09-16
 
 The user-authorized local `/login` directory is an exception to the password-free demo presentation below. Both application environment checks must equal `local`, demo mode must be enabled and the request host must be allowlisted. `DEMO_LOGIN_PASSWORD` is an optional local operator value in the ignored `.env`; there is no default credential. It is displayed only for an exact catalogued demo email with its expected account or company role whose current hash verifies. Ordinary accounts, changed demo passwords, production, staging and foreign hosts never disclose it. Hashes, tokens and other authentication material are not projected. Responses are private/no-store/noindex with no-referrer. The existing `/demo-login` route keeps its original password-free and CSRF/throttle/session contract.
+
+## Prompt 7: availability safety
+
+The center grants no new role or seed permission. Viewing a section and applying its operation use existing resource abilities independently; public Livewire IDs, target lists, periods and form values remain untrusted. Fresh actor and original organization/brand/branch are checked before every write and completed replay. Scope/version/timezone/dependency conflicts preserve the draft. The existing signed actor memo rejects another account before hydration; no guard impersonation is used for previews.
+
+Legacy restaurant pause reasons are explicitly labelled public. Stop-list audit reasons are internal and never copied into guest payloads. Public availability messages conceal subscription, staff and infrastructure details. Accepted order/payment history is immutable under availability changes. Atomic bulk writes honor model vetoes and audit failures, and old receipts cannot overwrite newer restrictions.

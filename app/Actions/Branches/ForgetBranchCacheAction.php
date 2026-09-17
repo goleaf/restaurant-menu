@@ -4,6 +4,7 @@ namespace App\Actions\Branches;
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Models\DatabaseCacheEntry;
+use App\Support\BranchReportCacheVersion;
 use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Events\ForgettingKey;
 use Illuminate\Cache\Events\KeyForgetFailed;
@@ -42,6 +43,9 @@ class ForgetBranchCacheAction
         }
 
         $cache = $this->cache();
+        if ($cache instanceof Repository) {
+            BranchReportCacheVersion::invalidate($cache, 'guest-menu', $branchId);
+        }
         $cacheKeys = self::cacheKeysForBranch($branchId);
 
         if ($this->forgetDatabaseKeys($cache, $cacheKeys)) {

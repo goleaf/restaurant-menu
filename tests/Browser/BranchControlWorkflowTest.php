@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\DemoRestaurantSeeder;
 use Pest\Browser\Api\PendingAwaitablePage;
+use Pest\Browser\Playwright\Client;
 
 test('branch control preserves URL history local periods and ordering drafts across responsive themes', function (): void {
     $this->withVite();
@@ -51,25 +52,50 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page->wait(1)->assertQueryStringHas('period', 'yesterday');
 
     expect($page->script("document.querySelector('input[name=\"dateFromDraft\"]').getClientRects().length"))->toBe(0);
-    branchControlClick($page, '[data-ordering-controls] summary');
-    $originalReason = $page->script('document.querySelector(\'input[name="closure.temporaryClosedReason"]\').value');
-    $page->fill('input[name="closure.temporaryClosedReason"]', 'Browser unsaved reason');
+    $availabilityPath = route('organizations.brands.branches.availability.index', ['organization' => $organization, 'brand' => $branch->brand_id, 'branch' => $branch], false);
+    $otherAvailabilityPath = route('organizations.brands.branches.availability.index', ['organization' => $organization, 'brand' => $otherBranch->brand_id, 'branch' => $otherBranch], false);
+    $originalReason = $branch->temporary_closed_reason;
+    branchControlClick($page, '[data-dashboard-ordering] a[href*="/availability"]');
+    $page->assertPathIs($availabilityPath)->assertPresent('[data-availability-panel="now"]');
+    $page->assertScript("getComputedStyle(document.querySelector('.rm-availability')).display", 'grid');
+    $page->assertScript("parseFloat(getComputedStyle(document.querySelector('.rm-availability')).rowGap) > 0", true);
+    branchControlClick($page, 'button[wire\\:click="openPause"]');
+    $page->fill('textarea[name="pause.reason"]', 'Browser unsaved reason');
     branchControlChooseBranch($page, $otherBranch);
-    $page->assertVisible('dialog[data-modal="dashboard-unsaved"]')
-        ->assertSee(__('dashboard.control.unsaved_ordering'))
-        ->assertQueryStringHas('branch', (string) $branch->id);
-    branchControlClick($page, 'dialog[data-modal="dashboard-unsaved"] button[x-on\\:click="cancelNavigation()"]');
-    $page->assertMissing('dialog[data-modal="dashboard-unsaved"][open]')
-        ->assertValue('input[name="closure.temporaryClosedReason"]', 'Browser unsaved reason');
+    $page->assertVisible('dialog[data-modal="availability-unsaved"]')
+        ->assertSee(__('availability.unsaved_description'))->assertPathIs($availabilityPath);
+    branchControlClick($page, 'dialog[data-modal="availability-unsaved"] button[x-on\\:click="cancelNavigation"]');
+    $page->assertMissing('dialog[data-modal="availability-unsaved"][open]')
+        ->assertValue('textarea[name="pause.reason"]', 'Browser unsaved reason');
     $page->keys('body[class]', 'Escape')->assertMissing('dialog[data-modal="workspace-restaurant"][open]');
-    branchControlClick($page, 'button[wire\\:click="discardOrdering"]');
-    $page->assertValue('input[name="closure.temporaryClosedReason"]', $originalReason);
+    branchControlClick($page, 'button[x-on\\:click="cancelDraft"]');
+    $page->assertMissing('[data-availability-editor]');
+    branchControlClick($page, 'button[wire\\:click="openPause"]');
+    $page->assertValue('textarea[name="pause.reason"]', $originalReason ?? '');
+    $page->resize(320, 844);
+    $page->script("document.documentElement.style.zoom = '2'; document.querySelector('textarea[name=\"pause.reason\"]').scrollIntoView({ block: 'center' })");
+    $page->assertScript("getComputedStyle(document.querySelector('[data-flux-header]')).position", 'static');
+    $page->assertScript("document.querySelector('[data-flux-header]').getBoundingClientRect().bottom <= 0", true);
+    $page->assertScript("(() => { const rect = document.querySelector('textarea[name=\"pause.reason\"]').getBoundingClientRect(); return rect.top >= 0 && rect.bottom <= window.innerHeight; })()", true);
+    $page->assertScript("(() => { const rect = document.querySelector('[data-availability-editor]').getBoundingClientRect(); return rect.left >= 0 && rect.right <= window.innerWidth; })()", true);
+    $page->assertScript("[...document.querySelectorAll('[data-availability-editor] button')].filter(button => button.getClientRects().length).every(button => button.getBoundingClientRect().right <= window.innerWidth && button.scrollWidth <= button.clientWidth)", true);
+    $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+    $page->screenshot(false, 'availability-pause-320-zoom2');
+    $page->script("document.documentElement.style.zoom = ''");
+    $page->resize(1440, 1000);
+    $page->fill('textarea[name="pause.reason"]', 'Discard this second draft');
 
     branchControlChooseBranch($page, $otherBranch);
-    $page->assertQueryStringHas('branch', (string) $otherBranch->id)->assertSee($otherBranch->name);
+    $page->assertVisible('dialog[data-modal="availability-unsaved"]');
+    branchControlClick($page, 'dialog[data-modal="availability-unsaved"] button[x-on\\:click="discardAndNavigate"]');
+    $page->assertPathIs($otherAvailabilityPath)->assertSee($otherBranch->name);
+    expect($branch->fresh()->temporary_closed_reason)->toBe($originalReason)->and($branch->fresh()->pause_version)->toBe(0);
     branchControlChooseBranch($page, $branch);
-    $page->assertQueryStringHas('branch', (string) $branch->id);
+    $page->assertPathIs($availabilityPath);
     $page->assertMissing('dialog[data-modal="workspace-restaurant"][open]');
+
+    $page->navigate(route('restaurant.dashboard', ['branch' => $branch->id], false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
 
     branchControlClick($page, '.workspace-restaurant__trigger');
     branchControlClick($page, 'dialog[data-modal="workspace-restaurant"] button[wire\\:click="chooseAggregate"]');
@@ -98,7 +124,6 @@ test('branch control preserves URL history local periods and ordering drafts acr
         ->assertMissing('dialog[data-modal="workspace-restaurant"][open]');
     $page->assertScript("document.activeElement.matches('.workspace-restaurant__trigger')", true);
 
-    $page->script("document.querySelector('[data-ordering-controls]').open = false");
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         $page->resize($width, $height);
         expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
@@ -136,7 +161,8 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     branchControlClick($page, '.workspace-restaurant__trigger');
     branchControlSelectBranch($page, $otherBranch);
-    $page->script("window.dispatchEvent(new Event('offline'))");
+    $page->assertScript('document.querySelector(\'dialog[data-modal="workspace-restaurant"] [role="status"]\').getClientRects().length', 0);
+    branchControlOffline($page, true);
     $page->assertDisabled('button[wire\\:click="refreshOperations"]');
     $page->assertDisabled('dialog[data-modal="workspace-restaurant"] input')
         ->assertDisabled('dialog[data-modal="workspace-restaurant"] button[type="submit"]')
@@ -145,7 +171,7 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page->assertQueryStringHas('branch', (string) $branch->id);
     $page->keys('dialog[data-modal="workspace-restaurant"]', 'Escape')
         ->assertMissing('dialog[data-modal="workspace-restaurant"][open]');
-    $page->script("window.dispatchEvent(new Event('online'))");
+    branchControlOffline($page, false);
     $page->assertEnabled('button[wire\\:click="refreshOperations"]');
     branchControlClick($page, '.workspace-restaurant__trigger');
     $page->assertEnabled('dialog[data-modal="workspace-restaurant"] input')
@@ -181,4 +207,13 @@ function branchControlClick(PendingAwaitablePage $page, string $selector): void
     $encoded = json_encode($selector, JSON_THROW_ON_ERROR);
     $page->script("document.querySelector({$encoded}).click()");
     $page->wait(0.3);
+}
+
+function branchControlOffline(PendingAwaitablePage $page, bool $offline): void
+{
+    $guid = (new ReflectionProperty($page->page()->context(), 'guid'))->getValue($page->page()->context());
+    expect($guid)->toBeString();
+    foreach (Client::instance()->execute($guid, 'setOffline', ['offline' => $offline]) as $message) {
+        // Consume the installed Playwright protocol response before observing the browser.
+    }
 }

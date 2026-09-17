@@ -4,6 +4,14 @@
 
 # Current version baseline
 
+## Prompt 7 runtime observation — 2026-09-17
+
+Availability application tests use the actual isolated PHP **8.5.10** CLI and HTTP responder. The independently probed configured Herd FastCGI process reports **8.5.8 / fpm-fcgi**; the runtime-only probe was removed and did not bootstrap the application or open its database. No site PHP selection changed.
+
+Supported-runtime acceptance passes candidate 3,884 backend / 51 browser cases and 93.8% PHP coverage; shared integration passes 4,032 backend / 65 browser cases. Final JavaScript coverage passes candidate 211/211 and shared 214/214 cases at 100% lines.
+
+The available experimental binary reports **8.6.0beta2**, not Beta 3. PHP.net lists Beta 3 (10 September) and RC1 planned for 24 September; release availability is distinct from an installed runtime. Actual Composer platform validation still rejects Nette Schema 1.3.6's PHP 8.1–8.5 requirement. The final shared snapshot passed 1,229 first-party syntax checks on that actual Beta 2 binary; no PHP 8.6 application/browser/coverage acceptance or production promotion is claimed. Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0, local Pro 0.1.1 with unknown upstream version and the existing lock files remain unchanged.
+
 ## Team prompt 8 runtime verification — 2026-09-17
 
 The installed dependency graph is unchanged: Laravel13.31.0, Livewire4.4.1, Flux Free2.17.0 and local Pro0.1.1 (unknown upstream release), Vite8.3.0. Stable test selection is explicit Homebrew PHP8.5.10; focused tests also run on Herd CLI8.5.8. Node24.21.0 and standalone npm12.0.2 satisfy the existing engines.

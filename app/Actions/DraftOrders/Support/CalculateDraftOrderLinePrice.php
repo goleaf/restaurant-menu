@@ -18,7 +18,7 @@ class CalculateDraftOrderLinePrice
     ) {}
 
     /**
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      * @return array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}
      */
     public function forMenuItem(
@@ -46,7 +46,7 @@ class CalculateDraftOrderLinePrice
     }
 
     /**
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      * @return array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}
      */
     public function forDraftOrderItem(
@@ -96,6 +96,43 @@ class CalculateDraftOrderLinePrice
             quantity: $quantity,
             selectedModifiers: $selectedModifiers,
         );
+    }
+
+    /** @param array<int|string,mixed> $selectedModifierOptions */
+    public function keepsSelection(DraftOrderItem $item, array $selectedModifierOptions, ?int $variantId): bool
+    {
+        $existing = [];
+        foreach ($this->existingModifierSnapshots($item->selected_modifiers) as $option) {
+            $existing[(string) $option['group_id']][] = $option['option_id'];
+        }
+        $normalize = static function (array $selection): array {
+            $result = [];
+            foreach ($selection as $groupId => $optionIds) {
+                if (! is_array($optionIds)) {
+                    return ['invalid'];
+                }
+                $ids = array_values(array_unique(array_map('intval', $optionIds)));
+                sort($ids);
+                if ($ids !== []) {
+                    $result[(int) $groupId] = $ids;
+                }
+            }
+            ksort($result);
+
+            return $result;
+        };
+
+        return ($variantId ?? $item->menu_item_variant_id) === $item->menu_item_variant_id
+            && $normalize($existing) === $normalize($selectedModifierOptions);
+    }
+
+    /** @return array{menu_item_variant_id:int|null,variant_name:string|null,variant_type:string|null,unit_price_cents:int,modifier_total_cents:int,total_price_cents:int,selected_modifiers:list<array{group_id:int,group_name:string,option_id:int,option_name:string,price_delta_cents:int}>} */
+    public function preservingSelection(DraftOrderItem $item, int $quantity): array
+    {
+        $modifiers = $this->existingModifierSnapshots($item->selected_modifiers);
+
+        return $this->payload($item->menu_item_variant_id, $item->variant_name, $item->variant_type?->value,
+            $item->unit_price_cents, $this->modifierSnapshots->modifierTotalCents($modifiers), $quantity, $modifiers);
     }
 
     /**

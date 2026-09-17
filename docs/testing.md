@@ -4,6 +4,18 @@
 
 # Testing and quality gates
 
+## Prompt 7 acceptance matrix — 2026-09-17
+
+The availability suites exercise opening/menu windows, exact inclusive starts and exclusive ends, overnight/week boundaries, date exceptions including previous-night tails, DST gaps/folds, unrestricted versus explicitly closed schedules and nonintersecting menus. Mutation tests cover per-source versions, timezone/dependency conflicts, UUID replay, audit rollback, revoked authority, independently preserved stop/hide flags and atomic selected-page batches. Independent SQLite processes test pause/order admission races.
+
+Guest/order/cache suites cover stale pages crossing time boundaries, generation races, required configuration feasibility, malformed historical draft selections, current confirmation checks, preserved submitted drafts and accepted service, safe decreases/removals and private versus public reasons. Settings regressions verify that profile saving cannot overwrite pause/hours. Real EN/LT/RU Action/Form validation and exact message/placeholder audits are exercised.
+
+AvailabilityWorkflowTest uses separate administrator/guest browser contexts and real sessions for pause → matching guest reason → new-order denial → logical expiry → schedule evaluation without cron. It also covers manual stop versus hiding, preview and offline discard. The visual matrix includes 320/390/768/1024/1440 px, EN/LT/RU, light/dark and CSS zoom 200%, with saved and inspected screenshots, keyboard focus, overflow and status text bounds. CSS zoom is not native browser zoom; an actual virtual mobile keyboard was not separately tested. BranchControlWorkflowTest preserves the shared context/history/dirty guard while entering the canonical availability page.
+
+The final candidate passes 3,884 backend tests / 75,041 assertions, 51 browser cases / 4,028 assertions and canonical PHP coverage 93.8%. Shared integration passes 4,032 backend / 76,399 and 65 browser / 5,088. JavaScript passes candidate 211/211 and shared 214/214 cases with 100% line coverage. Every discovered case executes without skips. The catalogue redirect regression tests Livewire onSync-before-effects while preserving other pending requests.
+
+Candidate HEAD-plus-attributable changes and shared-tree integration are verified separately on frozen sources. Final discovered/executed backend/browser inventories and canonical coverage are recorded in PROGRESS.md; earlier failed diagnostics are not acceptance. No skip/only, issue suppression or coverage-threshold reduction is introduced.
+
 ## Prompt 8 acceptance inventory — 2026-09-17
 
 New focused suites cover the typed employee card, section/return URLs, draft conflicts, narrow capabilities, actual branch access, first assignment, explicit return to inheritance, suspended layers, role effects, organization-scoped permission exceptions, EN/LT/RU Action/Form failures, safe typed audit and independent-connection races. Fixtures use existing factories in SQLite memory or owned temporary databases. TeamEmployeeCardBrowserTest and the migrated TeamAdministrationWorkflowTest use separate administrator/recipient browser contexts and actual server sessions; no guard impersonation or working-account change is used.

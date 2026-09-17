@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\AuditLogAction;
 use App\Enums\SystemRole;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -68,13 +70,19 @@ test('the restaurant address heading navigation and edited resource stay togethe
         ->assertScript('document.activeElement.matches(".workspace-restaurant__trigger")')
         ->resize(1440, 1000);
     $page->click('[data-navigation-key="overview"]');
-    $page->click('[data-ordering-controls] summary')->fill('input[name="closure.temporaryClosedReason"]', 'Keep this draft');
-    $page->click('[data-navigation-key="menu"]')->assertVisible('dialog[data-modal="dashboard-unsaved"]');
-    $page->click('dialog[data-modal="dashboard-unsaved"] button[x-on\\:click="cancelNavigation()"]')
-        ->assertValue('input[name="closure.temporaryClosedReason"]', 'Keep this draft')
-        ->assertQueryStringHas('branch', (string) $second->id);
-    $page->click('[data-navigation-key="menu"]')->click('dialog[data-modal="dashboard-unsaved"] button[x-on\\:click="discardAndNavigate()"]')
+    $availabilityPath = route('organizations.brands.branches.availability.index', [$second->organization_id, $second->brand_id, $second->id], false);
+    $page->click('[data-dashboard-ordering] a[href*="/availability"]')->assertPathIs($availabilityPath)
+        ->assertAttribute('[data-navigation-key="availability"]', 'aria-current', 'page')
+        ->click('button[wire\\:click="openPause"]')->fill('textarea[name="pause.reason"]', 'Keep this draft');
+    $page->click('[data-navigation-key="menu"]')->assertVisible('dialog[data-modal="availability-unsaved"]');
+    $page->click('dialog[data-modal="availability-unsaved"] button[x-on\\:click="cancelNavigation"]')
+        ->assertValue('textarea[name="pause.reason"]', 'Keep this draft')
+        ->assertPathIs($availabilityPath);
+    $page->click('[data-navigation-key="menu"]')->click('dialog[data-modal="availability-unsaved"] button[x-on\\:click="discardAndNavigate"]')
         ->assertPathIs(route('organizations.brands.branches.menu.index', [$second->organization_id, $second->brand_id, $second->id], false));
+    expect($second->fresh()->is_temporarily_closed)->toBeFalse()
+        ->and($second->fresh()->temporary_closed_reason)->toBeNull()
+        ->and($second->fresh()->pause_version)->toBe(0);
     foreach ([320, 390, 768, 1024, 1440] as $width) {
         $page->resize($width, 900);
         $page->script('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
@@ -134,19 +142,20 @@ test('a shared restaurant preference cannot retarget an ordering draft open in a
         ->assertScript('window.workspaceRemembered', 1);
 
     $tabBPage = $context->newPage();
-    $tabBUrl = ComputeUrl::from($originalPath);
+    $availabilityPath = route('organizations.brands.branches.availability.index', [$original->organization_id, $original->brand_id, $original->id], false);
+    $tabBUrl = ComputeUrl::from($availabilityPath);
     $tabB = new AwaitableWebpage($tabBPage->goto($tabBUrl), $tabBUrl);
 
     try {
         expect($tabBPage->context())->toBe($context)
             ->and($tabBPage)->not->toBe($tabA->page());
-        $tabB->assertQueryStringHas('branch', (string) $original->id)
+        $tabB->assertPathIs($availabilityPath)
             ->assertSee($original->name)
             ->assertScript('window.workspaceRemembered', 1)
-            ->click('[data-ordering-controls] summary')
-            ->click('ui-checkbox[name="closure.temporarilyClosed"]')
-            ->assertAttribute('ui-checkbox[name="closure.temporarilyClosed"]', 'aria-checked', 'true')
-            ->fill('input[name="closure.temporaryClosedReason"]', 'Only restaurant B should pause');
+            ->click('button[wire\\:click="openPause"]')
+            ->select('select[name="pause.mode"]', 'indefinite')
+            ->assertValue('select[name="pause.mode"]', 'indefinite')
+            ->fill('textarea[name="pause.reason"]', 'Only restaurant B should pause');
 
         $tabA->click('.workspace-restaurant__trigger')
             ->assertVisible('dialog[data-modal="workspace-restaurant"]')
@@ -164,20 +173,35 @@ test('a shared restaurant preference cannot retarget an ordering draft open in a
             ->assertPathIs(route('restaurant.dashboard', absolute: false))
             ->assertQueryStringHas('branch', (string) $different->id);
 
-        $tabB->assertQueryStringHas('branch', (string) $original->id)
+        $tabB->assertPathIs($availabilityPath)
             ->assertSee($original->name)
-            ->assertValue('input[name="closure.temporaryClosedReason"]', 'Only restaurant B should pause')
-            ->click('[data-dashboard-ordering-form] button[type="submit"]')
-            ->assertSee(__('dashboard.control.ordering_saved'))
-            ->assertQueryStringHas('branch', (string) $original->id)
-            ->assertAttribute('ui-checkbox[name="closure.temporarilyClosed"]', 'aria-checked', 'true');
+            ->assertValue('textarea[name="pause.reason"]', 'Only restaurant B should pause')
+            ->click('form[wire\\:submit="previewPause"] button[type="submit"]')
+            ->assertVisible('[data-availability-preview]')
+            ->assertPathIs($availabilityPath);
+        expect($original->fresh()->is_temporarily_closed)->toBeFalse()
+            ->and($different->fresh()->is_temporarily_closed)->toBeFalse();
+        $tabB->click('button[wire\\:click="applyPause"]')
+            ->assertSee(__('availability.applied'))
+            ->assertPathIs($availabilityPath)
+            ->assertMissing('[data-availability-editor]');
 
         expect($original->refresh()->is_temporarily_closed)->toBeTrue()
             ->and($original->temporary_closed_reason)->toBe('Only restaurant B should pause')
             ->and($original->temporary_closed_until)->toBeNull()
+            ->and($original->pause_version)->toBe(1)
             ->and($different->refresh()->is_temporarily_closed)->toBeFalse()
             ->and($different->temporary_closed_reason)->toBeNull()
-            ->and($different->temporary_closed_until)->toBeNull();
+            ->and($different->temporary_closed_until)->toBeNull()
+            ->and($different->pause_version)->toBe(0);
+        $audit = AuditLog::query()->where('action', AuditLogAction::BranchAvailabilityChanged)->sole();
+        expect($audit->entity_type)->toBe('branch')
+            ->and($audit->entity_id)->toBe($original->id)
+            ->and($audit->branch_id)->toBe($original->id)
+            ->and($audit->organization_id)->toBe($original->organization_id)
+            ->and($audit->user_id)->toBe($user->id)
+            ->and($audit->old_values['is_temporarily_closed'])->toBeFalse()
+            ->and($audit->new_values['is_temporarily_closed'])->toBeTrue();
         $tabA->assertQueryStringHas('branch', (string) $different->id)->assertNoJavaScriptErrors()->assertNoConsoleLogs();
         $tabB->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     } finally {

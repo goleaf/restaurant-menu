@@ -9,6 +9,7 @@ use App\Enums\TableSessionStatus;
 use App\Mcp\McpAccess;
 use App\Mcp\McpContext;
 use App\Mcp\Tools\OpenTableTool;
+use App\Mcp\Tools\SetMenuAvailabilityTool;
 use App\Mcp\Tools\SetOrderingPauseTool;
 use App\Models\Branch;
 use App\Models\DraftOrder;
@@ -51,7 +52,7 @@ test('every MCP mutation requires explicit confirmation before domain work', fun
 
 test('ordering pause reuses the domain action and replay preserves a later change', function (): void {
     $tool = app(SetOrderingPauseTool::class);
-    $input = [...$this->arguments, 'closed' => true, 'reason' => 'Kitchen break'];
+    $input = [...$this->arguments, 'closed' => true, 'reason' => 'Kitchen break', 'expected_version' => 0, 'timezone' => $this->branch->timezone, 'request_id' => $this->arguments['idempotency_key']];
     $first = $tool->handle(new Request($input));
     expect($first)->toBeInstanceOf(ResponseFactory::class)
         ->and($first->getStructuredContent()['paused'])->toBeTrue();
@@ -124,7 +125,7 @@ test('MCP executes a full approved service and offline settlement workflow witho
 test('MCP menu availability draft rejection and waiter acknowledgement use real domain actions', function (): void {
     $menu = Menu::factory()->for($this->branch)->create();
     $item = MenuItem::factory()->for($menu)->create();
-    expect(mcpMutationResult('SetMenuAvailability', ['menu_item_id' => $item->id, 'is_available' => false])['is_available'])->toBeFalse()
+    expect(mcpMutationResult('SetMenuAvailability', ['menu_item_id' => $item->id, 'is_available' => false, 'expected_version' => 0, 'timezone' => $this->branch->timezone, 'request_id' => (string) Str::uuid()])['is_available'])->toBeFalse()
         ->and($item->fresh()->is_available)->toBeFalse();
     $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->forBranch($this->branch)->create())->active()->create();
     $draft = DraftOrder::factory()->forTableSession($session)->sentToWaiter()->withItems()->create();
@@ -137,6 +138,9 @@ test('MCP menu availability draft rejection and waiter acknowledgement use real 
 
 test('MCP mutations cannot select another accessible branch through resource identifiers', function (string $tool, string $model, string $key, array $extra): void {
     $foreign = $model::factory()->create();
+    if ($tool === 'SetMenuAvailability') {
+        $extra = [...$extra, 'expected_version' => 0, 'timezone' => $this->branch->timezone, 'request_id' => (string) Str::uuid()];
+    }
     $response = app('App\\Mcp\\Tools\\'.$tool.'Tool')->handle(new Request([...$this->arguments, $key => $foreign->id, ...$extra]));
     expect($response)->toBeInstanceOf(Response::class)->and($response->isError())->toBeTrue();
     $this->assertDatabaseCount('mcp_mutation_receipts', 0);
@@ -150,3 +154,18 @@ test('MCP mutations cannot select another accessible branch through resource ide
     ['RecordPayment', TableSession::class, 'table_session_id', ['method' => 'cash']],
     ['CloseTable', TableSession::class, 'table_session_id', []],
 ]);
+
+test('MCP item availability requires the observed version and preserves independent hiding', function (): void {
+    $menu = Menu::factory()->for($this->branch)->create();
+    $item = MenuItem::factory()->for($menu)->create(['availability_version' => 4, 'hidden_until' => '2027-01-01 12:00:00']);
+    $arguments = ['menu_item_id' => $item->id, 'is_available' => false, 'expected_version' => 4,
+        'timezone' => $this->branch->timezone, 'request_id' => (string) Str::uuid()];
+    $saved = mcpMutationResult('SetMenuAvailability', $arguments);
+    expect($saved['availability_version'])->toBe(5)->and($item->fresh()->is_available)->toBeFalse()
+        ->and($item->fresh()->getRawOriginal('hidden_until'))->toBe('2027-01-01 12:00:00');
+    $tool = app(SetMenuAvailabilityTool::class);
+    $denied = $tool->handle(new Request([...$this->arguments, ...$arguments, 'is_available' => true, 'request_id' => (string) Str::uuid()]));
+    expect($denied)->toBeInstanceOf(Response::class)->and($denied->isError())->toBeTrue()
+        ->and($item->fresh()->availability_version)->toBe(5)->and($item->fresh()->is_available)->toBeFalse();
+    $this->assertDatabaseCount('availability_commands', 1);
+});

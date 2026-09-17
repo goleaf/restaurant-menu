@@ -6,6 +6,7 @@ use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Invitation;
@@ -60,14 +61,14 @@ test('a signed ordinary workspace snapshot rejects a different authorized actor 
     $category = MenuCategory::factory()->for($menu)->create();
     $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['is_available' => true]);
     $parameters = [$this->branch->organization_id, $this->branch->brand_id, $this->branch->id];
-    $component = $screen === 'menu.availability' ? 'organizations.brands.branches.menu.availability' : 'organizations.brands.branches.staff';
-    $route = $screen === 'menu.availability' ? 'organizations.brands.branches.menu.index' : 'organizations.brands.branches.staff.index';
+    $component = $screen === 'menu.availability' ? app('livewire.factory')->resolveComponentName(Index::class) : 'organizations.brands.branches.staff';
+    $route = $screen === 'menu.availability' ? 'organizations.brands.branches.availability.index' : 'organizations.brands.branches.staff.index';
     if ($screen === 'menu.availability') {
-        $parameters['section'] = 'availability';
+        $parameters['section'] = 'stoplist';
     }
     $snapshot = workspaceBoundarySnapshot($this->actingAs($this->actor)->get(route($route, $parameters)), $component);
-    $method = $screen === 'menu.availability' ? 'setItemAvailability' : 'openInvitation';
-    $arguments = $screen === 'menu.availability' ? [$item->id, false] : [];
+    $method = $screen === 'menu.availability' ? 'openItem' : 'openInvitation';
+    $arguments = $screen === 'menu.availability' ? [$item->id] : [];
 
     $response = $this->actingAs($secondActor)->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, $method, $arguments), ['X-Livewire' => '']);
     expect([$response->status(), $item->fresh()->is_available])->toBe([409, true]);
@@ -145,8 +146,8 @@ test('a narrow permission account enters its allowed task without overview acces
     $this->get(route('restaurant.dashboard', ['branch' => $this->branch->id]))->assertForbidden();
 })->with([
     [SystemPermission::ManageStaff, 'organizations.brands.branches.staff.index', []],
-    [SystemPermission::ManageSettings, 'organizations.brands.branches.settings.index', []],
-    [SystemPermission::ChangeAvailability, 'organizations.brands.branches.menu.index', ['section' => 'availability']],
+    [SystemPermission::ManageSettings, 'organizations.brands.branches.availability.index', []],
+    [SystemPermission::ChangeAvailability, 'organizations.brands.branches.availability.index', []],
     [SystemPermission::ExportData, 'restaurant.exports.index', []],
     [SystemPermission::ViewAuditLog, 'restaurant.audit-log.index', []],
 ]);
@@ -158,8 +159,8 @@ test('aggregate state and absent mutation target cannot be changed through a sig
     $this->withoutExceptionHandling();
     $value = $property === 'selectedBranchId' ? (string) $this->branch->id : $value;
 
-    expect(fn () => $this->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, 'saveOrdering', updates: [
-        $property => $value, 'closure.temporarilyClosed' => true, 'closure.temporaryClosedReason' => 'Untrusted aggregate write',
+    expect(fn () => $this->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, 'refreshDashboard', updates: [
+        $property => $value,
     ]), ['X-Livewire' => '']))->toThrow(CannotUpdateLockedPropertyException::class);
     expect($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
 })->with([['aggregate', false], ['selectedBranchId', 'selected']]);
@@ -187,12 +188,12 @@ test('a revoked ordering target never falls back to the other accessible restaur
     $other = Branch::factory()->for($this->branch->organization)->for($this->branch->brand)->create();
     $membership = BranchUser::factory()->forBranch($this->branch)->forUser($this->actor)->active()->create();
     BranchUser::factory()->forBranch($other)->forUser($this->actor)->active()->create();
-    $snapshot = workspaceBoundarySnapshot($this->actingAs($this->actor)->get(route('restaurant.dashboard', ['branch' => $this->branch->id])), 'restaurant.dashboard');
+    $snapshot = workspaceBoundarySnapshot($this->actingAs($this->actor)->get(route('organizations.brands.branches.availability.index', [$this->branch->organization_id, $this->branch->brand_id, $this->branch->id])), app('livewire.factory')->resolveComponentName(Index::class));
     $membership->forceFill(['status' => OrganizationUserStatus::Suspended])->saveOrFail();
 
-    $response = $this->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, 'saveOrdering', updates: [
-        'closure.temporarilyClosed' => true,
-        'closure.temporaryClosedReason' => 'Revoked restaurant must remain unchanged',
+    $response = $this->postJson(route('default-livewire.update'), workspaceBoundaryCall($snapshot, 'applyPause', updates: [
+        'pause.mode' => 'indefinite',
+        'pause.reason' => 'Revoked restaurant must remain unchanged',
     ]), ['X-Livewire' => '']);
 
     expect([$this->branch->fresh()->is_temporarily_closed, $other->fresh()->is_temporarily_closed])->toBe([false, false]);

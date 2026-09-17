@@ -20,7 +20,7 @@
         z-index: var(--rm-z-index-skip-link);
         inset-inline-start: tokens.space(3);
         top: tokens.space(3);
-        translate: 0 tokens.space(-20);
+        translate: 0 calc(-100% - #{tokens.space(3)});
         border-radius: var(--rm-radius-control);
         background: var(--rm-accent);
         padding: tokens.space(3) tokens.space(4);

@@ -59,7 +59,7 @@ final class MenuItemForm extends Form
             'itemMenuId' => ['bail', 'required', 'numeric', 'integer', MenuScopeRules::menu($branch)],
             'itemCategoryId' => ['bail', 'required', 'numeric', 'integer', MenuScopeRules::category($this->itemMenuId)],
             'itemKitchenDepartmentId' => ['bail', 'nullable', 'numeric', 'integer', MenuScopeRules::department($branch)],
-            ...MenuItemRules::menuItem(canChangePrices: $canChangePrices, canChangeAvailability: $canChangeAvailability),
+            ...MenuItemRules::menuItem(canChangePrices: $canChangePrices, canChangeAvailability: $canChangeAvailability && $item === null),
             ...MenuTranslationRules::menuTranslations('itemTranslations', 180, 1200),
         ];
         $unique = MenuScopeRules::itemName($this->itemCategoryId, $item);
@@ -77,7 +77,7 @@ final class MenuItemForm extends Form
         if ($canChangePrices) {
             $data['price'] = $values['itemPrice'];
         }
-        if ($canChangeAvailability) {
+        if ($canChangeAvailability && $item === null) {
             $data['is_available'] = (bool) $values['itemIsAvailable'];
             $data['hidden_until'] = self::optionalString($values['itemHiddenUntil'] ?? null);
         }

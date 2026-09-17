@@ -19,7 +19,7 @@ class CatalogBulkForm extends Form
     protected function rules(): array
     {
         return [
-            'operation' => ['required', 'string', Rule::in(['available', 'unavailable', 'move', 'archive'])],
+            'operation' => ['required', 'string', Rule::in(['move', 'archive'])],
             'categoryId' => ['bail', Rule::requiredIf($this->operation === 'move'), 'nullable', 'numeric', 'integer', 'min:1'],
             'confirmArchive' => $this->operation === 'archive' ? ['accepted'] : ['boolean'],
         ];

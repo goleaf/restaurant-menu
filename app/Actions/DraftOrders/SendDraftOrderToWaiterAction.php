@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\DraftOrders;
 
-use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\TableSessions\TransitionTableSessionStatusAction;
@@ -14,13 +13,11 @@ use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Models\Branch;
 use App\Models\DraftOrder;
-use App\Models\DraftOrderItem;
-use App\Models\Menu;
 use App\Models\ServicePoint;
 use App\Models\TableSessionGuest;
 use App\Notifications\DraftOrderSentToWaiterNotification;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -31,7 +28,6 @@ class SendDraftOrderToWaiterAction
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
-        private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
         private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
         private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
     ) {}
@@ -234,103 +230,6 @@ class SendDraftOrderToWaiterAction
             ]);
         }
 
-        $this->ensureBranchAcceptsOrders((int) $tableSession->branch_id);
-        $this->ensureDraftMenusAreAvailable($draftOrder);
-    }
-
-    private function ensureDraftMenusAreAvailable(DraftOrder $draftOrder): void
-    {
-        $items = DraftOrderItem::query()
-            ->select([
-                'id',
-                'draft_order_id',
-                'menu_item_id',
-                'item_name',
-            ])
-            ->with([
-                'menuItem' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'menu_id',
-                        'category_id',
-                        'name',
-                        'is_available',
-                        'hidden_until',
-                    ])
-                    ->with([
-                        'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'is_active']),
-                        'menu' => fn ($menuQuery) => $menuQuery
-                            ->select([
-                                'id',
-                                'branch_id',
-                                'name',
-                                'status',
-                            ])
-                            ->with([
-                                'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
-                                'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
-                                    'id',
-                                    'menu_id',
-                                    'day_of_week',
-                                    'starts_at',
-                                    'ends_at',
-                                ]),
-                            ]),
-                    ]),
-            ])
-            ->where('draft_order_id', $draftOrder->id)
-            ->get();
-
-        foreach ($items as $item) {
-            if ($item->menu_item_id === null) {
-                continue;
-            }
-
-            $menu = $item->menuItem?->menu;
-
-            if (! $menu instanceof Menu) {
-                throw ValidationException::withMessages([
-                    'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.poziciia_seicas_nedostu', ['name' => $item->item_name]),
-                ]);
-            }
-
-            $this->ensureMenuItemAvailable->handle(
-                $item->menuItem,
-                (int) $menu->branch_id,
-                'send_draft',
-            );
-
-        }
-    }
-
-    private function ensureBranchAcceptsOrders(int $branchId): void
-    {
-        $branch = Branch::query()
-            ->select([
-                'id',
-                'timezone',
-                'is_temporarily_closed',
-                'temporary_closed_reason',
-                'temporary_closed_until',
-            ])
-            ->whereKey($branchId)
-            ->first();
-
-        if (! $branch instanceof Branch) {
-            return;
-        }
-
-        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
-
-        if ($openingStatus['can_accept_orders']) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
-                'label' => $openingStatus['label'],
-                'detail' => $openingStatus['detail'],
-            ]),
-        ]);
+        $this->ensureMenuItemAvailable->draft($draftOrder, CarbonImmutable::now(), 'send_draft');
     }
 }

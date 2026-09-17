@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Availability\MenuRestrictionAuditContext;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\MenuItemFactory;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])]
 class MenuItem extends Model
 {
+    public ?MenuRestrictionAuditContext $restrictionAuditContext = null;
+
     public const MAX_IMAGES = 8;
 
     /** @use HasFactory<MenuItemFactory> */
@@ -40,6 +43,7 @@ class MenuItem extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'availability_version' => 0,
         'price_cents' => 0,
         'allergens' => '[]',
         'dietary_labels' => '[]',
@@ -53,6 +57,7 @@ class MenuItem extends Model
     protected function casts(): array
     {
         return [
+            'availability_version' => 'integer',
             'price_cents' => 'integer',
             'image_presentation' => 'array',
             'allergens' => 'array',
@@ -153,7 +158,7 @@ class MenuItem extends Model
     {
         return hash('sha256', serialize([
             $this->only(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents',
-                'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order']),
+                'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order']),
             $this->translations->sortBy('language_code')->map(fn (MenuItemTranslation $translation): array => [
                 $translation->language_code, $translation->name, $translation->description,
             ])->values()->all(),

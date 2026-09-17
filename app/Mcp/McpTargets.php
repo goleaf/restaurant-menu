@@ -37,7 +37,7 @@ final class McpTargets
 
     public function menuItem(McpContext $context, int $id): MenuItem
     {
-        $item = MenuItem::query()->select(['id', 'menu_id', 'is_available'])
+        $item = MenuItem::query()->select(['id', 'menu_id', 'is_available', 'hidden_until', 'availability_version'])
             ->with('menu:id,branch_id')->whereHas('menu', fn ($query) => $query->where('branch_id', $context->branch->id))
             ->whereKey($id)->firstOrFail();
         $item->menu->setRelation('branch', $context->branch);

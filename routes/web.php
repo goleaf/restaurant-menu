@@ -27,6 +27,7 @@ use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Local\ComponentReference;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as OrganizationBrandBranchMenuIndex;
 use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint as OrganizationBrandBranchQrBulkPrint;
@@ -153,6 +154,12 @@ Route::middleware(['auth'])
                             ->name('menu.')
                             ->group(function () {
                                 Route::livewire('/', OrganizationBrandBranchMenuIndex::class)->name('index');
+                            });
+
+                        Route::prefix('{branch}/availability')
+                            ->name('availability.')
+                            ->group(function () {
+                                Route::livewire('/', Index::class)->name('index');
                             });
 
                         Route::prefix('{branch}/qr')

@@ -78,7 +78,10 @@ abstract class RestaurantMutationTool extends Tool
                 'method' => $schema->string()->enum(['cash', 'card_terminal', 'other']),
                 'status' => $schema->string()->enum(['accepted', 'in_progress', 'ready', 'cancelled']),
                 'reason', 'note' => $schema->string()->max($this->ability() === McpAbility::SetOrderingPause ? 255 : 500),
-                'until' => $schema->string()->description('Optional branch-local YYYY-MM-DD HH:MM:SS reopening time.'),
+                'until' => $schema->string()->description('Optional unambiguous branch-local YYYY-MM-DDTHH:MM pause end. This is not a promise that ordering is available then.'),
+                'expected_version' => $schema->integer()->min(0)->description('Current pause_version from branch_context or availability_version from list_menu_items. A stale version is rejected.'),
+                'timezone' => $schema->string()->description('Restaurant timezone from branch_context.'),
+                'request_id' => $schema->string()->description('UUID of this availability change. Reuse on retry; it may equal idempotency_key.'),
                 'tips_cents' => $schema->integer()->min(0)->max(100000000),
                 default => $schema->integer()->min(1),
             };

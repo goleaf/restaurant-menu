@@ -269,7 +269,7 @@ test('unavailable menu item waiter add returns controlled business rule error', 
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::ItemUnavailable)
-            ->and($exception->errors()['addingMenuItemId'][0])->toBe(__('ui.actions.waiter.adddraftorderitembywaiteraction.eto_bliudo_seicas_nedostu'));
+            ->and($exception->errors()['addingMenuItemId'][0])->toBe(__('availability.guest.item_unavailable'));
     }
 });
 

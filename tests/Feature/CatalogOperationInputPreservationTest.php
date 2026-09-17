@@ -65,7 +65,6 @@ function catalogUnfinishedInput(MenuItem $item): array
         'itemForm.itemMenuId' => (string) $item->menu_id,
         'itemForm.itemCategoryId' => (string) $item->category_id,
         'categoryForm.categoryMenuId' => (string) $item->menu_id,
-        'scheduleForm.scheduleMenuId' => (string) $item->menu_id,
     ];
 }
 

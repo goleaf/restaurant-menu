@@ -322,7 +322,7 @@ test('waiter cannot add draft item from menu outside current schedule', function
         editedBy: $waiter,
         quantity: 1,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
+    ))->toThrow(ValidationException::class, __('availability.guest.menu_later'));
 
     expect(DraftOrderItem::query()
         ->where('draft_order_id', $draftOrder->id)

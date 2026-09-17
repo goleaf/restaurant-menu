@@ -218,6 +218,8 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($orderItem->total_price_cents)->toBe(1700)
         ->and($orderItem->selected_modifiers)->toBe([
             [
+                'group_id' => $modifierGroup->id,
+                'option_id' => $modifierOption->id,
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
                 'price_delta_cents' => 100,
@@ -225,6 +227,8 @@ test('confirming draft creates immutable order item snapshots', function () {
         ])
         ->and($orderItem->modifiers_snapshot)->toBe([
             [
+                'group_id' => $modifierGroup->id,
+                'option_id' => $modifierOption->id,
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
                 'price_delta_cents' => 100,
@@ -264,6 +268,8 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($orderItem->total_price_cents)->toBe(1700)
         ->and($orderItem->selected_modifiers)->toBe([
             [
+                'group_id' => $modifierGroup->id,
+                'option_id' => $modifierOption->id,
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
                 'price_delta_cents' => 100,
@@ -271,6 +277,8 @@ test('confirming draft creates immutable order item snapshots', function () {
         ])
         ->and($orderItem->modifiers_snapshot)->toBe([
             [
+                'group_id' => $modifierGroup->id,
+                'option_id' => $modifierOption->id,
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
                 'price_delta_cents' => 100,
@@ -281,6 +289,8 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($orderItem->historicalItemName())->toBe('Original Steak')
         ->and($orderItem->historicalModifiers())->toBe([
             [
+                'group_id' => $modifierGroup->id,
+                'option_id' => $modifierOption->id,
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
                 'price_delta_cents' => 100,
@@ -369,6 +379,8 @@ function createPrompt56SentDraftScenario(): array
             'total_price_cents' => 1700,
             'selected_modifiers' => [
                 [
+                    'group_id' => $modifierGroup->id,
+                    'option_id' => $modifierOption->id,
                     'group_name' => 'Sauce',
                     'option_name' => 'Pepper sauce',
                     'price_delta_cents' => 100,

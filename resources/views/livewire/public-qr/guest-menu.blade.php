@@ -270,7 +270,7 @@
                                                         {{ __('menu.guest.add') }}
                                                     </flux:button>
                                                 </div>
-                                            @elseif ($item['is_available'] && ! $branchCanAcceptOrders)
+                                            @elseif (! $branchCanAcceptOrders)
                                                 <x-ui.status-badge tone="warning">
                                                     {{ __('menu.guest.closed_title') }}
                                                 </x-ui.status-badge>
@@ -280,8 +280,11 @@
                                                 </x-ui.status-badge>
                                             @else
                                                 <x-ui.status-badge tone="muted">
-                                                    {{ __('menu.guest.out_of_stock') }}
+                                                    {{ $item['availability_label'] }}
                                                 </x-ui.status-badge>
+                                            @endif
+                                            @if ($item['availability_reason'] !== null)
+                                                <flux:text size="sm">{{ $item['availability_reason'] }}</flux:text>
                                             @endif
                                         </div>
 

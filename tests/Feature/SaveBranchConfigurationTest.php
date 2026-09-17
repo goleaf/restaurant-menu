@@ -14,7 +14,6 @@ use App\Models\BranchSetting;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
-use App\Services\Branches\BranchSettingsQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Factories\Sequence;
@@ -46,7 +45,6 @@ test('branch settings mount keeps a fixed read budget for empty and full schedul
     $this->actingAs($owner);
     $component = new Settings;
     $component->form = new BranchSettingsForm($component, 'form');
-    $component->boot(app(BranchSettingsQueryService::class));
     $queryCount = countDatabaseQueries(fn () => $component->mount(
         $organization,
         $brand,
@@ -54,12 +52,10 @@ test('branch settings mount keeps a fixed read budget for empty and full schedul
         app(EnsureBranchSettingsAction::class),
     ));
 
-    expect($queryCount)->toBe(13)
+    expect($queryCount)->toBe(12)
         ->and($component->settingsId)->toBe($settings->id)
         ->and($component->form->defaultCurrency)->toBe('EUR')
-        ->and($component->form->openingHoursConfigured)->toBe($intervalCount > 0)
-        ->and($component->form->openingHours)->toHaveCount(7)
-        ->and($component->form->openingHours[0]['intervals'])->toHaveCount($intervalCount > 0 ? 4 : 1);
+        ->and($branch->openingHours()->count())->toBe($intervalCount);
 })->with(['unconfigured schedule' => 0, 'full weekly schedule' => 28]);
 
 test('the aggregate configuration action authorizes its actor and returns the persisted branch and settings', function (): void {

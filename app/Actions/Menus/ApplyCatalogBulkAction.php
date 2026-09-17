@@ -23,7 +23,7 @@ use RuntimeException;
 
 final readonly class ApplyCatalogBulkAction
 {
-    public function __construct(private CatalogData $catalog, private EnsureMenuOperationAccessAction $access) {}
+    public function __construct(private CatalogData $catalog, private EnsureMenuOperationAccessAction $access, private SetMenuItemsRestrictionAction $restrictions) {}
 
     /**
      * @param  array<array-key, mixed>  $selection
@@ -57,7 +57,7 @@ final readonly class ApplyCatalogBulkAction
             $actor = $actor->fresh() ?? throw new AuthorizationException;
             $branch = $this->access->handle($actor, $branch, $requestId);
             $ids = array_column($selection, 'id');
-            $items = MenuItem::withTrashed()->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order', 'deleted_at'])
+            $items = MenuItem::withTrashed()->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order', 'deleted_at'])
                 ->with(['translations:id,menu_item_id,language_code,name,description'])
                 ->whereIn('id', $ids)->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->lockForUpdate()->get()->keyBy('id');
             if ($items->count() !== count($ids)) {
@@ -106,8 +106,15 @@ final readonly class ApplyCatalogBulkAction
                 }
             }
 
+            if (in_array($operation, ['available', 'unavailable'], true)) {
+                $this->restrictions->handle($actor, $branch, $items->map(fn (MenuItem $item): array => ['id' => $item->id, 'version' => $item->availability_version])->values()->all(),
+                    $operation === 'available' ? 'resume' : 'stop', null, $branch->timezone, $requestId);
+            }
             foreach ($items as $item) {
-                $saved = $operation === 'archive' ? $item->delete() : $item->update($operation === 'move' ? ['category_id' => $targetCategoryId] : ['is_available' => $operation === 'available']);
+                if (in_array($operation, ['available', 'unavailable'], true)) {
+                    continue;
+                }
+                $saved = $operation === 'archive' ? $item->delete() : $item->update(['category_id' => $targetCategoryId]);
                 if ($saved !== true) {
                     throw new RuntimeException('A selected catalogue item could not be saved.');
                 }

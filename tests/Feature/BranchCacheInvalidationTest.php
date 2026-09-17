@@ -15,6 +15,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
+use App\Support\BranchReportCacheVersion;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Events\KeyForgotten;
@@ -30,7 +31,7 @@ beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
-test('branch cache invalidation deletes every version and refresh timestamp in one scoped database query', function (): void {
+test('branch cache invalidation replaces the generation and batch deletes scoped payloads', function (): void {
     $branch = Branch::factory()->create();
     $otherBranch = Branch::factory()->create();
     $cache = prompt93BranchCache();
@@ -45,9 +46,13 @@ test('branch cache invalidation deletes every version and refresh timestamp in o
     $cache->put('unrelated:key', 'unrelated', 60);
     $foreign = DatabaseCacheEntry::factory()->create(['key' => 'another-app:'.$keys[0]]);
 
+    $generation = BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branch->id]));
+    $otherGeneration = BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$otherBranch->id]));
     $queries = countDatabaseQueries(fn () => app(ForgetBranchCacheAction::class)->handle($branch->id));
 
-    expect($queries)->toBe(1);
+    expect($queries)->toBe(2)
+        ->and(BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branch->id])))->not->toBe($generation)
+        ->and(BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$otherBranch->id])))->toBe($otherGeneration);
     foreach ($keys as $key) {
         expect($cache->has($key))->toBeFalse()
             ->and($cache->has(CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX.$key))->toBeFalse();
@@ -104,7 +109,7 @@ test('branch invalidation preserves per key cache events when a listener is regi
 
     app(ForgetBranchCacheAction::class)->handle(17);
 
-    expect($forgotten)->toBe($keys);
+    expect($forgotten)->toBe(['report-version:v1:guest-menu:branch:17', ...$keys]);
 })->with(['specific' => false, 'wildcard' => true]);
 
 test('branch invalidation preserves overridden database store forget behavior', function (): void {
@@ -128,7 +133,7 @@ test('branch invalidation preserves overridden database store forget behavior', 
 
     app(ForgetBranchCacheAction::class)->handle(17);
 
-    expect($store->forgotten)->toBe(count($keys));
+    expect($store->forgotten)->toBe(count($keys) + 1);
     foreach ($keys as $key) {
         expect($cache->has($key))->toBeFalse();
     }

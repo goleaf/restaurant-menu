@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\Restaurant\BranchReadinessService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -65,13 +66,13 @@ test('temporarily hidden dishes and inactive departments are reflected without f
 test('effective pause expires and repeated desired-state reopening stays safe', function (): void {
     prepareReadinessBranch($this->branch);
     $closure = app(UpdateBranchTemporaryClosureAction::class);
-    $closure->handle($this->branch, true, 'Short kitchen break', now($this->branch->timezone)->addHour()->format('Y-m-d H:i'));
+    $closure->handle($this->owner, $this->branch, true, 'Short kitchen break', now($this->branch->timezone)->addHour()->format('Y-m-d\TH:i'), 0, $this->branch->timezone, (string) Str::uuid());
     $payload = $this->service->handle($this->owner, $this->branch);
     expect($payload['ordering']['kind'])->toBe('manual_pause')->and($payload['ordering']['reason'])->toBe('Short kitchen break')->and($payload['ordering']['can_accept_orders'])->toBeFalse();
     $this->travel(2)->hours();
     expect($this->service->handle($this->owner, $this->branch)['ordering']['kind'])->toBe('open');
-    $closure->handle($this->branch, false);
-    $closure->handle($this->branch, false);
+    $closure->handle($this->owner, $this->branch, false, null, null, $this->branch->fresh()->pause_version, $this->branch->timezone, (string) Str::uuid());
+    $closure->handle($this->owner, $this->branch, false, null, null, $this->branch->fresh()->pause_version, $this->branch->timezone, (string) Str::uuid());
     expect($this->branch->fresh()->is_temporarily_closed)->toBeFalse();
 });
 
@@ -119,4 +120,12 @@ test('readiness never reads QR or image storage while preparing polling data', f
     prepareReadinessBranch($this->branch);
     Storage::shouldReceive('disk')->never();
     expect($this->service->handle($this->owner, $this->branch)['ordering']['can_accept_orders'])->toBeTrue();
+});
+
+test('a revoked QR is a specific entrance limitation and does not pause the restaurant', function (): void {
+    [, $qr] = prepareReadinessBranch($this->branch);
+    app(DisableQrCodeAction::class)->handle($qr, $this->owner);
+    $payload = $this->service->handle($this->owner, $this->branch);
+    expect($payload['ordering']['can_accept_orders'])->toBeTrue()
+        ->and(collect($payload['items'])->firstWhere('key', 'qr')['status'])->toBe('blocker');
 });

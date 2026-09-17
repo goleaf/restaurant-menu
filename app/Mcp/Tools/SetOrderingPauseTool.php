@@ -41,7 +41,8 @@ final class SetOrderingPauseTool extends RestaurantMutationTool
 
     protected function rules(): array
     {
-        return ['closed' => ['required', 'boolean:strict'], 'reason' => ['required_if:closed,true', 'string', 'max:255'], 'until' => ['sometimes', 'string', 'date_format:Y-m-d H:i:s']];
+        return ['closed' => ['required', 'boolean:strict'], 'reason' => ['required_if:closed,true', 'string', 'max:255'], 'until' => ['sometimes', 'string', 'date_format:Y-m-d\\TH:i'],
+            'expected_version' => ['required', 'integer:strict', 'min:0'], 'timezone' => ['required', 'string', 'timezone'], 'request_id' => ['required', 'string', 'uuid']];
     }
 
     protected function authorize(McpContext $context, array $input): AuthorizationResponse
@@ -51,8 +52,8 @@ final class SetOrderingPauseTool extends RestaurantMutationTool
 
     protected function perform(McpContext $context, array $input): array
     {
-        $branch = $this->action->handle($context->user, $context->branch->id, $input['closed'], $input['reason'] ?? null, $input['until'] ?? null);
+        $branch = $this->action->handle($context->user, $context->branch->id, $input['closed'], $input['reason'] ?? null, $input['until'] ?? null, $input['expected_version'], $input['timezone'], $input['request_id']);
 
-        return ['branch_id' => $branch->id, 'paused' => $branch->is_temporarily_closed, 'until' => $branch->temporary_closed_until?->toIso8601String()];
+        return ['branch_id' => $branch->id, 'paused' => $branch->is_temporarily_closed, 'pause_version' => $branch->pause_version, 'until' => $branch->temporary_closed_until?->toIso8601String()];
     }
 }

@@ -30,7 +30,7 @@ export function workspaceNavigation() {
                     if (sent) { this.pending--; sent = false; }
                     if (this.pending === 0) this.blocked = false;
                 };
-                onSuccess(({ onEffect }) => onEffect(release));
+                onSuccess(({ onSync }) => onSync(release));
                 onFinish(release);
             });
         },

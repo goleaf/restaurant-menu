@@ -80,14 +80,16 @@ export function browser(t) {
             return instance;
         },
         message(component, actions = [], payload = {}) {
-            const sent = [], finished = [], renders = [], effects = [];
+            const sent = [], finished = [], renders = [], effects = [], syncs = [];
             for (const intercept of state.interceptors) intercept({
                 message: { component, actions },
                 onSend: callback => sent.push(callback),
                 onFinish: callback => finished.push(callback),
-                onSuccess: callback => callback({ payload, onEffect: callback => effects.push(callback), onRender: callback => renders.push(callback) }),
+                onSuccess: callback => callback({ payload, onSync: callback => syncs.push(callback), onEffect: callback => effects.push(callback), onRender: callback => renders.push(callback) }),
             });
-            return { send() { sent.forEach(callback => callback()); }, effect() { effects.forEach(callback => callback()); }, finish() { renders.forEach(callback => callback()); finished.forEach(callback => callback()); } };
+            let synced = false;
+            const sync = () => { if (synced) return; synced = true; syncs.forEach(callback => callback()); };
+            return { send() { sent.forEach(callback => callback()); }, sync, effect() { sync(); effects.forEach(callback => callback()); }, finish() { renders.forEach(callback => callback()); finished.forEach(callback => callback()); } };
         },
     };
 }

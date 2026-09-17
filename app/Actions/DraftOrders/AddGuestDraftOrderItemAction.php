@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\DraftOrders;
 
-use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
-use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
@@ -20,6 +18,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\Orders\IdempotencyKey;
 use App\Support\PlainText;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -28,13 +27,12 @@ class AddGuestDraftOrderItemAction
     public function __construct(
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
-        private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
         private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
         private readonly CreateDraftOrderItemIdempotentlyAction $createDraftOrderItemIdempotently,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      */
     public function handle(
         TableSession $tableSession,
@@ -53,7 +51,6 @@ class AddGuestDraftOrderItemAction
             $languageCode = SupportedLocale::normalize($languageCode);
             $tableSession = $this->reloadTableSession($tableSession);
             $guest = $this->reloadGuest($guest);
-            $menuItem = $this->reloadMenuItem($menuItem, $languageCode);
 
             $this->ensureGuestCanAddItems($tableSession, $guest);
             $draftOrder = $this->draftOrderFor($tableSession);
@@ -70,7 +67,8 @@ class AddGuestDraftOrderItemAction
                 }
             }
 
-            $this->ensureMenuItemCanBeAdded($tableSession, $menuItem);
+            $menuItem = $this->reloadMenuItem($menuItem, $languageCode);
+            $this->ensureMenuItemAvailable->handle($menuItem, (int) $tableSession->branch_id, at: CarbonImmutable::now());
 
             $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1, $menuItemVariantId, $languageCode);
             $draftWasCreated = $draftOrder->wasRecentlyCreated;
@@ -122,7 +120,7 @@ class AddGuestDraftOrderItemAction
             );
 
             return $draftOrderItem;
-        });
+        }, attempts: 3);
     }
 
     private function reloadTableSession(TableSession $tableSession): TableSession
@@ -171,7 +169,7 @@ class AddGuestDraftOrderItemAction
                 'name',
                 'price_cents',
                 'is_available',
-                'hidden_until',
+                'hidden_until', 'deleted_at',
             ])
             ->addSelect([
                 'localized_name' => MenuItemTranslation::query()
@@ -180,27 +178,7 @@ class AddGuestDraftOrderItemAction
                     ->where('language_code', $languageCode)
                     ->limit(1),
             ])
-            ->with([
-                'menu' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'status',
-                ])->with([
-                    'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
-                    'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
-                        'id',
-                        'menu_id',
-                        'day_of_week',
-                        'starts_at',
-                        'ends_at',
-                    ]),
-                ]),
-                'category' => fn ($query) => $query->select([
-                    'id',
-                    'menu_id',
-                    'is_active',
-                ]),
-            ])
+            ->with(EnsureDraftMenuItemAvailableAction::relations())
             ->whereKey($menuItem->id)
             ->firstOrFail();
     }
@@ -223,12 +201,6 @@ class AddGuestDraftOrderItemAction
             ]);
         }
 
-        $this->ensureBranchAcceptsOrders((int) $tableSession->branch_id, 'guest');
-    }
-
-    private function ensureMenuItemCanBeAdded(TableSession $tableSession, MenuItem $menuItem): void
-    {
-        $this->ensureMenuItemAvailable->handle($menuItem, (int) $tableSession->branch_id);
     }
 
     private function draftOrderFor(TableSession $tableSession): DraftOrder
@@ -267,37 +239,6 @@ class AddGuestDraftOrderItemAction
         }
 
         return $draftOrder;
-    }
-
-    private function ensureBranchAcceptsOrders(int $branchId, string $field): void
-    {
-        $branch = Branch::query()
-            ->select([
-                'id',
-                'timezone',
-                'is_temporarily_closed',
-                'temporary_closed_reason',
-                'temporary_closed_until',
-            ])
-            ->whereKey($branchId)
-            ->first();
-
-        if (! $branch instanceof Branch) {
-            return;
-        }
-
-        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
-
-        if ($openingStatus['can_accept_orders']) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            $field => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
-                'label' => $openingStatus['label'],
-                'detail' => $openingStatus['detail'],
-            ]),
-        ]);
     }
 
     private function snapshotName(MenuItem $menuItem): string

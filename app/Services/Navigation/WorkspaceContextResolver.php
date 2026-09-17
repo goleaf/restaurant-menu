@@ -110,6 +110,7 @@ final class WorkspaceContextResolver
         return match (true) {
             $request->routeIs('restaurant.dashboard') && $request->query('workspace_section') === 'reports' => 'reports',
             $request->routeIs('organizations.brands.branches.menu.*') => 'menu',
+            $request->routeIs('organizations.brands.branches.availability.*') => 'availability',
             $request->routeIs('organizations.brands.branches.staff.*') => 'team',
             $request->routeIs('organizations.brands.branches.settings.*') => 'settings',
             $request->routeIs('organizations.brands.branches.areas.*', 'organizations.brands.branches.service-points.*', 'organizations.brands.branches.qr.*') => 'halls',

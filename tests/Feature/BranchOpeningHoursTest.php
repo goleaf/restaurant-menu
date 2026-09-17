@@ -11,7 +11,7 @@ use App\Enums\MenuStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
-use App\Livewire\Organizations\Brands\Branches\Settings;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\PublicQr\GuestEntry;
 use App\Models\BranchOpeningHour;
 use App\Models\Brand;
@@ -28,6 +28,7 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -51,34 +52,34 @@ test('branch opening hours table stores multiple intervals per weekday', functio
     ]))->toBeTrue();
 });
 
-test('owner can manage branch opening hours from branch settings', function () {
+test('owner can manage branch opening hours from the availability center', function () {
     [$organization, $brand, $branch, $owner] = createPrompt102Branch();
 
     $intervalEditor = Livewire::actingAs($owner)
-        ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch]);
-    $mondayIntervals = $intervalEditor->get('form.openingHours')[0]['intervals'];
+        ->test(AvailabilityIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])->set('section', 'schedules')->call('openHours');
+    $mondayIntervals = $intervalEditor->get('weekly.openingHours')[0]['intervals'];
 
-    $intervalEditor->call('addOpeningInterval', 1);
+    $intervalEditor->call('addInterval', 0);
 
-    expect($intervalEditor->get('form.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals) + 1);
+    expect($intervalEditor->get('weekly.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals) + 1);
 
-    $intervalEditor->call('removeOpeningInterval', 1, count($mondayIntervals));
+    $intervalEditor->call('removeInterval', 0, count($mondayIntervals));
 
-    expect($intervalEditor->get('form.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals));
+    expect($intervalEditor->get('weekly.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals));
 
     Livewire::actingAs($owner)
-        ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours', prompt102WeeklyHours([
+        ->test(AvailabilityIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])->set('section', 'schedules')->call('openHours')
+        ->set('weekly.mode', 'weekly')
+        ->set('weekly.openingHours', prompt102WeeklyHours([
             1 => [
                 ['opens_at' => '10:00', 'closes_at' => '14:00'],
                 ['opens_at' => '18:00', 'closes_at' => '22:00'],
             ],
             2 => [],
         ]))
-        ->call('save')
+        ->call('previewSchedule')->call('applySchedule')
         ->assertHasNoErrors()
-        ->assertSee('Settings saved.');
+        ->assertSet('editor', '');
 
     $hours = $branch->openingHours()
         ->where('day_of_week', 1)
@@ -112,16 +113,16 @@ test('the branch schedule editor does not append an invisible fifth interval', f
         ['opens_at' => '14:00', 'closes_at' => '16:00'],
     ]]);
 
-    $component = Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours', $hours)
-        ->call('addOpeningInterval', 1);
+    $component = Livewire::actingAs($owner)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))->set('section', 'schedules')->call('openHours')
+        ->set('weekly.mode', 'weekly')
+        ->set('weekly.openingHours', $hours)
+        ->call('addInterval', 0);
 
-    expect($component->get('form.openingHours')[0]['intervals'])->toHaveCount(4);
-    $component->assertDontSeeHtml('wire:click="addOpeningInterval(1)"')
-        ->call('save')->assertHasNoErrors()
-        ->call('removeOpeningInterval', 1, 3)
-        ->assertSeeHtml('wire:click="addOpeningInterval(1)"');
+    expect($component->get('weekly.openingHours')[0]['intervals'])->toHaveCount(4);
+    $component->assertDontSeeHtml('wire:click="addInterval(0)"')
+        ->call('previewSchedule')->call('applySchedule')->assertHasNoErrors()->set('section', 'schedules')->call('openHours')
+        ->call('removeInterval', 0, 3)
+        ->assertSeeHtml('wire:click="addInterval(0)"');
 });
 
 test('opening status respects branch timezone and next interval', function () {
@@ -151,7 +152,7 @@ test('opening status respects branch timezone and next interval', function () {
         ->and($closedStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '6:00 PM']));
 });
 
-test('branch settings reject overlapping weekly intervals without changing persisted configuration', function (array $intervals): void {
+test('availability center rejects overlapping weekly intervals without changing persisted configuration', function (array $intervals): void {
     [$organization, $brand, $branch, $owner] = createPrompt102Branch();
     $existing = BranchOpeningHour::factory()->for($branch)->create([
         'day_of_week' => 1, 'opens_at' => '09:00', 'closes_at' => '17:00',
@@ -159,12 +160,11 @@ test('branch settings reject overlapping weekly intervals without changing persi
     $originalName = $branch->public_name;
 
     Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.publicName', 'Must not be saved')
-        ->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours', prompt102WeeklyHours($intervals))
-        ->call('save')
-        ->assertHasErrors(['form.openingHours'])
+        ->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))->set('section', 'schedules')->call('openHours')
+        ->set('weekly.mode', 'weekly')
+        ->set('weekly.openingHours', prompt102WeeklyHours($intervals))
+        ->call('previewSchedule')->call('applySchedule')
+        ->assertHasErrors(['weekly.openingHours'])
         ->assertSee(__('branches.opening_hours.errors.overlap'));
 
     expect($branch->refresh()->public_name)->toBe($originalName)
@@ -177,10 +177,10 @@ test('branch settings reject overlapping weekly intervals without changing persi
 ]);
 
 test('opening hours action rejects overlap and oversized schedules before deleting existing hours', function (array $hours): void {
-    [, , $branch] = createPrompt102Branch(withOwner: false);
+    [, , $branch, $owner] = createPrompt102Branch();
     $existing = BranchOpeningHour::factory()->for($branch)->create();
 
-    expect(fn () => app(UpdateBranchOpeningHoursAction::class)->handle($branch, $hours))->toThrow(ValidationException::class);
+    expect(fn () => app(UpdateBranchOpeningHoursAction::class)->handle($owner, $branch, $hours, true, 0, $branch->timezone, (string) Str::uuid()))->toThrow(ValidationException::class);
 
     expect($branch->openingHours()->sole()->id)->toBe($existing->id);
 })->with([
@@ -191,28 +191,28 @@ test('opening hours action rejects overlap and oversized schedules before deleti
     'oversized week' => [array_fill(0, 8, ['day_of_week' => 1, 'is_closed' => false, 'intervals' => [['opens_at' => '09:00', 'closes_at' => '12:00']]])],
 ]);
 
-test('branch settings accept unsorted touching intervals including a week boundary and can disable an overlapping schedule', function (): void {
+test('availability center accepts unsorted touching intervals including a week boundary and can disable an overlapping schedule', function (): void {
     [$organization, $brand, $branch, $owner] = createPrompt102Branch();
     $component = Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours', prompt102WeeklyHours([
+        ->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))->set('section', 'schedules')->call('openHours')
+        ->set('weekly.mode', 'weekly')
+        ->set('weekly.openingHours', prompt102WeeklyHours([
             7 => [['opens_at' => '22:00', 'closes_at' => '02:00']],
             1 => [['opens_at' => '10:00', 'closes_at' => '12:00'], ['opens_at' => '02:00', 'closes_at' => '10:00']],
         ]))
-        ->call('save')
+        ->call('previewSchedule')->call('applySchedule')
         ->assertHasNoErrors();
 
     expect($branch->openingHours()->where('is_closed', false)->count())->toBe(3);
 
-    $component->set('form.openingHours', prompt102WeeklyHours([
+    $component->call('openHours')->set('weekly.openingHours', prompt102WeeklyHours([
         1 => [['opens_at' => '09:00', 'closes_at' => '12:00'], ['opens_at' => '11:00', 'closes_at' => '14:00']],
-    ]))->set('form.openingHoursConfigured', false)->call('save')->assertHasNoErrors();
+    ]))->set('weekly.mode', 'unrestricted')->call('previewSchedule')->call('applySchedule')->assertHasNoErrors();
 
     expect($branch->openingHours()->exists())->toBeFalse();
 });
 
-test('next branch opening is chronological regardless of interval display order and uses one query', function (): void {
+test('next branch opening is chronological and loads weekly hours and date exceptions once', function (): void {
     [, , $branch] = createPrompt102Branch(withOwner: false);
     BranchOpeningHour::factory()->for($branch)->create([
         'day_of_week' => 1, 'opens_at' => '18:00', 'closes_at' => '22:00', 'sort_order' => 10,
@@ -226,7 +226,7 @@ test('next branch opening is chronological regardless of interval display order 
         expect($status['next_opens_at'])->toBe('2026-06-01T09:00:00+03:00');
     });
 
-    expect($queries)->toBe(1);
+    expect($queries)->toBe(2);
 });
 
 test('opening status labels a next opening on another weekday', function () {
@@ -275,7 +275,7 @@ test('closed branch blocks guest draft item creation and sending draft to waiter
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'));
+    ))->toThrow(ValidationException::class, __('availability.guest.outside_hours'));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -287,7 +287,7 @@ test('closed branch blocks guest draft item creation and sending draft to waiter
         ->create(['item_name' => 'Margherita']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'));
+        ->toThrow(ValidationException::class, __('availability.guest.outside_hours'));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
     expect($branch->openingHours()->count())->toBe(2);

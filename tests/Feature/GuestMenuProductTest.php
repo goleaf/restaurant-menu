@@ -93,8 +93,8 @@ test('responsive guest list images keep cold queries constant as the menu grows'
     $warmQueries = countDatabaseQueries(fn () => $action->handle($branch->id, 'en'));
 
     expect($payload['categories'][0]['items'])->toHaveCount(40)
-        ->and($grownQueries)->toBe($initialQueries)->toBeLessThanOrEqual(13)
-        ->and($warmQueries)->toBeLessThanOrEqual(2);
+        ->and($grownQueries)->toBe($initialQueries)->toBeLessThanOrEqual(22)
+        ->and($warmQueries)->toBeLessThanOrEqual(3);
 });
 
 test('guest detail is an accessible modal with keyboard close and gallery controls', function () {

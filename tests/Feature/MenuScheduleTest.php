@@ -4,13 +4,14 @@ use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
-use App\Actions\Menus\UpdateMenuAvailabilityScheduleAction;
+use App\Actions\Menus\SaveMenuAvailabilityScheduleAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Models\Branch;
@@ -33,6 +34,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -72,7 +74,11 @@ test('menu availability respects branch timezone current interval and next inter
     expect($breakfast['is_configured'])->toBeTrue()
         ->and($breakfast['is_available'])->toBeTrue()
         ->and($breakfast['label'])->toBe(__('menu.guest.available_now'))
-        ->and($breakfast['detail'])->toBe(__('menu.guest.available_until', ['time' => '12:00 PM']));
+        ->and($breakfast['detail'])->toBe(__('menu.guest.available_until', ['time' => '4:00 PM']));
+
+    // Touching intervals are one uninterrupted period of availability.
+    $atNoon = $action->handle($menu, Carbon::parse('2026-06-01 12:00:00', 'Europe/Vilnius'));
+    expect($atNoon['is_available'])->toBeTrue()->and($atNoon['available_until'])->toBe('4:00 PM');
 
     expect($betweenDays['is_configured'])->toBeTrue()
         ->and($betweenDays['is_available'])->toBeFalse()
@@ -201,62 +207,35 @@ test('guest menu returns multiple active available menus grouped and sorted', fu
         ->assertDontSeeText('Draft wine');
 });
 
-test('manager can add and delete menu schedule from menu admin', function () {
+test('manager can add and remove menu schedule through the availability workspace', function () {
     [$menu, $branch, $organization, $brand, $manager] = createPrompt104MenuContext(withManager: true);
     grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
-
-    Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->assertSeeText('Menu schedule')
-        ->set('scheduleForm.scheduleDayOfWeek', '1')
-        ->set('scheduleForm.scheduleStartsAt', '08:00')
-        ->set('scheduleForm.scheduleEndsAt', '12:00')
-        ->call('createMenuSchedule', $menu->id)
-        ->assertHasNoErrors()
-        ->assertSeeText(__('ui.actions.branches.getbranchopeningstatusaction.ponedelnik'))
-        ->assertSeeText('08:00-12:00');
-
-    $schedule = MenuAvailabilitySchedule::query()
-        ->where('menu_id', $menu->id)
-        ->firstOrFail();
-
-    expect($schedule->day_of_week)->toBe(1)
-        ->and($schedule->starts_at)->toBe('08:00')
-        ->and($schedule->ends_at)->toBe('12:00');
-
-    Livewire::actingAs($manager->fresh())
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('deleteMenuSchedule', $schedule->id)
-        ->assertHasNoErrors();
-
-    expect(MenuAvailabilitySchedule::query()->whereKey($schedule->id)->exists())->toBeFalse();
+    $component = Livewire::actingAs($manager)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))
+        ->set('menuId', (string) $menu->id)->call('openMenuSchedule')
+        ->set('weekly.mode', 'weekly')->set('weekly.openingHours.0.is_closed', false)
+        ->set('weekly.openingHours.0.intervals', [['opens_at' => '08:00', 'closes_at' => '12:00']])
+        ->call('previewSchedule')->call('applySchedule')->assertHasNoErrors();
+    $schedule = $menu->availabilitySchedules()->sole();
+    expect($schedule->day_of_week)->toBe(1)->and($schedule->starts_at)->toBe('08:00')->and($schedule->ends_at)->toBe('12:00');
+    $component->call('openMenuSchedule')->set('weekly.mode', 'unrestricted')
+        ->call('previewSchedule')->call('applySchedule')->assertHasNoErrors();
+    expect($menu->availabilitySchedules()->exists())->toBeFalse()->and($menu->fresh()->schedule_is_closed)->toBeFalse();
 });
 
 test('manager updates a menu schedule and invalidates every guest menu cache', function () {
     [$menu, $branch, $organization, $brand, $manager] = createPrompt104MenuContext(withManager: true);
     grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
-    $schedule = MenuAvailabilitySchedule::factory()->for($menu)->create([
-        'day_of_week' => 2,
-        'starts_at' => '08:00',
-        'ends_at' => '12:00',
-    ]);
+    MenuAvailabilitySchedule::factory()->for($menu)->create(['day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00']);
     $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
     app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
-
-    Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('startEditingMenuSchedule', $schedule->id)
-        ->assertSet('editingScheduleForm.scheduleDayOfWeek', '2')
-        ->set('editingScheduleForm.scheduleDayOfWeek', '3')
-        ->set('editingScheduleForm.scheduleStartsAt', '09:30')
-        ->set('editingScheduleForm.scheduleEndsAt', '14:00')
-        ->call('updateMenuSchedule')
-        ->assertHasNoErrors()
-        ->assertSeeText('09:30-14:00');
-
-    expect($schedule->refresh()->day_of_week)->toBe(3)
-        ->and($schedule->starts_at)->toBe('09:30')
-        ->and($schedule->ends_at)->toBe('14:00')
+    Livewire::actingAs($manager)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))
+        ->set('menuId', (string) $menu->id)->call('openMenuSchedule')
+        ->assertSet('weekly.openingHours.1.intervals.0.opens_at', '08:00')
+        ->set('weekly.openingHours.1.is_closed', true)->set('weekly.openingHours.1.intervals', [])
+        ->set('weekly.openingHours.2.is_closed', false)->set('weekly.openingHours.2.intervals', [['opens_at' => '09:30', 'closes_at' => '14:00']])
+        ->call('previewSchedule')->call('applySchedule')->assertHasNoErrors();
+    $schedule = $menu->availabilitySchedules()->sole();
+    expect($schedule->day_of_week)->toBe(3)->and($schedule->starts_at)->toBe('09:30')->and($schedule->ends_at)->toBe('14:00')
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 });
 
@@ -264,73 +243,45 @@ test('menu schedule forms reject a foreign menu and retain overlapping edit erro
     [$menu, $branch, $organization, $brand, $manager] = createPrompt104MenuContext(withManager: true);
     grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
     $foreignMenu = Menu::factory()->create();
-    $schedule = MenuAvailabilitySchedule::factory()->for($menu)->create([
-        'day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00',
-    ]);
-    MenuAvailabilitySchedule::factory()->for($menu)->create([
-        'day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '17:00',
-    ]);
-
-    $component = Livewire::actingAs($manager)
-        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->call('createMenuSchedule', $foreignMenu->id)
-        ->assertHasErrors(['scheduleForm.scheduleMenuId'])
-        ->call('startEditingMenuSchedule', $schedule->id)
-        ->set('editingScheduleForm.scheduleStartsAt', '12:30')
-        ->set('editingScheduleForm.scheduleEndsAt', '14:00')
-        ->call('updateMenuSchedule')
-        ->assertHasErrors(['editingScheduleForm.scheduleStartsAt'])
-        ->assertSet('editingScheduleId', $schedule->id)
-        ->assertSet('editingScheduleForm.scheduleStartsAt', '12:30');
-
-    expect(MenuAvailabilitySchedule::query()->where('menu_id', $foreignMenu->id)->exists())->toBeFalse()
-        ->and($schedule->fresh()->starts_at)->toBe('08:00');
-
-    $component->call('createCategory')
-        ->assertHasErrors(['categoryForm.categoryName'])
-        ->call('cancelMenuScheduleEditing')
-        ->assertHasNoErrors(['editingScheduleForm.scheduleStartsAt'])
-        ->assertHasErrors(['categoryForm.categoryName'])
-        ->assertSet('editingScheduleId', null)
-        ->assertSet('editingScheduleForm.scheduleStartsAt', '08:00');
+    MenuAvailabilitySchedule::factory()->for($menu)->create(['day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00']);
+    MenuAvailabilitySchedule::factory()->for($menu)->create(['day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '17:00']);
+    Livewire::actingAs($manager)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))
+        ->set('menuId', (string) $foreignMenu->id)->call('openMenuSchedule')->assertHasErrors(['menuId'])
+        ->assertSet('menuId', (string) $foreignMenu->id);
+    $catalog = Livewire::actingAs($manager)->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('createCategory')->assertHasErrors(['categoryForm.categoryName']);
+    $component = Livewire::actingAs($manager)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))
+        ->set('menuId', (string) $menu->id)->call('openMenuSchedule')
+        ->set('weekly.openingHours.1.intervals.0.opens_at', '12:30')->set('weekly.openingHours.1.intervals.0.closes_at', '14:00')
+        ->call('previewSchedule')->assertHasErrors(['weekly.openingHours'])
+        ->assertSet('targetMenuId', $menu->id)->assertSet('weekly.openingHours.1.intervals.0.opens_at', '12:30');
+    expect($foreignMenu->availabilitySchedules()->exists())->toBeFalse()->and($menu->availabilitySchedules()->orderBy('starts_at')->first()->starts_at)->toBe('08:00');
+    $component->call('discardDraft')->assertHasNoErrors(['weekly.openingHours'])->assertSet('editor', '');
+    $catalog->assertHasErrors(['categoryForm.categoryName']);
 });
 
-test('menu schedule update rejects reversed and overlapping intervals', function () {
-    [$menu, $branch] = createPrompt104MenuContext();
-    $schedule = MenuAvailabilitySchedule::factory()->for($menu)->create([
-        'day_of_week' => 2,
-        'starts_at' => '08:00',
-        'ends_at' => '12:00',
-    ]);
-    MenuAvailabilitySchedule::factory()->for($menu)->create([
-        'day_of_week' => 2,
-        'starts_at' => '13:00',
-        'ends_at' => '17:00',
-    ]);
-    $action = app(UpdateMenuAvailabilityScheduleAction::class);
-
-    expect(fn () => $action->handle($branch, $schedule, 2, '12:00', '11:00'))
-        ->toThrow(ValidationException::class)
-        ->and(fn () => $action->handle($branch, $schedule, 2, '12:30', '14:00'))
-        ->toThrow(ValidationException::class);
-
-    expect($schedule->fresh()->starts_at)->toBe('08:00')
-        ->and($schedule->ends_at)->toBe('12:00');
+test('menu schedule replacement rejects equal and overlapping intervals but permits overnight hours', function () {
+    [$menu, $branch, $organization, , $manager] = createPrompt104MenuContext(withManager: true);
+    grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
+    $schedule = MenuAvailabilitySchedule::factory()->for($menu)->create(['day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00']);
+    $action = app(SaveMenuAvailabilityScheduleAction::class);
+    foreach ([
+        [['day_of_week' => 2, 'starts_at' => '12:00', 'ends_at' => '12:00']],
+        [['day_of_week' => 2, 'starts_at' => '12:30', 'ends_at' => '14:00'], ['day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '17:00']],
+    ] as $intervals) {
+        expect(fn () => $action->handle($manager, $branch, $menu, $intervals, false, 0, $branch->timezone, (string) Str::uuid()))->toThrow(ValidationException::class);
+    }
+    expect($schedule->fresh()->starts_at)->toBe('08:00')->and($schedule->ends_at)->toBe('12:00');
+    $action->handle($manager, $branch, $menu, [['day_of_week' => 2, 'starts_at' => '22:00', 'ends_at' => '02:00']], false, 0, $branch->timezone, (string) Str::uuid());
+    expect($menu->availabilitySchedules()->sole()->ends_at)->toBe('02:00');
 });
 
-test('menu schedule update cannot cross the branch boundary', function () {
-    [, $branch] = createPrompt104MenuContext();
+test('menu schedule replacement cannot cross the branch boundary', function () {
+    [, $branch, , , $manager] = createPrompt104MenuContext(withManager: true);
     [$foreignMenu] = createPrompt104MenuContext(menuName: 'Foreign schedule menu');
     $foreignSchedule = MenuAvailabilitySchedule::factory()->for($foreignMenu)->create();
-
-    expect(fn () => app(UpdateMenuAvailabilityScheduleAction::class)->handle(
-        $branch,
-        $foreignSchedule,
-        4,
-        '09:00',
-        '11:00',
-    ))->toThrow(ModelNotFoundException::class);
-
+    expect(fn () => app(SaveMenuAvailabilityScheduleAction::class)->handle($manager, $branch, $foreignMenu,
+        [['day_of_week' => 4, 'starts_at' => '09:00', 'ends_at' => '11:00']], false, 0, $branch->timezone, (string) Str::uuid()))->toThrow(ModelNotFoundException::class);
     expect($foreignSchedule->fresh())->not->toBeNull();
 });
 
@@ -347,7 +298,7 @@ test('unavailable scheduled menu blocks adding and sending draft items', functio
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
+    ))->toThrow(ValidationException::class, __('availability.guest.menu_later'));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -359,7 +310,7 @@ test('unavailable scheduled menu blocks adding and sending draft items', functio
         ->create(['item_name' => 'Breakfast toast']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
+        ->toThrow(ValidationException::class, __('availability.guest.menu_later'));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
 });

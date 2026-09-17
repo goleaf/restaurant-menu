@@ -142,8 +142,8 @@ test('an open schedule cannot label blocked guest ordering as accepting orders',
     expect(app(GetBranchOpeningStatusAction::class)->handle($this->branch)['is_open'])->toBeTrue();
 
     Livewire::actingAs($this->owner)->test(Dashboard::class)
-        ->assertSee(__('dashboard.control.setup_problem'))
+        ->assertSee(__('availability.guest.unavailable'))
         ->assertViewHas('dashboard', fn (array $dashboard): bool => $dashboard['ordering']['kind'] === 'setup_problem'
             && ! $dashboard['ordering']['can_accept_orders']
-            && $dashboard['ordering']['label'] === __('dashboard.control.setup_problem'));
+            && $dashboard['ordering']['label'] === __('availability.guest.unavailable'));
 });

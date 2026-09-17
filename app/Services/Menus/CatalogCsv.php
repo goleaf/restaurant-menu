@@ -30,7 +30,7 @@ final class CatalogCsv
 
     public const HEADERS = ['id', 'category_id', 'price', 'name_en', 'description_en', 'name_lt', 'description_lt', 'name_ru', 'description_ru'];
 
-    private const ITEM_COLUMNS = ['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'];
+    private const ITEM_COLUMNS = ['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'sort_order'];
 
     /** @return CsvPreview */
     public function preview(Branch $branch, int $menuId, string $contents): array

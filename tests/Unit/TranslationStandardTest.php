@@ -103,7 +103,6 @@ function translationStandardEnglishIdentityAllowlist(): array
         'permissions.groups.qr',
         'qr.labels.qr',
         'qr.placeholders.short_code_example',
-        'ui.actions.draftorders.addguestdraftorderitemaction.message',
         'ui.actions.waiter.buildwaitertabledetailaction.message',
         'ui.livewire.organizations.brands.branches.areas.vip',
         'ui.onboarding.restaurant_setup.brand_name_placeholder',

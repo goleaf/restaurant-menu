@@ -1,13 +1,15 @@
 <?php
 
 use App\Actions\Branches\CreateBranchAction;
-use App\Actions\Branches\UpdateBranchOpeningHoursAction;
+use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
+use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\Organizations\Brands\Branches\Settings;
 use App\Models\Branch;
+use App\Models\BranchOpeningHour;
 use App\Models\Brand;
 use App\Models\Role;
 use App\Models\User;
@@ -208,38 +210,38 @@ test('a failed branch configuration save preserves settings profile schedule and
     Storage::disk('public')->put($originalCover, 'original cover');
     $branch->update(['public_name' => 'Original restaurant', 'logo_path' => $originalLogo, 'cover_image_path' => $originalCover]);
     $settings = $branch->settings()->firstOrFail();
+    $originalHours = BranchOpeningHour::factory()->for($branch)->create();
     $originalBranch = $branch->refresh()->getRawOriginal();
     $originalSettings = $settings->getRawOriginal();
     $component = Livewire::actingAs($owner)
         ->test(Settings::class, compact('organization', 'brand', 'branch'))
         ->set('form.pollingIntervalSeconds', 5)
         ->set('form.publicName', 'Changed restaurant')
-        ->set('form.defaultCurrency', 'USD')
-        ->set('form.temporarilyClosed', true)
-        ->set('form.temporaryClosedReason', 'Maintenance');
+        ->set('form.defaultCurrency', 'USD');
 
     if ($withImages) {
         $component->set('form.publicLogo', UploadedFile::fake()->image('new-logo.png'))
             ->set('form.coverImage', UploadedFile::fake()->image('new-cover.jpg'));
     }
 
-    $this->mock(UpdateBranchOpeningHoursAction::class)
-        ->shouldReceive('handle')->once()->andThrow(new RuntimeException('Schedule persistence failed.'));
+    $this->mock(UpdateBranchPublicProfileAction::class)
+        ->shouldReceive('handle')->once()->andThrow(new RuntimeException('Profile persistence failed.'));
 
-    expect(fn () => $component->call('save'))->toThrow(RuntimeException::class, 'Schedule persistence failed.');
+    expect(fn () => $component->call('save'))->toThrow(RuntimeException::class, 'Profile persistence failed.');
 
     expect($settings->refresh()->getRawOriginal())->toBe($originalSettings)
-        ->and($branch->refresh()->getRawOriginal())->toBe($originalBranch);
+        ->and($branch->refresh()->getRawOriginal())->toBe($originalBranch)
+        ->and($branch->openingHours()->sole()->id)->toBe($originalHours->id);
     expect(Storage::disk('public')->allFiles($directory))->toEqualCanonicalizing([$originalLogo, $originalCover]);
     Storage::disk('public')->assertExists([$originalLogo, $originalCover]);
 
-    app()->forgetInstance(UpdateBranchOpeningHoursAction::class);
+    app()->forgetInstance(UpdateBranchPublicProfileAction::class);
     $component->call('save')->assertHasNoErrors();
 
     expect($settings->refresh()->polling_interval_seconds)->toBe(5)
         ->and($branch->refresh()->public_name)->toBe('Changed restaurant')
         ->and($branch->currency)->toBe('USD')
-        ->and($branch->is_temporarily_closed)->toBeTrue();
+        ->and($branch->is_temporarily_closed)->toBeFalse();
 
     if ($withImages) {
         Storage::disk('public')->assertMissing([$originalLogo, $originalCover]);
@@ -265,40 +267,49 @@ test('branch settings reject malformed transport values without changing persist
     'array currency' => ['defaultCurrency', ['EUR']],
     'null polling' => ['pollingIntervalSeconds', null],
     'scalar modes' => ['serviceModes', 'dine_in'],
-    'scalar schedule' => ['openingHours', 'invalid'],
-    'null schedule' => ['openingHours', null],
-    'invalid closed state' => ['temporarilyClosed', []],
 ]);
 
-test('branch settings reject duplicate weekdays and retain the previous schedule', function (): void {
+test('availability form rejects malformed schedule and pause transport without persistence', function (string $field, mixed $value, string $editor, string $preview): void {
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
-    $component = Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'));
-    $hours = $component->get('form.openingHours');
+    Livewire::actingAs($owner)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))
+        ->call($editor)->set($field, $value)->call($preview)->assertHasErrors($field);
+    expect($branch->fresh()->pause_version)->toBe(0)->and($branch->openingHours()->exists())->toBeFalse();
+})->with([
+    'scalar schedule' => ['weekly.openingHours', 'invalid', 'openHours', 'previewSchedule'],
+    'null schedule' => ['weekly.openingHours', null, 'openHours', 'previewSchedule'],
+    'invalid closed state' => ['pause.mode', [], 'openPause', 'previewPause'],
+]);
+
+test('settings metadata saves ignore forged schedule and pause fields', function (): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $hour = BranchOpeningHour::factory()->for($branch)->create();
+    Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'))
+        ->set('form.publicName', 'Metadata only')->set('form.temporarilyClosed', true)
+        ->set('form.temporaryClosedReason', 'Forged hidden operation')->set('form.openingHoursConfigured', false)
+        ->set('form.openingHours', [])->call('save')->assertHasNoErrors();
+    expect($branch->fresh()->public_name)->toBe('Metadata only')->and($branch->fresh()->is_temporarily_closed)->toBeFalse()
+        ->and($branch->fresh()->pause_version)->toBe(0)->and($branch->openingHours()->sole()->id)->toBe($hour->id);
+});
+
+test('availability schedule rejects duplicate weekdays and retains the previous schedule', function (): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $component = Livewire::actingAs($owner)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))->set('section', 'schedules')->call('openHours');
+    $hours = $component->get('weekly.openingHours');
     $hours[1]['day_of_week'] = 1;
-
-    $component->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours', $hours)
-        ->call('save')
-        ->assertHasErrors(['form.openingHours.1.day_of_week' => 'distinct']);
-
+    $component->set('weekly.mode', 'weekly')->set('weekly.openingHours', $hours)
+        ->call('previewSchedule')->assertHasErrors(['weekly.openingHours.1.day_of_week' => 'distinct']);
     expect($branch->openingHours()->exists())->toBeFalse();
 });
 
-test('branch settings report interval errors on the form and allow a corrected retry', function (): void {
+test('availability schedule reports interval errors on the form and allows a corrected retry', function (): void {
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
-    $component = Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.openingHoursConfigured', true)
-        ->set('form.openingHours.0.intervals.0.closes_at', '10:00')
-        ->call('save')
-        ->assertHasErrors('form.openingHours.0.intervals.0.closes_at');
-
+    $component = Livewire::actingAs($owner)->test(AvailabilityIndex::class, compact('organization', 'brand', 'branch'))->set('section', 'schedules')->call('openHours')
+        ->set('weekly.mode', 'weekly')->set('weekly.openingHours.0.is_closed', false)
+        ->set('weekly.openingHours.0.intervals', [['opens_at' => '10:00', 'closes_at' => '10:00']])
+        ->call('previewSchedule')->assertHasErrors('weekly.openingHours.0.intervals.0.closes_at');
     expect($branch->openingHours()->exists())->toBeFalse();
-
-    $component->set('form.openingHours.0.intervals.0.closes_at', '18:00')
-        ->call('save')->assertHasNoErrors();
-
+    $component->set('weekly.openingHours.0.intervals.0.closes_at', '18:00')
+        ->call('previewSchedule')->call('applySchedule')->assertHasNoErrors();
     expect($branch->openingHours()->where('day_of_week', 1)->sole()->closes_at)->toStartWith('18:00');
 });
 

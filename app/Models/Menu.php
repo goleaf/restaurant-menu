@@ -26,6 +26,8 @@ class Menu extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'schedule_version' => 0,
+        'schedule_is_closed' => false,
         'status' => 'draft',
         'sort_order' => 0,
     ];
@@ -36,6 +38,8 @@ class Menu extends Model
     protected function casts(): array
     {
         return [
+            'schedule_version' => 'integer',
+            'schedule_is_closed' => 'boolean',
             'status' => MenuStatus::class,
             'sort_order' => 'integer',
         ];

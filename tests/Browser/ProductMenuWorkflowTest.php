@@ -248,8 +248,11 @@ test('owner manages accumulated pending photos without losing image identity', f
     $page->wait(1);
     productMenuClick($page, 'button[wire\\:click="cancelItemEditing"]');
     $page->wait(1);
-    productMenuClick($page, '[data-menu-section="availability"]');
-    $page->assertAttribute('[data-menu-section="availability"]', 'aria-current', 'page');
+    $page->assertVisible('[data-menu-section="availability"]')->assertEnabled('[data-menu-section="availability"]')
+        ->click('[data-menu-section="availability"]')->assertPresent('[data-page="availability-workspace"]')
+        ->assertPathIs(route('organizations.brands.branches.availability.index', [$organization, $branch->brand, $branch], false))
+        ->assertQueryStringHas('section', 'stoplist')
+        ->assertAttribute('[data-availability-section="stoplist"]', 'aria-current', 'page');
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
 
@@ -310,10 +313,34 @@ test('owner previews local CSV discards safely and applies a page scoped availab
     $page->fill('input[name="filters.search"]', 'Browser CSV dish')->wait(1);
     productMenuClick($page, 'button[wire\\:click="selectCatalogPage"]');
     $page->assertSee(__('menu.bulk.selected', ['count' => 1]));
-    $page->select('select[wire\\:model\\.live="bulk.operation"]', 'available')->wait(1);
-    productMenuClick($page, 'form[wire\\:submit="applyCatalogBulk"] button[type="submit"]');
-    $page->assertSee(__('menu.bulk.saved', ['count' => 1]));
-    expect($imported->fresh()->is_available)->toBeTrue();
+    $catalogUrl = $page->script('location.pathname + location.search');
+    expect($catalogUrl)->toBeString();
+    $otherRestrictions = MenuItem::query()->where('menu_id', $menu->id)->whereKeyNot($imported->id)
+        ->orderBy('id')->get(['id', 'is_available', 'hidden_until'])->toArray();
+    $page->assertVisible('[data-menu-section="availability"]')->assertEnabled('[data-menu-section="availability"]')
+        ->click('[data-menu-section="availability"]')->assertPresent('[data-page="availability-workspace"]')
+        ->assertPathIs(route('organizations.brands.branches.availability.index', [$organization, $branch->brand, $branch], false))
+        ->assertQueryStringHas('section', 'stoplist')
+        ->assertAttribute('[data-availability-section="stoplist"]', 'aria-current', 'page');
+    $page->fill('input[name="filters.search"]', 'Browser CSV dish')
+        ->assertScript('document.querySelectorAll(".rm-availability__item").length', 1);
+    $selectedItem = 'ui-checkbox[wire\\:model="selectedItems"][value="'.$imported->id.'"]';
+    productMenuClick($page, $selectedItem);
+    $page->assertAttribute($selectedItem, 'aria-checked', 'true');
+    productMenuClick($page, 'button[wire\\:click="openBulk"]');
+    $page->assertVisible('[data-availability-editor]')
+        ->select('select[name="restriction.operation"]', 'resume');
+    productMenuClick($page, 'form[wire\\:submit="previewRestriction"] button[type="submit"]');
+    $page->assertVisible('[data-availability-preview]')->assertSee('Browser CSV dish');
+    expect($imported->fresh()->is_available)->toBeFalse();
+    productMenuClick($page, 'button[wire\\:click="applyRestriction"]');
+    $page->assertSee(__('availability.applied'));
+    expect($imported->fresh()->is_available)->toBeTrue()
+        ->and($imported->fresh()->getRawOriginal('hidden_until'))->toBe($imported->getRawOriginal('hidden_until'))
+        ->and(MenuItem::query()->where('menu_id', $menu->id)->whereKeyNot($imported->id)
+            ->orderBy('id')->get(['id', 'is_available', 'hidden_until'])->toArray())->toBe($otherRestrictions);
+    $page->navigate($catalogUrl)->assertAttribute('[data-menu-section="catalog"]', 'aria-current', 'page')
+        ->assertValue('input[name="filters.search"]', 'Browser CSV dish')->assertSee('Browser CSV dish');
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
 

@@ -10,6 +10,8 @@ enum AuditLogAction: string
     case McpTokenRevoked = 'mcp_token_revoked';
     case MenuPriceChanged = 'menu_price_changed';
     case MenuAvailabilityChanged = 'menu_availability_changed';
+    case BranchAvailabilityChanged = 'branch_availability_changed';
+    case MenuScheduleChanged = 'menu_schedule_changed';
     case MenuItemDeleted = 'menu_item_deleted';
     case ServicePointMoved = 'service_point_moved';
     case ServicePointDeleted = 'service_point_deleted';
@@ -49,6 +51,8 @@ enum AuditLogAction: string
             self::McpTokenRevoked => __('mcp.audit.token_revoked'),
             self::MenuPriceChanged => 'Price changed',
             self::MenuAvailabilityChanged => 'Dish availability changed',
+            self::BranchAvailabilityChanged => __('availability.audit.branch_changed'),
+            self::MenuScheduleChanged => __('availability.audit.menu_schedule_changed'),
             self::MenuItemDeleted => 'Dish deleted',
             self::ServicePointMoved => 'Service point moved',
             self::ServicePointDeleted => 'Service point deleted',

@@ -21,6 +21,12 @@ class BuildDraftOrderItemModifierSnapshots
      */
     public function groupsFor(MenuItem $menuItem, ?string $languageCode = null): Collection
     {
+        if ($languageCode === null && $menuItem->relationLoaded('modifierGroups')
+            && $menuItem->modifierGroups->every(fn (ModifierGroup $group): bool => $group->relationLoaded('options'))) {
+            return $menuItem->modifierGroups->map(static fn (ModifierGroup $group): ModifierGroup => (clone $group)
+                ->setRelation('options', $group->options->where('is_available', true)->values()));
+        }
+
         return $menuItem->modifierGroups()
             ->select([
                 'modifier_groups.id',
@@ -65,7 +71,7 @@ class BuildDraftOrderItemModifierSnapshots
 
     /**
      * @param  Collection<int, ModifierGroup>  $modifierGroups
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>
      */
     public function snapshotsFor(Collection $modifierGroups, array $selectedModifierOptions): array
@@ -87,7 +93,7 @@ class BuildDraftOrderItemModifierSnapshots
     }
 
     /**
-     * @param  array<string, mixed>  $selectedModifierOptions
+     * @param  array<int|string, mixed>  $selectedModifierOptions
      * @return array<int, list<int>>
      */
     private function normalizeSelectedModifierOptions(array $selectedModifierOptions): array

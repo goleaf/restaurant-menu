@@ -78,11 +78,18 @@ test('menu workspace mounts only the selected allowlisted section', function (st
     }
 })->with([
     ['catalog', 'catalog'],
-    ['availability', 'availability'],
     ['variants', 'variants'],
     ['departments', 'kitchen-departments'],
     ['modifiers', 'modifiers'],
 ]);
+
+test('legacy availability entry redirects to the same scoped center before mounting an editor', function (): void {
+    [$owner, $organization, $brand, $branch] = menuWorkspaceContext();
+    Livewire::actingAs($owner)->withQueryParams(['section' => 'availability'])->test(Index::class, compact('organization', 'brand', 'branch'))
+        ->assertRedirect(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'stoplist']))
+        ->assertDontSeeLivewire('organizations.brands.branches.menu.availability')
+        ->assertDontSeeLivewire('organizations.brands.branches.menu.catalog');
+});
 
 test('menu workspace rejects an arbitrary component and normalizes a hostile URL', function (mixed $section): void {
     [$owner, $organization, $brand, $branch] = menuWorkspaceContext();
@@ -99,11 +106,14 @@ test('availability staff cannot select a management section even by changing pub
         'role_id' => Role::query()->where('code', SystemRole::HeadChef)->sole()->id,
     ]);
 
-    Livewire::actingAs($chef)->withQueryParams(['section' => 'catalog'])->test(Index::class, compact('organization', 'brand', 'branch'))
-        ->assertSet('section', 'availability')
-        ->assertDontSeeLivewire('organizations.brands.branches.menu.catalog')
-        ->call('selectSection', 'catalog')->assertHasErrors('section')
-        ->set('section', 'modifiers')->assertSet('section', 'availability');
+    foreach (['catalog', 'modifiers'] as $section) {
+        Livewire::actingAs($chef)->withQueryParams(['section' => $section])->test(Index::class, compact('organization', 'brand', 'branch'))
+            ->assertRedirect(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'stoplist']))
+            ->assertDontSeeLivewire('organizations.brands.branches.menu.catalog')
+            ->assertDontSeeLivewire('organizations.brands.branches.menu.modifiers');
+    }
+    Livewire::actingAs($chef)->test(App\Livewire\Organizations\Brands\Branches\Availability\Index::class, compact('organization', 'brand', 'branch'))
+        ->call('selectSection', 'schedules')->assertForbidden();
 });
 
 test('menu workspace rechecks revoked membership before changing sections', function (): void {

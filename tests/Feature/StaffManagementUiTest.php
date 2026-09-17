@@ -8,6 +8,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
+use App\Livewire\Organizations\Staff\Show as EmployeeCard;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
@@ -123,7 +124,12 @@ test('branch staff page assigns an accepted colleague and changes only branch ac
     $organizationMembership = OrganizationUser::factory()->forOrganization($organization)->forUser($staffUser)->forRole($organizationRole)->active()->create();
     $component = Livewire::actingAs($manager)->test(BranchStaffIndex::class, compact('organization', 'brand', 'branch'))
         ->call('openExistingAssignment')->set('memberForm.organizationMemberId', $organizationMembership->id)
-        ->set('memberForm.roleId', $role->id)->call('assignExistingMember')->assertHasNoErrors()->assertSee('Existing Staff Member');
+        ->set('memberForm.roleId', $role->id)->call('assignExistingMember')->assertHasNoErrors()
+        ->assertRedirect(route('organizations.brands.branches.staff.show', ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'member' => $organizationMembership, 'section' => 'access']));
+    expect(BranchUser::query()->where('user_id', $staffUser->id)->exists())->toBeFalse();
+    $component = Livewire::actingAs($manager)->test(EmployeeCard::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch, 'member' => $organizationMembership])
+        ->call('openExistingAssignment')->set('memberForm.roleId', $role->id)
+        ->call('previewExistingAssignment')->call('assignExistingMember')->assertHasNoErrors()->assertSee('Existing Staff Member');
     $branchUser = BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $staffUser->id)->firstOrFail();
     expect($organizationMembership->fresh()->role_id)->toBe($organizationRole->id)->and($branchUser->role_id)->toBe($role->id);
     foreach (['suspended', 'active'] as $status) {

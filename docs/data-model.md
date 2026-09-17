@@ -4,6 +4,13 @@
 
 # Data model
 
+## Prompt 8 identity and revision semantics
+
+No schema migration or account merge is introduced. A card route uses OrganizationUser identity and independently validates organization, restaurant and User linkage. BranchUser remains an explicit restaurant assignment; no rows means organizational inheritance, while any rows restrict scope to active assignments. Empty room pivots mean unrestricted default service coverage; archived pivots still count as a restriction.
+
+Organization-scoped permission mutations increment the existing organizational access_version when a real override changes. Permission and role fingerprints additionally cover current dependency state and proposed role defaults. Room mutations advance restaurant access_version and record the existing audit action with a typed areas scope. Explicit assignment removal records its audit against the surviving organization membership; earlier branch events remain attributable through their recorded staff_user_id and authorized organization/branch context.
+
+
 ## Scoped team access migration — 2026-09-15
 
 Two additive migrations introduce organization_id/scope_key on permission_user_overrides and access_version on organization_users/branch_users. Existing overrides retain legacy scope and values. The unique context key avoids SQLite nullable uniqueness ambiguity; organization_id has its own foreign-key index. Rollback refuses to collapse scoped decisions into the legacy global schema. Membership versions start at zero and advance with authorized role/status changes. No invitation plaintext credentials or parallel area-assignment table is introduced.

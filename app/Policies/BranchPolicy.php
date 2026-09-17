@@ -94,6 +94,11 @@ final class BranchPolicy
         return $this->hasPermission($user, $branch, SystemPermission::GenerateQr);
     }
 
+    public function viewTeam(User $user, Branch $branch): bool
+    {
+        return $this->manageStaff($user, $branch) || $this->hasPermission($user, $branch, SystemPermission::ManagePermissions);
+    }
+
     public function manageStaff(User $user, Branch $branch): bool
     {
         return $this->hasPermission($user, $branch, SystemPermission::ManageStaff);

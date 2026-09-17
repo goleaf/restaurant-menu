@@ -4,6 +4,15 @@
 
 # Changelog
 
+## 2026-09-17 - Prompt 8 unified employee card
+
+- Added one addressable organization/restaurant employee card with overview, access, rooms and typed audit history; lists and legacy permission links converge on it.
+- Added explicit first-assignment and final-assignment inheritance previews, atomic organization permission drafts and transaction-local role impact checks.
+- Preserved existing invitation acceptance/authentication, account isolation, management safeguards and room semantics; localized real validation errors in EN/LT/RU.
+- Reused the existing unsaved/offline guard and local Flux Pro with a separate token-based Team SCSS entry.
+- Fixed long restaurant scope labels overwriting the bounded server-search query in the existing workspace selector.
+- Stable candidate and shared integration acceptance pass; PHP 8.6 application acceptance remains blocked by dependency requirements. Exact evidence and failed diagnostics are recorded in PROGRESS.md; Git delivery is reported separately.
+
 ## 2026-09-16 — Unified restaurant workspace, prompt 3
 
 - Replace the intermediate dashboard view with a class-based Livewire entry and one shared authorized restaurant selector using the available local Flux Pro combobox.

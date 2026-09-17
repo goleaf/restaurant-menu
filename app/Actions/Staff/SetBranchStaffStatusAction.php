@@ -57,6 +57,9 @@ final class SetBranchStaffStatusAction
             if ($current->user_id === $actor->id || $staff->isSuperadmin()) {
                 throw ValidationException::withMessages(['reason' => __('staff.errors.self_role_change_blocked')]);
             }
+            if ($current->access_version !== $expectedVersion) {
+                throw ValidationException::withMessages(['reason' => __('staff.errors.stale_membership')]);
+            }
             if ($current->status === $target) {
                 return $current;
             }

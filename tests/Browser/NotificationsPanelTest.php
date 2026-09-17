@@ -213,8 +213,9 @@ test('mobile sidebar and repeated Livewire navigation retain exactly one notific
     $this->seed(SystemPermissionsSeeder::class);
     $user = User::factory()->create(['email' => 'notification-polling@example.test', 'password' => 'password']);
     $page = visit(route('login', absolute: false));
-    $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
-        ->resize(390, 844)->navigate(route('dashboard', absolute: false));
+    $page->resize(390, 844)->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->assertVisible('[data-workspace-entry]')
+        ->assertScript('document.readyState', 'complete');
     $page->script(<<<'JS'
         (() => {
             const original = window.fetch;

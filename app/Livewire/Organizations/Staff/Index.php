@@ -28,7 +28,10 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\BranchAssignmentQueryService;
+use App\Services\Staff\PermissionQueryService;
 use App\Services\Staff\StaffQueryService;
+use App\Services\Staff\TeamCardQueryService;
 use App\Support\LocalizedDateFormatter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -47,6 +50,9 @@ use Throwable;
 class Index extends Component
 {
     use WithPagination;
+
+    #[Locked]
+    public ?int $actorId = null;
 
     #[Locked]
     public Organization $organization;
@@ -110,7 +116,13 @@ class Index extends Component
 
     public string $errorMessage = '';
 
-    private StaffQueryService $staffQueries;
+    protected StaffQueryService $staffQueries;
+
+    protected TeamCardQueryService $cards;
+
+    protected PermissionQueryService $permissions;
+
+    protected BranchAssignmentQueryService $branchAssignments;
 
     private ?User $actor = null;
 
@@ -118,26 +130,30 @@ class Index extends Component
 
     private ?string $createdInvitationLink = null;
 
-    public function boot(StaffQueryService $staffQueries): void
+    public function boot(StaffQueryService $staffQueries, TeamCardQueryService $cards, PermissionQueryService $permissions, BranchAssignmentQueryService $branchAssignments): void
     {
         $this->staffQueries = $staffQueries;
+        $this->cards = $cards;
+        $this->permissions = $permissions;
+        $this->branchAssignments = $branchAssignments;
     }
 
     public function mount(Organization $organization, ?Brand $brand = null, ?Branch $branch = null): void
     {
+        $this->actorId = (int) Auth::id();
         $this->organization = $organization;
         if ($this->isBranchWorkspace()) {
             abort_unless($brand instanceof Brand && $branch instanceof Branch, 404);
             $this->brand = $brand;
             $this->branch = $branch;
         }
-        $this->authorizeStaffManagement();
+        $this->authorizeWorkspace();
         $this->invitationForm->roleId = $this->staffQueries->defaultWaiterRoleId();
     }
 
     public function selectSection(string $section): void
     {
-        $this->authorizeStaffManagement();
+        $this->authorizeWorkspace();
         abort_unless(in_array($section, $this->sections(), true), 422);
         if (! $this->guardEditor()) {
             return;
@@ -150,7 +166,7 @@ class Index extends Component
 
     public function updatedSection(): void
     {
-        $this->authorizeStaffManagement();
+        $this->authorizeWorkspace();
         if (! $this->guardEditor()) {
             $this->section = $this->renderedSection;
 
@@ -179,7 +195,7 @@ class Index extends Component
 
     public function refreshWorkspace(): void
     {
-        $this->authorizeStaffManagement();
+        $this->authorizeWorkspace();
         $this->successMessage = '';
         $this->errorMessage = '';
     }
@@ -253,7 +269,7 @@ class Index extends Component
         $this->authorizeStaffManagement();
         abort_unless($this->editor === 'cancel' && $this->confirmInvitationId === $invitationId, 422);
         $this->attempt(function () use ($cancelInvitation, $invitationId): void {
-            $cancelInvitation->handle($this->currentUser(), $this->organization, $this->findInvitation($invitationId));
+            $cancelInvitation->handle($this->currentUser(), $this->organization, $this->findInvitation($invitationId), $this->invitationVersion);
             $this->discardEditor();
             $this->successMessage = __('staff.messages.invitation_cancelled');
         });
@@ -305,11 +321,20 @@ class Index extends Component
         $member = $this->findMember($this->editingMembershipId ?? 0);
         $this->authorizeMember($member);
         $values = $this->memberForm->validatedChange($this->roles()->modelKeys());
-        $this->previewFingerprint = $this->fingerprint($values);
+        $this->previewFingerprint = '';
         $role = $this->staffQueries->findAssignableRole($this->currentUser(), $this->organization, $values['roleId']);
         $proposedStatus = $this->memberOperation === 'status' ? $values['status'] : $member->status->value;
         $this->preview = ['current' => $member->role->code->localizedLabel().' · '.$member->status->localizedLabel(),
             'proposed' => ($this->memberOperation === 'role' ? $role->code->localizedLabel() : $member->role->code->localizedLabel()).' · '.OrganizationUserStatus::from($proposedStatus)->localizedLabel()];
+        if ($this->memberOperation === 'role') {
+            $this->attempt(function () use ($member, $role): void {
+                $this->preview['impact'] = $this->permissions->rolePreview($this->currentUser(), $this->organization, $member->user, $role, $member instanceof BranchUser ? $this->branch : null, $member instanceof BranchUser);
+            });
+            if (! isset($this->preview['impact'])) {
+                return;
+            }
+        }
+        $this->previewFingerprint = $this->fingerprint($values);
     }
 
     public function saveMember(UpdateOrganizationStaffRoleAction $organizationRole, UpdateBranchStaffRoleAction $branchRole, SetOrganizationStaffStatusAction $organizationStatus, SetBranchStaffStatusAction $branchStatus): void
@@ -325,9 +350,9 @@ class Index extends Component
             if ($this->memberOperation === 'role') {
                 $role = $this->staffQueries->findAssignableRole($this->currentUser(), $this->organization, $values['roleId']);
                 if ($member instanceof BranchUser && $this->branch instanceof Branch) {
-                    $branchRole->handle($this->currentUser(), $this->branch, $member, $role, $values['reason'], $this->editingVersion);
+                    $branchRole->handle($this->currentUser(), $this->branch, $member, $role, $values['reason'], $this->editingVersion, $this->preview['impact']['fingerprint'] ?? null);
                 } elseif ($member instanceof OrganizationUser) {
-                    $organizationRole->handle($this->currentUser(), $this->organization, $member, $role, $values['reason'], $this->editingVersion);
+                    $organizationRole->handle($this->currentUser(), $this->organization, $member, $role, $values['reason'], $this->editingVersion, $this->preview['impact']['fingerprint'] ?? null);
                 }
             } else {
                 $action = $member instanceof BranchUser ? $branchStatus : $organizationStatus;
@@ -354,19 +379,20 @@ class Index extends Component
         $this->rememberEditor();
     }
 
-    public function assignExistingMember(AddBranchStaffMemberAction $assign): void
+    public function selectExistingMember(mixed $membershipId): void
     {
-        $this->successMessage = '';
         $this->authorizeStaffManagement();
         abort_unless($this->branch instanceof Branch, 404);
+        $member = $this->staffQueries->findOrganizationMembership($this->organization, $this->validatedIdentifier($membershipId));
+        $this->authorizeMember($member);
+        abort_unless($member->status === OrganizationUserStatus::Active, 403);
+        $this->redirect($this->cards->url($member, $this->branch, 'access'), navigate: true);
+    }
+
+    public function assignExistingMember(AddBranchStaffMemberAction $assign): void
+    {
         $values = $this->memberForm->validatedAssignment($this->roles()->modelKeys());
-        $member = $this->staffQueries->findOrganizationMembership($this->organization, $values['organizationMemberId']);
-        $role = $this->staffQueries->findAssignableRole($this->currentUser(), $this->organization, $values['roleId']);
-        $this->attempt(function () use ($assign, $member, $role): void {
-            $assign->handle($this->organization, $this->branch, $role, $this->currentUser(), ['email' => $member->user->email]);
-            $this->discardEditor();
-            $this->successMessage = __('staff.messages.staff_created');
-        });
+        $this->selectExistingMember($values['organizationMemberId']);
     }
 
     public function openAssignments(mixed $membershipId): void
@@ -463,7 +489,7 @@ class Index extends Component
 
     public function render(): View
     {
-        $this->authorizeStaffManagement();
+        $this->authorizeWorkspace();
         $section = is_string($this->section) && in_array($this->section, $this->sections(), true) ? $this->section : 'employees';
         if ($section !== $this->section) {
             $this->addError('section', __('staff.workspace.no_results'));
@@ -489,11 +515,10 @@ class Index extends Component
                 $filters['status'] = 'active';
             }
             $members = $this->branch instanceof Branch
-                ? $this->staffQueries->paginateBranchMembers($this->branch, $filters['search'], 15, $filters)
+                ? ($section === 'employees' ? $this->staffQueries->paginateBranchTeam($this->branch, $filters['search'], 15, $filters) : $this->staffQueries->paginateBranchMembers($this->branch, $filters['search'], 15, $filters))
                 : $this->staffQueries->paginateOrganizationMembers($this->organization, $filters['search'], 15, $filters);
         }
         $selectedMember = null;
-        $permissionLinks = $this->staffQueries->permissionLinks($this->organization, $this->currentUser(), $members?->getCollection()->pluck('user_id')->all() ?? [], $roles->modelKeys());
         if ($this->editingMembershipId !== null) {
             $member = $this->findMember($this->editingMembershipId);
             $this->authorizeMember($member);
@@ -506,18 +531,61 @@ class Index extends Component
         $candidates = $this->editor === 'assign' && $this->branch instanceof Branch
             ? $this->staffQueries->assignableOrganizationMembers($this->organization, $this->branch, is_string($this->assignmentForm->search) ? mb_substr($this->assignmentForm->search, 0, 120) : '', $this->currentUser()) : collect();
 
+        $membershipIds = $this->staffQueries->membershipIds($this->organization, $members?->getCollection()->pluck('user_id')->all() ?? []);
+        $memberRows = $members?->getCollection()->map(function ($member) use ($roles, $membershipIds, $filters, $section): array {
+            $row = $this->staffQueries->memberRow($member, $this->currentUser(), $roles->modelKeys());
+            $assignment = $member instanceof OrganizationUser && $this->branch !== null && $member->user->relationLoaded('branchAssignments') ? $member->user->branchAssignments->first() : null;
+            if ($member instanceof OrganizationUser && $this->branch !== null) {
+                $row['coverage'] = $assignment === null ? __('team.card.inherited') : __('team.card.explicit');
+                $row['role_label'] = __('team.card.organization_role').': '.$row['role_label'].($assignment === null ? '' : ' · '.__('team.card.branch_role').': '.$assignment->role->code->localizedLabel());
+                $row['localized_status'] = $member->status->localizedLabel().($assignment === null ? '' : ' · '.$assignment->status->localizedLabel());
+            }
+            $memberId = $membershipIds[$member->user_id] ?? null;
+            $row['card_url'] = $memberId === null ? null : route($this->branch === null ? 'organizations.staff.show' : 'organizations.brands.branches.staff.show', [
+                'organization' => $this->organization->id, ...($this->branch === null ? [] : ['brand' => $this->brand->id, 'branch' => $this->branch->id]),
+                'member' => $memberId, ...$filters, 'from' => $section, 'listPage' => $this->getPage($this->pageName()), 'section' => $section === 'assignments' ? 'areas' : 'overview',
+            ]);
+
+            return $row;
+        })->all() ?? [];
+
+        $acceptedMemberships = $this->staffQueries->membershipIds($this->organization, $invitations?->getCollection()->pluck('accepted_by_user_id')->filter()->all() ?? []);
+
+        $coverage = $section === 'assignments' && $this->branch instanceof Branch ? $this->staffQueries->coverageOverview($this->branch) : null;
+        if ($coverage !== null) {
+            $link = fn (array $person): array => [...$person, 'url' => route('organizations.brands.branches.staff.show', [
+                'organization' => $this->organization->id, 'brand' => $this->brand->id, 'branch' => $this->branch->id,
+                'member' => $person['id'], 'section' => 'areas', 'from' => 'assignments', ...$filters,
+                'listPage' => $this->getPage($this->pageName()), 'coverageListPage' => $this->getPage('coveragePage'),
+            ])];
+            $coverage['unrestricted_members'] = array_map($link, $coverage['unrestricted_members']);
+            foreach ($coverage['rows'] as &$areaRow) {
+                $areaRow['waiter_members'] = array_map($link, $areaRow['waiter_members']);
+            }
+            unset($areaRow);
+        }
+
         return view($this->viewName(), [
+            'canManageStaff' => Gate::forUser($this->currentUser())->allows('manageStaff', $this->branch ?? $this->organization),
             'activeSection' => $section, 'isBranch' => $this->isBranchWorkspace(), 'contextLabel' => $this->contextLabel(),
             'hasActiveFilters' => $filters['search'] !== '' || $filters['role'] !== '' || $filters['status'] !== '' || $filters['sort'] !== 'newest',
-            'coverageOverview' => $section === 'assignments' && $this->branch instanceof Branch ? $this->staffQueries->coverageOverview($this->branch) : null,
+            'coverageOverview' => $coverage,
             'invitationSummary' => $section === 'invitations' ? $this->staffQueries->invitationSummary($this->organization, $this->branch, $filters) : [],
             'organizationName' => $this->organization->name, 'createdInvitationLink' => $this->createdInvitationLink,
             'roleOptions' => $roles->map(fn (Role $role): array => ['id' => $role->id, 'label' => $role->code->localizedLabel()])->all(),
             'filterRoleOptions' => array_map(fn (SystemRole $role): array => ['value' => $role->value, 'label' => $role->localizedLabel()], SystemRole::cases()),
             'statusOptions' => $section === 'invitations' ? ['pending', 'accepted', 'cancelled', 'expired', 'rejected'] : ['active', 'invited', 'suspended', 'removed'],
             'statusLabels' => array_combine($section === 'invitations' ? ['pending', 'accepted', 'cancelled', 'expired', 'rejected'] : ['active', 'invited', 'suspended', 'removed'], array_map(fn (string $status): string => ($section === 'invitations' ? InvitationStatus::from($status)->localizedLabel() : OrganizationUserStatus::from($status)->localizedLabel()), $section === 'invitations' ? ['pending', 'accepted', 'cancelled', 'expired', 'rejected'] : ['active', 'invited', 'suspended', 'removed'])),
-            'memberRows' => $members?->getCollection()->map(fn ($member): array => [...$this->staffQueries->memberRow($member, $this->currentUser(), $roles->modelKeys()), 'permissions_url' => $permissionLinks[$member->user_id] ?? null])->all() ?? [],
-            'invitationRows' => $invitations?->getCollection()->map(fn (Invitation $invitation): array => $this->staffQueries->invitationRow($invitation, $roles->modelKeys()))->all() ?? [],
+            'memberRows' => $memberRows,
+            'invitationRows' => $invitations?->getCollection()->map(function (Invitation $invitation) use ($roles, $acceptedMemberships, $filters): array {
+                $memberId = $acceptedMemberships[$invitation->accepted_by_user_id] ?? null;
+                $url = $memberId === null ? null : route($this->branch === null ? 'organizations.staff.show' : 'organizations.brands.branches.staff.show', [
+                    'organization' => $this->organization->id, ...($this->branch === null ? [] : ['brand' => $this->brand->id, 'branch' => $this->branch->id]),
+                    'member' => $memberId, ...$filters, 'from' => 'invitations', 'listPage' => $this->getPage($this->pageName()),
+                ]);
+
+                return [...$this->staffQueries->invitationRow($invitation, $roles->modelKeys()), 'scope' => $this->contextLabel(), 'card_url' => $url];
+            })->all() ?? [],
             'membersPaginator' => $members, 'invitationsPaginator' => $invitations, 'selectedMember' => $selectedMember,
             'areaEditor' => $areas, 'areasAdded' => count(array_diff($ids, $this->originalAreaIds)), 'areasRemoved' => count(array_diff($this->originalAreaIds, $ids)),
             'coverageLabel' => $ids === [] ? __('staff.workspace.coverage_all') : __('staff.workspace.coverage_count', ['count' => count($ids)]),
@@ -542,18 +610,28 @@ class Index extends Component
         return (int) $validated['member'];
     }
 
-    private function currentUser(): User
+    protected function currentUser(): User
     {
+        abort_unless($this->actorId !== null && $this->actorId === Auth::id(), 403);
         if ($this->actor === null) {
             $user = Auth::user();
             abort_unless($user instanceof User, 401);
-            $this->actor = $user->fresh() ?? $user;
+            $this->actor = $user->fresh(['roles:id,code']) ?? $user;
         }
 
         return $this->actor;
     }
 
-    private function authorizeStaffManagement(): void
+    protected function authorizeWorkspace(): void
+    {
+        $context = $this->staffQueries->context($this->organization->id, $this->brand?->id, $this->branch?->id);
+        $this->organization = $context['organization'];
+        $this->brand = $context['brand'];
+        $this->branch = $context['branch'];
+        Gate::forUser($this->currentUser())->authorize('viewTeam', $this->branch ?? $this->organization);
+    }
+
+    protected function authorizeStaffManagement(): void
     {
         if ($this->authorized) {
             return;
@@ -567,17 +645,17 @@ class Index extends Component
     }
 
     /** @return Collection<int,Role> */
-    private function roles(): Collection
+    protected function roles(): Collection
     {
         return $this->staffQueries->assignableRoles($this->currentUser(), $this->organization);
     }
 
-    private function findMember(int $id): OrganizationUser|BranchUser
+    protected function findMember(int $id): OrganizationUser|BranchUser
     {
         return $this->branch instanceof Branch ? $this->staffQueries->findBranchUser($this->branch, $id) : $this->staffQueries->findOrganizationMembership($this->organization, $id);
     }
 
-    private function authorizeMember(OrganizationUser|BranchUser $member): void
+    protected function authorizeMember(OrganizationUser|BranchUser $member): void
     {
         abort_if($member->user_id === $this->currentUser()->id || $member->user->isSuperadmin(), 403);
         Gate::forUser($this->currentUser())->authorize('assign', [$member->role, $this->organization]);
@@ -589,7 +667,7 @@ class Index extends Component
     }
 
     /** @return list<string> */
-    private function sections(): array
+    protected function sections(): array
     {
         return $this->isBranchWorkspace() ? ['employees', 'invitations', 'assignments'] : ['employees', 'invitations'];
     }
@@ -599,26 +677,26 @@ class Index extends Component
         return ($this->isBranchWorkspace() ? 'branch' : 'organization').($this->section === 'invitations' ? 'InvitationsPage' : 'StaffPage');
     }
 
-    private function contextLabel(): string
+    protected function contextLabel(): string
     {
         return $this->organization->name.($this->branch instanceof Branch ? ' → '.$this->brand->name.' → '.$this->branch->name.' · '.$this->branch->timezone : '');
     }
 
     /** @param array<string,mixed> $values */
-    private function fingerprint(array $values): string
+    protected function fingerprint(array $values): string
     {
         return hash('sha256', json_encode([$this->organization->id, $this->branch?->id, $values], JSON_THROW_ON_ERROR));
     }
 
     /** @param array<string,mixed> $values */
-    private function assertPreview(array $values): void
+    protected function assertPreview(array $values): void
     {
         if ($this->previewFingerprint === '' || ! hash_equals($this->previewFingerprint, $this->fingerprint($values))) {
             throw ValidationException::withMessages(['preview' => __('staff.workspace.preview_changed')]);
         }
     }
 
-    private function editorFingerprint(): string
+    protected function editorFingerprint(): string
     {
         return $this->fingerprint(match ($this->editor) {
             'invite' => $this->invitationForm->all(), 'member', 'assign' => $this->memberForm->all(),
@@ -626,7 +704,7 @@ class Index extends Component
         });
     }
 
-    private function guardEditor(): bool
+    protected function guardEditor(): bool
     {
         if ($this->editor !== '' && $this->originalEditor !== '' && ! hash_equals($this->originalEditor, $this->editorFingerprint())) {
             $this->errorMessage = __('staff.workspace.unsaved');
@@ -637,13 +715,13 @@ class Index extends Component
         return true;
     }
 
-    private function rememberEditor(): void
+    protected function rememberEditor(): void
     {
         $this->originalEditor = $this->editorFingerprint();
         $this->dispatch('staff-editor-opened');
     }
 
-    private function attempt(callable $operation): void
+    protected function attempt(callable $operation): void
     {
         $this->successMessage = $this->errorMessage = '';
         try {

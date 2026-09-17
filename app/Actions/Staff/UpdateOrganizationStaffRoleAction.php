@@ -12,6 +12,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\PermissionQueryService;
 use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ final class UpdateOrganizationStaffRoleAction
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
         private readonly EnsureOrganizationManagementRemainsAction $ensureManagerRemains,
+        private readonly PermissionQueryService $permissions,
     ) {}
 
     public function handle(
@@ -33,11 +35,12 @@ final class UpdateOrganizationStaffRoleAction
         Role $role,
         string $reason,
         ?int $expectedVersion = null,
+        ?string $expectedImpactFingerprint = null,
     ): OrganizationUser {
         $reason = $this->validatedReason($reason);
         $expectedVersion ??= (int) $membership->getAttribute('access_version');
 
-        return DB::transaction(function () use ($actor, $organization, $membership, $role, $reason, $expectedVersion): OrganizationUser {
+        return DB::transaction(function () use ($actor, $organization, $membership, $role, $reason, $expectedVersion, $expectedImpactFingerprint): OrganizationUser {
             $actor = User::query()->with('roles')->whereKey($actor->id)->firstOrFail();
             $scopedMembership = OrganizationUser::query()
                 ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at', 'access_version'])
@@ -61,14 +64,20 @@ final class UpdateOrganizationStaffRoleAction
                 ->whereKey($scopedMembership->role_id)
                 ->firstOrFail();
 
-            if ((int) $scopedMembership->role_id === (int) $assignableRole->id) {
-                return $scopedMembership;
-            }
-
             Gate::forUser($actor)->authorize('assign', [$currentRole, $organization]);
             if ($scopedMembership->user_id !== $membership->user_id
                 || User::query()->whereKey($scopedMembership->user_id)->whereHas('roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value))->exists()) {
                 throw new AuthorizationException;
+            }
+            if ($scopedMembership->access_version !== $expectedVersion) {
+                throw ValidationException::withMessages(['editingRoleId' => __('staff.errors.stale_membership')]);
+            }
+            if ($expectedImpactFingerprint !== null) {
+                $this->permissions->assertRolePreviewCurrent($actor, $organization,
+                    User::query()->whereKey($scopedMembership->user_id)->firstOrFail(), $assignableRole, $expectedImpactFingerprint);
+            }
+            if ((int) $scopedMembership->role_id === (int) $assignableRole->id) {
+                return $scopedMembership;
             }
             if (OrganizationUser::query()->whereKey($scopedMembership->id)->where('access_version', $expectedVersion)
                 ->update(['access_version' => $expectedVersion + 1]) !== 1) {

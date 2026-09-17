@@ -84,10 +84,12 @@ test('team administrators invite assign zones and change scoped access across in
     $recipient->assertPathIs(route('restaurant.waiter.dashboard', absolute: false));
     $user = User::query()->where('email', 'team.new@example.test')->sole();
     $member = BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $user->id)->sole();
+    $organizationMember = OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $user->id)->sole();
     $admin->navigate($staffUrl)->assertSee($user->name);
     teamAdminClick($admin, 'nav button:nth-child(3)');
     $admin->assertQueryStringHas('section', 'assignments');
-    teamAdminClick($admin, 'button[wire\\:click="openAssignments('.$member->id.')"]');
+    teamAdminClick($admin, 'section[aria-labelledby="staff-coverage-heading"] > ul a[href*="/staff/members/'.$organizationMember->id.'"]');
+    $admin->assertQueryStringHas('section', 'areas');
     $admin->check('input[type="checkbox"][value="'.$area->id.'"]');
     expect(AreaNodeWaiter::query()->where('user_id', $user->id)->exists())->toBeFalse();
     teamAdminClick($admin, 'form[wire\\:submit="previewAreaAssignments"] button[type="submit"]');
@@ -95,12 +97,17 @@ test('team administrators invite assign zones and change scoped access across in
     teamAdminClick($admin, 'button[wire\\:click="saveAreaAssignments"]');
     expect(AreaNodeWaiter::query()->where('user_id', $user->id)->pluck('area_node_id')->all())->toBe([$area->id]);
     $admin->assertSee(__('staff.messages.waiter_zones_updated'));
-    teamAdminClick($admin, '[data-staff-editor] > div:first-child button');
+    teamAdminClick($admin, '[data-team-section="overview"]');
     $admin->screenshot(false, 'team-area-coverage');
     $admin->script('history.back()');
-    $admin->wait(0.5)->assertQueryStringMissing('section');
+    $admin->wait(0.5)->assertQueryStringHas('section', 'areas');
     $admin->script('history.forward()');
-    $admin->wait(0.5)->assertQueryStringHas('section', 'assignments');
+    $admin->wait(0.5)->assertQueryStringMissing('section');
+    $admin->navigate($staffUrl.'?section=assignments');
+    teamAdminClick($admin, 'article[wire\\:key="coverage-'.$area->id.'"] a[href*="/staff/members/'.$organizationMember->id.'"]');
+    $admin->assertQueryStringHas('section', 'areas')->assertChecked('input[type="checkbox"][value="'.$area->id.'"]');
+    teamAdminClick($admin, '.rm-team-card__identity a');
+    $admin->assertPathIs($staffUrl)->assertQueryStringHas('section', 'assignments');
     $admin->navigate($staffUrl);
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         $admin->resize($width, $height);
@@ -116,6 +123,8 @@ test('team administrators invite assign zones and change scoped access across in
         $admin->screenshot(false, 'team-staff-320-'.$locale.'-dark');
     }
     $admin->navigate($staffUrl.'?lang=en')->resize(390, 844);
+    teamAdminClick($admin, 'a[href*="/staff/members/'.$organizationMember->id.'"]');
+    teamAdminClick($admin, '[data-team-section="access"]');
     teamAdminClick($admin, 'button[wire\\:click="openMember('.$member->id.', \'status\')"]');
     $admin->select('select[name="memberForm.status"]', 'suspended')->fill('input[name="memberForm.reason"]', 'Temporary branch access review');
     $admin->script("window.dispatchEvent(new Event('offline'))");

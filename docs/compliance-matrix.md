@@ -4,6 +4,12 @@
 
 # Compliance matrix
 
+## Prompt 8 Team evidence boundary
+
+The unified card, explicit scope transitions, atomic permission drafts, typed history and shared guards extend `sys-staff-001`, `sys-role-001`, `sys-tenant-001` and `data-integrity-001`. Current acceptance covers TeamEmployeeCard, TeamCardAuthorization/Draft, TeamPermissionDraft, TeamScopeSafety, TeamAssignmentRemoval, TeamValidationLocalization and TeamEmployeeCardBrowser tests. Existing invitation, role, status, concurrency and room suites remain required. Older row-level suite/coverage counts below do not certify this stage; current full results and runtime blockers are recorded in PROGRESS.md and testing.md.
+
+Stable Team acceptance: candidate backend 3,755/72,403, browser 46/3,543, PHP coverage 94.1%; shared integration backend 3,903/73,761 and browser 60/4,603. No failures/skips or weakened thresholds. These are distinct source scopes; PHP 8.6 application compatibility remains blocked. The existing restaurant selector is additionally covered by a deterministic long-label search regression.
+
 ## Unified workspace acceptance — prompt 3, 2026-09-16
 
 `ui-workspace-003`, `livewire-001`, `blade-001`, `i18n-001`, `ui-accessibility-001` and `ui-responsive-001`: shared page context, one Livewire/Flux Pro selector, stable task registry and scoped existing screens are implemented and accepted on the supported PHP8.5.10 test runtime. Full22-step local aggregate passes:3,608 backend tests/69,577 assertions; PHP94.0%; JavaScript199/100% lines; isolated WebKit44/3,339. Independent signed-HTTP and two-tab regressions cover forbidden/conflicting/changed-actor contexts and preservation of mutation targets. All new workspace classes are included in coverage; no100% product guarantee is implied.

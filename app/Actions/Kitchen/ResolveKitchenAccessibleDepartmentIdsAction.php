@@ -26,10 +26,16 @@ class ResolveKitchenAccessibleDepartmentIdsAction
         return $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
             departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
-            roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
-            permissionCodes: [SystemPermission::ViewKitchen],
+            roleCodes: self::accessRules()['roles'],
+            permissionCodes: self::accessRules()['permissions'],
             permissionBranchIds: $permissionBranchIds,
         );
+    }
+
+    /** @return array{roles:list<SystemRole>,permissions:list<SystemPermission>} */
+    public static function accessRules(): array
+    {
+        return ['roles' => [SystemRole::HeadChef, SystemRole::Cook], 'permissions' => [SystemPermission::ViewKitchen]];
     }
 
     public function userHasAccess(User $user): bool

@@ -19,8 +19,8 @@ final class CancelPendingMemberInvitationsAction
 {
     public function __construct(private readonly RecordAuditLogAction $recordAuditLog) {}
 
-    /** Called inside the authorized membership status transaction. */
-    public function handle(Organization $organization, User $target, ?Branch $branch, User $actor): int
+    /** Called inside the authorized membership status or assignment-removal transaction. */
+    public function handle(Organization $organization, User $target, ?Branch $branch, User $actor, string $reason = 'membership_suspended'): int
     {
         if (DB::transactionLevel() === 0 || ($branch !== null && $branch->organization_id !== $organization->id)) {
             throw new DomainException('Invitation cancellation requires its membership transaction.');
@@ -44,7 +44,7 @@ final class CancelPendingMemberInvitationsAction
                 entityType: 'invitation', entityId: $invitation->id, actorUser: $actor,
                 organizationId: $organization->id, branchId: $invitation->branch_id,
                 oldValues: ['status' => $previousStatus->value],
-                newValues: ['status' => InvitationStatus::Cancelled->value, 'reason' => 'membership_suspended'],
+                newValues: ['status' => InvitationStatus::Cancelled->value, 'reason' => $reason, 'staff_user_id' => $target->id],
             );
             $cancelled++;
         }

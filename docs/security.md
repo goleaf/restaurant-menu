@@ -4,6 +4,13 @@
 
 # Application security
 
+## Prompt 8 Team scope and conflict safeguards
+
+Opening Team/card, managing staff, editing organizational overrides, changing rooms and reading employee history are separate authorizations. A permissions-only administrator can enter the appropriate card without gaining staff mutation rights. Every public Livewire operation reauthorizes; immutable identifiers and the shared signed actor snapshot guard complement this check. Current organization/branch status is re-read on the next server request.
+
+First assignment scope restriction and final-assignment inheritance restoration are explicit intents, never silent checkbox effects. Protected accounts, self-escalation, delegation, last owner and EnsureOrganizationManagementRemainsAction remain enforced. Individual permissions remain organization-scoped; no legacy override is copied into another organization. Independent SQLite-process tests cover conflicting changes and last-manager preservation; audit failure rolls back the corresponding mutation. Invitation credentials remain digest-only and their cancellation/reissue are version-bound. Existing accepted-account, email, verification and MFA flows are reused.
+
+
 ## Workspace request identity and context — 2026-09-16
 
 Every first-party authenticated Livewire snapshot carries a signed actor memo. The hook registers before Livewire boots its hook registry; a subsequent HTTP update under a different account fails with 409, even when both accounts have equivalent permissions. Authenticated legacy snapshots without the actor memo also require a fresh page before an operation. Public QR guest components retain their existing independent guest contract. Locked identifiers still require resource authorization and are never treated as hidden data.

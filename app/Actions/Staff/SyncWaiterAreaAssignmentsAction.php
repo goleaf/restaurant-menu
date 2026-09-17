@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
@@ -22,7 +24,10 @@ use Illuminate\Validation\ValidationException;
 
 final class SyncWaiterAreaAssignmentsAction
 {
-    public function __construct(private readonly StaffQueryService $staffQueries) {}
+    public function __construct(
+        private readonly StaffQueryService $staffQueries,
+        private readonly RecordAuditLogAction $recordAuditLog,
+    ) {}
 
     /** @param array<array-key,mixed> $areaNodeIds @return list<int> */
     public function handle(Branch $branch, BranchUser $membership, User $assignedBy, array $areaNodeIds, ?string $expectedFingerprint = null): array
@@ -60,6 +65,10 @@ final class SyncWaiterAreaAssignmentsAction
             if ($ids === $snapshot['ids']) {
                 return $ids;
             }
+            if (BranchUser::query()->whereKey($current->id)->where('access_version', $current->access_version)
+                ->update(['access_version' => $current->access_version + 1]) !== 1) {
+                throw ValidationException::withMessages(['assignmentForm.areaIds' => __('staff.workspace.area_conflict')]);
+            }
             AreaNodeWaiter::query()->where('organization_id', $currentBranch->organization_id)->where('branch_id', $currentBranch->id)
                 ->where('user_id', $current->user_id)->whereNotIn('area_node_id', $ids)->delete();
             foreach (array_diff($ids, $snapshot['ids']) as $areaId) {
@@ -70,6 +79,13 @@ final class SyncWaiterAreaAssignmentsAction
                     throw new \RuntimeException('Area assignment was not saved.');
                 }
             }
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::StaffPermissionChanged,
+                entityType: 'branch_user', entityId: $current->id, actorUser: $actor,
+                organizationId: $currentBranch->organization_id, branchId: $currentBranch->id,
+                oldValues: ['staff_user_id' => $current->user_id, 'scope' => 'areas', 'area_node_ids' => $snapshot['ids']],
+                newValues: ['staff_user_id' => $current->user_id, 'scope' => 'areas', 'area_node_ids' => $ids],
+            );
 
             return $ids;
         });

@@ -4,6 +4,26 @@
 
 # Performance
 
+## Prompt 8 team measurements — 2026-09-17
+
+Five warmed PHP8.5.8 / SQLite-memory Livewire samples use 31 organizational members, ten explicit restaurant assignments and ten areas. The baseline loads Staff Index, StaffQueryService and its Blade view from local HEAD7ed78c6 in an isolated test-only loader, with current unchanged dependencies; it never rewrites working source or data. These are component-response measurements, not full-page network timing or production latency.
+
+| Surface | SQL before → after | Component HTML bytes before → after | Current snapshot bytes | Current JSON response bytes |
+| --- | --- | --- | --- | --- |
+| Organization members | 29 →24 | 124,632 →54,952 | 1,430 | 58,446 |
+| Restaurant members | 35 →31 | 95,884 →60,711 | 1,543 | 64,554 |
+| Room coverage | 39 →38 | 66,704 →56,882 | 1,564 | 60,645 |
+| Employee overview (new) | n/a →92 | n/a →13,493 | 1,959 | 16,324 |
+| Permission preview (new) | n/a →331 | n/a →143,258 | 3,608 | 152,646 |
+
+Restaurant row semantics deliberately differ: the baseline lists ten explicit assignments; the new first page lists15 relevant organization members. Coverage includes31 people with actual service access instead of ten explicit waiters. Counts therefore describe real observed workloads, not an identical-output speed benchmark.
+
+Within this implementation, repeated policy resolution initially cost504 preview SQL statements. Eager role loading and one service-instance snapshot reuse reduce this to331; every reuse first refreshes actor authorization and the complete dependency fingerprint. No global/session authorization cache is added. Increasing membership31→61 leaves organization-list SQL24 and selected-person preview SQL331 unchanged. The remaining331-query absolute cost is recorded; no low-latency guarantee is claimed.
+
+Current reconstructed signed Livewire request envelopes are1,748/1,889/1,912/2,379/4,403 bytes respectively, using the installed SubsequentRender structure. The response bodies and snapshots are actual Testable results; envelope size is not a browser wire-capture claim. Median PHP heap-peak growth is1,461,536/1,521,920/1,510,744/1,688,024/2,337,944 bytes, respectively. Baseline samples are retained at /tmp/restaurant-team-final-metrics.jsonl; final samples after style reuse are at /tmp/restaurant-team-final-current-metrics.jsonl. No production telescope/Debugbar trace was available.
+
+The separate team SCSS entry measures1,781 raw/557 gzip bytes. The isolated HEAD-plus-Team candidate staff asset scenario totals920,589 raw/376,594 gzip bytes; total CSS51,870 gzip bytes remains under the unchanged51,900 ceiling. Shared prompt-2 changes have their own different asset baseline. No polling or employee-wide permissions matrix is introduced. Browser behavior and visual widths are independently exercised by team browser suites; aggregate acceptance remains recorded separately in PROGRESS.md.
+
 
 ## Unified workspace — prompt 3, 2026-09-16
 

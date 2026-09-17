@@ -62,6 +62,11 @@ final class OrganizationPolicy
             && $user->canManageOrganizationBranches($organization);
     }
 
+    public function viewTeam(User $user, Organization $organization): bool
+    {
+        return $this->manageStaff($user, $organization) || $this->managePermissions($user, $organization);
+    }
+
     public function manageStaff(User $user, Organization $organization): bool
     {
         return $this->view($user, $organization)

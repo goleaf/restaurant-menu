@@ -4,6 +4,16 @@
 
 # Canonical requirements catalogue
 
+## Prompt 8 - unified Team workspace
+
+The existing `sys-staff-001`, `sys-role-001`, `sys-tenant-001` and audit contracts include one typed organization-membership card, reached from Employees, Invitations or Room assignments. Organization and restaurant URLs retain their immutable scope; a global account is never an employee editing target. Organization membership roles determine permission defaults and the kitchen/bar role rules; a restaurant assignment role is separately displayed and governs applicability of room assignments. Branch employee lists include inherited participants without creating assignment records, and explicitly label organization-role/status filters.
+
+Permission editing is an organization-scoped three-state draft with one atomic application, current subject decisions, indirect capability effects, explicit critical confirmation and durable conflict checks. Roles, statuses, assignments, invitation versions and room fingerprints remain distinct operations. The first explicit restaurant assignment and return from the final assignment to organization rules require an authorized before/after scope review, including future restaurants. Suspension never deletes the account or working orders. Room settings define the default My tables view, use exact area identity without descendant expansion, and retain archived selections until explicitly corrected; they are not a new resource authorization layer.
+
+Only the selected card and active list page are loaded. The card has Overview, Roles and access, Rooms and History sections with URL state and the existing unsaved/offline guard. Accepted invitations link by recorded acceptance identity. History uses existing audit records with typed membership/assignment/invitation identity and separately authorized scope; no secret credential or fabricated historic event is displayed. Execution and verification status belong to IMPLEMENTATION_PLAN.md and PROGRESS.md.
+
+The reused restaurant selector keeps its search query independent of the selected scope label. Long legitimate organization/brand/restaurant names must not block an authorized context transition through search-length validation.
+
 ## Restaurant workspace contract — prompt 3, 2026-09-16
 
 `ui-workspace-003` refines the existing Livewire, tenant, navigation, localization and responsive requirements. Restaurant work uses one confirmed page context and one shared class-based Livewire switcher. Task order is Overview, Service (permitted waiter/kitchen/bar modes), Menu, Rooms and QR, Team, Reports and Restaurant settings; audit remains an existing authorized destination. Restaurant management and platform administration are separate from restaurant work; account/security/appearance/language remain in the user menu.

@@ -28,6 +28,7 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page->navigate(route('restaurant.dashboard', ['branch' => $branch->id], false));
     $page->assertSee($branch->name)->assertPresent('[data-dashboard-operations]')->assertPresent('[data-dashboard-readiness]');
     branchControlClick($page, '.workspace-restaurant__trigger');
+    branchControlClick($page, 'dialog[data-modal="workspace-restaurant"] [data-flux-select-button]');
     $page->fill('dialog[data-modal="workspace-restaurant"] input', 'No matching restaurant')
         ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown');
     $page->assertSee(__('workspace.search_empty'))
@@ -86,6 +87,7 @@ test('branch control preserves URL history local periods and ordering drafts acr
 
     $page->resize(390, 844);
     branchControlClick($page, '.workspace-restaurant__trigger');
+    branchControlClick($page, 'dialog[data-modal="workspace-restaurant"] [data-flux-select-button]');
     $page->click('dialog[data-modal="workspace-restaurant"] input')
         ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown')
         ->assertVisible('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$branch->id.'"]');
@@ -166,6 +168,7 @@ function branchControlChooseBranch(PendingAwaitablePage $page, Branch $branch): 
 function branchControlSelectBranch(PendingAwaitablePage $page, Branch $branch): void
 {
     $page->assertVisible('dialog[data-modal="workspace-restaurant"]')
+        ->click('dialog[data-modal="workspace-restaurant"] [data-flux-select-button]')
         ->click('dialog[data-modal="workspace-restaurant"] input')
         ->fill('dialog[data-modal="workspace-restaurant"] input', $branch->name)
         ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown');

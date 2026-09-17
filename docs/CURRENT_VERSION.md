@@ -4,6 +4,16 @@
 
 # Current version baseline
 
+## Team prompt 8 runtime verification — 2026-09-17
+
+The installed dependency graph is unchanged: Laravel13.31.0, Livewire4.4.1, Flux Free2.17.0 and local Pro0.1.1 (unknown upstream release), Vite8.3.0. Stable test selection is explicit Homebrew PHP8.5.10; focused tests also run on Herd CLI8.5.8. Node24.21.0 and standalone npm12.0.2 satisfy the existing engines.
+
+Current Herd configuration selects the85 socket for restaurant-menu.test. A direct FastCGI request to that live socket, executing only an owned temporary runtime probe, returns PHP8.5.8, SAPI fpm-fcgi and php85-fpm. The probe is removed afterward; no application/database bootstrap, persistent route or PHP selection change occurs. This identifies the configured FPM process separately from CLI and from the isolated browser responder.
+
+Available experimental PHP is8.6.0beta2. The fresh isolated verify-migration preflight aRnEHK fails Composer platform-lock on Nette Schema1.3.6's PHP8.1–8.5 requirement. Historical Beta3 artifact paths are not available in this run and are not reused as current proof. Production constraints remain >=8.5.0 <8.6.0. No ignored platform requirements, dependency patch or8.6 application acceptance is claimed.
+
+Final stable acceptance records candidate 3,755 backend tests, 46 browser cases and 94.1% PHP coverage; shared integration 3,903 backend / 60 browser cases. The browser responder is PHP 8.5.10, distinct from the measured Herd FPM 8.5.8. All final changed-browser PHP files also pass the actual 8.6.0beta2 syntax follow-up; the application platform blocker remains unchanged.
+
 ## Workspace prompt 3 baseline — 2026-09-16
 
 Prompt 3 starts at `9b6a71a1516737129a59c2a159d335e6b5d2a2d0`; installed dependencies and both lock files are unchanged. Stable implementation checks use explicit PHP 8.5.10, Node 24.21.0, npm 12.0.2 and the matching isolated Playwright/WebKit binaries. The current run's evidence is recorded in PROGRESS.md; the older platform counts below do not certify the workspace changes.

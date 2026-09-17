@@ -17,6 +17,10 @@
         "resources/scss/qr-print.scss": {
             "raw": 4000,
             "gzip": 1200
+        },
+        "resources/scss/team.scss": {
+            "raw": 2400,
+            "gzip": 800
         }
     },
     "scenarios": {
@@ -46,6 +50,7 @@
             "entries": [
                 "resources/css/app.css",
                 "resources/scss/app.scss",
+                "resources/scss/team.scss",
                 "resources/js/app.js"
             ],
             "limits": {

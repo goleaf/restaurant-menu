@@ -21,10 +21,10 @@
             @if ($canAggregate)
                 <flux:button type="button" wire:click="chooseAggregate" wire:loading.attr="disabled" wire:target="chooseAggregate,choose" wire:offline.attr="disabled">{{ __('workspace.mode.aggregate') }}</flux:button>
             @endif
-            <flux:select wire:offline.attr="disabled" variant="combobox" wire:model="form.branchId" :filter="false" :label="__('workspace.restaurant')" :placeholder="__('workspace.search')" :aria-invalid="$errors->has('form.branchId') ? 'true' : 'false'" aria-describedby="workspace-restaurant-error">
-                <x-slot:input>
-                    <flux:select.input :aria-invalid="$errors->has('form.search') ? 'true' : 'false'" aria-describedby="workspace-search-error" wire:model.live.debounce.250ms="form.search" :placeholder="__('workspace.search')" maxlength="100" />
-                </x-slot:input>
+            <flux:select wire:offline.attr="disabled" variant="listbox" searchable wire:model="form.branchId" :filter="false" :label="__('workspace.restaurant')" :placeholder="__('workspace.search')" :aria-invalid="$errors->has('form.branchId') ? 'true' : 'false'" aria-describedby="workspace-restaurant-error">
+                <x-slot:search>
+                    <flux:select.search wire:offline.attr="disabled" :aria-label="__('workspace.search')" :aria-invalid="$errors->has('form.search') ? 'true' : 'false'" aria-describedby="workspace-search-error" wire:model.live.debounce.250ms="form.search" :placeholder="__('workspace.search')" maxlength="100" />
+                </x-slot:search>
                 @forelse ($options as $option)
                     <flux:select.option :value="$option['id']" wire:key="workspace-option-{{ $option['id'] }}">
                         {{ $option['name'] }} — {{ $option['description'] }}

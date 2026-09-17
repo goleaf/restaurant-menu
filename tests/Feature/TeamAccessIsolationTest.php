@@ -28,6 +28,7 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Services\Staff\BranchAssignmentQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -125,7 +126,8 @@ test('branch assignment preserves accepted identity and organization role and ne
     $hash = $member->user->password;
     $role = Role::query()->where('code', SystemRole::Bartender->value)->firstOrFail();
     $action = app(AddBranchStaffMemberAction::class);
-    $action->handle($organization, $branch, $role, $owner, ['name' => 'Replacement', 'email' => $member->user->email]);
+    $preview = app(BranchAssignmentQueryService::class)->preview($organization, $branch, $member, $owner);
+    $action->handle($organization, $branch, $role, $owner, ['name' => 'Replacement', 'email' => $member->user->email], $preview['fingerprint'], true);
     $assignment = BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $member->user_id)->sole();
     expect($assignment->role_id)->toBe($role->id)
         ->and($member->fresh()->role_id)->toBe($member->role_id)
@@ -148,7 +150,8 @@ test('role changes reject stale versions and cannot manage a higher ranking exis
         ->toThrow(ValidationException::class)
         ->and($member->fresh()->role_id)->toBe($bartender->id)
         ->and($member->fresh()->access_version)->toBe(1);
-    $action->handle($owner, $organization, $original, $bartender, 'Retry after response loss.', expectedVersion: 0);
+    expect(fn () => $action->handle($owner, $organization, $original, $bartender, 'Retry after response loss.', expectedVersion: 0))
+        ->toThrow(ValidationException::class);
     expect(AuditLog::query()->where('action', AuditLogAction::StaffRoleChanged->value)->count())->toBe(1);
 });
 
@@ -158,7 +161,8 @@ test('suspension and explicit restoration preserve other organizations and audit
     $otherMember = OrganizationUser::factory()->forOrganization($other)->forUser($member->user)->forRole($member->role)->active()->create();
     $action = app(SetOrganizationStaffStatusAction::class);
     $action->suspend($member, $owner, 'Temporary access review.', expectedVersion: 0);
-    $action->suspend($member, $owner, 'Retry after response loss.', expectedVersion: 0);
+    expect(fn () => $action->suspend($member, $owner, 'Retry after response loss.', expectedVersion: 0))
+        ->toThrow(ValidationException::class);
     expect($member->fresh()->status)->toBe(OrganizationUserStatus::Suspended)
         ->and($otherMember->fresh()->status)->toBe(OrganizationUserStatus::Active)
         ->and($member->user->canAccessOrganization($organization))->toBeFalse()

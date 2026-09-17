@@ -28,7 +28,7 @@ final class WorkspaceAccessQuery
         $permissions = $this->permissions->handleMany($user, [
             Permission::ViewReports, Permission::ViewOrders, Permission::ConfirmOrders,
             Permission::ManageMenu, Permission::ChangeAvailability, Permission::ManageZones,
-            Permission::ManageServicePoints, Permission::GenerateQr, Permission::ManageStaff,
+            Permission::ManageServicePoints, Permission::GenerateQr, Permission::ManageStaff, Permission::ManagePermissions,
             Permission::ExportData, Permission::ManageSettings, Permission::ManageBranches, Permission::ViewAuditLog,
             Permission::ViewKitchen, Permission::SendToKitchen,
         ]);
@@ -50,7 +50,7 @@ final class WorkspaceAccessQuery
             'halls' => $union([Permission::ManageZones]),
             'tables' => $union([Permission::ManageServicePoints]),
             'qr' => $union([Permission::GenerateQr]),
-            'team' => $union([Permission::ManageStaff]),
+            'team' => $union([Permission::ManageStaff, Permission::ManagePermissions]),
             'reports' => $union([Permission::ExportData]),
             'report_view' => $union([Permission::ViewReports]),
             'settings' => $union([Permission::ManageSettings, Permission::ManageBranches]),

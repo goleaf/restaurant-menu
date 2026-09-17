@@ -5,7 +5,7 @@ use App\Actions\Staff\SyncWaiterAreaAssignmentsAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
+use App\Livewire\Organizations\Staff\Show as EmployeeCard;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
@@ -36,7 +36,7 @@ test('branch staff page can assign waiter to branch zones', function () {
         'email' => 'zone-waiter@example.test',
     ]);
 
-    OrganizationUser::factory()->forOrganization($organization)->forUser($waiter)->forRole($waiterRole)->active()->create();
+    $organizationMember = OrganizationUser::factory()->forOrganization($organization)->forUser($waiter)->forRole($waiterRole)->active()->create();
     $membership = BranchUser::factory()->create([
         'organization_id' => $organization->id,
         'branch_id' => $branch->id,
@@ -50,14 +50,15 @@ test('branch staff page can assign waiter to branch zones', function () {
     $terrace = AreaNode::factory()->for($branch)->create(['name' => 'Terrace']);
 
     Livewire::actingAs($manager)
-        ->test(BranchStaffIndex::class, [
+        ->test(EmployeeCard::class, [
             'organization' => $organization,
+            'member' => $organizationMember,
             'brand' => $brand,
             'branch' => $branch,
         ])
         ->assertDontSee('Main Hall')
         ->assertDontSee('Terrace')
-        ->call('openAssignments', $membership->id)
+        ->call('selectSection', 'areas')
         ->assertSee('Main Hall')
         ->assertSee('Terrace')
         ->set('assignmentForm.areaIds', [(string) $mainHall->id])
@@ -100,7 +101,7 @@ test('staff zone lookup reads ordered ids only for the selected waiter within on
             ->and($snapshot['fingerprint'])->toHaveLength(64);
     });
 
-    expect($queryCount)->toBe(1);
+    expect($queryCount)->toBe(3);
 });
 
 test('staff zone lookup returns an empty array when a branch has no assignments', function (): void {

@@ -88,7 +88,7 @@ test('ordinary assignment refresh keeps the unsaved selected areas', function ()
     expect(AreaNodeWaiter::query()->count())->toBe(0);
 });
 
-test('coverage overview matches exact selected areas and unrestricted active waiters', function () {
+test('coverage overview matches exact selected areas and unrestricted staff with service access', function () {
     $child = AreaNode::factory()->forBranch($this->branch)->withParent($this->area)->create();
     $inactive = AreaNode::factory()->forBranch($this->branch)->inactive()->create();
     app(SyncWaiterAreaAssignmentsAction::class)->handle($this->branch, $this->member, $this->owner, [$this->area->id]);
@@ -97,14 +97,14 @@ test('coverage overview matches exact selected areas and unrestricted active wai
     BranchUser::factory()->forBranch($this->branch)->forUser($unrestricted)->forRole($organizationMembership->role)->active()->create();
     $overview = app(StaffQueryService::class)->coverageOverview($this->branch);
     $rows = collect($overview['rows'])->keyBy('id');
-    expect($overview['unrestricted_count'])->toBe(1)
-        ->and($rows[$this->area->id]['assigned_count'])->toBe(2)
-        ->and($rows[$child->id]['assigned_count'])->toBe(1)
+    expect($overview['unrestricted_count'])->toBe(2)
+        ->and($rows[$this->area->id]['assigned_count'])->toBe(3)
+        ->and($rows[$child->id]['assigned_count'])->toBe(2)
         ->and($rows[$this->area->id]['waiter_names'])->toContain($this->waiter->name)
         ->and($rows->has($inactive->id))->toBeFalse();
     $organizationMembership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
     $overview = app(StaffQueryService::class)->coverageOverview($this->branch);
-    expect($overview['unrestricted_count'])->toBe(0);
+    expect($overview['unrestricted_count'])->toBe(1); // The active owner retains service access.
 });
 
 test('area review shows named selected current added and removed assignments across search pages', function () {

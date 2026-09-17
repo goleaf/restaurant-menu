@@ -4,6 +4,16 @@
 
 # Testing and quality gates
 
+## Prompt 8 acceptance inventory — 2026-09-17
+
+New focused suites cover the typed employee card, section/return URLs, draft conflicts, narrow capabilities, actual branch access, first assignment, explicit return to inheritance, suspended layers, role effects, organization-scoped permission exceptions, EN/LT/RU Action/Form failures, safe typed audit and independent-connection races. Fixtures use existing factories in SQLite memory or owned temporary databases. TeamEmployeeCardBrowserTest and the migrated TeamAdministrationWorkflowTest use separate administrator/recipient browser contexts and actual server sessions; no guard impersonation or working-account change is used.
+
+Independent review findings have regression coverage: removal cancels pending credentials atomically, audit failure rolls everything back, deleted branch assignments retain typed history, and archived inaccessible branches cannot masquerade as organization events. Public Livewire arguments, actor changes, last-manager preservation, self-edit, protected accounts and stale fingerprints remain tested. Area coverage follows the same ViewOrders predicate as waiter service; empty exact-room selections cover all rooms, while archived selections remain explicit until corrected.
+
+The stable aggregate uses the repository verify-migration harness with explicit PHP8.5.10, npm12.0.2 and Xdebug85, an immutable source copy and isolated storage/database. Focused test counts and the final aggregate are recorded separately in PROGRESS.md. PHP8.6.0beta2 is an actual experimental probe, currently blocked at Composer platform validation; no8.6 application, browser or coverage pass is inferred.
+
+Final backend and browser discovery/execution inventories, coverage scope and exact source hashes are in PROGRESS.md. Both final source copies pass all discovered cases. UnifiedWorkspaceBrowserTest preserves the real context/draft journey with deterministic long labels, a completed server-search response and mobile popover/focus checks; BranchControlWorkflowTest uses the same listbox. NotificationsPanelTest keeps all original polling/error assertions while completing login before installing its observer. Failed diagnostic runs are retained separately.
+
 ## Workspace verification — prompt 3, 2026-09-16
 
 `RestaurantWorkspaceContextTest`, `WorkspaceBoundaryTest` and `WorkspaceQueryBudgetTest` cover precedence, narrow capabilities, bounded search, stale authorization, signed actor identity, tab-local writes and permission-query reuse. Existing dashboard/waiter/department/export/audit regressions remain required. `UnifiedWorkspaceBrowserTest`, `BranchControlWorkflowTest`, `FrontendAssetDeliveryTest` and `WorkspaceComponentsTest` exercise real switching, dirty-state cancellation/discard, concurrent tabs, keyboard/history, pending/offline behavior, shared search and listener/poller cleanup.

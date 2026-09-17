@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Staff;
 
 use App\Enums\InvitationStatus;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -16,11 +17,15 @@ use App\Models\Brand;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\Permission;
+use App\Models\PermissionUserOverride;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\LocalizedDateFormatter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 
@@ -67,6 +72,34 @@ final class StaffQueryService
             ->when(($filters['sort'] ?? '') === 'name', fn ($query) => $query->orderBy(User::query()->select('name')->whereColumn('users.id', $query->qualifyColumn('user_id'))->limit(1)))
             ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')
             ->simplePaginate($perPage, pageName: 'branchStaffPage')->withQueryString();
+    }
+
+    /** @return Paginator<int, OrganizationUser> */
+    public function paginateBranchTeam(Branch $branch, string $search, int $perPage, array $filters = []): Paginator
+    {
+        return OrganizationUser::query()
+            ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'access_version'])
+            ->with(['role:id,code,name,sort_order', 'user' => fn ($query) => $query->select(['id', 'name', 'email'])
+                ->withExists(['roles as has_superadmin_role' => fn ($role) => $role->where('code', SystemRole::Superadmin->value)])
+                ->with(['branchAssignments' => fn ($assignments) => $assignments
+                    ->select(['id', 'user_id', 'organization_id', 'branch_id', 'role_id', 'status', 'access_version'])
+                    ->where('organization_id', $branch->organization_id)->where('branch_id', $branch->id)->with('role:id,code,name,sort_order')])])
+            ->where('organization_id', $branch->organization_id)
+            ->where(fn ($query) => $query
+                ->whereHas('user.branchAssignments', fn ($assignments) => $assignments->where('organization_id', $branch->organization_id)->where('branch_id', $branch->id))
+                ->orWhereDoesntHave('user.branchAssignments', fn ($assignments) => $assignments->where('organization_id', $branch->organization_id)))
+            ->when(trim($search) !== '', fn ($query) => $query->whereHas('user', fn ($users) => $users->whereAny(['name', 'email'], 'like', '%'.trim($search).'%')))
+            ->when(($filters['role'] ?? '') !== '', fn ($query) => $query->whereHas('role', fn ($role) => $role->where('code', $filters['role'])))
+            ->when(($filters['status'] ?? '') !== '', fn ($query) => $query->where('status', $filters['status']))
+            ->when(($filters['sort'] ?? '') === 'name', fn ($query) => $query->orderBy(User::query()->select('name')->whereColumn('users.id', $query->qualifyColumn('user_id'))->limit(1)))
+            ->orderBy('id', ($filters['sort'] ?? '') === 'oldest' ? 'asc' : 'desc')
+            ->simplePaginate($perPage, pageName: 'branchStaffPage')->withQueryString();
+    }
+
+    /** @param list<int> $userIds @return array<int, int> */
+    public function membershipIds(Organization $organization, array $userIds): array
+    {
+        return OrganizationUser::query()->where('organization_id', $organization->id)->whereIn('user_id', $userIds)->pluck('id', 'user_id')->all();
     }
 
     /** @return Paginator<int, Invitation> */
@@ -270,11 +303,17 @@ final class StaffQueryService
     /** @return array{ids:list<int>,fingerprint:string} */
     public function assignmentSnapshot(Branch $branch, BranchUser $membership): array
     {
+        $membership = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'access_version'])
+            ->where('organization_id', $branch->organization_id)->where('branch_id', $branch->id)
+            ->where('user_id', $membership->user_id)->whereKey($membership->id)->firstOrFail();
+        $organizationMembership = OrganizationUser::query()->select(['id', 'role_id', 'status', 'access_version'])
+            ->where('organization_id', $branch->organization_id)->where('user_id', $membership->user_id)->first();
         $ids = AreaNodeWaiter::query()->select('area_node_id')
             ->where('organization_id', $branch->organization_id)->where('branch_id', $branch->id)
             ->where('user_id', $membership->user_id)->orderBy('area_node_id')->pluck('area_node_id')->all();
 
-        return ['ids' => $ids, 'fingerprint' => hash('sha256', json_encode([$branch->id, $membership->id, $membership->role_id, $membership->status->value, $membership->access_version, $ids], JSON_THROW_ON_ERROR))];
+        return ['ids' => $ids, 'fingerprint' => hash('sha256', json_encode([$branch->id, $membership->id, $membership->role_id, $membership->status->value, $membership->access_version,
+            $organizationMembership?->only(['id', 'role_id', 'status', 'access_version']), $ids], JSON_THROW_ON_ERROR))];
     }
 
     /** @return array{organization:Organization,brand:Brand|null,branch:Branch|null} */
@@ -331,29 +370,89 @@ final class StaffQueryService
     /** @return array<string,mixed> */
     public function coverageOverview(Branch $branch): array
     {
-        $organizationUsers = OrganizationUser::query()->select('user_id')->where('organization_id', $branch->organization_id)
-            ->where('status', OrganizationUserStatus::Active->value);
-        $branchUsers = BranchUser::query()->select('user_id')->where('organization_id', $branch->organization_id)->where('branch_id', $branch->id)
-            ->where('status', OrganizationUserStatus::Active->value)->whereIn('user_id', $organizationUsers)
-            ->whereHas('role', fn ($query) => $query->where('code', SystemRole::Waiter->value));
-        $waiters = User::query()->select(['id', 'name'])->whereIn('id', $branchUsers)
-            ->whereDoesntHave('roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value));
-        $waiterIds = (clone $waiters)->select('id');
-        $unrestricted = (clone $waiters)->whereDoesntHave('areaNodeAssignments', fn ($query) => $query->where('branch_id', $branch->id));
-        $unrestrictedCount = (clone $unrestricted)->count();
-        $unrestrictedNames = $unrestricted->orderBy('name')->orderBy('id')->limit(3)->pluck('name')->all();
-        $matching = fn ($query) => $query->where('branch_id', $branch->id)->whereIn('user_id', $waiterIds);
         $areas = AreaNode::query()->select(['id', 'branch_id', 'parent_id', 'name'])->where('branch_id', $branch->id)->where('is_active', true)
-            ->withCount(['waiterAssignments as explicit_count' => $matching])
-            ->with(['waiterAssignments' => fn ($query) => $matching($query)->select(['id', 'branch_id', 'area_node_id', 'user_id'])
-                ->with('user:id,name')->orderBy('id')->limit(3)])
-            ->orderBy('name')->orderBy('id')->simplePaginate(20, pageName: 'coveragePage');
+            ->orderBy('name')->orderBy('id')->simplePaginate(20, pageName: 'coveragePage')->withQueryString();
+        $rows = [];
+        foreach ($areas->getCollection() as $area) {
+            $rows[$area->id] = ['id' => $area->id, 'name' => $area->name, 'assigned_count' => 0, 'waiter_names' => [], 'waiter_members' => []];
+        }
+        $permission = Permission::query()->select(['id', 'code'])->where('code', SystemPermission::ViewOrders->value)->firstOrFail();
+        $unrestrictedCount = 0;
+        $unrestrictedMembers = [];
+        foreach ($this->coverageServiceMembers($branch, $permission->id, array_keys($rows))->lazyById(100) as $serviceMember) {
+            $membership = $serviceMember->organizationMemberships->first();
+            if (! $membership instanceof OrganizationUser) {
+                continue;
+            }
+            $rolePermission = $membership->role?->permissions->first();
+            $pivot = $rolePermission?->getRelation('pivot');
+            $overrides = PermissionUserOverride::effectiveForOrganization($serviceMember->permissionOverrideRecords, $branch->organization_id, $serviceMember->organization_memberships_count === 1);
+            $allowed = $overrides->has($permission->id) ? (bool) $overrides[$permission->id] : ($pivot instanceof Pivot && (bool) $pivot->getAttribute('enabled'));
+            if (! $allowed) {
+                continue;
+            }
+            if (! $serviceMember->getAttribute('has_area_restriction')) {
+                $unrestrictedCount++;
+                $unrestrictedMembers = $this->coverageMemberLinks($unrestrictedMembers, $membership->id, $serviceMember->name);
 
-        return ['unrestricted_count' => $unrestrictedCount, 'unrestricted_names' => $unrestrictedNames, 'paginator' => $areas,
-            'rows' => $areas->getCollection()->map(fn (AreaNode $area): array => ['id' => $area->id, 'name' => $area->name,
-                'assigned_count' => (int) $area->getAttribute('explicit_count') + $unrestrictedCount,
-                'waiter_names' => $area->waiterAssignments->map(fn (AreaNodeWaiter $assignment): string => $assignment->user->name)->all(),
-            ])->all()];
+                continue;
+            }
+            foreach ($serviceMember->areaNodeAssignments as $assignment) {
+                if (isset($rows[$assignment->area_node_id])) {
+                    $rows[$assignment->area_node_id]['assigned_count']++;
+                    $rows[$assignment->area_node_id]['waiter_members'] = $this->coverageMemberLinks($rows[$assignment->area_node_id]['waiter_members'], $membership->id, $serviceMember->name);
+                }
+            }
+        }
+        foreach ($rows as &$row) {
+            $row['assigned_count'] += $unrestrictedCount;
+            $row['waiter_names'] = array_column($row['waiter_members'], 'name');
+        }
+        unset($row);
+
+        return ['unrestricted_count' => $unrestrictedCount, 'unrestricted_names' => array_column($unrestrictedMembers, 'name'), 'unrestricted_members' => $unrestrictedMembers, 'paginator' => $areas, 'rows' => array_values($rows)];
+    }
+
+    /**
+     * @param  list<int>  $areaIds
+     * @return Builder<User>
+     */
+    private function coverageServiceMembers(Branch $branch, int $permissionId, array $areaIds): Builder
+    {
+        $organizationId = $branch->organization_id;
+        $activeMembership = fn ($query) => $query->where('organization_id', $organizationId)->where('status', OrganizationUserStatus::Active->value);
+        $areaScope = fn ($query) => $query->where('organization_id', $organizationId)->where('branch_id', $branch->id);
+
+        return User::query()->select(['id', 'name'])
+            ->whereDoesntHave('roles', fn ($role) => $role->where('code', SystemRole::Superadmin->value))
+            ->whereHas('organizationMemberships', fn ($query) => $activeMembership($query)
+                ->whereHas('organization', fn ($organization) => $organization->whereDoesntHave('subscription')
+                    ->orWhereHas('subscription', fn ($subscription) => $subscription->where('status', OrganizationSubscriptionStatus::Active->value))))
+            ->where(fn ($query) => $query
+                ->whereHas('branchAssignments', fn ($assignment) => $assignment->where('organization_id', $organizationId)
+                    ->where('branch_id', $branch->id)->where('status', OrganizationUserStatus::Active->value))
+                ->orWhereDoesntHave('branchAssignments', fn ($assignment) => $assignment->where('organization_id', $organizationId)))
+            ->withCount('organizationMemberships')
+            ->withExists(['areaNodeAssignments as has_area_restriction' => $areaScope])
+            ->with([
+                'organizationMemberships' => fn ($query) => $activeMembership($query)->select(['id', 'user_id', 'organization_id', 'role_id'])
+                    ->with(['role' => fn ($role) => $role->select(['id'])->with(['permissions' => fn ($permissions) => $permissions->where('permissions.id', $permissionId)])]),
+                'permissionOverrideRecords' => fn ($query) => $query->select(['id', 'user_id', 'permission_id', 'organization_id', 'scope_key', 'enabled'])
+                    ->where('permission_id', $permissionId)->where(fn ($scope) => $scope->whereNull('organization_id')->orWhere('organization_id', $organizationId)),
+                'areaNodeAssignments' => fn ($query) => $areaScope($query)->select(['id', 'user_id', 'area_node_id'])->whereIn('area_node_id', $areaIds),
+            ]);
+    }
+
+    /**
+     * @param  list<array{id:int,name:string}>  $members
+     * @return list<array{id:int,name:string}>
+     */
+    private function coverageMemberLinks(array $members, int $membershipId, string $name): array
+    {
+        $members[] = ['id' => $membershipId, 'name' => $name];
+        usort($members, static fn (array $left, array $right): int => strcmp($left['name'], $right['name']) ?: $left['id'] <=> $right['id']);
+
+        return array_slice($members, 0, 3);
     }
 
     /** @return EloquentCollection<int,OrganizationUser> */

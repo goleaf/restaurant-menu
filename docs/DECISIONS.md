@@ -4,6 +4,18 @@
 
 # Restaurant Menu completion decisions
 
+## Prompt 8 - one person, explicit membership scope
+
+- Use OrganizationUser as card identity and branch-specific routes as immutable context. Keep global account identity/security outside Team.
+- Preserve the existing inheritance contract instead of materializing restaurant assignments. Present first assignment and final removal as reviewed scope transitions, with full affected-scope authority and a stable fingerprint.
+- Treat organizational roles as permission defaults and kitchen/bar role input. Restaurant role changes may clear room pivots without revoking organizational service capability; explicitly explain the resulting all-room coverage.
+- Reuse PermissionQueryService for actual and future decisions. Configured tri-state overrides, role defaults, resource policy exceptions and indirect Settings effects remain distinguishable.
+- Keep one atomic permission-draft Action, separate role/status/room/invitation operations, transaction-local dependency checks and existing management invariants.
+- Retain typed audit history after assignment deletion using recorded subject identity under organization and branch constraints, never numeric entity_id coincidence or current email.
+- Preserve local Flux Pro provenance, the separate SCSS/Tailwind bridge, existing unsaved guard and actor-bound snapshots. Runtime and aggregate evidence are recorded separately from implementation and Git delivery.
+- Keep the selected restaurant label separate from the bounded server-search query in the existing Flux selector. A listbox search slot preserves the max-100 validation without treating a long organization/brand/restaurant label as user search input.
+- Verify a HEAD-plus-owned candidate separately from shared prompt-2 integration. Coverage certifies unchanged application PHP; final view/test changes receive fresh complete backend and browser inventories. Preserve failed diagnostics and the source hashes instead of claiming one uninterrupted aggregate run.
+
 ## One restaurant context per open page — 2026-09-16
 
 - Keep explicit resource/route/query context authoritative and immutable for an open component. Session preference is a future-entry convenience, never a global tenant scope. Conflicting IDs fail closed; changes of account invalidate signed component snapshots before hydration.

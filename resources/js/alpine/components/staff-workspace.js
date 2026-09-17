@@ -69,6 +69,7 @@ export function staffWorkspace() {
         discardEditorBeforeNavigation: true,
         bypassNavigation: false,
         navigating: false,
+        pendingRequests: 0,
         trigger: null,
         abortController: null,
         historyId: null,
@@ -92,12 +93,12 @@ export function staffWorkspace() {
             ownerRoot.addEventListener('change', markDirty, options);
             ownerRoot.addEventListener('click', (event) => {
                 const button = event.target.closest('[wire\\:click]');
-                if (button && /^open(Invitation|Member|Assignments|ExistingAssignment)\b/.test(button.getAttribute('wire:click'))) this.trigger = button;
+                if (button && /^open(Invitation|Member|Assignments|AssignmentRemoval|ExistingAssignment|Permissions)\b/.test(button.getAttribute('wire:click'))) this.trigger = button;
             }, options);
             ownerRoot.addEventListener('click', async (event) => {
                 const button = event.target.closest('[wire\\:click]');
                 const action = button?.getAttribute('wire:click') ?? '';
-                if (!this.editorDismissed || !this.online || !/^open(Invitation|Member|Assignments|ExistingAssignment)\b/.test(action)) return;
+                if (!this.editorDismissed || !this.online || !/^open(Invitation|Member|Assignments|AssignmentRemoval|ExistingAssignment|Permissions)\b/.test(action)) return;
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 try {
@@ -128,7 +129,12 @@ export function staffWorkspace() {
                 this.$nextTick(() => {
                     if (this.destroyed) return;
                     const editor = ownerRoot.querySelector('[data-staff-editor]');
-                    if (editor) window.Alpine.$data(editor).present();
+                    if (editor) {
+                        editor.hidden = false;
+                        editor.removeAttribute('inert');
+                        const state = window.Alpine.$data(editor);
+                        if (typeof state.present === 'function') state.present();
+                    }
                     editor?.querySelector('input:not([type=hidden]), select')?.focus();
                 });
             }, options);
@@ -137,11 +143,15 @@ export function staffWorkspace() {
                 this.$nextTick(() => this.restoreFocus());
             }, options);
             window.addEventListener('beforeunload', (event) => {
-                if (!this.dirty) return;
+                if (!this.dirty && this.pendingRequests === 0) return;
                 event.preventDefault();
                 event.returnValue = '';
             }, options);
             document.addEventListener('livewire:navigate', (event) => {
+                if (this.pendingRequests > 0) {
+                    event.preventDefault();
+                    return;
+                }
                 if (this.bypassNavigation || !this.dirty) return;
                 event.preventDefault();
                 const url = event.detail.url.toString();
@@ -151,8 +161,10 @@ export function staffWorkspace() {
                 });
             }, options);
             window.addEventListener('popstate', (event) => this.guardHistory(event), { ...options, capture: true });
-            this.unsubscribe = window.Livewire.interceptMessage(({ message, onSuccess }) => {
+            this.unsubscribe = window.Livewire.interceptMessage(({ message, onSend, onFinish, onSuccess }) => {
                 if (message.component.el !== ownerRoot) return;
+                onSend(() => { this.pendingRequests++; });
+                onFinish(() => { this.pendingRequests = Math.max(0, this.pendingRequests - 1); });
                 onSuccess(({ onRender }) => onRender(() => queueMicrotask(() => {
                     if (this.destroyed) return;
                     this.stampHistory();
@@ -180,7 +192,13 @@ export function staffWorkspace() {
             target?.focus();
         },
         async dismissEditor() {
-            ownerRoot.closest('[data-staff-workspace]')?.querySelector('[data-staff-editor]')?.close();
+            if (this.destroyed || this.pendingRequests > 0) return;
+            const editor = ownerRoot.querySelector('[data-staff-editor]');
+            if (typeof editor?.close === 'function') editor.close();
+            else if (editor) {
+                editor.hidden = true;
+                editor.setAttribute('inert', '');
+            }
             this.editorDismissed = true;
             this.dirty = false;
             this.restoreFocus();
@@ -198,6 +216,11 @@ export function staffWorkspace() {
             return this.requestNavigation(async () => {
                 this.navigating = true;
                 try {
+                    if (this.editorDismissed) {
+                        await this.$wire.discardEditor();
+                        if (this.destroyed) return;
+                        this.editorDismissed = false;
+                    }
                     await this.$wire.selectSection(section);
                 } catch {
                     this.focusError();
@@ -207,7 +230,7 @@ export function staffWorkspace() {
             });
         },
         requestNavigation(proceed, discardEditor = true) {
-            if (this.destroyed) return;
+            if (this.destroyed || this.pendingRequests > 0) return;
             if (!this.dirty) return proceed();
             this.pendingNavigation = proceed;
             this.discardEditorBeforeNavigation = discardEditor;
@@ -218,7 +241,7 @@ export function staffWorkspace() {
             this.$flux.modal('staff-workspace-unsaved').close();
         },
         async discardAndNavigate() {
-            if (this.discarding || this.destroyed) return;
+            if (this.discarding || this.destroyed || this.pendingRequests > 0) return;
             this.discarding = true;
             const proceed = this.pendingNavigation;
             if (this.online && this.discardEditorBeforeNavigation) {
@@ -263,7 +286,7 @@ export function staffWorkspace() {
                     return;
                 }
                 const delta = index - this.nativeHistoryIndex;
-                if (delta !== 0 && this.dirty) {
+                if (delta !== 0 && (this.dirty || this.pendingRequests > 0)) {
                     event.stopImmediatePropagation();
                     this.returningToIndex = this.nativeHistoryIndex;
                     window.history.go(-delta);
@@ -282,7 +305,7 @@ export function staffWorkspace() {
                 return;
             }
             const delta = entry.index - this.historyIndex;
-            if (delta !== 0 && this.dirty) {
+            if (delta !== 0 && (this.dirty || this.pendingRequests > 0)) {
                 event.stopImmediatePropagation();
                 this.returningToIndex = this.historyIndex;
                 window.history.go(-delta);

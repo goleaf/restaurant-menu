@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Actions\Staff\ApplyPermissionDraftAction;
 use App\Actions\Staff\SetOrganizationStaffStatusAction;
 use App\Actions\Staff\SyncWaiterAreaAssignmentsAction;
 use App\Actions\Staff\UpdateBranchStaffRoleAction;
@@ -20,6 +21,33 @@ use Illuminate\Validation\ValidationException;
 
 final class TeamAccessConcurrencyTasks
 {
+    /** @param array<string, mixed> $connection @param list<array{permission_id: int, state: string}> $changes */
+    public static function applyPermissions(array $connection, int $actorId, int $organizationId, int $subjectId, array $changes, string $fingerprint, string $barrier): Closure
+    {
+        return static function () use ($connection, $actorId, $organizationId, $subjectId, $changes, $fingerprint, $barrier): array {
+            config(['database.default' => 'team_permission_concurrency', 'database.connections.team_permission_concurrency' => $connection]);
+            DB::purge('team_permission_concurrency');
+            $actor = User::query()->whereKey($actorId)->firstOrFail();
+            $subject = User::query()->whereKey($subjectId)->firstOrFail();
+            $organization = Organization::query()->whereKey($organizationId)->firstOrFail();
+            file_put_contents($barrier.'/'.getmypid(), 'ready');
+            $deadline = microtime(true) + 5;
+            while (count(glob($barrier.'/*')) < 2 && microtime(true) < $deadline) {
+                usleep(10000);
+            }
+            if (count(glob($barrier.'/*')) !== 2) {
+                throw new \RuntimeException('Concurrent permission workers failed to rendezvous.');
+            }
+            try {
+                app(ApplyPermissionDraftAction::class)->handle($actor, $organization, $subject, $changes, $fingerprint, 'Concurrent permission review.', true);
+
+                return ['result' => 'saved', 'pid' => getmypid()];
+            } catch (ValidationException $exception) {
+                return ['result' => 'conflict', 'pid' => getmypid(), 'errors' => array_keys($exception->errors())];
+            }
+        };
+    }
+
     /** @param array<string,mixed> $connection */
     public static function change(array $connection, int $actorId, int $organizationId, int $membershipId, int $roleId, string $kind, string $barrier, ?int $branchId = null): Closure
     {

@@ -89,6 +89,11 @@ final class AcceptInvitationAction
                 throw new DomainException('Invitation is no longer available.');
             }
 
+            if ($membership instanceof OrganizationUser && $lockedInvitation->branch_id !== null && $branchMembership === null
+                && ! BranchUser::query()->where('organization_id', $lockedInvitation->organization_id)->where('user_id', $recipient->id)->exists()) {
+                throw new DomainException('Existing organization access requires an explicit assignment review.');
+            }
+
             $acceptedAt = now();
             $acceptedCount = Invitation::query()
                 ->whereKey($lockedInvitation->id)

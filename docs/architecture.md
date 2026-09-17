@@ -4,6 +4,13 @@
 
 # Architecture
 
+## Prompt 8 employee-card boundary
+
+`Organizations/Staff/Show` is the shared class-based Livewire page for explicit organization or restaurant context. It reuses Staff Forms and mutation Actions; `TeamCardQueryService` prepares bounded membership, actual restaurant access, subject capability groups and typed audit presentation. Existing permissions URLs resolve their User identity to the correct OrganizationUser and open the access section. The standalone instant permission editor and list-level role/area editor markup are removed.
+
+`PermissionQueryService` remains the read contract for current and projected access, with shared kitchen/bar role-rule metadata from the existing resolvers. `ApplyPermissionDraftAction` applies only changed organization overrides atomically through the existing per-permission Action and management safeguards. Role preview fingerprints are rechecked inside both role Actions. `BranchAssignmentQueryService` describes explicit assignment scope transitions; the corresponding Actions own writes and audit. No impersonation, alternate guard, speculative database write/rollback or new authorization framework is used.
+
+
 ## Restaurant workspace context — prompt 3, 2026-09-16
 
 `WorkspaceContext` is a readonly result, not a tenant singleton. `WorkspaceAccessQuery` reads the existing batch permission and department access contracts. `WorkspaceContextResolver` resolves explicit resource, route and query ownership, rejects conflicting IDs, then considers actor-bound preference and a sole suitable branch. `ApplicationNavigationPresenter` owns authorized stable destinations, active states and search aliases. It does not load reports, menu data or order queues.

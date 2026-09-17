@@ -79,6 +79,10 @@ final class SetUserPermissionOverrideAction
             if ($managedBefore) {
                 $this->ensureManagerRemains->handle($organization);
             }
+            $membership->forceFill(['access_version' => $membership->access_version + 1]);
+            if (! $membership->save()) {
+                throw new RuntimeException('Permission revision could not be saved.');
+            }
             $this->recordAuditLog->handle(
                 action: AuditLogAction::StaffPermissionChanged, entityType: 'staff_permission', entityId: $user->id,
                 actorUser: $changedBy, organizationId: $organizationId,

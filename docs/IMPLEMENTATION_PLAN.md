@@ -4,6 +4,24 @@
 
 # Restaurant Menu completion implementation plan
 
+## Prompt 8 — unified employee card (stable accepted; PHP 8.6 blocked, 2026-09-17)
+
+Baseline `main` at `7ed78c6`; pre-existing prompt-2 auth/file changes and staged shared rules are preserved. Current code already shares organization/branch Index and Forms. Confirmed gaps: role/status/areas/permissions are separate entry points; branch list omits inherited members; permissions-only administrators lack Team navigation; first branch assignment narrows inherited scope without preview; cancellation omits invitation version; area changes lack audit/revision.
+
+| Step | Implementation / acceptance | Owner |
+| --- | --- | --- |
+| P8.1 | Typed organization membership card, explicit branch route, overview/access/areas/history URL state, existing draft guard, inherited-access list and return filters. First vertical slice: existing member → actual scope → one assignment → subject authorization. | Root: Show, TeamCardQueryService, Staff Index/query, policies/routes/tests |
+| P8.2 | Organization-scoped permission draft with explicit apply/preview, independent durable revision/fingerprint, per-permission authorization and last-manager protection. | access_contract: PermissionQueryService, permission Actions, PermissionDraftForm/Rules, TeamPermissionDraftTest |
+| P8.3 | Stable member-ID assignment, before/after scope and explicit first-assignment intent; version-bound invitation cancellation; area audit/revision; stale status rejection. Preserve existing acceptance and account identity. | invitations_assignments: named Staff/Invitation Actions, BranchAssignmentQueryService, TeamScopeSafetyTest |
+| P8.4 | One addressable responsive card, existing Flux primitives, token SCSS and common guard lifecycle; no nested editor dialogs. | team_ui_audit: _team.scss/team.scss, staff-workspace.js and its tests; Root Blade |
+| P8.5 | Connect invitations/accepted-member links, remove duplicate employee editors/instant permissions entry, typed bounded audit, separate resource abilities, real locale errors and current-task warnings. | Root |
+| P8.6 | Independent security review; targeted + full/parallel/coverage/architecture/backend/browser/JS/SCSS/translations/build; measured SQL/memory/HTML/payload and explicit stable/8.6 runtime evidence. | Root + independent reviewer after bounded implementation |
+| P8.7 | Canonical docs, exact limitations, secret/diff review, only attributable verified local commit and ordinary origin push; no remote verification. | Root |
+
+All changes run on isolated factory databases. No working account, invitation, QR, runtime configuration, dependency or deployment mutation. Card routes bind OrganizationUser explicitly and validate full ownership; legacy permissions User ID is resolved to the scoped membership before navigation. Assignment removal is an explicit versioned operation: removing the last assignment restores organization rules only after a scope preview and confirmation; suspension remains distinct. Related pending invitations are cancelled atomically. Existing exact-area semantics remain; archived assignments are visible and retained until an explicit validated correction.
+
+P8.1–P8.5 are implemented and browser-verified. P8.6 passes the stable candidate and shared integration inventories recorded in PROGRESS.md; actual PHP 8.6 application acceptance remains externally blocked by installed dependency constraints. P8.7 has a reviewed, secret-scanned 90-path commit selection with canonical documentation; local commit/push evidence is reported separately. The final shared-selector correction separates a selected long label from the bounded search term and preserves the existing workspace and draft guards.
+
 ## 2026-09-16 — Unified restaurant workspace, prompt 3 of 14 (stable acceptance; PHP 8.6 application blocked)
 
 Baseline: clean `main` at `9b6a71a1516737129a59c2a159d335e6b5d2a2d0`, source digest `d61eb6988626b57bcb084745c7cdabf76c70fa45446102eae581de94f14b55a7`. Prompt 1 has stable PHP 8.5.10 acceptance; PHP 8.6.0beta3 application acceptance remains blocked by actual Composer requirements. Prompt 2 was analyzed but not implemented before the user switched to prompt 3; all fourteen application controllers and six native auth forms remain separate unfinished work. Its agents stopped on the service usage limit without changing the worktree. This stage does not resume auth/invitation/backup migration.

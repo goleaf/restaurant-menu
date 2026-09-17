@@ -1,11 +1,10 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
-use App\Enums\DangerousAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Staff\Permissions as StaffPermissions;
+use App\Livewire\Organizations\Staff\Show as StaffPermissions;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -13,6 +12,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -32,7 +32,7 @@ test('staff permission page requires manage permissions permission', function ()
     $this->actingAs($manager)
         ->get(route('organizations.staff.permissions', [$organization, $staff]))
         ->assertOk()
-        ->assertSee(__('staff.actions.update_permissions'));
+        ->assertSee(__('team.card.access'));
 });
 
 test('staff permission page groups permissions with human labels and descriptions', function () {
@@ -40,9 +40,7 @@ test('staff permission page groups permissions with human labels and description
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->assertSet('showTechnicalPermissionKeys', false)
+    permissionCard($manager, $organization, $staff)
         ->assertSee(__('permissions.groups.restaurant'))
         ->assertSee(__('permissions.groups.branches'))
         ->assertSee(__('permissions.groups.zones'))
@@ -76,9 +74,8 @@ test('organization access explanations follow actual policies when a capability 
     $staff->permissionOverrides($organization->id)->attach($edit, ['enabled' => true]);
     $staff->permissionOverrides($organization->id)->attach($view, ['enabled' => false]);
 
-    $component = Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff]);
-    $rows = collect($component->instance()->permissionRows())->keyBy('code');
+    $component = permissionCard($manager, $organization, $staff);
+    $rows = collect($component->viewData('permissionRows'))->keyBy('code');
 
     expect($rows[SystemPermission::EditRestaurant->value]['effective_allowed'])
         ->toBe(Gate::forUser($staff)->inspect('update', $organization)->allowed())
@@ -93,12 +90,12 @@ test('an opened permission editor rechecks a revoked administrator before mutati
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $permission = Permission::query()->where('code', SystemPermission::ManageMenu->value)->firstOrFail();
-    $component = Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff]);
+    $component = permissionCard($manager, $organization, $staff)->call('openPermissions')
+        ->set('permissionForm.states.'.$permission->id, 'allow')->call('previewPermissions');
     OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $manager->id)
         ->firstOrFail()->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
 
-    $component->call('setPermissionState', $permission->id, 'allow')->assertForbidden();
+    $component->call('applyPermissions')->assertForbidden();
     expect($staff->permissionOverrides($organization->id)->exists())->toBeFalse();
 });
 
@@ -107,9 +104,7 @@ test('superadmin can see technical permission keys in permission UI', function (
     $superadmin = createPrompt16StaffMember($organization, SystemRole::Superadmin);
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
 
-    Livewire::actingAs($superadmin)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->assertSet('showTechnicalPermissionKeys', true)
+    permissionCard($superadmin, $organization, $staff)
         ->assertSee(SystemPermission::ManageServicePoints->value)
         ->assertSee(SystemPermission::ManageMenu->value);
 });
@@ -123,28 +118,28 @@ test('staff permission overrides can allow deny and return to default', function
 
     expect($staff->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeFalse();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->call('setPermissionState', $changePrices->id, 'allow')
-        ->assertSee(__('permissions.states.allowed_by_override'));
+    permissionCard($manager, $organization, $staff)
+        ->call('openPermissions')->set('permissionForm.states.'.$changePrices->id, 'allow')
+        ->call('previewPermissions')->call('applyPermissions')->assertHasNoErrors()
+        ->assertSee(__('team.card.state_allow'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeTrue();
     expect((bool) $staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $changePrices->id)->firstOrFail()->pivot->enabled)->toBeTrue();
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->call('setPermissionState', $confirmOrders->id, 'deny')
-        ->assertSee(__('permissions.states.denied_by_override'));
+    permissionCard($manager, $organization, $staff)
+        ->call('openPermissions')->set('permissionForm.states.'.$confirmOrders->id, 'deny')
+        ->call('previewPermissions')->call('applyPermissions')->assertHasNoErrors()
+        ->assertSee(__('team.card.state_deny'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeFalse();
     expect((bool) $staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $confirmOrders->id)->firstOrFail()->pivot->enabled)->toBeFalse();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->call('setPermissionState', $confirmOrders->id, 'default')
-        ->assertSee(__('permissions.states.role_default'));
+    permissionCard($manager, $organization, $staff)
+        ->call('openPermissions')->set('permissionForm.states.'.$confirmOrders->id, 'default')
+        ->call('previewPermissions')->call('applyPermissions')->assertHasNoErrors()
+        ->assertSee(__('team.card.state_default'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
     expect($staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $confirmOrders->id)->exists())->toBeFalse();
@@ -156,12 +151,18 @@ test('critical permission changes show a warning', function () {
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->set('criticalPermissionChangeReason', 'Temporary access reduction during audit.')
-        ->call('setPermissionState', $manageStaff->id, 'deny')
-        ->assertDispatched('modal-close', name: 'critical-permission-'.$manageStaff->id.'-deny')
-        ->assertSee(__('permissions.messages.critical_permission_changed'));
+    $component = permissionCard($manager, $organization, $staff)
+        ->call('openPermissions')
+        ->set('permissionForm.states.'.$manageStaff->id, 'deny')
+        ->set('permissionForm.reason', 'Temporary access reduction during audit.')
+        ->set('permissionForm.confirmed', true)
+        ->call('previewPermissions')
+        ->assertSet('preview.requires_confirmation', true)
+        ->assertSee(__('permissions.draft.confirm'));
+    expect($staff->permissionOverrides($organization->id)->exists())->toBeFalse();
+    $component->call('applyPermissions')->assertHasNoErrors()
+        ->assertSee(__('staff.workspace.updated'));
+    expect($staff->permissionOverrides($organization->id)->where('permissions.id', $manageStaff->id)->firstOrFail()->pivot->enabled)->toBeFalse();
 });
 
 test('critical permission changes require a reason', function () {
@@ -170,11 +171,14 @@ test('critical permission changes require a reason', function () {
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->assertSee(DangerousAction::ChangeCriticalPermission->title())
-        ->call('setPermissionState', $manageStaff->id, 'deny')
-        ->assertHasErrors(['criticalPermissionChangeReason' => 'required']);
+    permissionCard($manager, $organization, $staff)
+        ->call('openPermissions')
+        ->set('permissionForm.states.'.$manageStaff->id, 'deny')
+        ->set('permissionForm.confirmed', true)
+        ->call('previewPermissions')->assertSet('preview.requires_confirmation', true)
+        ->call('applyPermissions')
+        ->assertHasErrors(['permissionForm.reason' => 'required']);
+    expect($staff->permissionOverrides($organization->id)->exists())->toBeFalse();
 });
 
 test('staff cannot edit their own permission overrides', function () {
@@ -183,11 +187,9 @@ test('staff cannot edit their own permission overrides', function () {
     grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $manager])
+    permissionCard($manager, $organization, $manager)
         ->assertSee(__('permissions.messages.self_edit_disabled'))
-        ->call('setPermissionState', $manageStaff->id, 'deny')
-        ->assertSee(__('permissions.messages.self_edit_disabled'));
+        ->call('openPermissions')->assertForbidden();
 
     expect($manager->fresh()->permissionOverrides($organization->id)->where('permissions.id', $manageStaff->id)->exists())->toBeFalse();
     expect($manager->fresh()->hasPermission(SystemPermission::ManageStaff, $organization))->toBeTrue();
@@ -207,8 +209,7 @@ test('superadmin staff member keeps full computed access', function () {
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $superadmin = createPrompt16StaffMember($organization, SystemRole::Superadmin);
 
-    Livewire::actingAs($manager)
-        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $superadmin])
+    permissionCard($manager, $organization, $superadmin)
         ->assertSee(__('permissions.messages.superadmin_full_access'))
         ->assertSee(__('permissions.states.allowed'));
 
@@ -261,4 +262,11 @@ function grantPrompt16Permission(User $user, Organization $organization, SystemP
         ->firstOrFail();
 
     $membership->role->permissions()->updateExistingPivot($permissionModel->id, ['enabled' => true]);
+}
+
+function permissionCard(User $actor, Organization $organization, User $subject): Testable
+{
+    $member = OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $subject->id)->firstOrFail();
+
+    return Livewire::actingAs($actor)->test(StaffPermissions::class, ['organization' => $organization, 'member' => $member])->call('selectSection', 'access');
 }

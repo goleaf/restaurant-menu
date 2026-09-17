@@ -4,6 +4,11 @@
 
 # Factories and seeding
 
+## Prompt 8 Team fixtures
+
+Team acceptance tests use the existing factories in isolated SQLite databases. Cases include a shared User across independent organizations, inherited and explicit restaurant scope, independently suspended organization/restaurant memberships, organization overrides, archived rooms, typed accepted invitation identity and concurrent SQLite writers. No real invitation, account, role, permanent QR or canonical database is created or changed for this stage. Demo seeder behavior and production guards remain unchanged.
+
+
 ## Flux Pro fixture boundary — 2026-09-16
 
 The source import adds no models, migrations or seed data. Its integrity Unit test needs no database. Pro workflow acceptance must reuse existing factories in isolated SQLite fixtures, including multiple tenants, revoked access, empty/current/invalid selections, repeated language editors and bounded large option/ticket sets. Keep any local component reference fictitious and non-persistent; no package showcase should write to the working restaurant database. New rich-content storage, if implemented in P11, needs its own additive migration/factory/security proof before demo data uses it.

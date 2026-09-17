@@ -4,6 +4,34 @@
 
 # Restaurant Menu completion progress
 
+## Prompt 8 — stable source accepted; PHP 8.6 application gate blocked — 2026-09-17
+
+The existing shared Staff Index and Forms remain the foundation. One typed OrganizationUser card now joins overview, roles/access, rooms and permitted audit history with explicit organization/restaurant URL state. Lists and accepted invitations open that card; legacy permission URLs resolve the same scoped member. Inherited restaurant access is shown without creating BranchUser rows. Global account identity/security remains outside Team.
+
+First assignment and last-assignment removal preview the entire resulting scope, including future restaurants. Removal requires explicit intent, reason, confirmation and current version/fingerprint, and cancels applicable pending invitations atomically. Organization permission drafts use three states and one atomic apply. Role changes explain department eligibility and removal of waiter room restrictions. Self/protected-account, delegation, last-manager, stale-state, audit rollback and changed-actor safeguards remain server enforced.
+
+Independent reviews found and closed pending invitations recreating removed assignments and archived branch events being relabelled as organizational history. Final review reports no confirmed open P1/P2. Two independent SQLite processes cover conflicting removals; account, order and historical author data remain intact.
+
+| Final evidence scope | Observed result |
+| --- | --- |
+| Isolated HEAD plus the 90 attributable paths | 3,755/3,755 backend tests; 72,403 assertions; no errors, failures or skips |
+| Candidate browser inventory | 46/46 cases; 3,543 assertions; no failures/timeouts |
+| Candidate canonical Xdebug coverage | 3,755 tests / 72,403 assertions; 94.1% application line coverage; unchanged 90% threshold |
+| Shared working-tree integration | 3,903/3,903 backend tests / 73,761 assertions; browser 60/60 / 4,603; no failures/skips |
+| JavaScript coverage | Candidate 205/205 and shared 208/208; 100% lines; no skips |
+| Other gates | Final Pint, Larastan, translation audit/scan, production builds and unchanged asset budgets pass; unchanged manifests/dependencies/JS/SCSS also pass Composer validation/platform/audits, npm audit, architecture and lint gates |
+| Database/runtime tooling | 95 migrations up/reset/reapply, double default seed, 46 factory/seeder/preservation tests / 463 assertions, config/route/event/view caches pass in owned temporary environments |
+
+The candidate source inventory is `c96479d902b33411d882d7c3320cca8ff67dbaf1ab70ff52cc9af34b3a99ecd5`; shared integration is `5efd34143a733608d70395ca9a667f436d3a3cbf9d2e1fde0a27757fb1cb7dec`. The canonical coverage run completed before the final presentation correction; every covered app/ PHP file is byte-identical to the final candidate, checked by the delivery runner. Browser-only edits during coverage are enumerated in its summary; the final Blade and all test files are covered by the final backend/browser inventories. The 94.1% figure belongs to the isolated commit candidate, not to unrelated uncommitted prompt-2 PHP classes. Documentation is finalized afterward without changing application/test sources.
+
+Browser acceptance includes real independent administrator/recipient sessions, invitation acceptance, the same employee through assignments/permissions/roles/status, actual denial/restoration, URL history and filter return, narrow permission operators, offline discard, five widths (320/390/768/1024/1440), dark/light and 200% zoom. A deterministic regression exposed a real shared-selector defect: its combobox copied a long organization/brand/restaurant label into the max-100 search query. The existing selector now uses an installed Flux listbox with a separate server-search slot; limits and authorization remain unchanged. The long-label regression fails before and passes after, including mobile 320px search/focus checks. The notification polling test now establishes its mobile viewport before login and waits for the loaded dashboard before instrumentation; every polling/navigation/error assertion remains.
+
+Failed diagnostics are retained: hK7W46 formatting stop; MOAJju backend 3,899 cases with five failures/two errors from stale UI contracts and service locators; F2Gwpv browser 60 cases with two obsolete fixture/selector failures; subsequent shared browser diagnostics with login instrumentation, menu-history timing and the long-label validation failure. They are not relabelled as passes. Final delivery inventories above supersede them. No skip/only, diagnostic suppression, coverage reduction or timing sleep was added.
+
+Stable tests use actual PHP 8.5.10; focused checks also use Herd CLI 8.5.8. The configured live Herd FastCGI process separately reports PHP 8.5.8 / fpm-fcgi through an owned runtime-only probe. Actual PHP 8.6.0beta2 passes 1,190 first-party syntax checks and final changed-browser-file follow-ups, but Composer platform validation rejects Nette Schema 1.3.6's PHP 8.1–8.5 range. No 8.6 application/browser/coverage pass or production-runtime change is claimed. Working Boost URL configuration points at a different site name and its database schema is older; working data was neither migrated nor repaired.
+
+Evidence roots: `restaurant-team-p8-delivery-wpFlt2`, `restaurant-team-p8-shared-delivery-4k236x`, coverage `restaurant-team-p8-candidate-d4nlu6j1`, initial stable gate `restaurant-migration-verification-F2Gwpv`, experimental preflight `restaurant-migration-verification-aRnEHK`. Performance measurements and their limits are in performance.md. The scoped commit selection preserves pre-existing prompt-2 work and excludes workflow files, dependencies and credentials. Local commit and ordinary origin push are separate observed delivery operations, reported with their actual result; no remote verification or deployment follows.
+
 ## Prompt 3 — stable workspace accepted; PHP 8.6 application blocked — 2026-09-16
 
 Started from clean local `main` at `9b6a71a1516737129a59c2a159d335e6b5d2a2d0`. One class-based entry, shared Flux Pro restaurant selector and task registry now connect the existing menu, halls/QR, team, settings, restaurant/waiter/department, export and audit screens. Existing named URLs and domain operations remain. Explicit object/route/query context outranks future-entry preference; conflicting or revoked targets fail closed, aggregate mode is explicit and each open component retains its own restaurant. Signed actor identity rejects account changes and legacy authenticated snapshots before hydration. No dependency, schema, working-data or production-runtime changes belong to this stage.

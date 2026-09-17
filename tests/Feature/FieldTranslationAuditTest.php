@@ -177,9 +177,10 @@ function fieldTranslationAuditManifest(): array
             'phone' => ['label' => 'ui.organizations.brands.branches.settings.phone', 'attribute' => 'validation.attributes.phone'],
             'role' => ['label' => 'staff.role', 'attribute' => 'validation.attributes.role_id'],
         ],
-        'permission override form' => [
-            'critical_reason' => ['label' => 'guest.table.reason', 'placeholder' => 'permissions.forms.critical_reason_placeholder', 'attribute' => 'validation.attributes.critical_reason'],
-            'override_state' => ['label' => 'permissions.forms.change_reason', 'attribute' => 'validation.attributes.override_state'],
+        'permission draft form' => [
+            'reason' => ['label' => 'staff.workspace.reason', 'help' => 'team.card.permission_scope', 'attribute' => 'permissions.forms.change_reason'],
+            'states' => ['label' => 'team.card.access', 'help' => 'team.card.resource_rules', 'attribute' => 'permissions.labels.manage_permissions'],
+            'confirmed' => ['label' => 'permissions.draft.confirm', 'attribute' => 'permissions.draft.confirm'],
         ],
         'guest name form' => [
             'guest_name' => ['label' => 'guest.table.your_name', 'placeholder' => 'guest.table.enter_name', 'attribute' => 'validation.attributes.guest_name'],

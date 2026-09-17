@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\SystemRole;
 use App\Models\Branch;
+use App\Models\Brand;
+use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -15,8 +17,11 @@ test('the restaurant address heading navigation and edited resource stay togethe
     $this->withVite();
     IsolatedBrowserIdentity::configure();
     $this->seed(SystemPermissionsSeeder::class);
-    $first = Branch::factory()->create(['name' => 'Žąsis — Семейный ресторан А']);
+    $organization = Organization::factory()->create(['name' => 'Сеть ресторанов с подтверждёнными длинными названиями для проверки контекста']);
+    $brand = Brand::factory()->for($organization)->create(['name' => 'Tarptautinė restoranų grupė ir šeimos virtuvės bendras valdymo padalinys']);
+    $first = Branch::factory()->for($organization)->for($brand)->create(['name' => 'Žąsis — Семейный ресторан А']);
     $second = Branch::factory()->for($first->organization)->for($first->brand)->create(['name' => 'Žąsis — Ресторан Б']);
+    expect(mb_strlen($second->name.' — '.$brand->name.' · '.$organization->name))->toBeGreaterThan(100);
     $user = User::factory()->create(['password' => 'password']);
     OrganizationUser::factory()->forOrganization($first->organization)->forUser($user)->forSystemRole(SystemRole::Owner)->active()->create();
     $page = visit(route('login', absolute: false));
@@ -29,13 +34,39 @@ test('the restaurant address heading navigation and edited resource stay togethe
     $page->assertNoJavaScriptErrors();
     $page->click('.workspace-restaurant__trigger');
     $page->assertVisible('dialog[data-modal="workspace-restaurant"]')
+        ->click('dialog[data-modal="workspace-restaurant"] [data-flux-select-button]')
         ->click('dialog[data-modal="workspace-restaurant"] input')->fill('dialog[data-modal="workspace-restaurant"] input', 'Ресторан Б')
-        ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown');
+        ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown')
+        ->assertMissing('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$first->id.'"]');
     $page->assertVisible('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$second->id.'"]');
     $page->click('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$second->id.'"]')
+        ->assertScript('document.querySelector(\'dialog[data-modal="workspace-restaurant"] ui-select\').value', (string) $second->id)
+        ->assertScript('document.querySelector(\'dialog[data-modal="workspace-restaurant"] input\').value.length <= 100')
         ->click('dialog[data-modal="workspace-restaurant"] button[type="submit"]')
         ->assertPathIs(route('organizations.brands.branches.staff.index', [$second->organization_id, $second->brand_id, $second->id], false));
     $page->assertSee($second->name)->assertAttribute('[data-navigation-key="team"]', 'aria-current', 'page');
+    $page->resize(320, 900)->click('.workspace-restaurant__trigger')
+        ->click('dialog[data-modal="workspace-restaurant"] [data-flux-select-button]')
+        ->fill('dialog[data-modal="workspace-restaurant"] input', 'Ресторан Б')
+        ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown')
+        ->assertMissing('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$first->id.'"]')
+        ->assertVisible('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$second->id.'"]')
+        ->assertScript(<<<'JS'
+            (() => {
+                const dialog = document.querySelector('dialog[data-modal="workspace-restaurant"]');
+                const popup = dialog.querySelector('[data-flux-options]');
+                const bounds = popup.getBoundingClientRect();
+                return document.documentElement.scrollWidth <= window.innerWidth
+                    && bounds.left >= 0 && bounds.right <= window.innerWidth
+                    && Array.from(popup.querySelectorAll('ui-option')).every(option =>
+                        option.scrollHeight <= option.clientHeight + 1 && option.scrollWidth <= option.clientWidth + 1);
+            })()
+            JS)
+        ->screenshot(false, 'workspace-long-label-320')
+        ->keys('dialog[data-modal="workspace-restaurant"]', 'Escape')
+        ->assertMissing('dialog[data-modal="workspace-restaurant"][open]')
+        ->assertScript('document.activeElement.matches(".workspace-restaurant__trigger")')
+        ->resize(1440, 1000);
     $page->click('[data-navigation-key="overview"]');
     $page->click('[data-ordering-controls] summary')->fill('input[name="closure.temporaryClosedReason"]', 'Keep this draft');
     $page->click('[data-navigation-key="menu"]')->assertVisible('dialog[data-modal="dashboard-unsaved"]');
@@ -119,6 +150,7 @@ test('a shared restaurant preference cannot retarget an ordering draft open in a
 
         $tabA->click('.workspace-restaurant__trigger')
             ->assertVisible('dialog[data-modal="workspace-restaurant"]')
+            ->click('dialog[data-modal="workspace-restaurant"] [data-flux-select-button]')
             ->click('dialog[data-modal="workspace-restaurant"] input')
             ->fill('dialog[data-modal="workspace-restaurant"] input', $different->name)
             ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown')

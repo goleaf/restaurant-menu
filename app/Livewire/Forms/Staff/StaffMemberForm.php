@@ -40,4 +40,11 @@ class StaffMemberForm extends Form
 
         return ['roleId' => (int) $values['roleId'], 'organizationMemberId' => (int) $values['organizationMemberId']];
     }
+
+    /** @return array<string, string> */
+    protected function validationAttributes(): array
+    {
+        return ['roleId' => __('staff.role'), 'status' => __('staff.workspace.status'),
+            'reason' => __('validation.attributes.reason'), 'organizationMemberId' => __('staff.workspace.existing_colleague')];
+    }
 }

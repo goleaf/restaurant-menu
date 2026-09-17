@@ -17,6 +17,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
 use App\Models\Role;
@@ -152,7 +153,9 @@ test('staff names and invitation recipients remain readable beside translated ac
         'name' => 'Александра Константиновна Длиннофамильская',
         'email' => 'alexandra.long.recipient@example.test',
     ]);
-    $member = BranchUser::factory()->forBranch($fixture['branch'])->forUser($colleague)->suspended()->create([
+    $organizationMember = OrganizationUser::factory()->forOrganization($fixture['organization'])->forUser($colleague)
+        ->forSystemRole(SystemRole::Waiter)->active()->create();
+    BranchUser::factory()->forBranch($fixture['branch'])->forUser($colleague)->forRole($organizationMember->role)->suspended()->create([
         'assigned_by_user_id' => $fixture['owner']->id,
     ]);
     $invitation = Invitation::factory()->forOrganization($fixture['organization'])->pending()->create([
@@ -165,9 +168,9 @@ test('staff names and invitation recipients remain readable beside translated ac
     frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
 
     foreach ([
-        ['employees', 'member-'.$member->id, $colleague->name],
-        ['invitations', 'invitation-'.$invitation->id, $invitation->email],
-    ] as [$section, $key, $label]) {
+        ['employees', 'member-'.$organizationMember->id, $colleague->name, 'a[href*="/staff/members/'.$organizationMember->id.'"]'],
+        ['invitations', 'invitation-'.$invitation->id, $invitation->email, 'button:first-child'],
+    ] as [$section, $key, $label, $primaryAction]) {
         $page->navigate($fixture['staffUrl'].'?lang=ru&section='.$section)->assertSee($label);
         frontendAssertModuleReady($page, 'staff');
 
@@ -178,7 +181,7 @@ test('staff names and invitation recipients remain readable beside translated ac
             }
 
             $selector = 'article[wire\\:key="'.$key.'"]';
-            $page->assertVisible($selector.' h3')->assertVisible($selector.' button:first-child');
+            $page->assertVisible($selector.' h3')->assertVisible($selector.' '.$primaryAction);
             $page->script('document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))))');
             $geometry = $page->script('(() => {
                 const row = document.querySelector('.json_encode($selector, JSON_THROW_ON_ERROR).');

@@ -4,7 +4,7 @@ use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailabi
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
 use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
-use App\Livewire\Organizations\Staff\Permissions;
+use App\Livewire\Organizations\Staff\Show as EmployeeCard;
 use App\Livewire\PublicQr\DraftOrder;
 use App\Livewire\PublicQr\DraftTotals;
 use App\Livewire\PublicQr\GuestActions;
@@ -76,7 +76,11 @@ test('livewire security boundary properties are locked', function (string $compo
     'waiter draft item add attempt id' => [DraftReview::class, 'addDraftItemAttemptId'],
     'waiter order fulfilment session id' => [OrderFulfilment::class, 'tableSessionId'],
     'waiter table payment session id' => [Payment::class, 'tableSessionId'],
-    'staff permission membership role id' => [Permissions::class, 'membershipRoleId'],
+    'employee organization membership id' => [EmployeeCard::class, 'membershipId'],
+    'employee editor actor id' => [EmployeeCard::class, 'actorId'],
+    'employee permission revision' => [EmployeeCard::class, 'permissionFingerprint'],
+    'employee permission original states' => [EmployeeCard::class, 'originalPermissionStates'],
+    'employee operation preview revision' => [EmployeeCard::class, 'previewFingerprint'],
 ]);
 
 test('guest-facing livewire components do not expose guest auth tokens as public properties', function (string $component): void {

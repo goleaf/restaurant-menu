@@ -13,6 +13,7 @@ use App\Models\BranchUser;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\PermissionQueryService;
 use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -24,14 +25,15 @@ final class UpdateBranchStaffRoleAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly PermissionQueryService $permissions,
     ) {}
 
-    public function handle(User $actor, Branch $branch, BranchUser $branchUser, Role $role, string $reason, ?int $expectedVersion = null): BranchUser
+    public function handle(User $actor, Branch $branch, BranchUser $branchUser, Role $role, string $reason, ?int $expectedVersion = null, ?string $expectedImpactFingerprint = null): BranchUser
     {
         $reason = $this->validatedReason($reason);
         $expectedVersion ??= (int) $branchUser->getAttribute('access_version');
 
-        return DB::transaction(function () use ($actor, $branch, $branchUser, $role, $reason, $expectedVersion): BranchUser {
+        return DB::transaction(function () use ($actor, $branch, $branchUser, $role, $reason, $expectedVersion, $expectedImpactFingerprint): BranchUser {
             $actor = User::query()->with('roles')->whereKey($actor->id)->firstOrFail();
             $branch = Branch::query()->whereKey($branch->id)->where('organization_id', $branch->organization_id)->firstOrFail();
             $organization = Organization::query()
@@ -55,10 +57,6 @@ final class UpdateBranchStaffRoleAction
                 ]);
             }
 
-            if ((int) $scopedBranchUser->role_id === (int) $assignableRole->id) {
-                return $scopedBranchUser;
-            }
-
             $currentRole = Role::query()
                 ->select(['id', 'code', 'name', 'sort_order'])
                 ->whereKey($scopedBranchUser->role_id)
@@ -67,6 +65,16 @@ final class UpdateBranchStaffRoleAction
             if ($scopedBranchUser->user_id !== $branchUser->user_id
                 || User::query()->whereKey($scopedBranchUser->user_id)->whereHas('roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value))->exists()) {
                 throw new AuthorizationException;
+            }
+            if ($scopedBranchUser->access_version !== $expectedVersion) {
+                throw ValidationException::withMessages(['editingRoleId' => __('staff.errors.stale_membership')]);
+            }
+            if ($expectedImpactFingerprint !== null) {
+                $this->permissions->assertRolePreviewCurrent($actor, $organization,
+                    User::query()->whereKey($scopedBranchUser->user_id)->firstOrFail(), $assignableRole, $expectedImpactFingerprint, $branch, true);
+            }
+            if ((int) $scopedBranchUser->role_id === (int) $assignableRole->id) {
+                return $scopedBranchUser;
             }
             if (BranchUser::query()->whereKey($scopedBranchUser->id)->where('access_version', $expectedVersion)
                 ->update(['access_version' => $expectedVersion + 1]) !== 1) {

@@ -23,4 +23,11 @@ class WaiterAssignmentForm extends Form
 
         return array_map(static fn (mixed $id): int => (int) $id, $values['areaIds']);
     }
+
+    /** @return array<string, string> */
+    protected function validationAttributes(): array
+    {
+        return ['areaIds' => __('staff.workspace.area_coverage'), 'areaIds.*' => __('staff.workspace.area_coverage'),
+            'search' => __('validation.attributes.search')];
+    }
 }

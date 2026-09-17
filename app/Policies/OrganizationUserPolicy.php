@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\SystemPermission;
+use App\Models\Branch;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
@@ -28,6 +30,24 @@ final class OrganizationUserPolicy
         }
 
         return $this->withOrganization($membership, fn (Organization $organization): bool => $this->organizations->manageStaff($user, $organization));
+    }
+
+    public function viewCard(User $user, OrganizationUser $membership, ?Branch $branch = null): bool
+    {
+        if ($branch !== null) {
+            return $branch->organization_id === $membership->organization_id
+                && ! $branch->trashed() && $user->canAccessBranch($branch)
+                && ($user->hasPermission(SystemPermission::ManageStaff, $membership->organization_id)
+                    || $user->hasPermission(SystemPermission::ManagePermissions, $membership->organization_id));
+        }
+
+        return $this->withOrganization($membership, fn (Organization $organization): bool => $this->organizations->viewTeam($user, $organization));
+    }
+
+    public function viewHistory(User $user, OrganizationUser $membership, ?Branch $branch = null): bool
+    {
+        return $this->viewCard($user, $membership, $branch)
+            && $user->hasPermission(SystemPermission::ViewAuditLog, $membership->organization_id);
     }
 
     public function create(User $user, Organization $organization): bool

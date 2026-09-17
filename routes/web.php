@@ -38,7 +38,7 @@ use App\Livewire\Organizations\Brands\Branches\Staff\Index as OrganizationBrandB
 use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
-use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
+use App\Livewire\Organizations\Staff\Show;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\QrCodes\ShortCodeLookup as QrShortCodeLookup;
 use App\Livewire\Restaurant\Dashboard as RestaurantDashboard;
@@ -129,7 +129,8 @@ Route::middleware(['auth'])
         Route::livewire('/', OrganizationsIndex::class)->name('index');
 
         Route::livewire('{organization}/staff', OrganizationStaffIndex::class)->name('staff.index');
-        Route::livewire('{organization}/staff/{staffMember}/permissions', OrganizationStaffPermissions::class)->name('staff.permissions');
+        Route::livewire('{organization}/staff/members/{member}', Show::class)->name('staff.show');
+        Route::livewire('{organization}/staff/{staffMember}/permissions', Show::class)->name('staff.permissions');
 
         Route::prefix('{organization}/brands')
             ->name('brands.')
@@ -173,6 +174,7 @@ Route::middleware(['auth'])
                             ->name('staff.')
                             ->group(function () {
                                 Route::livewire('/', OrganizationBrandBranchStaffIndex::class)->name('index');
+                                Route::livewire('members/{member}', Show::class)->withoutScopedBindings()->name('show');
                             });
 
                         Route::prefix('{branch}/settings')

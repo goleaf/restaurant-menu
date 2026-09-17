@@ -98,6 +98,149 @@ test('staff child navigation and dismissal retain the owner error, editor and he
     staff.destroy();
 });
 
+test('staff opens a plain card section without assuming a modal presenter', t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance, editor = new Element(), input = new Element();
+    editor.hidden = true;
+    editor.setAttribute('inert', '');
+    editor.children.set('input:not([type=hidden]), select', [input]);
+    staff.$el.children.set('[data-staff-editor]', [editor]);
+    app.window.Alpine = { $data: () => ({}) };
+    staff.dirty = true;
+    app.window.dispatchEvent({ type: 'staff-editor-opened' });
+    assert.equal(editor.hidden, false);
+    assert.equal(editor.hasAttribute('inert'), false);
+    assert.equal(input.focused, 1);
+    assert.equal(staff.dirty, false);
+    staff.destroy();
+});
+
+test('offline card dismissal hides only the editor and reconnect waits for an explicit reopen', async t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance, editor = new Element(), overview = new Element(), trigger = new Element();
+    const root = staff.$el;
+    root.ancestors.set('[data-staff-workspace]', root);
+    root.children.set('[data-staff-editor]', [editor]);
+    root.children.set('[data-staff-heading]', [overview]);
+    trigger.setAttribute('wire:click', 'openPermissions');
+    trigger.ancestors.set('[wire\\:click]', trigger);
+    root.children.set('[wire\\:click]', [trigger]);
+    let discarded = 0;
+    staff.$wire.discardEditor = async () => { discarded++; };
+    staff.dirty = true;
+    app.window.dispatchEvent({ type: 'offline' });
+    await staff.dismissEditor();
+    assert.equal(editor.hidden, true);
+    assert.equal(editor.hasAttribute('inert'), true);
+    assert.equal(overview.hidden, false);
+    assert.equal(overview.focused, 1);
+    assert.equal(staff.dirty, false);
+    assert.equal(staff.editorDismissed, true);
+    assert.equal(discarded, 0);
+    app.window.dispatchEvent({ type: 'online' });
+    await new Promise(setImmediate);
+    assert.equal(discarded, 0);
+    root.dispatchEvent(event({ type: 'click', target: trigger }));
+    await new Promise(setImmediate);
+    assert.equal(discarded, 1);
+    assert.equal(trigger.clicks, 1);
+    staff.destroy();
+});
+
+test('staff waits for in-flight requests before dismissal or navigation without queuing a replay', async t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance;
+    const editor = new Element();
+    staff.$el.children.set('[data-staff-editor]', [editor]);
+    let navigated = 0, discarded = 0;
+    staff.$wire.selectSection = async () => { navigated++; };
+    staff.$wire.discardEditor = async () => { discarded++; };
+    const saving = app.message({ id: 'workspace', el: staff.$el }, [{ name: 'saveMember' }]);
+    saving.send();
+    await staff.navigateSection(event(), 'access');
+    await staff.dismissEditor();
+    const leaving = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/elsewhere') } });
+    app.document.dispatchEvent(leaving);
+    assert.equal(leaving.prevented, true);
+    assert.equal(navigated, 0);
+    assert.equal(discarded, 0);
+    assert.equal(editor.hidden, false);
+    assert.equal(staff.pendingNavigation, null);
+    const unloading = event({ type: 'beforeunload' });
+    app.window.dispatchEvent(unloading);
+    assert.equal(unloading.prevented, true);
+    saving.finish();
+    await new Promise(setImmediate);
+    assert.equal(navigated, 0);
+    await staff.navigateSection(event(), 'access');
+    assert.equal(navigated, 1);
+    staff.destroy();
+});
+
+test('assignment removal keeps its focus target and explicitly clears an offline dismissed editor before reopening', async t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance, trigger = new Element();
+    trigger.setAttribute('wire:click', 'openAssignmentRemoval');
+    trigger.ancestors.set('[wire\\:click]', trigger);
+    staff.$el.children.set('[wire\\:click]', [trigger]);
+    staff.$el.dispatchEvent(event({ type: 'click', target: trigger }));
+    assert.equal(staff.trigger, trigger);
+    let discarded = 0;
+    staff.$wire.discardEditor = async () => { discarded++; };
+    app.window.dispatchEvent({ type: 'offline' });
+    await staff.dismissEditor();
+    assert.equal(trigger.focused, 1);
+    app.window.dispatchEvent({ type: 'online' });
+    assert.equal(discarded, 0);
+    staff.$el.dispatchEvent(event({ type: 'click', target: trigger }));
+    await new Promise(setImmediate);
+    assert.equal(discarded, 1);
+    assert.equal(trigger.clicks, 1);
+    staff.destroy();
+});
+
+test('an explicit section change clears an offline dismissed draft and retains it if discard fails', async t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance, calls = [];
+    staff.$wire.discardEditor = async () => { calls.push('discard'); };
+    staff.$wire.selectSection = async section => { calls.push(section); };
+    app.window.dispatchEvent({ type: 'offline' });
+    await staff.dismissEditor();
+    app.window.dispatchEvent({ type: 'online' });
+    assert.deepEqual(calls, []);
+    await staff.navigateSection(event(), 'overview');
+    assert.deepEqual(calls, ['discard', 'overview']);
+    assert.equal(staff.editorDismissed, false);
+
+    staff.editorDismissed = true;
+    staff.$wire.discardEditor = async () => { throw new Error('Disconnected again'); };
+    await staff.navigateSection(event(), 'areas');
+    assert.deepEqual(calls, ['discard', 'overview']);
+    assert.equal(staff.editorDismissed, true);
+    assert.equal(staff.navigating, false);
+
+    let finishDiscard;
+    staff.$wire.discardEditor = () => new Promise(resolve => { finishDiscard = resolve; });
+    const navigation = staff.navigateSection(event(), 'areas');
+    staff.destroy();
+    finishDiscard();
+    await navigation;
+    assert.deepEqual(calls, ['discard', 'overview']);
+});
+
+test('staff restores Back during a pending save without opening a discard prompt', async t => {
+    const app = workspace(t, staffWorkspace), staff = app.instance;
+    app.window.navigation = { currentEntry: { index: 5 } };
+    staff.stampHistory();
+    const saving = app.message({ id: 'workspace', el: staff.$el }, [{ name: 'saveMember' }]);
+    saving.send();
+    app.window.navigation.currentEntry.index = 4;
+    staff.guardHistory(event());
+    assert.deepEqual(app.history.at(-1), ['go', 1]);
+    assert.deepEqual(app.dialogs, []);
+    app.window.navigation.currentEntry.index = 5;
+    staff.guardHistory(event());
+    saving.finish();
+    await new Promise(setImmediate);
+    assert.equal(staff.pendingNavigation, null);
+    staff.destroy();
+});
+
 test('menu and staff restore native history before prompting and let cancelled back traversal repeat', t => {
     for (const factory of [menuWorkspace, staffWorkspace]) {
         const app = workspace(t, factory), instance = app.instance;

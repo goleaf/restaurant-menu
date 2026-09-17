@@ -110,7 +110,7 @@ test('demo owner can complete the organization administration browser journey', 
     $routeChain = [
         [route('organizations.index', absolute: false), '[data-page="organizations"]'],
         [route('organizations.staff.index', [$organization], false), '[data-page="organization-staff"]'],
-        [route('organizations.staff.permissions', [$organization, $staffMember], false), '[data-page="staff-permissions"]'],
+        [route('organizations.staff.permissions', [$organization, $staffMember], false), '[data-page="employee-card"]'],
         [route('organizations.brands.index', [$organization], false), '[data-page="organization-brands"]'],
         [route('organizations.brands.branches.index', [$organization, $brand], false), '[data-page="brand-branches"]'],
         [route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false), '[data-page="branch-settings"]'],
@@ -125,9 +125,17 @@ test('demo owner can complete the organization administration browser journey', 
     foreach ($routeChain as [$path, $pageSelector]) {
         $page->resize(1440, 1000)->navigate($path);
         assertOrganizationsBrowserPage($page, $pageSelector);
+        if ($pageSelector === '[data-page="employee-card"]') {
+            $page->assertSee($staffMember->name)->assertSee($organization->name)->assertSee(__('team.card.organization_scope'))
+                ->assertAttribute('[data-team-section="access"]', 'aria-current', 'page');
+        }
 
         $page->resize(375, 812)->navigate($path);
         assertOrganizationsBrowserPage($page, $pageSelector);
+        if ($pageSelector === '[data-page="employee-card"]') {
+            $page->assertSee($staffMember->name)->assertSee($organization->name)->assertSee(__('team.card.organization_scope'))
+                ->assertAttribute('[data-team-section="access"]', 'aria-current', 'page');
+        }
     }
 
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false));

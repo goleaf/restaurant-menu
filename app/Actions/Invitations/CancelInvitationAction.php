@@ -23,11 +23,12 @@ final class CancelInvitationAction
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
-    public function handle(User $actor, Organization $organization, Invitation $invitation): Invitation
+    public function handle(User $actor, Organization $organization, Invitation $invitation, ?string $expectedVersion = null): Invitation
     {
         Gate::forUser($actor)->authorize('manageStaff', $organization);
+        $expectedVersion ??= $invitation->credentialVersion();
 
-        return DB::transaction(function () use ($actor, $organization, $invitation): Invitation {
+        return DB::transaction(function () use ($actor, $organization, $invitation, $expectedVersion): Invitation {
             $actor = $actor->fresh();
             if (! $actor instanceof User) {
                 throw new DomainException('Invitation issuer is no longer available.');
@@ -58,6 +59,10 @@ final class CancelInvitationAction
                 ->whereKey($invitation->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if (! hash_equals($scopedInvitation->credentialVersion(), $expectedVersion)) {
+                throw ValidationException::withMessages(['invitation' => __('staff.errors.invitation_changed')]);
+            }
 
             if (! in_array($scopedInvitation->status, [InvitationStatus::Pending, InvitationStatus::Cancelled], true)) {
                 throw ValidationException::withMessages([

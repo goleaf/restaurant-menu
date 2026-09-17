@@ -10,6 +10,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/scss/app.scss',
+                'resources/scss/team.scss',
                 'resources/scss/qr-print.scss',
                 'resources/js/app.js',
             ],

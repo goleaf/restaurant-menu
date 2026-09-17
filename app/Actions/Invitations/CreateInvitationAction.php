@@ -7,10 +7,12 @@ namespace App\Actions\Invitations;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
+use App\Enums\OrganizationUserStatus;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Invitation;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -77,6 +79,14 @@ final class CreateInvitationAction
                 Gate::forUser($invitedBy)->authorize('manageStaff', $branch);
             }
             $this->ensureScopeBelongsToOrganization($organization, $brand, $branch);
+
+            if ($branch instanceof Branch && OrganizationUser::query()
+                ->where('organization_id', $organization->id)->where('status', OrganizationUserStatus::Active->value)
+                ->whereHas('user', fn ($query) => $query->where('email', $email)
+                    ->whereDoesntHave('branchAssignments', fn ($assignments) => $assignments->where('organization_id', $organization->id)))
+                ->exists()) {
+                throw ValidationException::withMessages(['invitation' => __('staff.errors.assign_existing_member')]);
+            }
 
             if (Invitation::query()->acceptable()
                 ->where('organization_id', $organization->id)

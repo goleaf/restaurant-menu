@@ -24,10 +24,16 @@ class ResolveBarAccessibleDepartmentIdsAction
         return $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
             departmentTypes: KitchenDepartmentType::barProductionTypes(),
-            roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
-            permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
+            roleCodes: self::accessRules()['roles'],
+            permissionCodes: self::accessRules()['permissions'],
             permissionBranchIds: $permissionBranchIds,
         );
+    }
+
+    /** @return array{roles:list<SystemRole>,permissions:list<SystemPermission>} */
+    public static function accessRules(): array
+    {
+        return ['roles' => [SystemRole::Bartender, SystemRole::HeadChef], 'permissions' => [SystemPermission::ViewOrders, SystemPermission::SendToKitchen]];
     }
 
     public function userHasAccess(User $user): bool

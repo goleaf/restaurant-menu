@@ -1,0 +1,107 @@
+@use '../settings/tokens';
+
+@layer components {
+    .rm-team-card {
+        container: team-card / inline-size;
+        display: grid;
+        gap: tokens.space(5);
+        min-inline-size: 0;
+        color: var(--rm-text-primary);
+
+        [data-staff-editor][hidden] {
+            display: none;
+        }
+    }
+
+    .rm-team-card__identity {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: start;
+        justify-content: space-between;
+        gap: tokens.space(3) tokens.space(5);
+        min-inline-size: 0;
+
+        > * {
+            min-inline-size: 0;
+            max-inline-size: 100%;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .rm-team-card__layout,
+    .rm-team-card__section {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        gap: tokens.space(4);
+        min-inline-size: 0;
+    }
+
+    .rm-team-card__nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: tokens.space(2);
+        min-inline-size: 0;
+        padding-block-end: tokens.space(3);
+        border-block-end: 1px solid var(--rm-border-subtle);
+    }
+
+    .rm-team-card__facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+        gap: tokens.space(4) tokens.space(6);
+        min-inline-size: 0;
+
+        > div {
+            min-inline-size: 0;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .rm-team-card__permission {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: tokens.space(3);
+        min-inline-size: 0;
+        padding-block: tokens.space(4);
+        border-block-end: 1px solid var(--rm-border-subtle);
+
+        > * {
+            min-inline-size: 0;
+            max-inline-size: 100%;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .rm-team-card__change {
+        display: grid;
+        gap: tokens.space(2);
+        min-inline-size: 0;
+        padding: tokens.space(4);
+        border: 1px solid var(--rm-border-strong);
+        border-radius: var(--rm-radius-control);
+        background-color: var(--rm-surface-selected);
+        overflow-wrap: anywhere;
+    }
+
+    .rm-team-card__branches {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-inline-size: 0;
+
+        > * {
+            min-inline-size: 0;
+            padding-block: tokens.space(3);
+            border-block-end: 1px solid var(--rm-border-subtle);
+            overflow-wrap: anywhere;
+        }
+    }
+
+    @container team-card (inline-size >= 40rem) {
+        .rm-team-card__permission {
+            grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.7fr);
+            align-items: start;
+            gap: tokens.space(6);
+        }
+    }
+}

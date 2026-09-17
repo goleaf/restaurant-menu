@@ -4,6 +4,14 @@
 
 # Frontend architecture
 
+## Prompt 8 Team navigation and styles
+
+One employee card replaces repeated person selection for role, status, organizational permission and room operations. List filters and page context survive return; section history uses native Livewire URL state. Long permission groups use the installed local Flux Pro accordion/listbox components, with separate standard role, configured override and effective result. Only short confirmations use dialogs.
+
+`resources/scss/team.scss` is a separately built card stylesheet loaded through the existing layout head stack on direct entry and wire:navigate. It reuses canonical tokens and container-responsive composition. The existing staffWorkspace guard now supports inline card editors, blocks transitions during requests, and discards an offline-dismissed draft only on a subsequent conscious action; reconnect never saves it automatically. No new global navigation handler, router, AJAX layer or theme store is added.
+
+The existing restaurant selector uses a Flux listbox with a separate server-search slot. Selecting a long scoped label does not overwrite form.search. The branch identifier, current authorization, 100-character search bound, pagination, offline controls and existing navigation/draft guard remain unchanged.
+
 ## Shared restaurant workspace — prompt 3, 2026-09-16
 
 The existing Flux sidebar/header/search/notification owner is retained. A single header RestaurantSwitcher uses the installed local Pro combobox with bounded server search (20 matches, at most 200 authorized rows scanned per request, explicit continuation). Matching folds case and diacritics for search only; stored names remain untouched. The current restaurant name is independent of the option page. Native anchors and Livewire Navigate preserve direct links and new-tab behavior. The installed Command control remains unsuitable for native link semantics; the existing accessible section-search mechanism consumes the same presenter registry.

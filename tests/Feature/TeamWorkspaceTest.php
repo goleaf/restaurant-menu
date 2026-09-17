@@ -6,6 +6,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
+use App\Livewire\Organizations\Staff\Show as EmployeeCard;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Invitation;
@@ -131,12 +132,15 @@ test('malformed member identifiers cannot select a truncated valid membership', 
         ->call('openMember', $id)->assertHasErrors('member')->assertSet('editingMembershipId', null);
 })->with([2.5, true, '2junk', [['id' => 2]]]);
 
-test('member cards link to authorized organization permissions and hide self links', function () {
+test('member rows link to scoped cards and self cards remain read only', function () {
     $member = OrganizationUser::factory()->forOrganization($this->organization)->forSystemRole(SystemRole::Waiter)->active()->create();
     $component = Livewire::actingAs($this->owner)->test(OrganizationStaffIndex::class, ['organization' => $this->organization]);
     $rows = collect($component->viewData('memberRows'))->keyBy('id');
-    expect($rows[$member->id]['permissions_url'])->toBe(route('organizations.staff.permissions', ['organization' => $this->organization->id, 'staffMember' => $member->user_id]))
-        ->and($rows[$this->membership->id]['permissions_url'])->toBeNull();
+    expect(parse_url($rows[$member->id]['card_url'], PHP_URL_PATH))->toBe(route('organizations.staff.show', ['organization' => $this->organization->id, 'member' => $member->id], false))
+        ->and(parse_url($rows[$this->membership->id]['card_url'], PHP_URL_PATH))->toBe(route('organizations.staff.show', ['organization' => $this->organization->id, 'member' => $this->membership->id], false));
+    Livewire::actingAs($this->owner)->test(EmployeeCard::class, ['organization' => $this->organization, 'member' => $this->membership])
+        ->assertViewHas('card', fn (array $card): bool => $card['self_edit_blocked'] && ! $card['can_manage'] && ! $card['can_permissions'])
+        ->call('openPermissions')->assertForbidden();
 });
 
 test('invitation summary aggregates effective states with the same tenant search and role scope', function () {

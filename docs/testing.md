@@ -4,6 +4,12 @@
 
 # Testing and quality gates
 
+## Current platform verification contract — 2026-09-17
+
+Use the existing `verify:migration` command with explicit PHP, Composer and npm paths. Its independent read-only preflight retains native capabilities and both real Composer platform results even when one check fails; any failure or timeout blocks application gates. SIGINT/SIGTERM stops immediately. After successful preflight, optimized Composer autoload generation runs with `--strict-psr --no-scripts` and disabled plugins inside the disposable snapshot, so misplaced named test helpers fail instead of becoming warnings. Stream-filter test doubles live in `Tests\Support` and retain the media-spool failure/short-write regressions.
+
+Current acceptance is incomplete: preserved product work fails architecture/JS coverage/asset budgets. PHP 90% and included JavaScript 100% line thresholds are unchanged. PROGRESS.md records actual current full-suite results and limitations; historical coverage percentages below do not certify the combined source. Format owned files by explicit paths in a shared dirty checkout: Pint `--dirty` overrides the path selection, so full/dirty formatting belongs in the isolated verification snapshot.
+
 ## Prompt 7 acceptance matrix — 2026-09-17
 
 The availability suites exercise opening/menu windows, exact inclusive starts and exclusive ends, overnight/week boundaries, date exceptions including previous-night tails, DST gaps/folds, unrestricted versus explicitly closed schedules and nonintersecting menus. Mutation tests cover per-source versions, timezone/dependency conflicts, UUID replay, audit rollback, revoked authority, independently preserved stop/hide flags and atomic selected-page batches. Independent SQLite processes test pause/order admission races.

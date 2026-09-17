@@ -4,6 +4,12 @@
 
 # Changelog
 
+## 2026-09-17 — Prompt 1 platform verification refresh (partial)
+
+- Updated only Vite's nested Rolldown 1.2.8 → 1.2.9; retained the exact local Pro compiler and PHP graph. Clean installations and byte-identical compiler outputs are recorded in CURRENT_VERSION.md and PROGRESS.md.
+- Preserved native and both Composer diagnostics after a failed platform check, while stopping immediately on interruption; added strict PSR-4 autoload verification and moved two test filters to their matching support files.
+- Built and actually probed isolated PHP 8.6.0beta3 with required extensions. Kept production on supported PHP 8.5; dependency restrictions and current product test/coverage/build failures prevent full acceptance. No deployment or agent-performed push.
+
 ## 2026-09-17 — Prompt 6 unified dish card
 
 - Added one scoped, addressable Livewire dish card with Main, Photos, Variants and Modifiers, independent content language, retained drafts and explicit save boundaries.

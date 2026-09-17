@@ -32,5 +32,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/PublicQr/** | .ai/rules/public-qr.md |
 | resources/{scss,css,build}/** | .ai/rules/scsscssbuild.md |
 | tests/Support/** | .ai/rules/support.md |
+| tests/** | .ai/rules/tests.md |
 | app/Mcp/Tools/** | .ai/rules/tools.md |
 | resources/views/components/ui/** | .ai/rules/ui.md |

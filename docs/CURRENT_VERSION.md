@@ -46,7 +46,7 @@ Frontend metadata was rechecked against the official npm registry and [Node rele
 | Vite's nested Rolldown | **1.2.8 → 1.2.9** | 1.2.9 |
 | Local Pro's root Rolldown | **1.2.5**, intentionally retained | 1.2.9; exact reproducible Pro compiler is a separate contract |
 
-The npm resolver updates only 17 nested Vite lock entries: Rolldown, its 15 platform bindings and `@oxc-project/types` 0.149.0 → 0.150.0. Both compiler versions produce byte-identical outputs for the same source. Clean registry-only installation and the shared offline installation each install 255 packages with lifecycle scripts disabled. The product's current architecture, coverage and asset-budget failures remain failures; compiler equivalence does not waive those gates. The original package manifests, root Pro compiler and application dependency contracts stay unchanged.
+The npm resolver updates only 17 nested Vite lock entries: Rolldown, its 15 platform bindings and `@oxc-project/types` 0.149.0 → 0.150.0. Both compiler versions produce byte-identical outputs for the same source. Clean registry-only installation and the shared offline installation each install 255 packages with lifecycle scripts disabled. A subsequent offline lock-only resolver run restores the repository's top-level `restaurant-menu` name after the temporary candidate directory label; package entries are unchanged. The product's current architecture, coverage and asset-budget failures remain failures; compiler equivalence does not waive those gates. The original package manifests, root Pro compiler and application dependency contracts stay unchanged.
 
 ## Prompt 6 runtime observation — 2026-09-17
 

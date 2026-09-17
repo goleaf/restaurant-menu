@@ -26,6 +26,10 @@ For `livewire-001`, `blade-001`, `sys-auth-003`, `sys-backup-001`, `i18n-001`, `
 Named URLs, domain Actions/Policies, SCSS tokens and EN/LT/RU remain. Current navigation tasks are exercised in real browsers; historical step comparison is based on returned HTTP links, not a claimed pre-change browser run. Device/engine and measurement limits are in testing.md/performance.md. PHP8.6 application acceptance remains blocked by existing Composer requirements (52 changed PHP files pass actual Beta3 syntax only). Prompt2's remaining controllers/auth forms are unchanged unfinished work. Evidence and delivery state are recorded in PROGRESS.md.
 
 
+## Current platform refresh — 2026-09-17 (acceptance incomplete)
+
+For `sec-dependency-001`, `ops-deployment-001`, `test-feature-001` and `test-architecture-001`: Vite's nested Rolldown is updated to 1.2.9 with byte-identical output to 1.2.8; clean dependency installation, stronger platform diagnostics and strict test-helper autoload verification are evidenced in PROGRESS.md. Final native PHP 8.6.0beta3 is built and probed with all required extensions, but Composer constraints block application/browser execution. PHP 8.5 support remains intact. Preserved onboarding/floor work currently fails architecture, JavaScript coverage and asset budgets; historical accepted rows do not supersede these fresh failures. No current full acceptance or agent-created commit/push is claimed.
+
 ## Platform foundation checkpoint — 2026-09-16 (partial; not release acceptance)
 
 Current continuation starts from clean `ce187c8`. Clean dependency installation/build/migration proof is renewed; the PHP86 monetary parser regression and verification-infrastructure defects are fixed with focused tests. The stable aggregate passes 22 steps, 3,550 backend tests / 69,018 assertions, 94.0% PHP coverage and 196 JS tests / 100% lines; a subsequent test-only browser media fix passes the full 42-case / 3,063-assertion browser stage. Exact snapshots and limits are in PROGRESS.md. PHP86 application acceptance remains blocked; this is not a completed migration.

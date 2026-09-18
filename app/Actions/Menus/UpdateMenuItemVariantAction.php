@@ -78,7 +78,8 @@ class UpdateMenuItemVariantAction
             ->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
             ->with(['item:id,menu_id,price_cents,variants_version'])
             ->where('menu_item_id', $variant->menu_item_id)
-            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branch->id))
+            ->whereHas('item', fn ($query) => $query->whereNull('menu_items.deleted_at')
+                ->whereHas('menu', fn ($menu) => $menu->whereNull('menus.deleted_at')->where('branch_id', $branch->id)))
             ->whereKey($variant->id)
             ->lockForUpdate()
             ->first();

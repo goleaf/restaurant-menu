@@ -89,7 +89,7 @@ export function browser(t) {
             });
             let synced = false;
             const sync = () => { if (synced) return; synced = true; syncs.forEach(callback => callback()); };
-            return { send() { sent.forEach(callback => callback()); }, sync, effect() { sync(); effects.forEach(callback => callback()); }, finish() { renders.forEach(callback => callback()); finished.forEach(callback => callback()); } };
+            return { send() { sent.forEach(callback => callback()); }, sync, effect() { sync(); effects.forEach(callback => callback()); }, finish() { sync(); renders.forEach(callback => callback()); finished.forEach(callback => callback()); } };
         },
     };
 }

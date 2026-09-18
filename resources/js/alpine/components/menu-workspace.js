@@ -75,8 +75,8 @@ export function menuWorkspace(configuration = {}) {
                     form.closest('[wire\\:id]')?.getAttribute('wire:id') === message.component.id
                     && actions.some(action => (configuration.cleanFormActions?.[action] ?? action) === form.getAttribute('wire:submit')?.split('(')[0].trim())
                 );
-                onSuccess(({ payload, onRender }) => {
-                    onRender(() => {
+                onSuccess(({ payload, onSync, onRender }) => {
+                    onSync(() => {
                         if (this.destroyed || !ownerRoot.isConnected) return;
                         const snapshot = typeof payload.snapshot === 'string' ? JSON.parse(payload.snapshot) : payload.snapshot;
                         if (Object.keys(snapshot?.memo?.errors ?? {}).length === 0) {
@@ -85,8 +85,8 @@ export function menuWorkspace(configuration = {}) {
                                 if (this.dirtyForms.get(form) === revision) this.dirtyForms.delete(form);
                             });
                         }
-                        queueMicrotask(() => this.stampHistory());
                     });
+                    onRender(() => queueMicrotask(() => this.stampHistory()));
                 });
             });
         },

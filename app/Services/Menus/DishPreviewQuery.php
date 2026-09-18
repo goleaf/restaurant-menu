@@ -40,7 +40,7 @@ final readonly class DishPreviewQuery
             $item->forceFill($this->attributes->handle($actor, $branch, $menu, $category, $draft['kitchenDepartmentId'], $draft['data'], $item, seedMissingDepartment: false));
             $translation = $draft['data']->translations[$locale] ?? [];
         } else {
-            $translation = $this->catalog->translationValues($item)[$locale] ?? [];
+            $translation = $item->translations->firstWhere('language_code', $locale)?->only(['name', 'description']) ?? [];
         }
         $item->setAttribute('localized_name', $translation['name'] ?? null);
         $item->setAttribute('has_localized_content', array_key_exists('description', $translation));

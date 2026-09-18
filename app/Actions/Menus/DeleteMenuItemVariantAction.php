@@ -30,7 +30,8 @@ class DeleteMenuItemVariantAction
                     ->select(['id', 'menu_item_id', 'name', 'price_cents', 'is_default'])
                     ->with('item:id,menu_id,price_cents,variants_version')
                     ->where('menu_item_id', $expectedItemId)
-                    ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branch->id))
+                    ->whereHas('item', fn ($query) => $query->whereNull('menu_items.deleted_at')
+                        ->whereHas('menu', fn ($menu) => $menu->whereNull('menus.deleted_at')->where('branch_id', $branch->id)))
                     ->whereKey($variantId)
                     ->lockForUpdate()
                     ->first();

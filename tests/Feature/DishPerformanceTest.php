@@ -9,10 +9,12 @@ use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\User;
+use App\Services\Menus\CatalogData;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +87,7 @@ function measureDishScreen(Closure $operation, ?string $expectedError = null): a
     ]];
 }
 
-test('dish main cost stays bounded beside other dishes and exposes the selected child graph cost', function (): void {
+test('dish main cost stays bounded without loading unvisited selected configuration', function (): void {
     $measurements = [];
     $actor = $this->actor->fresh();
     [$cold, $measurements['first_mount']] = measureDishScreen(fn (): Testable => Livewire::actingAs($actor)->test(Dish::class, $this->parameters));
@@ -109,8 +111,10 @@ test('dish main cost stays bounded beside other dishes and exposes the selected 
     }
     expect($measurements['forty_other_dishes']['queries'])->toBe($measurements['one_dish']['queries'])
         ->and($measurements['forty_other_dishes']['models_by_class'][MenuItem::class])->toBe($measurements['one_dish']['models_by_class'][MenuItem::class])
-        ->and($measurements['heavy_selected_graph']['models_by_class'][MenuItemVariant::class])->toBe(100)
-        ->and($measurements['heavy_selected_graph']['models_by_class'][ModifierOption::class])->toBe(180);
+        ->and($measurements['heavy_selected_graph']['models_by_class'][MenuItemVariant::class] ?? 0)->toBe(0)
+        ->and($measurements['heavy_selected_graph']['models_by_class'][ModifierGroup::class] ?? 0)->toBe(0)
+        ->and($measurements['heavy_selected_graph']['models_by_class'][ModifierOption::class] ?? 0)->toBe(0)
+        ->and($screen->viewData('item')['effective_availability'])->toBeNull();
     foreach (['variants', 'modifiers', 'main'] as $section) {
         [$screen, $measurements['visited_'.$section]] = measureDishScreen(fn (): Testable => $screen->call('selectSection', $section));
     }
@@ -120,6 +124,53 @@ test('dish main cost stays bounded beside other dishes and exposes the selected 
         'subsequent_comparisons' => 'Same PHP process; fresh actor instance; fixture writes excluded; query log included in memory',
         'html_scope' => 'Livewire Testable response markup; omitted existing child islands are not total browser DOM',
     ], 'measurements' => $measurements], JSON_THROW_ON_ERROR).PHP_EOL);
+});
+
+test('dish summary preserves media and direct restrictions while explicit preview evaluates unavailable configuration without writes', function (): void {
+    $this->item->update(['image' => 'menu-images/primary.png', 'is_available' => false, 'hidden_until' => now()->addHour()]);
+    MenuItemImage::factory()->for($this->item, 'item')->create(['path' => 'menu-images/gallery.png']);
+    MenuItemVariant::factory()->for($this->item, 'item')->create(['is_available' => false]);
+    $group = ModifierGroup::factory()->for($this->branch)->create(['is_required' => true, 'min_select' => 1, 'max_select' => 1]);
+    ModifierOption::factory()->for($group, 'group')->create(['is_available' => false]);
+    $this->item->modifierGroups()->attach($group);
+    $before = $this->item->fresh()->getAttributes();
+    [$screen, $initial] = measureDishScreen(fn (): Testable => Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters));
+
+    expect($initial['models_by_class'][MenuItemVariant::class] ?? 0)->toBe(0)
+        ->and($initial['models_by_class'][ModifierOption::class] ?? 0)->toBe(0)
+        ->and($screen->viewData('item'))->toMatchArray([
+            'menu_name' => $this->menu->name, 'category_name' => $this->category->name,
+            'image_count' => 2, 'remaining_image_slots' => MenuItem::MAX_IMAGES - 2,
+            'is_available' => false, 'is_temporarily_hidden' => true, 'effective_availability' => null,
+        ]);
+    $screen->assertSee(__('dish.availability.stopped'))->assertSee(__('availability.reasons.item_hidden'))
+        ->assertSee(__('dish.availability.not_evaluated'))->assertSee(__('dish.availability.check_preview'));
+    $baseline = $screen->get('mainBaseline');
+    $screen->set('editingItemForm.itemTranslations.en.description', 'Unsaved main description');
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    try {
+        $screen->call('openPreview')->assertHasNoErrors()->assertSet('previewOpen', true);
+        $writes = collect(DB::getQueryLog())->filter(fn (array $query): bool => preg_match('/^\s*(insert|update|delete|replace|create|drop|alter)\b/i', $query['query']) === 1);
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
+    expect(array_column($screen->get('preview.availability.reasons'), 'code'))
+        ->toContain('variants_unavailable', 'required_options_unavailable', 'item_stopped', 'item_hidden')
+        ->and($screen->get('preview.formatted_price'))->toBeNull()
+        ->and($screen->get('preview.images'))->toHaveCount(2)
+        ->and($screen->get('editingItemForm.itemTranslations.en.description'))->toBe('Unsaved main description')
+        ->and($screen->get('mainBaseline'))->toBe($baseline)
+        ->and($writes)->toBeEmpty()
+        ->and($this->item->fresh()->getAttributes())->toBe($before);
+
+    $fullEditor = app(CatalogData::class)->editingItem($this->branch, $this->item->id);
+    expect(array_column($fullEditor['effective_availability']['reasons'], 'code'))
+        ->toContain('variants_unavailable', 'required_options_unavailable')
+        ->and(array_column($fullEditor['modifier_groups'], 'id'))->toBe([$group->id])
+        ->and($fullEditor['images'])->toHaveCount(2);
 });
 
 test('dish selector searches stay bounded retain selected values and preserve the actual main error', function (): void {

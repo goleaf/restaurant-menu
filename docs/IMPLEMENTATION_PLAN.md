@@ -132,6 +132,23 @@ Design: the existing service-points address becomes the canonical workspace, pre
 Acceptance is pending; previous P6-P8 counts are not P5 evidence. Supported PHP 8.5 stays separate from the isolated PHP 8.6 dependency experiment. All fixtures/files/caches use owned disposable resources.
 
 
+## Prompt 6 refresh — P6R current-source completion (2026-09-18, in progress)
+
+Clean baseline `b3c7f81`; existing canonical dish implementation is preserved. Working Spec Kit artifacts: [spec](../specs/003-dish-card/spec.md), [plan](../specs/003-dish-card/plan.md), [tasks](../specs/003-dish-card/tasks.md). Historical September17 acceptance is not evidence for this refresh.
+
+| Step | User result / boundaries | Owner / verification |
+| --- | --- | --- |
+| P6R.1 | Existing dish opens with correct legacy original content and saves in the same card; no GET write | Root: MenuItemForm/CatalogData/Dish integration; RED legacy/blank/locale cases |
+| P6R.2 | Variants cannot write archived/retargeted resources; retries and real races remain safe | Domain owner: variant Actions/Variants/DishConfigurationData and focused tests; tenant/price/archive/POST/process evidence |
+| P6R.3 | Moving within restaurant keeps visited child drafts; preview honestly requires refresh | Root coordinator + UI owner Modifiers/Blade/browser tests; same-ID menu move, section roundtrip and child-save lifecycle |
+| P6R.4 | Saved preview matches guest missing/blank translations; independent photos preserve text | Media owner: DishPreviewQuery/dedicated tests; root Form; existing real upload/replay/rollback suites |
+| P6R.4a | Initial Main loads summaries, full availability is explicitly checked in the existing preview; no competing evaluator | Media owner after P6R.4: CatalogData/DishQuery/item-editor/performance test; root translations. Baseline heavy graph78queries/299models, RED then matched measurement |
+| P6R.5 | All canonical entrances, creation, shared group library/copy, localization and responsive behavior accepted | Root integration; current browser journey, screenshots, action-count and query/payload measurements |
+| P6R.6 | Exact-source complete local gates, separate stable/experimental runtime proof | Root coordinates serialized builds/browser, isolated backend and >=90% coverage; independent review |
+| P6R.7 | Accurate canonical evidence, scoped commit and ordinary push | Root; no remote verification/deployment |
+
+Each file has one active owner. Common Forms/routes/translations/entrypoints/docs remain root-owned. No migrations/dependency upgrade/new global mechanism are presumed. Source findings are reproduced before fixes; external runtime/tool blockers are recorded honestly.
+
 ## Prompt 6 — unified dish card (stable accepted; PHP 8.6 blocked, 2026-09-17)
 
 Baseline main `524abd0`; 187 pre-existing staged prompt-2 paths are preserved. Prompt 7 availability and prompt 8 team are implemented; their prior checks do not prove this stage. The current catalogue already has MenuItemForm/MenuItemData, one selected modal, content fingerprint and independent media operations. Confirmed gaps: the card is not addressable; saving closes it; variants/modifiers repeat menu/item selection; English/base synchronization exists only in Alpine; creation has no durable response replay; variant/group/link and gallery-order mutations lack independent durable conflict boundaries.

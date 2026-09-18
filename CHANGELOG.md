@@ -2,6 +2,10 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 6 — Dish-card continuation (2026-09-18, acceptance in progress)
+
+Preserve the existing single class-based Livewire card and its four sections. Repair legacy original-language values, intentionally blank guest-preview descriptions, retained child context after menu changes, archived/retargeted variant/modifier writes and stale prepared previews. Initial Main avoids hydrating full variants/options; full availability is explicitly checked through the existing preview. Fix create-and-continue redirect timing while retaining later input, saved version and offline baseline. Preserve separate media/configuration confirmations, shared group scope, historical orders and publication state. Current acceptance, measurements and runtime limitations are in PROGRESS.md; historical results are not reused as current proof.
+
 ## Prompt 5 — Rooms, tables and QR continuation (2026-09-18, accepted and delivered on the supported runtime)
 
 Continue the existing unified floor workspace from5e2987c: repair numeric room URLs, preserve mobile/editor/selection context, align safe hierarchy depth, reject hidden table moves, retain zero-created bulk selections, and prepare durable QR/print recovery. Remove only proven orphan area templates/styles; keep authorized legacy entry routes and the shared restaurant context. Prompt5 acceptance and delivery are tracked separately in the current local ledgers; earlier prompt records do not certify this source.

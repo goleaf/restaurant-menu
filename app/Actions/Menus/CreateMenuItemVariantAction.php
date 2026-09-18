@@ -65,7 +65,7 @@ class CreateMenuItemVariantAction
     {
         $item = MenuItem::query()
             ->select(['id', 'menu_id', 'price_cents', 'variants_version'])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
+            ->whereHas('menu', fn ($query) => $query->whereNull('menus.deleted_at')->where('branch_id', $branch->id))
             ->whereKey($item->id)
             ->lockForUpdate()
             ->first();

@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\WithFileUploads;
 
@@ -42,6 +43,9 @@ class Dish extends BranchMenuComponent
     /** @var array<string,mixed>|null */
     #[Locked]
     public ?array $preview = null;
+
+    #[Locked]
+    public bool $previewStale = false;
 
     #[Locked]
     public ?int $editingItemId = null;
@@ -137,6 +141,7 @@ class Dish extends BranchMenuComponent
 
     public function updatedContentLanguage(): void
     {
+        $this->invalidatePreview();
         if (! in_array($this->contentLanguage, SupportedLocale::values(), true)) {
             $this->contentLanguage = 'en';
         }
@@ -144,6 +149,7 @@ class Dish extends BranchMenuComponent
 
     public function updatedEditingItemForm(mixed $value, string $key): void
     {
+        $this->invalidatePreview();
         $this->mainSavedMessage = '';
         if ($key === 'itemMenuId') {
             $this->editingItemForm->itemCategoryId = '';
@@ -181,21 +187,26 @@ class Dish extends BranchMenuComponent
             }
             throw ValidationException::withMessages($errors);
         }
-        $this->loadMainForm();
-        $this->mainSavedMessage = __('dish.main.saved');
-        $this->forgetMenuComputed();
         if ($creating) {
+            $this->editingItemVersion = $item->editorFingerprint();
+            $this->mainBaseline = $this->editingItemForm->all();
             $this->redirectRoute('organizations.brands.branches.menu.dish.edit', [
                 'organization' => $this->organizationId, 'brand' => $this->brandId, 'branch' => $this->branchId, 'item' => $this->editingItemId,
                 'language' => $this->contentLanguage, 'q' => $this->returnFilters->searchTerm(), 'menu' => $this->returnFilters->menuSelection(),
                 'quality' => $this->returnFilters->qualityValue(), 'availability' => $this->returnFilters->availabilityValue(), 'page' => $this->returnFilters->pageNumber(),
             ], navigate: true);
+
+            return;
         }
+        $this->loadMainForm();
+        $this->mainSavedMessage = __('dish.main.saved');
+        $this->forgetMenuComputed();
     }
 
     public function discardMainChanges(): void
     {
         $this->authorizeMenuManagement();
+        $this->invalidatePreview();
         if ($this->editingItemId !== null) {
             $this->loadMainForm();
         } else {
@@ -238,6 +249,20 @@ class Dish extends BranchMenuComponent
         }
         $this->preview = $query->for($this->currentUser(), $this->branch, $this->editingItemId, $this->contentLanguage,
             ($values['variantId'] ?? '') === '' || $values['variantId'] === null ? null : (int) $values['variantId'], $values['modifiers'], $draft);
+        $this->previewStale = false;
+    }
+
+    public function updatedPreviewForm(): void
+    {
+        $this->invalidatePreview();
+    }
+
+    #[On('branch-menu-updated')]
+    public function invalidatePreview(): void
+    {
+        if ($this->preview !== null) {
+            $this->previewStale = true;
+        }
     }
 
     public function render(): View
@@ -313,6 +338,7 @@ class Dish extends BranchMenuComponent
 
     private function forgetMenuComputed(): void
     {
+        $this->invalidatePreview();
         $this->dispatch('branch-menu-updated');
     }
 

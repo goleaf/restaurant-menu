@@ -5,6 +5,7 @@ use App\Livewire\Organizations\Brands\Branches\Menu\Catalog;
 use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index;
 use App\Livewire\Organizations\Brands\Branches\Menu\Variants;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -12,6 +13,7 @@ use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\TableSession;
 use App\Models\User;
@@ -122,6 +124,11 @@ test('dish creation continues into an unavailable saved resource', function () {
     expect($id)->not->toBeNull();
     expect(MenuItem::query()->findOrFail($id)->is_available)->toBeFalse();
     expect($card->effects['redirect'])->toContain('/menu/items/'.$id);
+    expect($card->get('editingItemVersion'))->toBe(MenuItem::query()->findOrFail($id)->load('translations')->editorFingerprint());
+    expect($card->get('mainBaseline.itemTranslations.en.name'))->toBe('Created English');
+    $card->set('editingItemForm.itemWeight', '250')->call('saveItem')->assertHasNoErrors();
+    expect(MenuItem::query()->findOrFail($id)->weight)->toBe('250.00')
+        ->and(MenuItem::query()->findOrFail($id)->is_available)->toBeFalse();
 });
 
 test('dish preview uses absolute variant price and leaves persistence untouched', function () {
@@ -167,4 +174,51 @@ test('legacy variant links preserve a verified dish while an empty link returns 
     Livewire::actingAs($this->actor)->withQueryParams(['section' => 'variants'])
         ->test(Index::class, $parameters)
         ->assertSet('section', 'catalog')->assertDontSeeLivewire(Variants::class);
+});
+
+test('legacy original content is prefilled without writes and preserved by another main field save', function () {
+    $this->item->update(['name' => 'Legacy original', 'description' => "Original paragraph\nSecond paragraph"]);
+    MenuItemTranslation::factory()->for($this->item, 'item')->create(['language_code' => 'lt', 'name' => 'Lietuviškas originalas', 'description' => 'Lietuviškas aprašymas']);
+    MenuItemTranslation::factory()->for($this->item, 'item')->create(['language_code' => 'ru', 'name' => 'Русский оригинал', 'description' => 'Русское описание']);
+    $before = $this->item->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+    $card = Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters)
+        ->assertSet('editingItemForm.itemTranslations.en.name', 'Legacy original')
+        ->assertSet('editingItemForm.itemTranslations.en.description', "Original paragraph\nSecond paragraph")
+        ->assertSet('editingItemForm.itemTranslations.lt.name', 'Lietuviškas originalas')
+        ->set('contentLanguage', 'ru')->call('selectSection', 'photos')->call('selectSection', 'main');
+    expect($this->item->fresh()->getAttributes())->toBe($before)
+        ->and($this->item->translations()->where('language_code', 'en')->exists())->toBeFalse()
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+    $card->set('editingItemForm.itemWeight', '240')->call('saveItem')->assertHasNoErrors()
+        ->assertSet('editingItemId', $this->item->id);
+    expect($this->item->fresh()->name)->toBe('Legacy original')
+        ->and($this->item->fresh()->description)->toBe("Original paragraph\nSecond paragraph")
+        ->and($this->item->translations()->where('language_code', 'en')->sole()->description)->toBe("Original paragraph\nSecond paragraph")
+        ->and($this->item->translations()->where('language_code', 'ru')->sole()->description)->toBe('Русское описание');
+});
+
+test('an existing original translation wins over legacy base and keeps intentional blank description', function () {
+    $this->item->update(['name' => 'Stale base', 'description' => 'Stale description']);
+    MenuItemTranslation::factory()->for($this->item, 'item')->create(['language_code' => 'en', 'name' => 'Current original', 'description' => null]);
+    Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters)
+        ->assertSet('editingItemForm.itemTranslations.en.name', 'Current original')
+        ->assertSet('editingItemForm.itemTranslations.en.description', '')
+        ->assertSet('editingItemForm.itemTranslations.lt.name', '')
+        ->assertSet('editingItemForm.itemTranslations.ru.name', '');
+    expect($this->item->fresh()->name)->toBe('Stale base');
+});
+
+test('a dish in an archived menu cannot reopen its authoring card', function () {
+    $this->menu->delete();
+    expect(fn () => Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters))
+        ->toThrow(ModelNotFoundException::class);
+});
+
+test('an active legacy dish under an archived menu cannot reopen authoring', function () {
+    $this->menu->forceFill(['deleted_at' => now()])->save();
+    expect($this->menu->fresh()->trashed())->toBeTrue()
+        ->and($this->item->fresh()->trashed())->toBeFalse();
+    expect(fn () => Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters))
+        ->toThrow(ModelNotFoundException::class);
 });

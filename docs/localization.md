@@ -54,7 +54,7 @@ Guest-visible menu content uses one SQLite-compatible relational strategy. `menu
 
 Internal IDs, enum values, status codes, locale codes and currency codes remain canonical untranslated data. Their visible labels use JSON translation keys. Guest-menu cache keys include locale, translation observers invalidate affected branch caches, and draft item, variant, modifier-group and option snapshots are resolved from persisted translations on the server rather than accepted from browser payloads.
 
-The guest-menu read Action selects localized category/item names and descriptions as scalar subquery attributes, matching the existing menu/variant/modifier name projections. It does not hydrate translation models for these display fields. Missing, null, empty and whitespace-only translated text retains the base field fallback; management forms still load the complete translation records they edit.
+The guest-menu read Action selects localized category/item names and descriptions as scalar subquery attributes, matching the existing menu/variant/modifier name projections. It does not hydrate translation models for these display fields. Names fall back when their translation is missing or blank. Optional descriptions fall back only when the translation row is absent; an existing row preserves null, empty and whitespace descriptions. Management forms load the complete translation records they edit. The dish card prefills the original EN fields from legacy base content only when the EN row is absent, without writing on GET; explicit save applies the existing English-canonical contract. Saved preview uses the same row-presence semantics as the guest presenter, independently of interface locale.
 
 ## Presentation formatting
 

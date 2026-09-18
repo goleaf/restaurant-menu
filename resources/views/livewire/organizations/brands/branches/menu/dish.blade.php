@@ -34,7 +34,7 @@
 
         <div class="rm-dish__content content-safe grid grid-cols-1 content-start gap-4" data-menu-workspace-content x-bind:aria-busy="navigating">
             @if ($previewOpen)
-                <x-menu.dish-preview :preview="$preview" :language-options="$languageOptions" />
+                <x-menu.dish-preview :preview="$preview" :language-options="$languageOptions" :stale="$previewStale" />
             @endif
             <p wire:loading wire:target="selectSection" role="status" class="text-sm text-text-muted">{{ __('menu.workspace.loading') }}</p>
             <section wire:show="section === 'main'" class="rm-dish__section content-safe grid grid-cols-1 content-start gap-4 rounded-card border border-border-subtle bg-surface p-2 sm:p-4" data-dish-section="main" aria-labelledby="dish-main-heading">

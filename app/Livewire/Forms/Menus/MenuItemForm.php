@@ -116,6 +116,9 @@ final class MenuItemForm extends Form
         $this->itemSortOrder = $item->sort_order;
         $this->itemIsAvailable = $item->is_available;
         $this->itemHiddenUntil = $item->hidden_until?->setTimezone($timezone)->format('Y-m-d\\TH:i') ?? '';
+        if (! $item->getRelation('translations')->contains('language_code', 'en')) {
+            $translations['en'] = ['name' => $item->name, 'description' => $item->description ?? ''];
+        }
         $this->itemTranslations = $translations;
     }
 

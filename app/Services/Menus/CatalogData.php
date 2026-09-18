@@ -159,15 +159,15 @@ final readonly class CatalogData
     }
 
     /** @return array<string, mixed>|null */
-    public function editingItem(Branch $branch, ?int $itemId): ?array
+    public function editingItem(Branch $branch, ?int $itemId, bool $evaluateAvailability = true): ?array
     {
         if ($itemId === null) {
             return null;
         }
 
-        $item = $this->catalogItemQuery($branch)->whereKey($itemId)->first();
+        $item = $this->catalogItemQuery($branch, evaluateAvailability: $evaluateAvailability)->whereKey($itemId)->first();
 
-        return $item instanceof MenuItem ? $this->presentItem($item, $branch) : null;
+        return $item instanceof MenuItem ? $this->presentItem($item, $branch, evaluateAvailability: $evaluateAvailability) : null;
     }
 
     /**
@@ -244,7 +244,7 @@ final readonly class CatalogData
                     ->orderBy('sort_order')
                     ->orderBy('id'),
             ])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId)->whereNull('menus.deleted_at'))
             ->whereKey($itemId)
             ->firstOrFail();
     }
@@ -567,12 +567,13 @@ final readonly class CatalogData
     }
 
     /** @return Builder<MenuItem> */
-    private function catalogItemQuery(Branch $branch, bool $withDetails = true): Builder
+    private function catalogItemQuery(Branch $branch, bool $withDetails = true, bool $evaluateAvailability = true): Builder
     {
         return MenuItem::query()
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
             ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'availability_version', 'content_version', 'media_version', 'variants_version', 'modifier_links_version', 'sort_order', 'created_at', 'updated_at', 'deleted_at'])
-            ->when($withDetails, fn ($query) => $query->with(AvailabilityEvaluator::itemRelations()))
+            ->when($withDetails && $evaluateAvailability, fn ($query) => $query->with(AvailabilityEvaluator::itemRelations()))
+            ->when($withDetails && ! $evaluateAvailability, fn ($query) => $query->with('menu:id,name'))
             ->with([
                 'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name', 'is_active', 'deleted_at']),
                 'translations' => fn ($translationQuery) => $translationQuery
@@ -593,6 +594,7 @@ final readonly class CatalogData
                     'modifier_groups.sort_order',
                 ]),
             ])->when(! $withDetails, fn ($query) => $query->without(['galleryImages', 'modifierGroups']))
+            ->when(! $evaluateAvailability, fn ($query) => $query->without('modifierGroups'))
             ->orderBy('sort_order')->orderBy('name')->orderBy('id');
     }
 
@@ -736,7 +738,7 @@ final readonly class CatalogData
     }
 
     /** @return array<string, mixed> */
-    private function presentItem(MenuItem $item, Branch $branch, bool $withDetails = true, bool $menuNeedsReview = false): array
+    private function presentItem(MenuItem $item, Branch $branch, bool $withDetails = true, bool $menuNeedsReview = false, bool $evaluateAvailability = true): array
     {
         $category = $item->getRelation('category');
         $departmentRelation = $item->getRelation('kitchenDepartment');
@@ -794,7 +796,7 @@ final readonly class CatalogData
             'images' => $images,
             'image_count' => $imageCount,
             'max_image_count' => MenuItem::MAX_IMAGES,
-            'effective_availability' => $withDetails ? $this->availability->item($item, CarbonImmutable::now())->toArray() : null,
+            'effective_availability' => $withDetails && $evaluateAvailability ? $this->availability->item($item, CarbonImmutable::now())->toArray() : null,
             'availability_url' => route('organizations.brands.branches.availability.index', [$branch->organization_id, $branch->brand_id, $branch->id, 'section' => 'stoplist', 'item' => $item->id]),
             'remaining_image_slots' => MenuItem::MAX_IMAGES - $imageCount,
             'name' => $item->name,
@@ -824,7 +826,7 @@ final readonly class CatalogData
             'weight' => $item->weight ?? '—',
             'volume' => $item->volume ?? '—',
             'calories' => $item->calories ?? '—',
-            'modifier_groups' => ($withDetails ? $item->modifierGroups : new EloquentCollection)->map(
+            'modifier_groups' => ($withDetails && $evaluateAvailability ? $item->modifierGroups : new EloquentCollection)->map(
                 fn (ModifierGroup $group): array => ['id' => $group->id, 'name' => $group->name],
             )->all(),
         ];

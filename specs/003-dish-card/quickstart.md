@@ -1,0 +1,7 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
+# Acceptance guide
+
+Use explicit stable PHP with tests/Support/platform-verification.mjs and owned SQLite/storage/cache. First run new regression cases on clean-source behavior and retain failures. Prove legacy EN prefill/save, missing-vs-blank guest preview, menu move with retained islands, stale archive and target tampering, concurrent variant/copy replay and stale preview after section/child updates. Then run existing Dish*, menu media, guest configuration/order history and copy suites. Build/browser are serialized; inspect screenshots at320/390/768/1024/1440 and theme/accessibility modes. Finish complete canonical backend/coverage/browser/JS/static/translation/SCSS/build gates and record runtime/measurement evidence in docs/PROGRESS.md. Never test against working data.

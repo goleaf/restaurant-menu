@@ -22,7 +22,8 @@ final class DishConfigurationData
     public function variants(Branch $branch, int $itemId): LengthAwarePaginator
     {
         return MenuItemVariant::query()->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
-            ->where('menu_item_id', $itemId)->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branch->id))
+            ->where('menu_item_id', $itemId)->whereHas('item', fn ($query) => $query->whereNull('menu_items.deleted_at')
+            ->whereHas('menu', fn ($menu) => $menu->whereNull('menus.deleted_at')->where('branch_id', $branch->id)))
             ->with('translations:id,menu_item_variant_id,language_code,name')->orderByDesc('is_default')->orderBy('sort_order')->orderBy('name')->orderBy('id')
             ->paginate(12, pageName: 'dishVariantsPage');
     }
@@ -82,7 +83,7 @@ final class DishConfigurationData
     public function item(Branch $branch, int $id): MenuItem
     {
         return MenuItem::query()->select(['id', 'menu_id', 'category_id', 'name', 'price_cents', 'variants_version', 'modifier_links_version'])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
+            ->whereHas('menu', fn ($query) => $query->whereNull('menus.deleted_at')->where('branch_id', $branch->id))
             ->whereKey($id)->firstOrFail();
     }
 

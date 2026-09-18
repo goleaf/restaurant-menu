@@ -2,6 +2,12 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 6 current runtime verification — 2026-09-18
+
+Fresh stable PHP8.5.10 / Composer2.10.3 capability, strict manifest and installed/locked platform checks pass. Canonical coverage uses Xdebug3.5.0 with explicit4GiB coordinator and512MiB isolated workers. Node24.21.0 and the preserved owned npm12.0.2 prefix are selected; no global/Herd selection or dependency lock changes. Complete browser HTTP runtime evidence is recorded separately in PROGRESS.md.
+
+The actually available experimental binary is PHP8.6.0beta2. Capabilities/manifest pass, but installed and lock Composer platform validation fail on the real dependency requirements, including Nette Schema1.3.6; the Oniguruma deprecation is retained. The final immutable source passes1,367/1,367 non-Blade PHP syntax checks on Beta2. This is not application/coverage/browser compatibility. The [official prerelease page](https://www.php.net/pre-release-builds.php), rechecked18September, lists Beta3 as testing-only; no production promotion, ignored requirement or claim that Beta3 ran here is made.
+
 ## Prompt 5 current runtime verification — 2026-09-18
 
 Fresh owned preflight confirms stable PHP8.5.10 CLI / Composer2.10.3: capabilities, strict manifest, installed and locked platform requirements pass. The actually available experimental executable is PHP8.6.0beta2; capabilities/manifest pass, both real platform checks fail on Nette Schema1.3.6 (PHP8.1–8.5), and Composer reports the Oniguruma deprecation. No dependency constraint or production/Herd selection is changed. The [official PHP site](https://www.php.net/) checked18September lists Beta3 as testing-only, with RC1 planned24September; that does not make Beta3 the installed binary.
@@ -12,7 +18,7 @@ The final immutable candidate `4209f986ec7a8ca0d4c3af7a027939a19b5406e11d987b2fd
 
 # Current version baseline
 
-Current execution stage is Prompt 5 floor-workspace continuation on existing `main`, starting at clean `5e2987c52c4be032144c6f1499aad7f0fd31b666`. Prompt 4 delivery is preserved. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Prompt 3's local tooltip/runtime repairs remain incoming work, not a new package release. Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify the combined worktree.
+Current execution stage is Prompt 6 dish-card continuation on existing `main`, starting at clean `b3c7f81`. Prompts 4 and 5 delivery is preserved. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify this refresh.
 
 ## Prompt 4 continuation runtime evidence — 2026-09-18
 

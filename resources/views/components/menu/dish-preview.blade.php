@@ -1,4 +1,4 @@
-@props(['preview', 'languageOptions'])
+@props(['preview', 'languageOptions', 'stale' => false])
 
 <section class="rm-dish__section content-safe grid grid-cols-1 content-start gap-4 rounded-card border border-border-subtle bg-surface-muted p-2 sm:p-4" aria-labelledby="dish-preview-heading" data-menu-preview>
     <div class="rm-dish__header content-safe grid grid-cols-1 content-start gap-4">
@@ -54,9 +54,15 @@
         <flux:error name="previewForm" class="text-danger!" />
         <div class="rm-dish__actions flex flex-wrap items-center gap-2">
             <flux:button type="submit" wire:loading.attr="disabled" wire:offline.attr="disabled" icon="arrow-path">{{ __('dish.preview.refresh') }}</flux:button>
-            <flux:text wire:dirty wire:target="previewForm,editingItemForm,contentLanguage" role="status">{{ __('dish.preview.refresh_needed') }}</flux:text>
+            @if (! $stale)
+                <flux:text wire:dirty wire:target="previewForm,editingItemForm,contentLanguage" role="status">{{ __('dish.preview.refresh_needed') }}</flux:text>
+            @endif
         </div>
     </form>
+
+    @if ($stale)
+        <flux:callout variant="warning" :heading="__('dish.preview.refresh_needed')" role="status" data-dish-preview-stale />
+    @endif
 
     @if ($preview !== null)
         <div class="rm-dish__content content-safe grid grid-cols-1 content-start gap-4" data-dish-preview-result lang="{{ $preview['language'] }}">
@@ -77,7 +83,7 @@
             <x-menu.item-labels :allergens="$preview['allergens']" :dietary-labels="$preview['dietary_labels']" />
             @if ($preview['configuration_error'] !== null)
                 <flux:callout variant="warning" :heading="$preview['configuration_error']" role="status" />
-            @elseif ($preview['formatted_price'] !== null)
+            @elseif (! $stale && $preview['formatted_price'] !== null)
                 <p class="text-xl font-semibold text-text-primary" wire:dirty.remove wire:target="previewForm,editingItemForm,contentLanguage" data-dish-preview-price>{{ $preview['formatted_price'] }}</p>
             @endif
             @if (! $preview['availability']['accepts_new_orders'])

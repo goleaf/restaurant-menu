@@ -68,6 +68,7 @@ final class Variants extends BranchMenuComponent
 
     public mixed $variantItemId = '';
 
+    #[Locked]
     public ?int $editingVariantId = null;
 
     #[Locked]
@@ -104,6 +105,9 @@ final class Variants extends BranchMenuComponent
     {
         $this->authorizeBranchAbility('manageMenu');
         $this->assertEmbeddedSelection();
+        if ($this->itemId !== null) {
+            return;
+        }
         $this->variantItemId = $this->firstItemId($this->variantMenuId);
         $this->resetCreateForm();
         $this->cancelVariantEditing();
@@ -114,6 +118,9 @@ final class Variants extends BranchMenuComponent
     {
         $this->authorizeBranchAbility('manageMenu');
         $this->assertEmbeddedSelection();
+        if ($this->itemId !== null) {
+            return;
+        }
         $this->resetCreateForm();
         $this->cancelVariantEditing();
         unset($this->variants);
@@ -146,6 +153,7 @@ final class Variants extends BranchMenuComponent
     public function startEditingVariant(int $variantId): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
         if ($this->editingVariantId !== null) {
             if ($this->editingVariantId !== $variantId) {
                 throw ValidationException::withMessages(['configuration' => __('dish.errors.finish_current_edit')]);
@@ -185,6 +193,7 @@ final class Variants extends BranchMenuComponent
     public function updateVariant(UpdateMenuItemVariantAction $updateVariant): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
 
         if ($this->editingVariantId === null) {
             return;
@@ -225,6 +234,7 @@ final class Variants extends BranchMenuComponent
     public function refreshData(): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
 
         if (! $this->selectionExists()) {
             if ($this->itemId !== null) {
@@ -414,10 +424,10 @@ final class Variants extends BranchMenuComponent
             return;
         }
         $item = $this->configurationQueries->item($this->branch, $this->itemId);
-        if ((string) $item->id !== $this->selectionValue($this->variantItemId)
-            || (string) $item->menu_id !== $this->selectionValue($this->variantMenuId)) {
+        if ((string) $item->id !== $this->selectionValue($this->variantItemId)) {
             abort(403);
         }
+        $this->variantMenuId = (string) $item->menu_id;
     }
 
     private function changed(): void

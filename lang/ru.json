@@ -3165,5 +3165,9 @@
     "floor.invalid_hierarchy": "Структура зоны повреждена. Откройте свойства и проверьте родительскую зону.",
     "floor.print.availability": "Состояние QR выбранных столов",
     "floor.print.ready": "Можно подготовить",
-    "floor.print.review_qr": "Открыть управление QR"
+    "floor.print.review_qr": "Открыть управление QR",
+    "dish.availability.not_evaluated": "Полная доступность ещё не проверена. Предпросмотр проверяет часы ресторана, варианты и обязательные опции.",
+    "dish.availability.check_preview": "Проверить в предпросмотре",
+    "dish.availability.enabled": "Блюдо включено",
+    "dish.availability.stopped": "Блюдо выключено"
 }

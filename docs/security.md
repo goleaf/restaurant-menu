@@ -205,3 +205,7 @@ Legacy restaurant pause reasons are explicitly labelled public. Stop-list audit 
 ## Dish card access and input (Prompt 6)
 
 Direct dish routes recheck organization, brand, restaurant and item ownership; route item ID alone grants no access. Main, photo, variant, binding and shared-group writes retain server authorization and original input validation. Price effects through variant default/deletion and modifier changes use dedicated price permissions. Same-account browser mutations use the existing workspace actor guard, without impersonation. Preview does not execute a business operation or create guest credentials.
+
+## Prompt 6 refresh — active authoring identity (2026-09-18)
+
+Variant mutation scopes require a non-archived dish and menu inside the restaurant, independently of historical relationships that include soft-deleted entities. The selected variant editor ID is locked and still scoped by current authorization; retained dish components validate immutable dish identity before mutation, not only during later rendering. Parent-menu context may refresh from that verified dish without rebasing resource revisions. Signed Livewire tamper, stale archive and process-concurrency evidence is recorded in PROGRESS.md; no permission or historical relation is relaxed.

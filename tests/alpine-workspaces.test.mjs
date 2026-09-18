@@ -42,6 +42,40 @@ test('menu keeps edits made during a save, preserves validation errors, and clea
     menu.destroy(); assert.equal(app.state.interceptors.size, 0); assert.equal(app.window.listenerCount() + app.document.listenerCount() + menu.$el.listenerCount(), 0);
 });
 
+test('a confirmed dish save clears its submitted revision before redirect effects without clearing later input', t => {
+    const app = workspace(t, menuWorkspace), menu = app.instance;
+    const { input, child } = dirtyMenu(app);
+    const response = app.message({ id: 'editor', el: child }, [{ name: 'saveItem' }], { snapshot: { memo: { errors: {} } } });
+    response.sync();
+    const redirect = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/menu/items/42') } });
+    app.document.dispatchEvent(redirect);
+    assert.equal(redirect.prevented, false);
+    assert.deepEqual(app.dialogs, []);
+    menu.$el.dispatchEvent({ type: 'input', target: input });
+    response.finish();
+    assert.equal(menu.hasUnsavedChanges(), true);
+    const later = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/menu/items/43') } });
+    app.document.dispatchEvent(later);
+    assert.equal(later.prevented, true);
+    menu.destroy();
+});
+
+test('response synchronization preserves failed, unrelated and concurrently changed dish drafts', t => {
+    for (const scenario of ['validation', 'unrelated', 'new-input', 'photos']) {
+        const app = workspace(t, menuWorkspace), menu = app.instance;
+        const { input, child } = dirtyMenu(app);
+        const errors = scenario === 'validation' ? { name: ['Required'] } : {};
+        const response = app.message({ id: 'editor', el: child }, [{ name: scenario === 'unrelated' ? 'refreshPreview' : 'saveItem' }], { snapshot: { memo: { errors } } });
+        if (scenario === 'new-input') menu.$el.dispatchEvent({ type: 'input', target: input });
+        if (scenario === 'photos') menu.dirtySections.add('photos');
+        response.sync();
+        const redirect = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/menu/items/42') } });
+        app.document.dispatchEvent(redirect);
+        assert.equal(redirect.prevented, true, scenario);
+        menu.destroy();
+    }
+});
+
 test('menu dirty navigation cancels safely, proceeds once on discard and restores busy state after server failure', async t => {
     const app = workspace(t, menuWorkspace), menu = app.instance, target = new Element();
     menu.$el.children.set('[data-menu-section]', [target]);

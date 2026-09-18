@@ -156,6 +156,9 @@ class Modifiers extends BranchMenuComponent
     public function updatedAssignmentModifierItemMenuId(): void
     {
         $this->assertEmbeddedSelection();
+        if ($this->itemId !== null) {
+            return;
+        }
         $this->assignment->modifierItemId = $this->firstItemId($this->assignment->modifierItemMenuId);
     }
 
@@ -176,6 +179,7 @@ class Modifiers extends BranchMenuComponent
     public function createModifierGroup(CreateModifierGroupAction $createGroup): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
         $validated = $this->group->validated($this->branch, $this->configurationQueries->replayedResultId(
             $this->currentUser(), $this->branch, $this->requestIds['create_group'], MenuOperationKind::ModifierChange));
 
@@ -238,6 +242,7 @@ class Modifiers extends BranchMenuComponent
     public function updateModifierGroup(UpdateModifierGroupAction $updateGroup): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
 
         if ($this->editingModifierGroupId === null) {
             return;
@@ -262,6 +267,7 @@ class Modifiers extends BranchMenuComponent
     public function deleteModifierGroup(int $modifierGroupId, DeleteModifierGroupAction $deleteGroup): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
         abort_unless(isset($this->deleteRequests['group_'.$modifierGroupId]), 403);
         $deleteGroup->handle($this->currentUser(), $this->branch, $modifierGroupId, $this->displayedGroupVersions[$modifierGroupId] ?? -1, $this->deleteRequests['group_'.$modifierGroupId]);
 
@@ -285,6 +291,7 @@ class Modifiers extends BranchMenuComponent
     public function createModifierOption(CreateModifierOptionAction $createOption): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
         $this->refreshMutationCapabilities();
         $validated = $this->option->validated($this->branch, $this->canChangePrices, $this->canChangeAvailability,
             ignoreId: $this->configurationQueries->replayedResultId($this->currentUser(), $this->branch, $this->requestIds['create_option'], MenuOperationKind::ModifierChange));
@@ -332,6 +339,7 @@ class Modifiers extends BranchMenuComponent
     public function updateModifierOption(UpdateModifierOptionAction $updateOption): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
 
         if ($this->editingModifierOptionId === null) {
             return;
@@ -354,6 +362,7 @@ class Modifiers extends BranchMenuComponent
     public function deleteModifierOption(int $modifierOptionId, DeleteModifierOptionAction $deleteOption): void
     {
         $this->authorizeBranchAbility('manageMenu');
+        $this->assertEmbeddedSelection();
         $groupId = $this->displayedOptionGroups[$modifierOptionId] ?? null;
         abort_unless($groupId !== null && isset($this->deleteRequests['option_'.$modifierOptionId]), 403);
         $deleteOption->handle($this->currentUser(), $this->branch, $modifierOptionId, $this->displayedGroupVersions[$groupId] ?? -1,
@@ -574,10 +583,10 @@ class Modifiers extends BranchMenuComponent
             return;
         }
         $item = $this->configurationQueries->item($this->branch, $this->itemId);
-        if ($this->selectionValue($this->assignment->modifierItemId) !== (string) $item->id
-            || $this->selectionValue($this->assignment->modifierItemMenuId) !== (string) $item->menu_id) {
+        if ($this->selectionValue($this->assignment->modifierItemId) !== (string) $item->id) {
             abort(403);
         }
+        $this->assignment->modifierItemMenuId = (string) $item->menu_id;
     }
 
     private function rejectAnotherEditor(int $currentId, int $nextId): void

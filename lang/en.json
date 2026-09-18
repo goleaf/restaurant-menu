@@ -3165,5 +3165,9 @@
     "floor.invalid_hierarchy": "The area hierarchy needs repair. Open its properties to review the parent.",
     "floor.print.availability": "QR availability for the selected tables",
     "floor.print.ready": "Ready to prepare",
-    "floor.print.review_qr": "Open QR controls"
+    "floor.print.review_qr": "Open QR controls",
+    "dish.availability.not_evaluated": "Full availability has not been checked. Preview checks restaurant hours, variants and required options.",
+    "dish.availability.check_preview": "Check in preview",
+    "dish.availability.enabled": "Dish enabled",
+    "dish.availability.stopped": "Dish disabled"
 }

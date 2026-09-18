@@ -1,0 +1,7 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
+# Card contract
+
+Verified restaurant/dish route owns immutable identity. section and language are allowlisted URL state, not save targets. Main Form saves English-canonical content/translations atomically through existing Actions. Gallery, variant, shared group and binding confirmations are independent and preserve unrelated drafts. Child parent-context refresh never rebases resource conflict versions. Explicit saved/draft preview uses guest presentation and price/availability services and has no write side effects. Browser-selected IDs, update payloads and replay keys remain untrusted. Existing policies and current actor checks apply on each mutation.

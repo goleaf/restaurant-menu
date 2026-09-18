@@ -82,7 +82,7 @@ test('one dish card retains its main draft through sections and history then sav
     expect($this->dish->fresh()->name)->toBe('Garden soup from one card');
 
     $orderCount = DraftOrder::query()->count();
-    $page->fill($name, 'Unsaved guest preview')->click('button[wire\:click="openPreview"]')
+    $page->fill($name, 'Unsaved guest preview')->click('.rm-dish > header button[wire\:click="openPreview"]')
         ->assertVisible('[data-dish-preview-result]')->assertSeeIn('[data-dish-preview-result]', 'Garden soup from one card');
     $page->select('select[name="previewForm.source"]', 'draft')
         ->click('form[wire\:submit="refreshPreview"] button[type=submit]')
@@ -300,7 +300,7 @@ test('one dish gains a variant and modifier and previews the same price as an in
     $option = ModifierOption::query()->where('modifier_group_id', $group->id)->sole();
     $page->click('[data-menu-section="main"]')->assertVisible('[data-dish-section="main"]')
         ->click($prefix.'-tab-en')->assertValue($prefix.'-panel-en input[type=text]', 'Main draft kept through configuration')
-        ->click('button[wire\:click="openPreview"]')->assertVisible('[data-dish-preview-result]')
+        ->click('.rm-dish > header button[wire\:click="openPreview"]')->assertVisible('[data-dish-preview-result]')
         ->assertMissing('[data-dish-preview-price]')
         ->select('select[name="previewForm.variantId"]', (string) $variant->id)
         ->click('[data-menu-preview] [data-flux-checkbox][value="'.$option->id.'"]')

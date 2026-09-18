@@ -3165,5 +3165,9 @@
     "floor.invalid_hierarchy": "Reikia pataisyti zonų hierarchiją. Atidarykite savybes ir patikrinkite pirminę zoną.",
     "floor.print.availability": "Pasirinktų stalų QR būklė",
     "floor.print.ready": "Galima paruošti",
-    "floor.print.review_qr": "Atverti QR valdymą"
+    "floor.print.review_qr": "Atverti QR valdymą",
+    "dish.availability.not_evaluated": "Visas prieinamumas dar nepatikrintas. Peržiūroje tikrinamas restorano darbo laikas, variantai ir privalomi pasirinkimai.",
+    "dish.availability.check_preview": "Tikrinti peržiūroje",
+    "dish.availability.enabled": "Patiekalas įjungtas",
+    "dish.availability.stopped": "Patiekalas išjungtas"
 }

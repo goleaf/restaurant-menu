@@ -1,0 +1,7 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
+# Data model delta
+
+No schema change is planned. Existing MenuItem content fingerprint, media revision, variants_version, modifier_links_version, shared group content_version and image presentation revisions retain their separate meaning. Receipt identity includes actor, restaurant, operation and its request-payload fingerprint; configuration receipts fingerprint the exact submitted payload before applying normalization. Historical relations retain soft-deleted entities; active authoring explicitly requires non-archived dish/menu. Translation presence is represented separately from optional blank description in presentation. Preview freshness is nonpersistent UI state, never an availability flag.

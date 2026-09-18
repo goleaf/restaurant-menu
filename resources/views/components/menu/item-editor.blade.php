@@ -88,11 +88,20 @@
     @if ($item !== null)
         <div class="grid min-w-0 gap-2 border-t border-border-subtle pt-4">
             <flux:heading>{{ __('availability.effective') }}</flux:heading>
-            @forelse ($item['effective_availability']['reasons'] as $reason)
-                <flux:text>{{ $reason['label'] }} · {{ $reason['detail'] }}</flux:text>
-            @empty
-                <flux:text>{{ __('availability.guest.available') }}</flux:text>
-            @endforelse
+            @if ($item['effective_availability'] === null)
+                <flux:text>{{ __($item['is_available'] ? 'dish.availability.enabled' : 'dish.availability.stopped') }}</flux:text>
+                @if ($item['is_temporarily_hidden'])
+                    <flux:text>{{ __('availability.reasons.item_hidden') }}</flux:text>
+                @endif
+                <flux:text>{{ __('dish.availability.not_evaluated') }}</flux:text>
+                <flux:button type="button" wire:click="openPreview" wire:loading.attr="disabled" wire:offline.attr="disabled" class="justify-self-start">{{ __('dish.availability.check_preview') }}</flux:button>
+            @else
+                @forelse ($item['effective_availability']['reasons'] as $reason)
+                    <flux:text>{{ $reason['label'] }} · {{ $reason['detail'] }}</flux:text>
+                @empty
+                    <flux:text>{{ __('availability.guest.available') }}</flux:text>
+                @endforelse
+            @endif
             @if ($canChangeAvailability)
                 <flux:button :href="$item['availability_url']" wire:navigate class="justify-self-start">{{ __('availability.open_item') }}</flux:button>
             @endif

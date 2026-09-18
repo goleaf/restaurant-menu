@@ -52,7 +52,7 @@ final class DishQuery
                 $departments->push($selected);
             }
         }
-        $item = $this->catalog->editingItem($branch, $itemId);
+        $item = $this->catalog->editingItem($branch, $itemId, evaluateAvailability: false);
 
         return [
             'item' => $item,

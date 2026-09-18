@@ -29,13 +29,14 @@ final class ApplicationNavigationPresenter
         $items = $workspace ? $this->restaurantItems($workspace, $access) : [];
         $platform = $user?->isSuperadmin() ?? false;
         $onboarding = $user && $this->restaurantSetupQueries->userHasAccess($user);
+        $isSetupRoute = $request->routeIs('onboarding.*', 'restaurants.create', 'restaurants.setup');
         if ($user) {
             if ($items === []) {
                 $items[] = $this->item('dashboard', 'workspace.choose', 'building-storefront', route('dashboard'), $request->routeIs('dashboard'));
             }
-            $items[] = $this->item('organizations', 'workspace.manage_restaurants', 'building-office', route('restaurants.index'), $workspace->mode === 'structure', 'administration');
+            $items[] = $this->item('organizations', 'workspace.manage_restaurants', 'building-office', route('restaurants.index'), $workspace->mode === 'structure' && ! $isSetupRoute, 'administration');
             if ($onboarding) {
-                $items[] = $this->item('onboarding', 'navigation.onboarding', 'sparkles', route('restaurants.create'), $request->routeIs('onboarding.*', 'restaurants.create', 'restaurants.setup'), 'administration');
+                $items[] = $this->item('onboarding', 'navigation.onboarding', 'sparkles', route('restaurants.create'), $isSetupRoute, 'administration');
             }
             if ($platform) {
                 $items[] = $this->item('superadmin', 'workspace.platform', 'rectangle-group', route('superadmin.dashboard'), $request->routeIs('superadmin.*'), 'administration');

@@ -26,7 +26,9 @@ test('demo workflow scenarios expose completed onboarding and scoped unread and 
     $owner = User::query()->where('email', 'owner@demo.test')->firstOrFail();
     $waiter = User::query()->where('email', 'waiter@demo.test')->firstOrFail();
 
-    $presentation = app(RestaurantSetupQueryService::class)->presentation($owner);
+    $state = RestaurantOnboarding::query()->where('user_id', $owner->id)
+        ->whereHas('branch', fn ($query) => $query->where('name', 'Bella Pizza Old Town'))->sole();
+    $presentation = app(RestaurantSetupQueryService::class)->presentation($owner, $state->id);
     expect($presentation['completed'])->toBeTrue()
         ->and($presentation['step'])->toBe(8)
         ->and($presentation['summary']['service_points'])->toBeGreaterThan(0);
@@ -36,7 +38,6 @@ test('demo workflow scenarios expose completed onboarding and scoped unread and 
         ->and($snapshot['notifications'])->toHaveCount(2)
         ->and($snapshot['destinations'])->toHaveCount(2);
 
-    $state = RestaurantOnboarding::query()->where('user_id', $owner->id)->firstOrFail();
     $originalState = $state->getAttributes();
     $ids = $waiter->notifications()->orderBy('id')->pluck('id')->all();
     $waiter->unreadNotifications->markAsRead();

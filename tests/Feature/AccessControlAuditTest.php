@@ -7,10 +7,10 @@ use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
-use App\Livewire\Organizations\Index as OrganizationsIndex;
+use App\Livewire\Restaurants\Index as BranchesIndex;
+use App\Livewire\Restaurants\Index as OrganizationsIndex;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
@@ -41,7 +41,7 @@ test('ordinary users only see their own organizations', function () {
     );
 
     Livewire::actingAs($visibleOwner)
-        ->test(OrganizationsIndex::class)
+        ->test(OrganizationsIndex::class)->set('filters.view', 'structure')
         ->assertSee($visibleOrganization->name)
         ->assertDontSee($hiddenOrganization->name);
 

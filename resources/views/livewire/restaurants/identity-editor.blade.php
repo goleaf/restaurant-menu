@@ -37,9 +37,10 @@
             x-on:change="selectionChanged($event)" x-on:livewire-upload-start="startUpload()" x-on:livewire-upload-finish="finishUpload()"
             x-on:livewire-upload-error="failUpload()" x-on:livewire-upload-cancel="cancelUpload()" x-on:livewire-upload-progress="updateProgress($event)"
             x-on:restaurant-logo-saved.window="clearSelection()">
-            <flux:file-upload wire:model="logo" :label="__('center.logo')" error:id="center-identity-logo-error" error:class="text-danger!">
-                <flux:file-upload.dropzone :heading="__('center.choose_logo')" role="button" :aria-label="__('center.choose_logo')" aria-describedby="center-identity-logo-error" :aria-invalid="$errors->has('logo') ? 'true' : 'false'" />
+            <flux:file-upload wire:model="logo" :accept="$logoAccept" :label="__('center.logo')" error:id="center-identity-logo-error" error:class="text-danger!">
+                <flux:file-upload.dropzone :heading="__('center.choose_logo')" role="button" :aria-label="__('center.choose_logo')" aria-describedby="center-logo-help center-identity-logo-error" :aria-invalid="$errors->has('logo') ? 'true' : 'false'" />
             </flux:file-upload>
+            <flux:text id="center-logo-help">{{ $logoHelp }}</flux:text>
             <progress x-cloak x-show="uploading" x-bind:value="progress" max="100" aria-label="{{ __('uploads.editor.uploading') }}"></progress>
             @if ($logoPreview)<img src="{{ $logoPreview }}" alt="{{ __('center.logo') }}" width="96" height="96" />@endif
             @if ($logo)<flux:button type="button" x-on:click="$wire.$set('logo', null, false); clearSelection()">{{ __('uploads.editor.remove_pending') }}</flux:button>@endif
@@ -67,7 +68,7 @@
         <flux:modal wire:model="confirming" name="structure-lifecycle" :closable="false">
             <x-modal-close-button :autofocus="true" />
             <flux:heading id="center-lifecycle-heading" x-bind="dialogLabel">{{ $scopeLabel }}: {{ $title }}</flux:heading>
-            <flux:text>{{ $archived ? __('center.restore_notice') : __('center.archive_notice') }}</flux:text>
+            <flux:text>{{ $archived ? $restorationNotice : __('center.archive_notice') }}</flux:text>
             <form novalidate wire:submit="changeLifecycle" class="rm-restaurant-center__form">
                 <flux:input wire:model="confirmation" :label="__('center.confirm_name')" error:id="center-identity-confirmation-error" error:class="text-danger!" aria-describedby="center-identity-confirmation-error" />
                 <flux:error name="structureDeletion" class="text-danger!" />

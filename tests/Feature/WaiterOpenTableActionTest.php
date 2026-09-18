@@ -8,7 +8,6 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -158,18 +157,15 @@ test('user with view orders can open a table from service point page', function 
             'status' => ServicePointStatus::Free,
         ]);
 
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee('Service points');
+    $this->actingAs($manager)->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))->assertOk();
 
     Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canOpenTable', true)
-        ->assertSee('Open table')
-        ->call('openTable', $servicePoint->id)
+        ->call('openPoint', $servicePoint->id)->assertViewHas('detail', fn (array $detail): bool => $detail['canOpen'])
+        ->assertSee(__('floor.open_service'))
+        ->call('openService', $servicePoint->id)
         ->assertHasNoErrors()
-        ->assertSee('Active session')
-        ->assertSee('Table opened');
+        ->assertRedirect();
 
     expect(TableSession::query()
         ->where('service_point_id', $servicePoint->id)
@@ -185,8 +181,8 @@ test('user with confirm orders can open a table from service point page', functi
 
     Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canOpenTable', true)
-        ->call('openTable', $servicePoint->id)
+        ->call('openPoint', $servicePoint->id)->assertViewHas('detail', fn (array $detail): bool => $detail['canOpen'])
+        ->call('openService', $servicePoint->id)
         ->assertHasNoErrors();
 
     expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
@@ -200,9 +196,9 @@ test('staff role without order permission cannot open a table', function () {
 
     Livewire::actingAs($waiter)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canOpenTable', false)
-        ->assertDontSee('Open table')
-        ->call('openTable', $servicePoint->id)
+        ->call('openPoint', $servicePoint->id)->assertViewHas('detail', fn (array $detail): bool => ! $detail['canOpen'])
+        ->assertDontSee(__('floor.open_service'))
+        ->call('openService', $servicePoint->id)
         ->assertForbidden();
 
     expect(TableSession::query()

@@ -57,7 +57,12 @@ class BulkCreate extends Component
     {
         $branch = $this->branch();
         Gate::forUser($this->actor())->authorize('manageServicePoints', $branch);
-        $preview = $this->bulkCreateServicePointsAction->previewState($branch, $this->form->payload($branch));
+        $data = $this->form->payload($branch);
+        try {
+            $preview = $this->bulkCreateServicePointsAction->previewState($branch, $data, $this->actor());
+        } catch (ValidationException $exception) {
+            throw $this->scopeFieldErrors($exception);
+        }
         $this->preview = $preview['rows'];
         $this->fingerprint = $preview['fingerprint'];
         $this->dispatch('menu-workspace-dirty', key: 'bulk-preview', dirty: true);
@@ -70,7 +75,11 @@ class BulkCreate extends Component
         if ($this->fingerprint === '') {
             throw ValidationException::withMessages(['form.bulkPrefix' => __('floor.review_required')]);
         }
-        $this->result = $this->bulkCreateServicePointsAction->handle($branch, $data, $this->actor(), $this->requestId, $this->fingerprint);
+        try {
+            $this->result = $this->bulkCreateServicePointsAction->handle($branch, $data, $this->actor(), $this->requestId, $this->fingerprint);
+        } catch (ValidationException $exception) {
+            throw $this->scopeFieldErrors($exception);
+        }
         $this->dispatch('floor-bulk-created', ids: array_slice($this->result['created_ids'], 0, 100));
         $this->dispatch('menu-workspace-dirty', key: 'bulk-preview', dirty: false);
         $this->saved();
@@ -93,5 +102,18 @@ class BulkCreate extends Component
         return view('livewire.organizations.brands.branches.service-points.bulk-create', [
             'types' => FloorOptions::types(), 'areas' => $this->areaOptions($this->areaSearch, $this->form->areaNodeId),
         ]);
+    }
+
+    private function scopeFieldErrors(ValidationException $exception): ValidationException
+    {
+        $fields = $this->form->all();
+        $errors = [];
+
+        foreach ($exception->errors() as $field => $messages) {
+            $key = array_key_exists($field, $fields) ? $this->form->getPropertyName().'.'.$field : $field;
+            $errors[$key] = $messages;
+        }
+
+        return ValidationException::withMessages($errors);
     }
 }

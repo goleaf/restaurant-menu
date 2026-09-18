@@ -306,6 +306,10 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $r
     $scope = [$setup->organization_id, $setup->brand_id, $setup->branch_id];
     $page->navigate(route('organizations.brands.branches.menu.index', $scope, false));
     clickBrowserElement($page, 'button[wire\\:click="startEditingMenu('.$setup->menu_id.')"]');
+    $page->click('#edit-menu-'.$setup->menu_id.'-tab-lt')
+        ->fill('input[wire\\:model="editingMenuForm.menuTranslations.lt"]', 'Naršyklės bandymo meniu')
+        ->click('#edit-menu-'.$setup->menu_id.'-tab-ru')
+        ->fill('input[wire\\:model="editingMenuForm.menuTranslations.ru"]', 'Меню браузерного сценария');
     $page->select('select[wire\\:model="editingMenuForm.menuStatus"]', 'active');
     clickBrowserElement($page, 'form[wire\\:submit="updateMenu"] button[type="submit"]');
     $page->assertSee(__('ui.livewire.organizations.brands.branches.menu.index.menu_updated'));
@@ -462,7 +466,7 @@ function assertBrowserDarkThemeLayout(PendingAwaitablePage $page): void
 
 function assertBrowserKeyboardFocusIsVisible(PendingAwaitablePage $page): void
 {
-    $page->keys('[data-page="restaurant-onboarding"]', 'Tab');
+    $page->keys('[data-page="restaurant-setup"]', 'Tab');
 
     $focusState = $page->script(<<<'JAVASCRIPT'
         (() => {

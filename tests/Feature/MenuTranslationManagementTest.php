@@ -6,6 +6,7 @@ use App\Enums\MenuStatus;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
 use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -39,6 +40,86 @@ test('translation editor presents a source reference and safe copy controls for 
         ->assertSeeHtml('data-copy-original="ru"')
         ->assertDontSeeHtml('data-copy-original="en"')
         ->assertSeeHtml('data-copy-notice="lt"');
+});
+
+test('existing menus without an English translation keep their saved name when secondary translations are completed', function (bool $hasSecondaryTranslations): void {
+    [$owner, $organization, $brand, $branch] = createMenuTranslationContext();
+    $menu = Menu::factory()->for($branch)->draft()->create([
+        'name' => 'Saved starter menu',
+        'sort_order' => 17,
+        'schedule_version' => 3,
+        'schedule_is_closed' => true,
+    ]);
+    $existingTranslations = $hasSecondaryTranslations
+        ? ['lt' => 'Išsaugotas meniu', 'ru' => 'Сохранённое меню']
+        : [];
+
+    foreach ($existingTranslations as $locale => $name) {
+        MenuTranslation::factory()->for($menu)->create(['language_code' => $locale, 'name' => $name]);
+    }
+
+    $savedAttributes = $menu->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+    $this->actingAs($owner)->get(route('organizations.brands.branches.menu.index', [
+        'organization' => $organization,
+        'brand' => $brand,
+        'branch' => $branch,
+    ]))->assertOk();
+
+    $component = Livewire::actingAs($owner)
+        ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
+        ->call('startEditingMenu', $menu->id)
+        ->assertSet('editingMenuForm.menuName', 'Saved starter menu')
+        ->assertSet('editingMenuForm.menuTranslations', [
+            'en' => 'Saved starter menu',
+            'lt' => $existingTranslations['lt'] ?? '',
+            'ru' => $existingTranslations['ru'] ?? '',
+        ])
+        ->assertSet('editingMenuForm.menuStatus', MenuStatus::Draft->value)
+        ->assertSet('editingMenuForm.menuSortOrder', 17);
+
+    expect($menu->fresh()->getAttributes())->toBe($savedAttributes)
+        ->and($menu->translations()->orderBy('language_code')->pluck('name', 'language_code')->all())->toBe($existingTranslations)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+
+    $component->set('editingMenuForm.menuTranslations.lt', 'Papildytas meniu')
+        ->set('editingMenuForm.menuTranslations.ru', 'Дополненное меню')
+        ->call('updateMenu')
+        ->assertHasNoErrors();
+
+    expect($menu->fresh()->name)->toBe('Saved starter menu')
+        ->and($menu->fresh()->status)->toBe(MenuStatus::Draft)
+        ->and($menu->fresh()->sort_order)->toBe(17)
+        ->and($menu->fresh()->schedule_version)->toBe(3)
+        ->and($menu->fresh()->schedule_is_closed)->toBeTrue()
+        ->and($menu->translations()->orderBy('language_code')->pluck('name', 'language_code')->all())->toBe([
+            'en' => 'Saved starter menu',
+            'lt' => 'Papildytas meniu',
+            'ru' => 'Дополненное меню',
+        ]);
+})->with(['base name only' => false, 'secondary translations already saved' => true]);
+
+test('opening and cancelling a menu editor preserves every existing translation and menu metadata', function (): void {
+    [$owner, $organization, $brand, $branch, $menu] = createMenuTranslationContext();
+    $translations = ['en' => 'Distinct English menu', 'lt' => 'Lietuviškas meniu', 'ru' => 'Русское меню'];
+
+    foreach ($translations as $locale => $name) {
+        MenuTranslation::factory()->for($menu)->create(['language_code' => $locale, 'name' => $name]);
+    }
+
+    $savedAttributes = $menu->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+
+    Livewire::actingAs($owner)
+        ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
+        ->call('startEditingMenu', $menu->id)
+        ->assertSet('editingMenuForm.menuName', $menu->name)
+        ->assertSet('editingMenuForm.menuTranslations', $translations)
+        ->call('cancelMenuEditing');
+
+    expect($menu->fresh()->getAttributes())->toBe($savedAttributes)
+        ->and($menu->translations()->orderBy('language_code')->pluck('name', 'language_code')->all())->toBe($translations)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
 });
 
 test('menu base name conflicts are visible in the primary translation panel without losing localized input', function (bool $editing): void {

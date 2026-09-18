@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Validation\Floor;
 
+use App\Enums\AreaNodeType;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +15,7 @@ final class FloorStateRules
     {
         $id = ['nullable', 'string', 'regex:/\A[1-9][0-9]*\z/'];
         Validator::make($state, [
-            'areaType' => ['required', 'string', Rule::in(['all', ...\App\Enums\AreaNodeType::values()])],
+            'areaType' => ['required', 'string', Rule::in(['all', ...AreaNodeType::values()])],
             'areaActive' => ['required', 'string', Rule::in(['all', 'active', 'inactive'])],
             'areaSort' => ['required', 'string', Rule::in(['position', 'name_asc', 'name_desc', 'newest', 'oldest'])],
             'point' => $id, 'areaEditor' => $id, 'qrRecord' => $id,

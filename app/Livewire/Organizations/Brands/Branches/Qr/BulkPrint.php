@@ -7,8 +7,6 @@ namespace App\Livewire\Organizations\Brands\Branches\Qr;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
-use App\Models\QrCode;
-use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\FloorLegacyEntryQuery;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +19,7 @@ class BulkPrint extends Component
     {
         $actor = Auth::user();
         abort_unless($actor instanceof User, 401);
-        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ["zone" => request()->query("area", "all")], ability: 'generateQr'), navigate: true);
+        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ['zone' => request()->query('area', 'all')], ability: 'generateQr'), navigate: true);
     }
 
     public function render(): View

@@ -6,9 +6,7 @@ use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
-use App\Livewire\Organizations\Brands\Index as BrandsIndex;
-use App\Livewire\Organizations\Index as OrganizationsIndex;
+use App\Livewire\Restaurants\IdentityEditor;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\User;
@@ -37,11 +35,11 @@ test('organization owner can upload replace and remove local logo', function () 
     [$organization, , , $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
         ->assertSee(__('uploads.labels.allowed_types', ['types' => LocalImageConstraints::allowedExtensionsLabel()]))
         ->assertSee(__('uploads.labels.max_size', ['size' => LocalImageConstraints::maxSizeLabel()]))
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('organization-logo.png')->size(512))
-        ->call('saveLogo', $organization->id)
+        ->set('logo', UploadedFile::fake()->image('organization-logo.png')->size(512))
+        ->call('saveLogo')
         ->assertHasNoErrors();
 
     $organization->refresh();
@@ -51,9 +49,9 @@ test('organization owner can upload replace and remove local logo', function () 
     Storage::disk('public')->assertExists($firstPath);
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('organization-logo-2.jpg')->size(640))
-        ->call('saveLogo', $organization->id)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('logo', UploadedFile::fake()->image('organization-logo-2.jpg')->size(640))
+        ->call('saveLogo')
         ->assertHasNoErrors();
 
     $organization->refresh();
@@ -65,8 +63,8 @@ test('organization owner can upload replace and remove local logo', function () 
     Storage::disk('public')->assertExists($secondPath);
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->call('removeLogo', $organization->id)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->call('removeLogo')
         ->assertHasNoErrors();
 
     expect($organization->refresh()->logo_path)->toBeNull();
@@ -77,11 +75,11 @@ test('brand manager can upload a local brand logo', function () {
     [$organization, $brand, , $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(BrandsIndex::class, ['organization' => $organization])
-        ->set('brandLogos.'.$brand->id, UploadedFile::fake()->image('brand-logo.webp')->size(400))
-        ->call('saveLogo', $brand->id)
+        ->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $brand->id])
+        ->set('logo', UploadedFile::fake()->image('brand-logo.webp')->size(400))
+        ->call('saveLogo')
         ->assertHasNoErrors()
-        ->assertSee(__('uploads.actions.replace'));
+        ->assertSee(__('center.save_logo'));
 
     $brand->refresh();
 
@@ -92,8 +90,8 @@ test('brand manager can upload a local brand logo', function () {
     $path = $brand->logo_path;
 
     Livewire::actingAs($owner)
-        ->test(BrandsIndex::class, ['organization' => $organization])
-        ->call('removeLogo', $brand->id)
+        ->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $brand->id])
+        ->call('removeLogo')
         ->assertHasNoErrors();
 
     expect($brand->refresh()->logo_path)->toBeNull();
@@ -104,14 +102,11 @@ test('branch manager can upload a local branch logo', function () {
     [$organization, $brand, $branch, $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(BranchesIndex::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-        ])
-        ->set('branchLogos.'.$branch->id, UploadedFile::fake()->image('branch-logo.jpg')->size(400))
-        ->call('saveLogo', $branch->id)
+        ->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->set('logo', UploadedFile::fake()->image('branch-logo.jpg')->size(400))
+        ->call('saveLogo')
         ->assertHasNoErrors()
-        ->assertSee(__('uploads.actions.replace'));
+        ->assertSee(__('center.save_logo'));
 
     $branch->refresh();
 
@@ -122,11 +117,8 @@ test('branch manager can upload a local branch logo', function () {
     $path = $branch->logo_path;
 
     Livewire::actingAs($owner)
-        ->test(BranchesIndex::class, [
-            'organization' => $organization,
-            'brand' => $brand,
-        ])
-        ->call('removeLogo', $branch->id)
+        ->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->call('removeLogo')
         ->assertHasNoErrors();
 
     expect($branch->refresh()->logo_path)->toBeNull();
@@ -137,17 +129,17 @@ test('local logo uploads validate file type and size', function () {
     [$organization, , , $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->create('logo.txt', 100, 'text/plain'))
-        ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('logo', UploadedFile::fake()->create('logo.txt', 100, 'text/plain'))
+        ->call('saveLogo')
+        ->assertHasErrors('logo')
         ->assertSee(__('uploads.errors.invalid_type', ['formats' => LocalImageConstraints::allowedExtensionsLabel()]));
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('too-large.png')->size(3000))
-        ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('logo', UploadedFile::fake()->image('too-large.png')->size(3000))
+        ->call('saveLogo')
+        ->assertHasErrors('logo')
         ->assertSee(__('uploads.errors.too_large', ['size' => LocalImageConstraints::maxSizeLabel()]));
 
     expect($organization->refresh()->logo_path)->toBeNull();
@@ -157,10 +149,10 @@ test('local image uploads reject dangerous original extensions even when content
     [$organization, , , $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('shell.php')->size(100))
-        ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id);
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('logo', UploadedFile::fake()->image('shell.php')->size(100))
+        ->call('saveLogo')
+        ->assertHasErrors('logo');
 
     expect($organization->refresh()->logo_path)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBe([]);
@@ -170,10 +162,10 @@ test('local image uploads reject scriptable formats', function (string $filename
     [$organization, , , $owner] = createPrompt28MediaContext();
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
-        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->create($filename, 10, $mimeType))
-        ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id);
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('logo', UploadedFile::fake()->create($filename, 10, $mimeType))
+        ->call('saveLogo')
+        ->assertHasErrors('logo');
 
     expect($organization->refresh()->logo_path)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBe([]);

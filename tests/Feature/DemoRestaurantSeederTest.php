@@ -608,7 +608,7 @@ test('demo restaurant seeder is idempotent', function () {
 
     $firstCounts = demoSeedGraphCounts();
 
-    expect($firstCounts)->toBe([
+    expect(collect($firstCounts)->except('audit_logs')->all())->toBe([
         'roles' => count(SystemRole::cases()),
         'organizations' => 3,
         'brands' => 5,
@@ -634,10 +634,29 @@ test('demo restaurant seeder is idempotent', function () {
         'kitchen_ticket_items' => 27,
         'manual_payments' => 5,
         'order_status_logs' => 12,
-        'audit_logs' => 8,
     ]);
 
-    expect(AuditLog::query()->where('action', AuditLogAction::DishConfigurationChanged)->count())->toBe(4);
+    $primaryOrganization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->sole();
+    $areaIds = AreaNode::query()->whereHas('branch', fn ($query) => $query->where('organization_id', $primaryOrganization->id))
+        ->get(['id', 'metadata'])->reject(fn (AreaNode $area): bool => ($area->metadata['demo_fixture'] ?? null) === 'inactive-area')->modelKeys();
+    $pointIds = ServicePoint::query()->whereHas('branch', fn ($query) => $query->where('organization_id', $primaryOrganization->id))
+        ->get(['id', 'metadata'])->reject(fn (ServicePoint $point): bool => ($point->metadata['demo_fixture'] ?? null) === 'inactive-service-point')->modelKeys();
+    $firstAuditLogs = AuditLog::query()->orderBy('id')->get();
+    $areaCreationLogs = $firstAuditLogs->where('action', AuditLogAction::AreaNodeChanged);
+    $pointCreationLogs = $firstAuditLogs->where('action', AuditLogAction::ServicePointChanged);
+
+    expect($firstAuditLogs)->toHaveCount(count($areaIds) + count($pointIds) + 8)
+        ->and($firstAuditLogs->where('action', AuditLogAction::DishConfigurationChanged))->toHaveCount(4)
+        ->and($firstAuditLogs->where('action', AuditLogAction::TableSessionClosed))->toHaveCount(4)
+        ->and($areaCreationLogs->pluck('entity_id')->all())->toEqualCanonicalizing($areaIds)
+        ->and($pointCreationLogs->pluck('entity_id')->all())->toEqualCanonicalizing($pointIds)
+        ->and($areaCreationLogs->pluck('entity_type')->unique()->all())->toBe(['area_node'])
+        ->and($pointCreationLogs->pluck('entity_type')->unique()->all())->toBe(['service_point'])
+        ->and($areaCreationLogs->pluck('new_values.operation')->unique()->all())->toBe(['create'])
+        ->and($pointCreationLogs->pluck('new_values.kind')->unique()->all())->toBe(['created'])
+        ->and($areaCreationLogs->pluck('user_id')->unique()->all())->toBe([$primaryOrganization->owner_user_id])
+        ->and($pointCreationLogs->pluck('user_id')->unique()->all())->toBe([$primaryOrganization->owner_user_id]);
+    $firstAuditState = $firstAuditLogs->map(fn (AuditLog $log): array => $log->getAttributes())->all();
 
     $firstOrderIds = Order::query()
         ->whereNotNull('metadata')
@@ -702,6 +721,7 @@ test('demo restaurant seeder is idempotent', function () {
         ->and(OrganizationUser::query()->where('organization_id', $organization->id)->count())->toBe(count(demoRestaurantUsers()) + 2)
         ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount() + 3)
         ->and(demoSeedGraphCounts())->toBe($firstCounts)
+        ->and(AuditLog::query()->orderBy('id')->get()->map(fn (AuditLog $log): array => $log->getAttributes())->all())->toBe($firstAuditState)
         ->and(Order::query()
             ->whereNotNull('metadata')
             ->orderBy('id')

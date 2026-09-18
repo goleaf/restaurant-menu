@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Models\Branch;
 use App\Models\User;
+use App\Services\Branches\AreaNodeQueryService;
 use App\Services\Branches\FloorWorkspaceQuery;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -15,9 +16,10 @@ use Throwable;
 trait InteractsWithFloorContext
 {
     protected FloorWorkspaceQuery $floorContext;
-    protected \App\Services\Branches\AreaNodeQueryService $floorAreas;
 
-    public function bootInteractsWithFloorContext(FloorWorkspaceQuery $floorContext, \App\Services\Branches\AreaNodeQueryService $floorAreas): void
+    protected AreaNodeQueryService $floorAreas;
+
+    public function bootInteractsWithFloorContext(FloorWorkspaceQuery $floorContext, AreaNodeQueryService $floorAreas): void
     {
         $this->floorContext = $floorContext;
         $this->floorAreas = $floorAreas;
@@ -30,6 +32,7 @@ trait InteractsWithFloorContext
     {
         $actor = Auth::user();
         abort_unless($actor instanceof User, 401);
+
         return $actor;
     }
 
@@ -49,6 +52,7 @@ trait InteractsWithFloorContext
     protected function areaOptions(string $search, mixed $selected): array
     {
         $id = is_scalar($selected) && ctype_digit((string) $selected) ? (int) $selected : null;
+
         return $this->floorAreas->browser($this->branch(), $search, $id)['rows'];
     }
 

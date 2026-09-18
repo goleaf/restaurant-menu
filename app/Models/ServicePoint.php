@@ -190,6 +190,7 @@ class ServicePoint extends Model
             ->orderBy('linked_at')
             ->orderBy('id');
     }
+
     /** @return list<string> */
     protected function structureVersionFields(): array
     {

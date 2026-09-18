@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\ServicePoints\CreateServicePointAction;
-use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\DeleteServicePointAction;
 use App\Actions\ServicePoints\RestoreServicePointAction;
+use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Livewire\Forms\Floor\PointForm;
+use App\Models\ServicePoint;
 use App\Services\Branches\ServicePointQueryService;
 use App\Support\Floor\FloorOptions;
 use Illuminate\Support\Facades\Gate;
@@ -22,18 +23,33 @@ class PointEditor extends Component
     use InteractsWithFloorContext;
 
     public PointForm $form;
-    #[Locked] public ?int $pointId = null;
-    #[Locked] public int $version = 0;
-    #[Locked] public string $requestId;
-    #[Locked] public array $baseline = [];
+
+    #[Locked]
+    public ?int $pointId = null;
+
+    #[Locked]
+    public int $version = 0;
+
+    #[Locked]
+    public string $requestId;
+
+    #[Locked]
+    public array $baseline = [];
+
     public string $areaSearch = '';
+
     public string $message = '';
+
     public bool $confirmArchive = false;
 
     private CreateServicePointAction $createServicePointAction;
+
     private DeleteServicePointAction $deleteServicePointAction;
+
     private RestoreServicePointAction $restoreServicePointAction;
+
     private ServicePointQueryService $servicePointQueryService;
+
     private UpdateServicePointAction $updateServicePointAction;
 
     public function boot(CreateServicePointAction $createServicePointAction, DeleteServicePointAction $deleteServicePointAction, RestoreServicePointAction $restoreServicePointAction, ServicePointQueryService $servicePointQueryService, UpdateServicePointAction $updateServicePointAction): void
@@ -56,7 +72,7 @@ class PointEditor extends Component
             $this->form->loadPoint($point);
             $this->version = $point->structure_version;
         } else {
-            Gate::forUser($this->actor())->authorize('create', [\App\Models\ServicePoint::class, $branch]);
+            Gate::forUser($this->actor())->authorize('create', [ServicePoint::class, $branch]);
             $this->form->areaNodeId = $areaId === null ? '' : (string) $areaId;
         }
         $this->requestId = (string) Str::uuid();
@@ -105,8 +121,9 @@ class PointEditor extends Component
     {
         $branch = $this->branch();
         $point = $this->pointId === null ? null : $this->servicePointQueryService->findForBranch($branch, $this->pointId, true);
+
         return view('livewire.organizations.brands.branches.service-points.point-editor', [
-            'point' => $point, 'archived' => $point?->trashed() ?? false, 'types' => FloorOptions::types(), 'icons' => FloorOptions::icons(),
+            'point' => $point, 'archived' => $point?->trashed() ?? false, 'types' => FloorOptions::types(), 'icons' => FloorOptions::iconOptions(),
             'areas' => $this->areaOptions($this->areaSearch, $this->form->areaNodeId),
         ]);
     }

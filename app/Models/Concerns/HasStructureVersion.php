@@ -48,6 +48,7 @@ trait HasStructureVersion
         }
         $this->syncChanges();
         $this->fireModelEvent('updated', false);
+
         return true;
     }
 

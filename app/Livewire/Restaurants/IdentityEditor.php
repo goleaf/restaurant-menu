@@ -19,6 +19,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\RestaurantCenterQuery;
 use App\Services\Restaurant\BranchReadinessService;
+use App\Support\Media\LocalImageConstraints;
 use App\Support\RestaurantSetupOptions;
 use App\Support\Validation\Media\ImageUploadRules;
 use Flux\Flux;
@@ -161,8 +162,15 @@ final class IdentityEditor extends Component
             'organizationName' => $resource instanceof Organization ? null : $resource->organization->name,
             'brandName' => $resource instanceof Branch ? $resource->brand->name : null,
             'logoPreview' => $this->logo instanceof TemporaryUploadedFile && $this->logo->isPreviewable() ? $this->logo->temporaryUrl() : null,
+            'logoAccept' => LocalImageConstraints::acceptedMimeTypes(),
+            'logoHelp' => LocalImageConstraints::helpText(),
             'currencies' => RestaurantSetupOptions::currencyOptions(), 'timezones' => RestaurantSetupOptions::timezoneOptions(),
             'archived' => $resource->trashed(),
+            'restorationNotice' => match ($this->kind) {
+                'organization' => __('center.restore_organization_notice'),
+                'brand' => __('center.restore_brand_notice'),
+                default => __('center.restore_notice'),
+            },
             'canChangeLifecycle' => Gate::forUser($this->actor())->allows($resource->trashed() ? 'restore' : 'delete', $resource),
             'scopeLabel' => match ($this->kind) {
                 'organization' => __('center.organization'), 'brand' => __('center.brand'), default => __('center.restaurant_name')

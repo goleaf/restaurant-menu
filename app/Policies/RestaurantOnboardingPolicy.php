@@ -6,7 +6,6 @@ namespace App\Policies;
 
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
-use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -23,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 final class RestaurantOnboardingPolicy
 {
+    public function __construct(private readonly OrganizationPolicy $organizations) {}
+
     /**
      * Determine whether the user can view the model.
      */
@@ -141,13 +142,7 @@ final class RestaurantOnboardingPolicy
 
     private function canStartOnboarding(User $user): bool
     {
-        if (! $user->exists || $user->organizationMemberships()->exists()) {
-            return false;
-        }
-
-        return ! $user->roles()
-            ->where('roles.code', '!=', SystemRole::Owner->value)
-            ->exists();
+        return $this->organizations->createFirstBusiness($user);
     }
 
     private function servicePointBelongsToCheckpoint(ServicePoint $servicePoint, RestaurantOnboarding $onboarding): bool

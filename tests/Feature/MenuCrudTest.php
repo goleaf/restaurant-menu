@@ -11,7 +11,6 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityCenter;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailability;
 use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\Organizations\Brands\Branches\Menu\Dish;
@@ -139,27 +138,14 @@ test('dependent menu selectors never expose ids from another branch', function (
         ->assertSet('assignment.modifierItemId', '');
 });
 
-test('branch list shows menu link to users with manage menu permission', function () {
+test('menu workspace enforces management and availability permissions at its canonical entry', function (): void {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch('Food Group', 'Bella Brand');
-    $menuRoute = route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]);
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertDontSee($menuRoute, false);
-
+    $url = route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]);
+    $this->actingAs($manager)->get($url)->assertForbidden();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ChangeAvailability]);
-
-    Livewire::actingAs($manager->fresh())
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee($menuRoute, false)
-        ->assertSee('Stop-list');
-
+    $this->actingAs($manager->fresh())->get($url)->assertRedirect(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'stoplist']));
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee($menuRoute, false)
-        ->assertSee('Menu');
+    $this->actingAs($manager->fresh())->get($url)->assertOk()->assertSee(__('menu.workspace.catalog'));
 });
 
 test('manager can create menu categories dishes and upload local dish photo', function () {

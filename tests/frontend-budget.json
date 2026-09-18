@@ -3,16 +3,16 @@
     "assetBase": "/build/",
     "entries": {
         "resources/css/app.css": {
-            "raw": 343100,
-            "gzip": 44700
+            "raw": 341900,
+            "gzip": 44300
         },
         "resources/js/app.js": {
             "raw": 348100,
             "gzip": 109000
         },
         "resources/scss/app.scss": {
-            "raw": 31800,
-            "gzip": 6500
+            "raw": 33000,
+            "gzip": 6900
         },
         "resources/scss/team.scss": {
             "raw": 2400,
@@ -25,6 +25,10 @@
         "resources/scss/availability.scss": {
             "raw": 1800,
             "gzip": 700
+        },
+        "resources/scss/restaurant-center.scss": {
+            "raw": 3500,
+            "gzip": 1000
         }
     },
     "scenarios": {
@@ -118,20 +122,32 @@
                 "raw": 959700,
                 "gzip": 395700
             }
+        },
+        "restaurant-center": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/scss/restaurant-center.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 959700,
+                "gzip": 395700
+            }
         }
     },
     "totals": {
         "css": {
             "raw": 378400,
-            "gzip": 52600
+            "gzip": 53600
         },
         "js": {
-            "raw": 348100,
-            "gzip": 109000
+            "raw": 355000,
+            "gzip": 110000
         },
         "fonts": {
-            "raw": 235100,
-            "gzip": 235000
+            "raw": 226000,
+            "gzip": 225000
         },
         "all": {
             "raw": 959700,

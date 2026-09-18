@@ -15,7 +15,9 @@ use App\Services\Branches\FloorWorkspaceQuery;
 use App\Support\Floor\FloorOptions;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -23,20 +25,38 @@ use Livewire\WithPagination;
 class AreaEditor extends Component
 {
     use InteractsWithFloorContext, WithPagination;
+
     public AreaForm $form;
-    #[Locked] public ?int $areaId = null;
-    #[Locked] public int $version = 0;
-    #[Locked] public string $requestId;
-    #[Locked] public array $baseline = [];
-    #[Locked] public ?array $archivePreview = null;
+
+    #[Locked]
+    public ?int $areaId = null;
+
+    #[Locked]
+    public int $version = 0;
+
+    #[Locked]
+    public string $requestId;
+
+    #[Locked]
+    public array $baseline = [];
+
+    #[Locked]
+    public ?array $archivePreview = null;
+
     public string $parentSearch = '';
+
     public string $message = '';
 
     private AreaNodeQueryService $areaNodeQueryService;
+
     private CreateFloorAreaAction $createFloorAreaAction;
+
     private DeleteAreaNodeAction $deleteAreaNodeAction;
+
     private FloorWorkspaceQuery $floorWorkspaceQuery;
+
     private RestoreAreaNodeAction $restoreAreaNodeAction;
+
     private UpdateAreaNodeAction $updateAreaNodeAction;
 
     public function boot(AreaNodeQueryService $areaNodeQueryService, CreateFloorAreaAction $createFloorAreaAction, DeleteAreaNodeAction $deleteAreaNodeAction, FloorWorkspaceQuery $floorWorkspaceQuery, RestoreAreaNodeAction $restoreAreaNodeAction, UpdateAreaNodeAction $updateAreaNodeAction): void
@@ -71,9 +91,19 @@ class AreaEditor extends Component
     {
         $branch = $this->branch();
         $data = $this->form->payload($branch);
-        $area = $this->areaId === null
-            ? $this->createFloorAreaAction->handle($this->actor(), $branch, $data, $this->requestId)
-            : $this->updateAreaNodeAction->handle($this->floorWorkspaceQuery->area($branch, $this->areaId), $data, $this->actor(), $this->version);
+        try {
+            $area = $this->areaId === null
+                ? $this->createFloorAreaAction->handle($this->actor(), $branch, $data, $this->requestId)
+                : $this->updateAreaNodeAction->handle($this->floorWorkspaceQuery->area($branch, $this->areaId), $data, $this->actor(), $this->version);
+        } catch (InvalidArgumentException $exception) {
+            $message = match ($exception->getMessage()) {
+                'errors.domain.area_cannot_move_into_child' => __('errors.domain.area_cannot_move_into_child'),
+                'errors.domain.selected_parent_area_unavailable' => __('errors.domain.selected_parent_area_unavailable'),
+                'floor.errors.invalid_hierarchy' => __('floor.errors.invalid_hierarchy'),
+                default => throw $exception,
+            };
+            throw ValidationException::withMessages(['form.parentId' => $message]);
+        }
         $this->areaId = $area->id;
         $this->version = $area->structure_version;
         $this->baseline = $this->form->all();
@@ -116,9 +146,10 @@ class AreaEditor extends Component
         $branch = $this->branch();
         $selected = is_string($this->form->parentId) && ctype_digit($this->form->parentId) ? (int) $this->form->parentId : null;
         $parents = $this->areaNodeQueryService->browser($branch, $this->parentSearch, $selected, $this->areaId);
+
         return view('livewire.organizations.brands.branches.service-points.area-editor', [
             'area' => $this->areaId === null ? null : $this->floorWorkspaceQuery->area($branch, $this->areaId),
-            'archived' => $this->areaId !== null && $this->floorWorkspaceQuery->area($branch, $this->areaId)->trashed(), 'parents' => $parents['rows'], 'parentPages' => $parents['paginator'], 'types' => FloorOptions::types(true), 'icons' => FloorOptions::icons(),
+            'archived' => $this->areaId !== null && $this->floorWorkspaceQuery->area($branch, $this->areaId)->trashed(), 'parents' => $parents['rows'], 'parentPages' => $parents['paginator'], 'types' => FloorOptions::types(true), 'icons' => FloorOptions::iconOptions(),
         ]);
     }
 }

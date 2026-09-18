@@ -8,6 +8,7 @@ use App\Actions\Onboarding\SaveOnboardingBrandAction;
 use App\Actions\Onboarding\SaveOnboardingServicePointsAction;
 use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Organizations\CreateStructureIdentityAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Enums\MenuStatus;
@@ -19,7 +20,9 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Onboarding\RestaurantSetup;
 use App\Livewire\Restaurants\IdentityEditor;
+use App\Livewire\Restaurants\StructureCreate;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
@@ -34,6 +37,7 @@ use App\Models\QrCode;
 use App\Models\RestaurantOnboarding;
 use App\Models\Role;
 use App\Models\ServicePoint;
+use App\Models\StructureCreationReceipt;
 use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
 use App\Support\RestaurantSetupOptions;
@@ -524,6 +528,109 @@ test('staff system identities without a tenant row cannot mint an owner onboardi
     'marketer' => SystemRole::Marketer,
 ]);
 
+test('a false additional intent cannot bypass first business authorization at either creation entry', function (SystemRole $role) {
+    $staff = User::factory()->create();
+    assignRestaurantOnboardingSystemRole($staff, $role);
+    $before = restaurantOnboardingCreationSnapshot($staff);
+
+    expect(fn () => app(CreateRestaurantSetupAction::class)->handle($staff, restaurantSetupCreationInput('False Additional'), (string) Str::uuid(), firstLaunch: false))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => app(CreateStructureIdentityAction::class)->handle($staff, 'organization', null, ['name' => 'Alternate Owner Context'], (string) Str::uuid()))
+        ->toThrow(AuthorizationException::class);
+    Livewire::actingAs($staff)->test(StructureCreate::class, ['kind' => 'organization'])->assertForbidden();
+
+    expect(restaurantOnboardingCreationSnapshot($staff))->toBe($before);
+})->with(array_values(array_filter(SystemRole::cases(), fn (SystemRole $role): bool => $role !== SystemRole::Owner)));
+
+test('an open additional business form rechecks its revoked creation context without any writes', function (string $revocation) {
+    $actor = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($actor, ['name' => 'Existing Creation Context']);
+    $page = Livewire::actingAs($actor)->test(RestaurantSetup::class)
+        ->assertSet('firstLaunch', false)
+        ->set(collect(restaurantSetupCreationInput('Revoked Business'))->mapWithKeys(fn ($value, $key) => ['form.'.$key => $value])->all());
+    $structure = Livewire::actingAs($actor)->test(StructureCreate::class, ['kind' => 'organization'])->set('form.name', 'Revoked Structure');
+
+    if ($revocation === 'subscription') {
+        $organization->subscription()->update(['status' => OrganizationSubscriptionStatus::Inactive->value]);
+    } elseif ($revocation === 'archived') {
+        $organization->deleteOrFail();
+    } else {
+        $organization->memberships()->where('user_id', $actor->id)->update(['status' => $revocation]);
+    }
+    $before = restaurantOnboardingCreationSnapshot($actor);
+
+    $page->call('createRestaurant')->assertForbidden();
+    $structure->call('save')->assertForbidden();
+    expect(fn () => app(CreateRestaurantSetupAction::class)->handle($actor, restaurantSetupCreationInput('False Revoked Intent'), (string) Str::uuid(), firstLaunch: false))
+        ->toThrow(AuthorizationException::class);
+    expect(restaurantOnboardingCreationSnapshot($actor))->toBe($before);
+})->with(['suspended', 'removed', 'invited', 'subscription', 'archived']);
+
+test('an active employee can explicitly create a separate business without changing the original membership', function () {
+    $owner = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Employer Business']);
+    $employee = User::factory()->create();
+    assignRestaurantOnboardingSystemRole($employee, SystemRole::RestaurantAdmin);
+    $membership = OrganizationUser::factory()->forOrganization($organization)->forUser($employee)->forSystemRole(SystemRole::RestaurantAdmin)->active()->create();
+    $before = [$organization->fresh()->getAttributes(), $membership->fresh()->getAttributes(), $organization->subscription->getAttributes()];
+
+    $page = Livewire::actingAs($employee)->test(RestaurantSetup::class)->assertSet('firstLaunch', false)
+        ->set(collect(restaurantSetupCreationInput('Explicit Independent Business'))->mapWithKeys(fn ($value, $key) => ['form.'.$key => $value])->all())
+        ->call('createRestaurant')->assertHasNoErrors();
+    $setup = RestaurantOnboarding::query()->findOrFail($page->get('onboardingId'));
+
+    expect($setup->organization_id)->not->toBe($organization->id)
+        ->and($setup->organization->owner_user_id)->toBe($employee->id)
+        ->and($setup->purpose)->toBe('additional')
+        ->and([$organization->fresh()->getAttributes(), $membership->fresh()->getAttributes(), $organization->subscription->fresh()->getAttributes()])->toBe($before);
+});
+
+test('a first eligible actor with a false additional hint keeps first business history and replay identity', function () {
+    $actor = User::factory()->create();
+    $key = (string) Str::uuid();
+    $input = restaurantSetupCreationInput('First Server Context');
+    $action = app(CreateRestaurantSetupAction::class);
+    $setup = $action->handle($actor, $input, $key, firstLaunch: false);
+    $before = restaurantOnboardingCreationSnapshot($actor);
+
+    expect($setup->purpose)->toBe('first')
+        ->and($action->handle($actor, $input, $key, firstLaunch: false)->id)->toBe($setup->id)
+        ->and(restaurantOnboardingCreationSnapshot($actor))->toBe($before);
+});
+
+test('an authorized employee adds to an existing business without acquiring ownership', function () {
+    $owner = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Employee Restaurant Context']);
+    $brand = Brand::factory()->for($organization)->create();
+    $employee = User::factory()->create();
+    assignRestaurantOnboardingSystemRole($employee, SystemRole::RestaurantAdmin);
+    $membership = OrganizationUser::factory()->forOrganization($organization)->forUser($employee)->forSystemRole(SystemRole::RestaurantAdmin)->active()->create();
+    $before = [$organization->fresh()->getAttributes(), $membership->fresh()->getAttributes(), $employee->roles()->orderBy('roles.id')->pluck('roles.id')->all(), $organization->subscription->getAttributes()];
+    $input = [...restaurantSetupCreationInput('Employee Restaurant'), 'organizationId' => $organization->id, 'brandId' => $brand->id];
+
+    $page = Livewire::actingAs($employee)->test(RestaurantSetup::class)
+        ->set(collect($input)->mapWithKeys(fn ($value, $key) => ['form.'.$key => $value])->all())
+        ->call('createRestaurant')->assertHasNoErrors();
+    $setup = RestaurantOnboarding::query()->findOrFail($page->get('onboardingId'));
+
+    expect($setup->organization_id)->toBe($organization->id)->and($setup->brand_id)->toBe($brand->id)
+        ->and($setup->user_id)->toBe($employee->id)->and($setup->purpose)->toBe('additional')
+        ->and([$organization->fresh()->getAttributes(), $membership->fresh()->getAttributes(), $employee->roles()->orderBy('roles.id')->pluck('roles.id')->all(), $organization->subscription->fresh()->getAttributes()])->toBe($before);
+});
+
+test('an existing business context does not bypass an explicit organization creation denial', function () {
+    $actor = User::factory()->create();
+    app(CreateOrganizationAction::class)->handle($actor, ['name' => 'Owner Context']);
+    $before = restaurantOnboardingCreationSnapshot($actor);
+    Gate::before(fn (User $user, string $ability, array $arguments): ?bool => $ability === 'create' && ($arguments[0] ?? null) === Organization::class ? false : null);
+
+    expect(fn () => app(CreateRestaurantSetupAction::class)->handle($actor, restaurantSetupCreationInput('Denied Separate Business'), (string) Str::uuid(), firstLaunch: false))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => app(CreateStructureIdentityAction::class)->handle($actor, 'organization', null, ['name' => 'Denied Empty Business'], (string) Str::uuid()))
+        ->toThrow(AuthorizationException::class);
+    expect(restaurantOnboardingCreationSnapshot($actor))->toBe($before);
+});
+
 test('a new owner identity without a tenant membership can start onboarding', function () {
     $owner = User::factory()->create();
     assignRestaurantOnboardingSystemRole($owner, SystemRole::Owner);
@@ -866,6 +973,7 @@ test('onboarding read service fails closed for another users checkpoint identifi
             'branch_url' => null,
             'menu_url' => null,
             'print_url' => null,
+            'rooms_url' => null,
         ]);
 });
 
@@ -878,13 +986,13 @@ test('onboarding exposes only its form and locked server-owned navigation identi
         ->values()
         ->all();
 
-    $lockedProperties = collect(['actorId', 'creationKey', 'onboardingId', 'setupVersion'])
+    $lockedProperties = collect(['actorId', 'creationKey', 'firstLaunch', 'onboardingId', 'setupVersion'])
         ->filter(fn (string $property): bool => $componentReflection->getProperty($property)->getAttributes(Locked::class) !== [])
         ->values()
         ->all();
 
-    expect($publicProperties)->toBe(['actorId', 'areaSearch', 'brandSearch', 'creationKey', 'existingAreaId', 'existingMenuId', 'form', 'menuSearch', 'onboardingId', 'organizationSearch', 'setupVersion', 'step'])
-        ->and($lockedProperties)->toBe(['actorId', 'creationKey', 'onboardingId', 'setupVersion']);
+    expect($publicProperties)->toBe(['actorId', 'areaSearch', 'brandSearch', 'creationKey', 'existingAreaId', 'existingMenuId', 'firstLaunch', 'form', 'menuSearch', 'onboardingId', 'organizationSearch', 'setupVersion', 'step'])
+        ->and($lockedProperties)->toBe(['actorId', 'creationKey', 'firstLaunch', 'onboardingId', 'setupVersion']);
 });
 
 test('onboarding summary exposes only the opaque public QR identity and no secondary secrets', function () {
@@ -909,6 +1017,7 @@ test('onboarding summary exposes only the opaque public QR identity and no secon
         'branch_url',
         'menu_url',
         'print_url',
+        'rooms_url',
     ])->and($summary['guest_url'])->toBe(route('public.qr.show', ['token' => $qrCode->public_token]))
         ->and(parse_url($summary['guest_url'], PHP_URL_PATH))->toBe('/q/'.$qrCode->public_token)
         ->and(json_encode($summary, JSON_THROW_ON_ERROR))->not->toContain(
@@ -1580,36 +1689,23 @@ test('restaurant onboarding falls back to UTC when the configured application ti
         ->and(RestaurantSetupOptions::defaultTimezone('Invalid/Timezone'))->toBe('UTC');
 });
 
-test('restaurant onboarding copy uses restaurant terminology and neutral international examples', function () {
-    $translations = collect(['en', 'lt', 'ru'])->mapWithKeys(fn (string $locale): array => [
-        $locale => json_decode((string) file_get_contents(lang_path($locale.'.json')), true, flags: JSON_THROW_ON_ERROR),
-    ]);
-    $neutralExamples = [
-        'en' => ['Your city', 'Two-letter country code', 'Region/City'],
-        'lt' => ['Jūsų miestas', 'Dviejų raidžių šalies kodas', 'Regionas/Miestas'],
-        'ru' => ['Ваш город', 'Двухбуквенный код страны', 'Регион/Город'],
+test('restaurant setup uses distinct localized structure names without fictional business defaults', function () {
+    $labels = [
+        'en' => ['Organization', 'Brand', 'Restaurant name'],
+        'lt' => ['Organizacija', 'Prekės ženklas', 'Restorano pavadinimas'],
+        'ru' => ['Организация', 'Бренд', 'Название ресторана'],
     ];
-
-    foreach ($translations as $locale => $lines) {
-        expect($lines)
-            ->toHaveKeys([
-                'ui.onboarding.restaurant_setup.defaults.area_name',
-                'ui.onboarding.restaurant_setup.defaults.table_prefix',
-                'ui.onboarding.restaurant_setup.defaults.menu_name',
-                'ui.onboarding.restaurant_setup.defaults.category_name',
-                'ui.onboarding.restaurant_setup.defaults.item_name',
-            ])
-            ->and($lines['ui.onboarding.restaurant_setup.branch_city_placeholder'])->toBe($neutralExamples[$locale][0])
-            ->and($lines['ui.onboarding.restaurant_setup.country_placeholder'])->toBe($neutralExamples[$locale][1])
-            ->and($lines['ui.onboarding.restaurant_setup.timezone_placeholder'])->toBe($neutralExamples[$locale][2]);
+    foreach ($labels as $locale => $expected) {
+        app()->setLocale($locale);
+        expect([__('center.organization'), __('center.brand'), __('center.restaurant_name')])->toBe($expected);
     }
-
-    $lithuanianOnboardingCopy = collect($translations['lt'])
-        ->filter(fn (string $value, string $key): bool => str_starts_with($key, 'ui.onboarding.restaurant_setup.') || str_starts_with($key, 'ui.livewire.onboarding.restaurantsetup.'))
-        ->implode(' ');
-
-    expect($lithuanianOnboardingCopy)
-        ->not->toMatch('/\blentel(?:ė|ės|ę|ei|ių|ėms|ėmis|ėse)?\b/ui')
+    $component = Livewire::actingAs(User::factory()->create())->test(RestaurantSetup::class);
+    foreach (['organizationName', 'brandName', 'branchName', 'branchCity', 'branchCountryCode', 'areaName', 'tablePrefix', 'menuName', 'categoryName', 'itemName'] as $field) {
+        $component->assertSet('form.'.$field, '');
+    }
+    $lines = json_decode((string) file_get_contents(lang_path('lt.json')), true, flags: JSON_THROW_ON_ERROR);
+    $copy = collect($lines)->filter(fn (string $value, string $key): bool => str_starts_with($key, 'center.'))->implode(' ');
+    expect($copy)->not->toMatch('/\\blentel(?:ė|ės|ę|ei|ių|ėms|ėmis|ėse)?\\b/ui')
         ->not->toContain('Pirmas kursas', 'testo meniu');
 });
 
@@ -1633,37 +1729,11 @@ test('restaurant onboarding production PHP contains no hardcoded localized busin
     );
 });
 
-test('restaurant onboarding QR counts follow each locale plural rules', function () {
-    $expected = [
-        'en' => [
-            1 => '1 permanent QR code will be created.',
-            2 => '2 permanent QR codes will be created.',
-            10 => '10 permanent QR codes will be created.',
-            21 => '21 permanent QR codes will be created.',
-        ],
-        'lt' => [
-            1 => 'Bus sukurtas 1 nuolatinis QR kodas.',
-            2 => 'Bus sukurti 2 nuolatiniai QR kodai.',
-            10 => 'Bus sukurta 10 nuolatinių QR kodų.',
-            21 => 'Bus sukurtas 21 nuolatinis QR kodas.',
-        ],
-        'ru' => [
-            1 => 'Будет создан 1 постоянный QR-код.',
-            2 => 'Будут созданы 2 постоянных QR-кода.',
-            10 => 'Будет создано 10 постоянных QR-кодов.',
-            21 => 'Будет создан 21 постоянный QR-код.',
-        ],
-    ];
-
-    foreach ($expected as $locale => $counts) {
+test('restaurant setup saved table counts use localized labels with the actual count', function () {
+    foreach (['en' => 'Saved tables: ', 'lt' => 'Išsaugota stalų: ', 'ru' => 'Сохранено столов: '] as $locale => $label) {
         app()->setLocale($locale);
-
-        foreach ($counts as $count => $text) {
-            expect(trans_choice(
-                'ui.onboarding.restaurant_setup.1_budet_sozdan_postoiannyi_qr_2_budet_sozdan',
-                $count,
-                ['count' => $count],
-            ))->toBe($text);
+        foreach ([1, 2, 10, 21] as $count) {
+            expect(__('center.tables_saved', ['count' => $count]))->toBe($label.$count);
         }
     }
 });
@@ -2133,6 +2203,19 @@ function restaurantOnboardingGraphCounts(): array
         'menus' => Menu::query()->count(),
         'menu_categories' => MenuCategory::query()->count(),
         'menu_items' => MenuItem::query()->count(),
+    ];
+}
+
+/** @return array<string,mixed> */
+function restaurantOnboardingCreationSnapshot(User $actor): array
+{
+    return [
+        'graph' => restaurantOnboardingGraphCounts(),
+        'memberships' => OrganizationUser::query()->orderBy('id')->get()->map(fn (OrganizationUser $membership): array => $membership->getAttributes())->all(),
+        'subscriptions' => OrganizationSubscription::query()->orderBy('id')->get()->map(fn (OrganizationSubscription $subscription): array => $subscription->getAttributes())->all(),
+        'roles' => $actor->roles()->orderBy('roles.id')->pluck('roles.id')->all(),
+        'receipts' => StructureCreationReceipt::query()->count(),
+        'audits' => AuditLog::query()->count(),
     ];
 }
 

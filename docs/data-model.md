@@ -6,7 +6,11 @@
 
 The additive `structure_creation_receipts` table records actor_id, request_key, payload_hash, kind, organization_id and resource_id with timestamps. `(actor_id, request_key)` is unique. The actor foreign key cascades only its receipts on user deletion; the organization reference becomes null on hard deletion. Kind is restricted by the Action to organization or brand, and resource identities always come from the authorized creation result. Request key/hash are hidden from normal model serialization. This is replay protection for explicit standalone structure creation, not a new organization/restaurant entity or workspace-context table.
 
+The additive `2026_09_17_222506` migration indexes `structure_creation_receipts.organization_id`, completing its foreign-key lookup coverage without altering existing creation receipts or their actor/request uniqueness. Its rollback removes only that index; a saved-receipt round trip is tested on disposable SQLite.
+
 The existing RestaurantOnboarding attempts, branch identity, expected table count, setup_version and historical completed_at remain intact. Actual separate-process SQLite tests cover first/additional restaurant creation with identical and conflicting payloads. No working database is migrated by this execution; clean installation/upgrade checks use disposable fixtures.
+
+Parent restoration uses existing OrganizationUser/BranchUser status and access_version fields. Organization restore suspends active non-owner memberships. Brand restore suspends its active assignments and materializes inherited access into active assignments outside the restored brand and suspended assignments within it, preserving existing roles/overrides and owner access. This intentionally makes later restaurant access explicit. No new activity flag, permission table, physical cascade deletion or automatic staff reactivation is introduced.
 
 
 # Data model

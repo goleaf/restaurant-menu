@@ -3,11 +3,9 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
-use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as FloorIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\SelectionOperations;
@@ -84,12 +82,13 @@ test('bulk qr print offers and creates missing qr without duplicating active qr 
         ->and(QrCode::query()->where('service_point_id', $points['mainWithQr']->id)->count())->toBe(1);
 });
 
-test('branch list links users with generate qr permission to bulk print', function () {
-    [$organization, $brand, $branch, , , , $manager] = createPrompt27QrContext();
-    Livewire::actingAs($manager)->test(BranchesIndex::class, compact('organization', 'brand'))->assertDontSee('Bulk QR print');
+test('floor selection opens canonical printing only with generate qr permission', function (): void {
+    [$organization, $brand, $branch, , , $points, $manager] = createPrompt27QrContext();
+    Livewire::actingAs($manager)->test(PrintPanel::class, ['branchId' => $branch->id, 'ids' => [$points['mainWithQr']->id]])->assertForbidden();
     grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
-    Livewire::actingAs($manager->fresh())->test(BranchesIndex::class, compact('organization', 'brand'))
-        ->assertSee('Bulk QR print')->assertSee(prompt27BulkQrPrintUrl($organization, $brand, $branch), false);
+    Livewire::actingAs($manager->fresh())->test(FloorIndex::class, compact('organization', 'brand', 'branch'))
+        ->call('selectPoint', $points['mainWithQr']->id)->assertSee(__('floor.print_selected'))
+        ->call('openSelection', 'print')->assertSet('panel', 'print');
 });
 
 function createPrompt27QrContext(): array

@@ -10,27 +10,49 @@
             @if ($canCreateRestaurant)<flux:button :href="$createUrl" wire:navigate icon="plus" variant="primary">{{ __('center.add') }}</flux:button>@endif
         </div>
     </header>
-    <flux:tabs wire:model.live="filters.view" :aria-label="__('center.views')"><flux:tab name="restaurants">{{ __('center.restaurants') }}</flux:tab><flux:tab name="structure">{{ __('center.structure') }}</flux:tab></flux:tabs>
+    <flux:tabs wire:model.live="filters.view" :aria-label="__('center.views')"><flux:tab name="restaurants" wire:offline.attr="disabled">{{ __('center.restaurants') }}</flux:tab><flux:tab name="structure" wire:offline.attr="disabled">{{ __('center.structure') }}</flux:tab></flux:tabs>
     <div class="rm-restaurant-center__filters">
-        <flux:input wire:model.live.debounce.300ms="filters.search" :label="__('center.search')" icon="magnifying-glass" error:id="center-filter-filters-search-error" error:class="text-danger!" aria-describedby="center-filter-filters-search-error" />
-        <flux:select wire:model.live="filters.organizationId" variant="listbox" searchable :filter="false" :label="__('center.organization')" error:id="center-filter-filters-organizationId-error" error:class="text-danger!" aria-describedby="center-filter-filters-organizationId-error">
-            <x-slot name="trigger"><flux:select.button :invalid="$errors->has('filters.organizationId')" :aria-invalid="$errors->has('filters.organizationId') ? 'true' : 'false'" aria-describedby="center-filter-filters-organizationId-error" /></x-slot>
-            <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="organizationSearch" :aria-label="__('center.search_organizations')" /></x-slot>
-            <flux:select.option value="">{{ __('center.all') }}</flux:select.option>
-            @forelse ($organizations as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
-        </flux:select>
-        @if ($view === 'restaurants')
-            <flux:select wire:model.live="filters.brandId" variant="listbox" searchable :filter="false" :label="__('center.brand')" error:id="center-filter-filters-brandId-error" error:class="text-danger!" aria-describedby="center-filter-filters-brandId-error">
-                <x-slot name="trigger"><flux:select.button :invalid="$errors->has('filters.brandId')" :aria-invalid="$errors->has('filters.brandId') ? 'true' : 'false'" aria-describedby="center-filter-filters-brandId-error" /></x-slot>
-                <x-slot name="search"><flux:select.search wire:model.live.debounce.300ms="brandSearch" :aria-label="__('center.search_brands')" /></x-slot>
-                <flux:select.option value="">{{ __('center.all') }}</flux:select.option>
-                @forelse ($brands as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
-            </flux:select>
-            <flux:select wire:model.live="filters.active" :label="__('center.administrative_state')" error:id="center-filter-filters-active-error" error:class="text-danger!" aria-describedby="center-filter-filters-active-error"><flux:select.option value="all">{{ __('center.all') }}</flux:select.option><flux:select.option value="active">{{ __('center.administrative_active') }}</flux:select.option><flux:select.option value="inactive">{{ __('center.administrative_inactive') }}</flux:select.option></flux:select>
-            <flux:select wire:model.live="filters.setup" :label="__('center.setup_state')" error:id="center-filter-filters-setup-error" error:class="text-danger!" aria-describedby="center-filter-filters-setup-error"><flux:select.option value="all">{{ __('center.all') }}</flux:select.option><flux:select.option value="unfinished">{{ __('center.unfinished') }}</flux:select.option></flux:select>
+        <flux:input wire:offline.attr="disabled" wire:model.live.debounce.300ms="filters.search" :label="__('center.search')" icon="magnifying-glass" error:id="center-filter-filters-search-error" error:class="text-danger!" aria-describedby="center-filter-filters-search-error" />
+        @if (isset($organizations[$filters->organizationId]) || ($view === 'restaurants' && isset($brands[$filters->brandId])))
+            <dl class="rm-restaurant-center__context" data-center-filter-context>
+                @isset($organizations[$filters->organizationId])
+                    <dt>{{ __('center.organization') }}</dt><dd data-center-filter-parent="organization">{{ $organizations[$filters->organizationId] }}</dd>
+                @endisset
+                @if ($view === 'restaurants' && isset($brands[$filters->brandId]))
+                    <dt>{{ __('center.brand') }}</dt><dd data-center-filter-parent="brand">{{ $brands[$filters->brandId] }}</dd>
+                @endif
+            </dl>
         @endif
-        <flux:select wire:model.live="filters.lifecycle" :label="__('center.lifecycle')" error:id="center-filter-filters-lifecycle-error" error:class="text-danger!" aria-describedby="center-filter-filters-lifecycle-error"><flux:select.option value="active">{{ __('center.current') }}</flux:select.option><flux:select.option value="archived">{{ __('center.archived') }}</flux:select.option></flux:select>
-        <flux:select wire:model.live="filters.sort" :label="__('center.sort')" error:id="center-filter-filters-sort-error" error:class="text-danger!" aria-describedby="center-filter-filters-sort-error"><flux:select.option value="name_asc">{{ __('center.sort_name_asc') }}</flux:select.option><flux:select.option value="name_desc">{{ __('center.sort_name_desc') }}</flux:select.option></flux:select>
+        <flux:accordion>
+            <flux:accordion.item>
+                <flux:accordion.heading data-center-filter-toggle>
+                    {{ __('menu.guest.filters') }}
+                    @if ($secondaryFilterCount > 0)<flux:badge size="sm" data-center-filter-count>{{ $secondaryFilterCount }}</flux:badge>@endif
+                </flux:accordion.heading>
+                <flux:accordion.content>
+                    <div class="rm-restaurant-center__filter-fields">
+                        <flux:select wire:offline.attr="disabled" wire:model.live="filters.organizationId" variant="listbox" searchable :filter="false" :label="__('center.organization')" error:id="center-filter-filters-organizationId-error" error:class="text-danger!" aria-describedby="center-filter-filters-organizationId-error">
+                            <x-slot name="trigger"><flux:select.button wire:offline.attr="disabled" :invalid="$errors->has('filters.organizationId')" :aria-invalid="$errors->has('filters.organizationId') ? 'true' : 'false'" aria-describedby="center-filter-filters-organizationId-error" /></x-slot>
+                            <x-slot name="search"><flux:select.search wire:offline.attr="disabled" wire:model.live.debounce.300ms="organizationSearch" :aria-label="__('center.search_organizations')" /></x-slot>
+                            <flux:select.option value="">{{ __('center.all') }}</flux:select.option>
+                            @forelse ($organizations as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                        </flux:select>
+                        @if ($view === 'restaurants')
+                            <flux:select wire:offline.attr="disabled" wire:model.live="filters.brandId" variant="listbox" searchable :filter="false" :label="__('center.brand')" error:id="center-filter-filters-brandId-error" error:class="text-danger!" aria-describedby="center-filter-filters-brandId-error">
+                                <x-slot name="trigger"><flux:select.button wire:offline.attr="disabled" :invalid="$errors->has('filters.brandId')" :aria-invalid="$errors->has('filters.brandId') ? 'true' : 'false'" aria-describedby="center-filter-filters-brandId-error" /></x-slot>
+                                <x-slot name="search"><flux:select.search wire:offline.attr="disabled" wire:model.live.debounce.300ms="brandSearch" :aria-label="__('center.search_brands')" /></x-slot>
+                                <flux:select.option value="">{{ __('center.all') }}</flux:select.option>
+                                @forelse ($brands as $id => $label)<flux:select.option :value="$id">{{ $label }}</flux:select.option>@empty @endforelse
+                            </flux:select>
+                            <flux:select wire:offline.attr="disabled" wire:model.live="filters.active" :label="__('center.administrative_state')" error:id="center-filter-filters-active-error" error:class="text-danger!" aria-describedby="center-filter-filters-active-error"><flux:select.option value="all">{{ __('center.all') }}</flux:select.option><flux:select.option value="active">{{ __('center.administrative_active') }}</flux:select.option><flux:select.option value="inactive">{{ __('center.administrative_inactive') }}</flux:select.option></flux:select>
+                            <flux:select wire:offline.attr="disabled" wire:model.live="filters.setup" :label="__('center.setup_state')" error:id="center-filter-filters-setup-error" error:class="text-danger!" aria-describedby="center-filter-filters-setup-error"><flux:select.option value="all">{{ __('center.all') }}</flux:select.option><flux:select.option value="unfinished">{{ __('center.unfinished') }}</flux:select.option></flux:select>
+                        @endif
+                        <flux:select wire:offline.attr="disabled" wire:model.live="filters.lifecycle" :label="__('center.lifecycle')" error:id="center-filter-filters-lifecycle-error" error:class="text-danger!" aria-describedby="center-filter-filters-lifecycle-error"><flux:select.option value="active">{{ __('center.current') }}</flux:select.option><flux:select.option value="archived">{{ __('center.archived') }}</flux:select.option></flux:select>
+                        <flux:select wire:offline.attr="disabled" wire:model.live="filters.sort" :label="__('center.sort')" error:id="center-filter-filters-sort-error" error:class="text-danger!" aria-describedby="center-filter-filters-sort-error"><flux:select.option value="name_asc">{{ __('center.sort_name_asc') }}</flux:select.option><flux:select.option value="name_desc">{{ __('center.sort_name_desc') }}</flux:select.option></flux:select>
+                    </div>
+                </flux:accordion.content>
+            </flux:accordion.item>
+        </flux:accordion>
     </div>
     <div class="rm-restaurant-center__layout" data-center-content>
         <div class="rm-restaurant-center__results">

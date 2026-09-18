@@ -6,8 +6,8 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AreaNodeType;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
-use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
+use App\Livewire\Restaurants\Index as OrganizationsIndex;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
@@ -52,17 +52,17 @@ test('organization results are bounded searchable and render only the requested 
     }
 
     Livewire::actingAs($user)
-        ->test(OrganizationsIndex::class)
+        ->test(OrganizationsIndex::class)->set('filters.view', 'structure')
         ->assertSee('Paged Organization 01')
-        ->assertSee('Paged Organization 15')
-        ->assertDontSee('Paged Organization 16')
+        ->assertSee('Paged Organization 20')
+        ->assertDontSee('Paged Organization 21')
         ->call('setPage', 2, 'organizationsPage')
-        ->assertSee('Paged Organization 16')
-        ->assertDontSee('Paged Organization 01')
-        ->set('search', 'Organization 31')
+        ->assertSee('Paged Organization 21')
+        ->assertViewHas('rows', fn ($rows): bool => ! $rows->getCollection()->contains('name', 'Paged Organization 01'))
+        ->set('filters.search', 'Organization 31')
         ->assertSet('paginators.organizationsPage', 1)
         ->assertSee('Paged Organization 31')
-        ->assertDontSee('Paged Organization 30');
+        ->assertViewHas('rows', fn ($rows): bool => $rows->getCollection()->pluck('name')->all() === ['Paged Organization 31']);
 });
 
 test('brand and branch searches stay inside the selected tenant boundary', function (string $field): void {

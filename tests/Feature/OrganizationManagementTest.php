@@ -2,7 +2,9 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Index;
+use App\Livewire\Restaurants\IdentityEditor;
+use App\Livewire\Restaurants\Index;
+use App\Livewire\Restaurants\StructureCreate;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Order;
@@ -12,7 +14,6 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemRolesSeeder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
@@ -32,12 +33,9 @@ test('user can create organization and becomes owner', function () {
         ->firstOrFail();
 
     Livewire::actingAs($user)
-        ->test(Index::class)
-        ->assertSee('No organizations yet.')
-        ->set('name', 'North Star Hospitality')
-        ->call('create')
-        ->assertHasNoErrors()
-        ->assertSee('North Star Hospitality');
+        ->test(StructureCreate::class, ['kind' => 'organization'])
+        ->set('form.name', 'North Star Hospitality')->call('save')->assertHasNoErrors()
+        ->assertDispatched('structure-identity-created');
 
     $organization = Organization::query()
         ->where('name', 'North Star Hospitality')
@@ -73,7 +71,7 @@ test('user can be linked to multiple organizations', function () {
     ]);
 
     Livewire::actingAs($user)
-        ->test(Index::class)
+        ->test(Index::class)->set('filters.view', 'structure')
         ->assertSee('Alpha Group')
         ->assertSee('Beta Group');
 });
@@ -95,7 +93,7 @@ test('user sees only linked organizations', function () {
     ]);
 
     Livewire::actingAs($user)
-        ->test(Index::class)
+        ->test(Index::class)->set('filters.view', 'structure')
         ->assertSee($ownedOrganization->name)
         ->assertSee($memberOrganization->name)
         ->assertDontSee($hiddenOrganization->name);
@@ -106,16 +104,13 @@ test('owner can update and delete organization', function () {
     $organization = (new CreateOrganizationAction)->handle($user, ['name' => 'Old Company']);
 
     Livewire::actingAs($user)
-        ->test(Index::class)
-        ->call('startEditing', $organization->id)
-        ->assertSet('editingName', 'Old Company')
-        ->set('editingName', 'New Company')
-        ->call('update')
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->assertSet('form.name', 'Old Company')
+        ->set('form.name', 'New Company')
+        ->call('save')
         ->assertHasNoErrors()
         ->assertSee('New Company')
-        ->call('confirmDelete', $organization->id)
-        ->call('delete')
-        ->assertDontSee('New Company');
+        ->set('confirmation', 'New Company')->call('changeLifecycle')->assertHasNoErrors();
 
     expect(Organization::query()->whereKey($organization->id)->exists())->toBeFalse();
     expect($user->fresh()->organizations()->whereKey($organization->id)->exists())->toBeFalse();
@@ -131,9 +126,8 @@ test('owner cannot archive organization that contains an active order', function
     Order::factory()->forTableSession($closedSession)->served()->create();
 
     Livewire::actingAs($owner)
-        ->test(Index::class)
-        ->call('confirmDelete', $organization->id)
-        ->call('delete')
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('confirmation', $organization->name)->call('changeLifecycle')
         ->assertHasErrors('structureDeletion');
 
     expect($organization->fresh())->not->toBeNull();
@@ -152,9 +146,8 @@ test('linked non owner cannot manage organization', function () {
     ]);
 
     Livewire::actingAs($member)
-        ->test(Index::class)
-        ->assertSee($organization->name)
-        ->call('startEditing', $organization->id)
+        ->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->assertSee($organization->name)->set('form.name', 'Unauthorized')->call('save')
         ->assertForbidden();
 });
 
@@ -174,12 +167,12 @@ test('owner can view and restore an archived organization without a page reload'
     $organization->deleteOrFail();
 
     Livewire::actingAs($owner)
-        ->test(Index::class)
+        ->test(Index::class)->set('filters.view', 'structure')
         ->assertDontSee('Archived Company')
-        ->set('lifecycle', 'archived')
-        ->assertSee('Archived Company')
-        ->call('restore', $organization->id)
-        ->assertHasNoErrors();
+        ->set('filters.lifecycle', 'archived')->assertSee('Archived Company');
+
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $organization->id])
+        ->set('confirmation', $organization->name)->call('changeLifecycle')->assertHasNoErrors();
 
     expect($organization->fresh())->not->toBeNull();
 });
@@ -191,16 +184,6 @@ test('livewire payload cannot restore an organization outside the current tenant
     $foreignOrganization = (new CreateOrganizationAction)->handle($foreignOwner, ['name' => 'Foreign Archived Company']);
     $foreignOrganization->deleteOrFail();
 
-    $caughtException = null;
-
-    try {
-        Livewire::actingAs($owner)
-            ->test(Index::class)
-            ->call('restore', $foreignOrganization->id);
-    } catch (Throwable $exception) {
-        $caughtException = $exception;
-    }
-
-    expect($caughtException)->toBeInstanceOf(ModelNotFoundException::class)
-        ->and(Organization::withTrashed()->findOrFail($foreignOrganization->id)->trashed())->toBeTrue();
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'organization', 'objectId' => $foreignOrganization->id])->assertForbidden();
+    expect(Organization::withTrashed()->findOrFail($foreignOrganization->id)->trashed())->toBeTrue();
 });

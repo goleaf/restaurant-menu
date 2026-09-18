@@ -42,7 +42,7 @@ final class RestoreOrganizationAction
                 $this->audit->handle(AuditLogAction::StaffDeactivated, 'organization_user', $membership->id, actorUser: $actor,
                     organizationId: $scopedOrganization->id,
                     oldValues: ['staff_user_id' => $membership->user_id, 'status' => OrganizationUserStatus::Active],
-                    newValues: ['staff_user_id' => $membership->user_id, 'status' => OrganizationUserStatus::Suspended, 'reason' => __('center.restore_notice')]);
+                    newValues: ['staff_user_id' => $membership->user_id, 'status' => OrganizationUserStatus::Suspended, 'reason' => __('center.restore_organization_notice')]);
             }
 
             $branches = Branch::withTrashed()->select(['id', 'organization_id', 'brand_id', 'name', 'is_active'])
@@ -54,7 +54,7 @@ final class RestoreOrganizationAction
                 $this->audit->handle(AuditLogAction::BranchSuspended, 'branch', $branch->id, actorUser: $actor,
                     organizationId: $scopedOrganization->id, branchId: $branch->id,
                     oldValues: ['name' => $branch->name, 'is_active' => true],
-                    newValues: ['name' => $branch->name, 'is_active' => false, 'reason' => __('center.restore_notice')]);
+                    newValues: ['name' => $branch->name, 'is_active' => false, 'reason' => __('center.restore_organization_notice')]);
             }
 
             if ($scopedOrganization->restore() !== true) {

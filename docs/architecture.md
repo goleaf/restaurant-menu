@@ -4,6 +4,14 @@
 
 # Architecture
 
+## Prompt 4 center and restoration boundaries
+
+`Restaurants/Index` prepares a bounded current list or child structure level through `RestaurantCenterQuery`; `IdentityEditor` is the single typed identity/media/lifecycle editor and `StructureCreate` handles explicit empty-parent creation. The legacy organization/brand/branch Index classes and views are removed; existing named entries resolve to the center after authorization. A child-level link clears the parent-name search; editor return URLs retain the parent list state. No arbitrary model class is accepted from the browser.
+
+`RestaurantSetup` coordinates existing Actions through four Form-backed groups. Its private persisted attempt and actor-bound creation receipt are separate from shared workspace selection. `BranchReadinessService` remains the selected-card/review readiness owner; list rows use bounded historical hints. GET does not create business records, resuming does not restore archived parents, and completion does not publish operational state.
+
+`RestoreOrganizationAction` and `RestoreBrandAction` own explicit parent restoration, child deactivation and prior staff restrictions in the same audited transaction. Existing membership/assignment revisions invalidate stale editors. Brand restore materializes inherited staff scope so other current restaurants remain accessible while restored restaurants and future additions require explicit assignment. Owners retain administrative review. Existing status and assignment semantics implement this boundary; there is no second authorization or activity system.
+
 ## Prompt 8 employee-card boundary
 
 `Organizations/Staff/Show` is the shared class-based Livewire page for explicit organization or restaurant context. It reuses Staff Forms and mutation Actions; `TeamCardQueryService` prepares bounded membership, actual restaurant access, subject capability groups and typed audit presentation. Existing permissions URLs resolve their User identity to the correct OrganizationUser and open the access section. The standalone instant permission editor and list-level role/area editor markup are removed.

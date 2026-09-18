@@ -10,9 +10,10 @@ test('one bootstrap registers all providers and reusable bindings exactly once p
     };
     registerAlpineComponents(Alpine);
     registerAlpineComponents(Alpine);
-    for (const name of ['branchPickerDisabled', 'connectivity', 'guestDishDialog', 'guestInvite', 'guestMenu', 'httpForm', 'invitationClipboard', 'kitchenTimers', 'menuImagePicker', 'menuImagePresentationEditor', 'menuTranslations', 'menuWorkspace', 'notificationPanel', 'passkeyRegistration', 'passkeyVerification', 'securityClipboard', 'staffEditor', 'staffWorkspace', 'twoFactorChallenge', 'waiterSounds', 'workspaceNavigation', 'restaurantDashboard', 'onboardingFocus', 'catalogTransfer', 'catalogUpload', 'recoveryCodes']) {
+    for (const name of ['branchPickerDisabled', 'connectivity', 'guestDishDialog', 'guestInvite', 'guestMenu', 'httpForm', 'invitationClipboard', 'kitchenTimers', 'menuImagePicker', 'menuImagePresentationEditor', 'menuTranslations', 'menuWorkspace', 'notificationPanel', 'passkeyRegistration', 'passkeyVerification', 'securityClipboard', 'staffEditor', 'staffWorkspace', 'twoFactorChallenge', 'waiterSounds', 'workspaceNavigation', 'restaurantDashboard', 'catalogTransfer', 'catalogUpload', 'recoveryCodes']) {
         assert.equal(typeof providers.get(name), 'function', name);
     }
+    assert.equal(providers.has('onboardingFocus'), false, 'The retired wizard must not register a second focus owner.');
     assert.equal(typeof providers.get('passkeyRegistration')().register, 'function');
     assert.equal(typeof providers.get('passkeyVerification')().verify, 'function');
     for (const name of ['dialogLabel', 'focusInput', 'focusSelf', 'printDocument']) assert.equal(typeof bindings.get(name), 'function', name);

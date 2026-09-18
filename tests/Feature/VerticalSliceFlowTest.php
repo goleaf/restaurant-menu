@@ -3,6 +3,8 @@
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Brands\CreateBrandAction;
+use App\Actions\Menus\SetMenuItemAvailabilityAction;
+use App\Actions\Menus\UpdateMenuAction;
 use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
@@ -12,6 +14,7 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\ManualPaymentMethod;
+use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
@@ -83,19 +86,19 @@ test('first vertical slice works from authenticated owner setup to closed table 
         'parent_id' => null,
         'type' => AreaNodeType::Hall->value,
         'name' => 'Main Hall',
-        'icon' => 'door-open',
+        'icon' => 'rectangle-group',
         'sort_order' => 10,
         'is_active' => true,
-    ]);
+    ], $owner);
     $servicePoint = app(CreateServicePointAction::class)->handle($branch, [
         'area_node_id' => $areaNode->id,
         'type' => ServicePointType::Table->value,
         'name' => 'Terrace Table 1',
         'display_number' => 'T1',
         'capacity' => 4,
-        'icon' => 'table-2',
+        'icon' => 'squares-2x2',
         'is_active' => true,
-    ]);
+    ], $owner);
 
     $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $owner);
     $onboarding = RestaurantOnboarding::factory()->for($owner)->create();
@@ -118,6 +121,14 @@ test('first vertical slice works from authenticated owner setup to closed table 
         'item' => $onboarding->menuItem()->firstOrFail(),
     ];
     $pizza = $starterMenu['item']->refresh();
+    expect($starterMenu['menu']->status)->toBe(MenuStatus::Draft)
+        ->and($pizza->is_available)->toBeFalse();
+    app(UpdateMenuAction::class)->handle($starterMenu['menu'], [
+        'name' => $starterMenu['menu']->name,
+        'status' => MenuStatus::Active,
+        'sort_order' => $starterMenu['menu']->sort_order,
+    ], $owner);
+    app(SetMenuItemAvailabilityAction::class)->handle($owner, $branch, $pizza, true);
     $barItem = createVerticalSliceBarItem($branch->id, $starterMenu['category']->id);
 
     [$waiter, $cook, $bartender] = createVerticalSliceStaff($organization);

@@ -89,6 +89,7 @@ class AreaNode extends Model
     {
         return $this->hasMany(AreaNodeWaiter::class);
     }
+
     /** @return list<string> */
     protected function structureVersionFields(): array
     {

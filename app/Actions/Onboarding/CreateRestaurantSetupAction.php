@@ -57,6 +57,7 @@ final readonly class CreateRestaurantSetupAction
             }
             $first = empty($data['organizationId']);
             if ($first) {
+                $firstLaunch = $firstLaunch || Gate::forUser($actor)->denies('createAdditionalBusiness', Organization::class);
                 if ($firstLaunch) {
                     Gate::forUser($actor)->authorize('create', RestaurantOnboarding::class);
                 }

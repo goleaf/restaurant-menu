@@ -11,6 +11,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\RestaurantOnboarding;
 use App\Models\User;
+use App\Support\Media\LocalImageConstraints;
 use Database\Seeders\SystemPermissionsSeeder;
 use Dom\HTMLDocument;
 use Livewire\Livewire;
@@ -88,6 +89,51 @@ it('gives the destructive lifecycle dialog an explicit translated safe close con
         ->and($dialog->querySelector('[autofocus]'))->not->toBeNull();
 });
 
+it('keeps selected parent names visible and literal outside collapsed filters', function (): void {
+    $this->organization->update(['name' => 'navigation.organizations']);
+    $this->brand->update(['name' => 'validation']);
+    $page = Livewire::actingAs($this->actor)->test(Index::class)
+        ->set('filters.organizationId', (string) $this->organization->id)
+        ->set('filters.brandId', (string) $this->brand->id)->assertHasNoErrors();
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    $context = $document->querySelector('[data-center-filter-context]');
+
+    expect($context)->not->toBeNull()
+        ->and($context->querySelector('[data-center-filter-parent="organization"]')->textContent)->toBe('navigation.organizations')
+        ->and($context->querySelector('[data-center-filter-parent="brand"]')->textContent)->toBe('validation')
+        ->and($document->querySelector('[data-flux-accordion-item] [data-center-filter-context]'))->toBeNull();
+
+    $page->set('filters.view', 'structure');
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    expect($document->querySelector('[data-center-filter-parent="organization"]')->textContent)->toBe('navigation.organizations')
+        ->and($document->querySelector('[data-center-filter-parent="brand"]'))->toBeNull();
+});
+
+it('keeps a single search visible outside the compact secondary filter disclosure', function (): void {
+    $page = Livewire::actingAs($this->actor)->test(Index::class);
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    $filters = $document->querySelector('.rm-restaurant-center__filters');
+    $disclosure = $filters->querySelector('[data-flux-accordion-item]');
+
+    expect($disclosure)->not->toBeNull()
+        ->and($disclosure->querySelector('[data-center-filter-toggle]')->textContent)->toContain(__('menu.guest.filters'))
+        ->and($document->querySelectorAll('input[wire\\:model\\.live\\.debounce\\.300ms="filters.search"]')->length)->toBe(1)
+        ->and($disclosure->querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="filters.search"]'))->toBeNull();
+
+    foreach (['organizationId', 'brandId', 'active', 'setup', 'lifecycle', 'sort'] as $name) {
+        $selector = '[wire\\:model\\.live="filters.'.$name.'"]';
+        expect($document->querySelectorAll($selector)->length)->toBe(1)
+            ->and($disclosure->querySelector($selector))->not->toBeNull();
+    }
+
+    expect($document->querySelector('[data-center-filter-count]'))->toBeNull();
+    $page->set('filters.organizationId', (string) $this->organization->id)
+        ->set('filters.active', 'inactive')->set('filters.sort', 'name_desc')
+        ->set('filters.search', 'Unmatched restaurant')->assertHasNoErrors();
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    expect(trim($document->querySelector('[data-center-filter-count]')->textContent))->toBe('3');
+});
+
 it('targets the actual invalid Flux listbox button when it is the only failed field', function (): void {
     $page = Livewire::actingAs($this->actor)->test(RestaurantSetup::class)
         ->set('form.organizationId', $this->organization->id)->set('form.brandId', $this->brand->id)
@@ -135,13 +181,32 @@ it('associates rejected center fields with readable error text', function (strin
     foreach ($controls as $control) {
         $description = $control->getAttribute('aria-describedby');
         expect($description)->toBeString($control->outerHTML)->not->toBe('');
-        $error = $document->getElementById($description);
+        $descriptions = preg_split('/\s+/', trim($description));
+        $error = null;
+        foreach ($descriptions as $id) {
+            $target = $document->getElementById($id);
+            expect($target)->not->toBeNull($control->outerHTML);
+            if ($target->hasAttribute('data-flux-error')) {
+                $error = $target;
+            }
+        }
         expect($error)->not->toBeNull($control->outerHTML)
             ->and($error->hasAttribute('data-flux-error'))->toBeTrue()
             ->and(trim($error->textContent))->not->toBe('')
             ->and($error->classList->contains('text-danger!'))->toBeTrue();
     }
 })->with(['identity', 'structure', 'logo', 'lifecycle', 'setup']);
+
+it('shows supported logo formats and size next to the upload control', function (): void {
+    $page = Livewire::actingAs($this->actor)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $this->branch->id]);
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    $upload = $document->querySelector('[data-flux-file-upload]');
+    $dropzone = $upload->querySelector('[data-flux-file-upload-dropzone]');
+
+    expect($upload->getAttribute('accept'))->toBe(LocalImageConstraints::acceptedMimeTypes())
+        ->and($dropzone->getAttribute('aria-describedby'))->toContain('center-logo-help', 'center-identity-logo-error')
+        ->and(trim($document->getElementById('center-logo-help')->textContent))->toBe(LocalImageConstraints::helpText());
+});
 
 it('provides stable heading bindings for each native center dialog', function (): void {
     $this->branch->update(['logo_path' => 'logos/restaurant-test.png']);
@@ -170,6 +235,18 @@ it('keeps distinct canonical parent names literal in the selected restaurant car
     expect($document->querySelector('[data-center-parent="organization"]')?->textContent)->toBe('navigation.organizations')
         ->and($document->querySelector('[data-center-parent="brand"]')?->textContent)->toBe('validation');
 });
+
+it('explains restoration consequences for the selected parent before confirmation', function (string $kind): void {
+    $resource = $kind === 'organization' ? $this->organization : $this->brand;
+    $resource->delete();
+    $page = Livewire::actingAs($this->actor)->test(IdentityEditor::class, ['kind' => $kind, 'objectId' => $resource->id])
+        ->set('confirming', true)->assertSet('confirmation', '');
+    $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$page->html().'</body></html>');
+    $dialog = $document->querySelector('dialog[data-modal="structure-lifecycle"]');
+
+    expect($dialog->textContent)->toContain(__('center.restore_'.$kind.'_notice'))
+        ->and($resource->fresh()->trashed())->toBeTrue();
+})->with(['organization', 'brand']);
 
 it('shows a decorative restaurant thumbnail or placeholder without row editors', function (): void {
     $this->branch->update(['logo_path' => null]);

@@ -36,6 +36,10 @@ final class MenuForm extends Form
     /** @param array<string, string> $translations */
     public function populate(Menu $menu, array $translations): void
     {
+        if (($translations['en'] ?? '') === '') {
+            $translations['en'] = $menu->name;
+        }
+
         $this->menuName = $menu->name;
         $this->menuStatus = $menu->status->value;
         $this->menuSortOrder = $menu->sort_order;

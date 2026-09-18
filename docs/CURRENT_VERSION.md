@@ -6,7 +6,15 @@
 
 Current execution stage is Prompt 4 restaurant-center refresh on existing `main`, starting at `0dbbebbd64235aae7b6c36897b3612e38d2be430` with 27 preserved incoming changed paths. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Prompt 3's local tooltip/runtime repairs remain incoming work, not a new package release. Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify the combined worktree.
 
-## Prompt 4 runtime recheck — 2026-09-17
+## Prompt 4 continuation runtime evidence — 2026-09-18
+
+The selected verification CLI is PHP **8.5.10** with Composer **2.10.3**; the browser runner actually uses Herd CLI PHP **8.5.8**. A separate runtime-only probe of the configured Herd FPM socket reports **8.5.8 / fpm-fcgi**, memory_limit 500M. This probe did not bootstrap the application or touch its database. Backend tests use an explicit 512M limit and isolated data/cache/storage. Node is **24.21.0** and npm **12.0.2** is selected from an owned prefix, without changing global tools.
+
+The currently available experimental binary is **8.6.0beta2**, not the historical temporary Beta3 executable, which is no longer present. PHP.net still identifies Beta3 as a testing release, with RC1 planned for 24 September. Both real installed/locked Composer platform checks reject the available 8.6 runtime; no application/browser/coverage pass on 8.6 or production promotion is claimed. Requirements are not ignored or relaxed.
+
+A fresh isolated Composer installation with networking, scripts and plugins disabled extracts 178 cached archives and installs the normal local Pro path mirror: all **179** package names, versions and source/dist references match the unchanged lock, with no extra packages or downloads. Strict PSR/ambiguity autoload, strict validation and installed/locked stable platform checks pass. The separate official Packagist audit reports no advisories, abandoned packages or filters. Evidence: `/tmp/restaurant-p4-offline-BGF5BD/report.json`; runtime logs and the FPM probe are in `restaurant-p4-speckit-uhgxj6lc`. This is dependency/runtime evidence, separate from application acceptance.
+
+## Preserved Prompt 4 runtime recheck — 2026-09-17
 
 Fresh `restaurant-p4-refresh-b12nr5t1/runtime-preflight-RmLoqm` evidence confirms CLI PHP 8.5.10 and 8.6.0beta3. Stable manifest, installed and lock platform checks pass. Experimental capabilities/manifest checks pass, but both real platform checks fail. Input hashes remain unchanged. No PHP 8.6 application/browser pass or production promotion is inferred. Browser HTTP runtime and final aggregate results are recorded separately in PROGRESS.md.
 

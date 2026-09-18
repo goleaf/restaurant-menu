@@ -25,7 +25,6 @@ use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -220,7 +219,7 @@ it('rejects an archived parent brand before creating or replaying a private chec
     $this->brand->delete();
     $before = RestaurantOnboarding::query()->get()->map->getAttributes()->all();
     $branchBefore = $branch->fresh()->getAttributes();
-    expect(fn () => app(ContinueRestaurantPreparationAction::class)->handle($this->actor, $branch))->toThrow(ModelNotFoundException::class);
+    expect(fn () => app(ContinueRestaurantPreparationAction::class)->handle($this->actor, $branch))->toThrow(AuthorizationException::class);
     expect(RestaurantOnboarding::query()->get()->map->getAttributes()->all())->toBe($before)
         ->and($branch->fresh()->getAttributes())->toBe($branchBefore);
 })->with([true, false]);

@@ -4,19 +4,22 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index;
+use App\Livewire\Onboarding\RestaurantSetup;
+use App\Livewire\Restaurants\IdentityEditor;
+use App\Livewire\Restaurants\Index;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Order;
 use App\Models\Permission;
+use App\Models\RestaurantOnboarding;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -71,40 +74,31 @@ test('active organization member can see branches inside brand', function () {
         ->assertDontSee('Sushi Master Kaunas Center');
 });
 
-test('branch page shows simple restaurant setup wizard', function () {
+test('restaurant creation and preparation use the canonical addressable wizard', function (): void {
     app()->setLocale('ru');
     [$organization, $brand, $owner] = createOrganizationBrand();
-
-    Branch::factory()
-        ->for($organization)
-        ->for($brand)
-        ->create(['name' => 'Bella Setup Branch']);
-
-    Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee(__('ui.onboarding.restaurant_setup.nastroit_restoran'))
-        ->assertSee(__('ui.livewire.organizations.brands.branches.index.sozdat_filial'))
-        ->assertSee(__('ui.livewire.organizations.brands.branches.index.dobavit_zony'))
-        ->assertSee(__('ui.livewire.organizations.brands.branches.index.dobavit_stoly'))
-        ->assertSee(__('qr.setup.generate.title'))
-        ->assertSee(__('qr.setup.print.title'))
-        ->assertSee(__('qr.setup.guest_menu.title'));
+    $branch = Branch::factory()->for($organization)->for($brand)->create(['name' => 'Bella Setup Branch']);
+    Livewire::actingAs($owner)->test(Index::class, compact('organization', 'brand'))
+        ->assertSee(__('center.add'))->assertSee(__('center.properties'))->assertDontSeeHtml('wire:submit="create"');
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->call('continueSetup')->assertRedirect();
+    $setup = RestaurantOnboarding::query()->where('branch_id', $branch->id)->sole();
+    Livewire::actingAs($owner)->test(RestaurantSetup::class, ['setup' => $setup->id])
+        ->assertSee(__('center.details'))->assertSee(__('center.rooms'))->assertSee(__('center.menu'))->assertSee(__('center.review'));
 });
 
 test('owner can create update and delete branch', function () {
     [$organization, $brand, $owner] = createOrganizationBrand();
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee('No branches yet.')
-        ->set('name', 'Bella Pizza Vilnius Old Town')
-        ->set('address', 'Pilies 1')
-        ->set('city', 'Vilnius')
-        ->set('country', 'Lithuania')
-        ->set('timezone', 'Europe/Vilnius')
-        ->set('currency', 'EUR')
-        ->set('isActive', true)
-        ->call('create')
+        ->test(RestaurantSetup::class)->set('form.organizationId', $organization->id)->set('form.brandId', $brand->id)
+        ->set('form.branchName', 'Bella Pizza Vilnius Old Town')
+        ->set('form.branchAddress', 'Pilies 1')
+        ->set('form.branchCity', 'Vilnius')
+        ->set('form.branchCountryCode', 'LT')
+        ->set('form.branchTimezone', 'Europe/Vilnius')
+        ->set('form.branchCurrency', 'EUR')
+        ->call('createRestaurant')
         ->assertHasNoErrors()
         ->assertSee('Bella Pizza Vilnius Old Town');
 
@@ -114,26 +108,26 @@ test('owner can create update and delete branch', function () {
         ->firstOrFail();
 
     expect($branch->organization_id)->toBe($organization->id);
-    expect($branch->is_active)->toBeTrue();
+    expect($branch->is_active)->toBeFalse();
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->set('form.isActive', true)->call('save')->assertHasNoErrors();
+    expect($branch->fresh()->is_active)->toBeTrue();
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->call('startEditing', $branch->id)
-        ->assertSet('editingName', 'Bella Pizza Vilnius Old Town')
-        ->set('editingName', 'Bella Pizza Kaunas Center')
-        ->set('editingAddress', 'Laisves 10')
-        ->set('editingCity', 'Kaunas')
-        ->set('editingCountry', 'Lithuania')
-        ->set('editingTimezone', 'Europe/Vilnius')
-        ->set('editingCurrency', 'EUR')
-        ->set('editingIsActive', false)
-        ->set('branchSuspendReason', 'Temporarily closing this branch.')
-        ->call('update')
+        ->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->assertSet('form.name', 'Bella Pizza Vilnius Old Town')
+        ->set('form.name', 'Bella Pizza Kaunas Center')
+        ->set('form.address', 'Laisves 10')
+        ->set('form.city', 'Kaunas')
+        ->set('form.country', 'Lithuania')
+        ->set('form.timezone', 'Europe/Vilnius')
+        ->set('form.currency', 'EUR')
+        ->set('form.isActive', false)
+        ->set('form.suspensionReason', 'Temporarily closing this branch.')
+        ->call('save')
         ->assertHasNoErrors()
         ->assertSee('Bella Pizza Kaunas Center')
-        ->call('confirmDelete', $branch->id)
-        ->call('delete')
-        ->assertDontSee('Bella Pizza Kaunas Center');
+        ->set('confirmation', 'Bella Pizza Kaunas Center')->call('changeLifecycle')->assertHasNoErrors();
 
     expect(Branch::query()->whereKey($branch->id)->exists())->toBeFalse();
 });
@@ -146,9 +140,8 @@ test('owner cannot archive branch that contains an active order', function () {
     Order::factory()->forTableSession($closedSession)->confirmedByWaiter()->create();
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->call('confirmDelete', $branch->id)
-        ->call('delete')
+        ->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->set('confirmation', $branch->name)->call('changeLifecycle')
         ->assertHasErrors('structureDeletion');
 
     expect($branch->fresh())->not->toBeNull();
@@ -170,14 +163,14 @@ test('director can manage branches in their organization', function () {
     ]);
 
     Livewire::actingAs($director)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->set('name', 'Bella Pizza Kaunas Center')
-        ->set('address', 'Laisves 10')
-        ->set('city', 'Kaunas')
-        ->set('country', 'Lithuania')
-        ->set('timezone', 'Europe/Vilnius')
-        ->set('currency', 'EUR')
-        ->call('create')
+        ->test(RestaurantSetup::class)->set('form.organizationId', $organization->id)->set('form.brandId', $brand->id)
+        ->set('form.branchName', 'Bella Pizza Kaunas Center')
+        ->set('form.branchAddress', 'Laisves 10')
+        ->set('form.branchCity', 'Kaunas')
+        ->set('form.branchCountryCode', 'LT')
+        ->set('form.branchTimezone', 'Europe/Vilnius')
+        ->set('form.branchCurrency', 'EUR')
+        ->call('createRestaurant')
         ->assertHasNoErrors()
         ->assertSee('Bella Pizza Kaunas Center');
 });
@@ -198,9 +191,10 @@ test('member without manager role cannot mutate branches', function () {
     ]);
 
     Livewire::actingAs($waiter)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->set('name', 'Blocked Branch')
-        ->call('create')
+        ->test(RestaurantSetup::class)->set('form.organizationId', $organization->id)->set('form.brandId', $brand->id)
+        ->set('form.branchName', 'Blocked Branch')->set('form.branchAddress', 'Main 1')->set('form.branchCity', 'Vilnius')
+        ->set('form.branchCountryCode', 'LT')->set('form.branchTimezone', 'UTC')->set('form.branchCurrency', 'EUR')
+        ->call('createRestaurant')
         ->assertForbidden();
 });
 
@@ -225,14 +219,14 @@ test('organization scoped manage branches permission can manage branches', funct
     ]);
 
     Livewire::actingAs($waiter)
-        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->set('name', 'Bella Pizza Trakai')
-        ->set('address', 'Karaimu 5')
-        ->set('city', 'Trakai')
-        ->set('country', 'Lithuania')
-        ->set('timezone', 'Europe/Vilnius')
-        ->set('currency', 'EUR')
-        ->call('create')
+        ->test(RestaurantSetup::class)->set('form.organizationId', $organization->id)->set('form.brandId', $brand->id)
+        ->set('form.branchName', 'Bella Pizza Trakai')
+        ->set('form.branchAddress', 'Karaimu 5')
+        ->set('form.branchCity', 'Trakai')
+        ->set('form.branchCountryCode', 'LT')
+        ->set('form.branchTimezone', 'Europe/Vilnius')
+        ->set('form.branchCurrency', 'EUR')
+        ->call('createRestaurant')
         ->assertHasNoErrors()
         ->assertSee('Bella Pizza Trakai');
 });
@@ -267,32 +261,24 @@ test('branch manager can view and restore an archived branch without a page relo
     Livewire::actingAs($owner)
         ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
         ->assertDontSee('Archived Branch')
-        ->set('lifecycle', 'archived')
-        ->assertSee('Archived Branch')
-        ->call('restore', $branch->id)
-        ->assertHasNoErrors();
+        ->set('filters.lifecycle', 'archived')->assertSee('Archived Branch');
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $branch->id])
+        ->set('confirmation', $branch->name)->call('changeLifecycle')->assertHasNoErrors();
 
     expect($branch->fresh())->not->toBeNull();
 });
 
-test('livewire payload cannot restore a branch from another brand', function () {
+test('locked canonical editor cannot retarget restoration to another brand', function () {
     [$organization, $brand, $owner] = createOrganizationBrand();
     $foreignBrand = Brand::factory()->for($organization)->create(['name' => 'Foreign Brand']);
     $foreignBranch = Branch::factory()->for($organization)->for($foreignBrand)->create();
     $foreignBranch->deleteOrFail();
 
-    $caughtException = null;
-
-    try {
-        Livewire::actingAs($owner)
-            ->test(Index::class, compact('organization', 'brand'))
-            ->call('restore', $foreignBranch->id);
-    } catch (Throwable $exception) {
-        $caughtException = $exception;
-    }
-
-    expect($caughtException)->toBeInstanceOf(ModelNotFoundException::class)
-        ->and(Branch::withTrashed()->findOrFail($foreignBranch->id)->trashed())->toBeTrue();
+    $editableBranch = Branch::factory()->for($organization)->for($brand)->create();
+    $editor = Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'branch', 'objectId' => $editableBranch->id]);
+    expect(fn () => $editor->set('objectId', $foreignBranch->id))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+    expect(Branch::withTrashed()->findOrFail($foreignBranch->id)->trashed())->toBeTrue();
 });
 
 function createOrganizationBrand(string $organizationName = 'Food Group', string $brandName = 'Bella Pizza'): array

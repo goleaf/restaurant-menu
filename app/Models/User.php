@@ -252,7 +252,9 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         $branches = Branch::query()
             ->select(['id'])
             ->whereKey($branch->id)
-            ->where('organization_id', $organizationId);
+            ->where('organization_id', $organizationId)
+            ->when(! $withTrashed, fn (Builder $query): Builder => $query->whereHas('brand', fn (Builder $brand): Builder => $brand
+                ->whereNull('brands.deleted_at')->whereColumn('brands.organization_id', 'branches.organization_id')));
 
         if ($this->isSuperadmin()) {
             return $branches

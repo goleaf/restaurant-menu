@@ -67,8 +67,7 @@ test('repeated product compositions preserve controls, palette roles and respons
     assert.equal(declarations(css, '.rm-pagination__control:focus-visible')['box-shadow'], '0 0 0 2px var(--rm-focus)');
     assert.equal(declarations(css, '.rm-pagination__disabled').opacity, '60%');
     assert.equal(declarations(css, '.rm-pagination__current')['background-color'], 'var(--rm-brand-700)');
-    assert.equal(declarations(css, '.rm-structure-avatar').width, '3rem');
-    assert.equal(declarations(css, '.rm-structure-avatar:where(.dark, .dark *)')['background-color'], 'var(--color-zinc-950)');
+    assert.doesNotMatch(css, /\.rm-(?:structure-(?:toolbar|avatar|error|editor-error)|branch-shortcut)\b/);
     assert.equal(declarations(css, '.rm-draft-notice--error').color, 'var(--color-red-700)');
     assert.equal(declarations(css, '.rm-draft-notice--rejected').color, 'var(--color-red-800)');
     assert.equal(declarations(css, '.rm-menu-empty').border, '1px dashed var(--color-zinc-300)');
@@ -78,10 +77,9 @@ test('repeated product compositions preserve controls, palette roles and respons
     const expectedClasses = new Map([
         ['vendor/livewire/simple-tailwind', ['rm-pagination__control', 'rm-pagination__disabled']],
         ['vendor/livewire/tailwind', ['rm-pagination__current', 'rm-pagination__page']],
-        ['components/structure/list-toolbar', ['rm-structure-toolbar']],
-        ['livewire/organizations/index', ['<x-structure.list-toolbar', 'rm-structure-avatar', 'rm-structure-error']],
-        ['livewire/organizations/brands/index', ['<x-structure.list-toolbar', 'rm-structure-avatar']],
-        ['livewire/organizations/brands/branches/index', ['<x-structure.list-toolbar', 'rm-structure-avatar', 'rm-branch-shortcut']],
+        ['livewire/restaurants/index', ['rm-restaurant-center__filters', 'data-center-filter-toggle', 'rm-restaurant-center__thumbnail', 'rm-restaurant-center__row']],
+        ['livewire/restaurants/identity-editor', ['rm-restaurant-center__identity', 'rm-restaurant-center__context', 'center-identity-form-name-error']],
+        ['livewire/restaurants/structure-create', ['data-structure-create', 'rm-restaurant-center__form', 'center-create-form-name-error']],
         ['livewire/public-qr/draft-order', ['rm-draft-notice', 'rm-draft-notice--error']],
         ['livewire/public-qr/guest-entry', ['rm-guest-contact-link']],
         ['livewire/organizations/brands/branches/menu/catalog', ['rm-menu-empty']],
@@ -105,6 +103,8 @@ test('restaurant setup retains four independently mounted groups and accessible 
     assert.match(setup, /aria-controls="restaurant-setup-group-{{ \$number }}"/);
     assert.equal(declarations(css, '.rm-restaurant-center [data-flux-button]')['min-block-size'], 'var(--rm-spacing-touch)');
     assert.equal(declarations(css, '.rm-restaurant-center [data-flux-select-button]')['min-block-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center button[data-flux-accordion-heading]')['min-block-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center__filter-fields')['grid-template-columns'], 'repeat(3, minmax(0, 1fr))');
     assert.equal(declarations(css, '.rm-restaurant-center [data-flux-button]')['white-space'], 'normal');
     assert.equal(declarations(css, '.rm-restaurant-center__panel:focus-visible').outline, '2px solid var(--rm-focus)');
     assert.equal(declarations(css, '.rm-restaurant-center__panel:focus-visible')['outline-offset'], '3px');
@@ -112,7 +112,13 @@ test('restaurant setup retains four independently mounted groups and accessible 
     assert.equal(declarations(css, '.rm-restaurant-center__row')['grid-template-columns'], 'auto minmax(0, 1fr) auto');
     assert.equal(declarations(css, '.rm-restaurant-center__row > .rm-restaurant-center__actions')['grid-column'], '1/-1');
     assert.equal(declarations(css, '.rm-restaurant-center__thumbnail')['inline-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail')['block-size'], 'var(--rm-spacing-touch)');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail')['border-radius'], 'var(--rm-radius-control)');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail').border, '1px solid var(--rm-border-subtle)');
+    assert.equal(declarations(css, '.rm-restaurant-center__thumbnail').color, 'var(--rm-text-secondary)');
     assert.equal(declarations(css, '.rm-restaurant-center__thumbnail img')['object-fit'], 'contain');
+    assert.equal(declarations(css, '.rm-restaurant-center__results').container, 'restaurant-results/inline-size');
+    assert.match(css, /@container restaurant-results \(min-width: 45rem\)/);
     assert.match(css, /@container restaurant-center \(max-width: 39\.99rem\)/);
     assert.match(css, /@media \(forced-colors: active\)/);
     assert.doesNotMatch(setup, /rm-onboarding-disclosure|rm-onboarding-next-link/);

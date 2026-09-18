@@ -1,6 +1,6 @@
 <section class="rm-floor" data-page="branch-service-points" x-data="floorWorkspace">
     <header class="rm-floor__header">
-        <div><h1 class="rm-floor__title">{{ __('floor.title') }}</h1><flux:text>{{ $branch->name }} · {{ __('floor.description') }}</flux:text></div>
+        <div><h1 class="rm-floor__title">{{ __('floor.title') }}</h1><flux:text>{{ $branchName }} · {{ __('floor.description') }}</flux:text></div>
         <div class="rm-floor__actions">
             @if ($abilities['managePoints'])
                 <flux:button data-floor-transition wire:click="createPoint" variant="primary" icon="plus" wire:offline.attr="disabled">{{ __('floor.add_table') }}</flux:button>

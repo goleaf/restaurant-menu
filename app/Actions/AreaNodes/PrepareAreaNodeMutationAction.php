@@ -8,7 +8,6 @@ use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +16,6 @@ final class PrepareAreaNodeMutationAction
     /** @return array{actor:User,branch:Branch,area:AreaNode|null} */
     public function handle(int $branchId, ?User $actor, string $ability, ?int $areaId = null, ?int $expectedVersion = null): array
     {
-        $actor ??= Auth::user();
         $actor = $actor instanceof User ? $actor->fresh(['roles:id,code']) : null;
         if (! $actor instanceof User) {
             throw new AuthorizationException;

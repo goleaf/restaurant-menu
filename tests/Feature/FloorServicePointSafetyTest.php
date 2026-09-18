@@ -11,9 +11,11 @@ use App\Actions\ServicePoints\RestoreServicePointAction;
 use App\Actions\ServicePoints\SetServicePointActiveAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Enums\AuditLogAction;
+use App\Enums\BusinessRuleCode;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\AreaNode;
 use App\Models\AuditLog;
 use App\Models\Branch;
@@ -303,8 +305,8 @@ test('a linked active order blocks restructuring even after its primary session 
     try {
         app(DeleteServicePointAction::class)->handle($this->floorActor, $this->floorBranch, $linked, 0);
         $this->fail('The unfinished linked order must block archiving.');
-    } catch (\App\Exceptions\BusinessRuleViolation $exception) {
-        expect($exception->businessRule())->toBe(\App\Enums\BusinessRuleCode::StructureHasActiveOrder);
+    } catch (BusinessRuleViolation $exception) {
+        expect($exception->businessRule())->toBe(BusinessRuleCode::StructureHasActiveOrder);
     }
     expect($linked->fresh())->not->toBeNull()->and($order->fresh()->status)->toBe($order->status);
 });

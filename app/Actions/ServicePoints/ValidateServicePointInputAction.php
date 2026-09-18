@@ -27,8 +27,8 @@ final class ValidateServicePointInputAction
         $rules['isActive'] = ['required', ...$pointRules['isActive']];
         $rules['areaNodeId'] = ['nullable', 'numeric', 'integer'];
         $attributes = [];
-        foreach (['bulkType' => 'type', 'bulkPrefix' => 'prefix', 'bulkFrom' => 'from', 'bulkTo' => 'to', 'bulkCapacity' => 'capacity', 'areaNodeId' => 'area', 'icon' => 'icon', 'isActive' => 'active'] as $field => $key) {
-            $attributes[$field] = __('floor.fields.'.$key);
+        foreach (['bulkType' => 'floor.fields.type', 'bulkPrefix' => 'floor.fields.prefix', 'bulkFrom' => 'floor.fields.from', 'bulkTo' => 'floor.fields.to', 'bulkCapacity' => 'floor.fields.capacity', 'areaNodeId' => 'floor.fields.area', 'icon' => 'floor.fields.icon', 'isActive' => 'floor.fields.active'] as $field => $key) {
+            $attributes[$field] = __($key);
         }
         Validator::make($input, $rules, attributes: $attributes)->validate();
     }
@@ -51,8 +51,8 @@ final class ValidateServicePointInputAction
         $rules['isActive'] = ['required', ...$rules['isActive']];
         $rules['areaNodeId'] = ['nullable', 'numeric', 'integer'];
         $attributes = [];
-        foreach (['areaNodeId' => 'area', 'type' => 'type', 'name' => 'name', 'displayNumber' => 'number', 'capacity' => 'capacity', 'icon' => 'icon', 'isActive' => 'active'] as $field => $key) {
-            $attributes[$field] = __('floor.fields.'.$key);
+        foreach (['areaNodeId' => 'floor.fields.area', 'type' => 'floor.fields.type', 'name' => 'floor.fields.name', 'displayNumber' => 'floor.fields.number', 'capacity' => 'floor.fields.capacity', 'icon' => 'floor.fields.icon', 'isActive' => 'floor.fields.active'] as $field => $key) {
+            $attributes[$field] = __($key);
         }
         $validated = Validator::make($input, $rules, attributes: $attributes)->validate();
 

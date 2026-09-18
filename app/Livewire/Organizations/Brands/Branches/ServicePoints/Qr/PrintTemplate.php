@@ -21,7 +21,7 @@ class PrintTemplate extends Component
     {
         $actor = Auth::user();
         abort_unless($actor instanceof User, 401);
-        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ["panel" => "print"], $servicePoint, $qrCode), navigate: true);
+        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ['panel' => 'print'], $servicePoint, $qrCode), navigate: true);
     }
 
     public function render(): View

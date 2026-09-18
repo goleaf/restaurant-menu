@@ -93,7 +93,6 @@ function translationStandardEnglishIdentityAllowlist(): array
         'fields.placeholders.branch_email_example',
         'fields.placeholders.email_example',
         'fields.placeholders.phone_example',
-        'fields.placeholders.service_point_prefix_example',
         'fields.placeholders.website_url_example',
         'guest.cart.separator',
         'mcp.cli.id',
@@ -105,8 +104,6 @@ function translationStandardEnglishIdentityAllowlist(): array
         'qr.placeholders.short_code_example',
         'ui.actions.waiter.buildwaitertabledetailaction.message',
         'ui.livewire.organizations.brands.branches.areas.vip',
-        'ui.onboarding.restaurant_setup.brand_name_placeholder',
-        'ui.onboarding.restaurant_setup.organization_name_placeholder',
     ];
 
     return [

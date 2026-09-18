@@ -3,7 +3,9 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Index;
+use App\Livewire\Restaurants\IdentityEditor;
+use App\Livewire\Restaurants\Index;
+use App\Livewire\Restaurants\StructureCreate;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Order;
@@ -12,7 +14,6 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemRolesSeeder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
@@ -69,12 +70,8 @@ test('owner can create update and delete brand', function () {
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Food Group']);
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization])
-        ->assertSee('No brands yet.')
-        ->set('name', 'Bella Pizza')
-        ->call('create')
-        ->assertHasNoErrors()
-        ->assertSee('Bella Pizza');
+        ->test(StructureCreate::class, ['kind' => 'brand', 'organizationId' => $organization->id])
+        ->set('form.name', 'Bella Pizza')->call('save')->assertHasNoErrors()->assertDispatched('structure-identity-created');
 
     $brand = Brand::query()
         ->where('organization_id', $organization->id)
@@ -82,16 +79,13 @@ test('owner can create update and delete brand', function () {
         ->firstOrFail();
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization])
-        ->call('startEditing', $brand->id)
-        ->assertSet('editingName', 'Bella Pizza')
-        ->set('editingName', 'Bella Pasta')
-        ->call('update')
+        ->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $brand->id])
+        ->assertSet('form.name', 'Bella Pizza')
+        ->set('form.name', 'Bella Pasta')
+        ->call('save')
         ->assertHasNoErrors()
         ->assertSee('Bella Pasta')
-        ->call('confirmDelete', $brand->id)
-        ->call('delete')
-        ->assertDontSee('Bella Pasta');
+        ->set('confirmation', 'Bella Pasta')->call('changeLifecycle')->assertHasNoErrors();
 
     expect(Brand::query()->whereKey($brand->id)->exists())->toBeFalse();
 });
@@ -106,9 +100,8 @@ test('owner cannot archive brand that contains an active order', function () {
     Order::factory()->forTableSession($closedSession)->ready()->create();
 
     Livewire::actingAs($owner)
-        ->test(Index::class, ['organization' => $organization])
-        ->call('confirmDelete', $brand->id)
-        ->call('delete')
+        ->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $brand->id])
+        ->set('confirmation', $brand->name)->call('changeLifecycle')
         ->assertHasErrors('structureDeletion');
 
     expect($brand->fresh())->not->toBeNull();
@@ -131,11 +124,10 @@ test('director can manage brands in their organization', function () {
     ]);
 
     Livewire::actingAs($director)
-        ->test(Index::class, ['organization' => $organization])
-        ->set('name', 'Sushi Master')
-        ->call('create')
+        ->test(StructureCreate::class, ['kind' => 'brand', 'organizationId' => $organization->id])
+        ->set('form.name', 'Sushi Master')->call('save')
         ->assertHasNoErrors()
-        ->assertSee('Sushi Master');
+        ->assertDispatched('structure-identity-created');
 });
 
 test('member without manager role cannot mutate brands', function () {
@@ -155,10 +147,8 @@ test('member without manager role cannot mutate brands', function () {
     ]);
 
     Livewire::actingAs($waiter)
-        ->test(Index::class, ['organization' => $organization])
-        ->set('name', 'Blocked Brand')
-        ->call('create')
-        ->assertForbidden();
+        ->test(StructureCreate::class, ['kind' => 'brand', 'organizationId' => $organization->id])->assertForbidden();
+    expect(Brand::query()->where('name', 'Blocked Brand')->exists())->toBeFalse();
 });
 
 test('non member cannot access organization brands', function () {
@@ -191,10 +181,9 @@ test('brand manager can view and restore an archived brand without a page reload
     Livewire::actingAs($owner)
         ->test(Index::class, ['organization' => $organization])
         ->assertDontSee('Archived Brand')
-        ->set('lifecycle', 'archived')
-        ->assertSee('Archived Brand')
-        ->call('restore', $brand->id)
-        ->assertHasNoErrors();
+        ->set('filters.lifecycle', 'archived')->assertSee('Archived Brand');
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $brand->id])
+        ->set('confirmation', $brand->name)->call('changeLifecycle')->assertHasNoErrors();
 
     expect($brand->fresh())->not->toBeNull();
 });
@@ -206,16 +195,6 @@ test('livewire payload cannot restore a brand from another organization', functi
     $foreignBrand = Brand::factory()->for($foreignOrganization)->create();
     $foreignBrand->deleteOrFail();
 
-    $caughtException = null;
-
-    try {
-        Livewire::actingAs($owner)
-            ->test(Index::class, compact('organization'))
-            ->call('restore', $foreignBrand->id);
-    } catch (Throwable $exception) {
-        $caughtException = $exception;
-    }
-
-    expect($caughtException)->toBeInstanceOf(ModelNotFoundException::class)
-        ->and(Brand::withTrashed()->findOrFail($foreignBrand->id)->trashed())->toBeTrue();
+    Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => 'brand', 'objectId' => $foreignBrand->id])->assertForbidden();
+    expect(Brand::withTrashed()->findOrFail($foreignBrand->id)->trashed())->toBeTrue();
 });

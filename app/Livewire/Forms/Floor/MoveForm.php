@@ -15,6 +15,7 @@ class MoveForm extends Form
     public function target(int $branchId): ?int
     {
         $data = $this->validate(['targetAreaId' => ['bail', 'nullable', 'numeric', 'integer', Rule::exists(AreaNode::class, 'id')->where('branch_id', $branchId)->whereNull('deleted_at')]], attributes: ['targetAreaId' => __('floor.fields.target')]);
+
         return $data['targetAreaId'] === '' || $data['targetAreaId'] === null ? null : (int) $data['targetAreaId'];
     }
 }

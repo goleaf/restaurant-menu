@@ -3,9 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchIndex;
-use App\Livewire\Organizations\Brands\Index as BrandIndex;
-use App\Livewire\Organizations\Index as OrganizationIndex;
+use App\Livewire\Restaurants\IdentityEditor;
+use App\Livewire\Restaurants\Index;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -14,7 +13,7 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Dom\HTMLDocument;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -23,23 +22,16 @@ beforeEach(function (): void {
 });
 
 test('structure lists recover from archiving or restoring the last row without losing filters', function (string $kind, bool $archived): void {
-    [$component, $rows, $pageName] = structureListFixture($kind, 16, $archived);
+    [$component, $rows, $pageName] = structureListFixture($kind, 21, $archived);
     $target = $rows[0];
-    $component->set('search', 'Visible')->set('sort', 'name_desc')
-        ->set('lifecycle', $archived ? 'archived' : 'active')
-        ->call('setPage', 2, $pageName)
-        ->assertSee('Visible 01')->assertDontSee('Visible 16');
-
-    if ($archived) {
-        $component->call('restore', $target->id);
-    } else {
-        $component->call('confirmDelete', $target->id)->call('delete');
-    }
-
+    $component->set('filters.search', 'Visible')->set('filters.sort', 'name_desc')
+        ->set('filters.lifecycle', $archived ? 'archived' : 'active')->call('setPage', 2, $pageName);
+    expect(structureListNames($component))->toBe(['Visible 01']);
+    structureListChangeLifecycle($component, $target, $kind);
     $component->assertHasNoErrors()->assertSet('paginators.'.$pageName, 1)
-        ->assertSet('search', 'Visible')->assertSet('sort', 'name_desc')
-        ->assertSet('lifecycle', $archived ? 'archived' : 'active')
-        ->assertSee('Visible 16')->assertDontSee('Visible 01');
+        ->assertSet('filters.search', 'Visible')->assertSet('filters.sort', 'name_desc')
+        ->assertSet('filters.lifecycle', $archived ? 'archived' : 'active')->assertSet('objectId', null);
+    expect(structureListNames($component))->toContain('Visible 21')->not->toContain('Visible 01');
     expect($target->fresh()->trashed())->toBe(! $archived);
     foreach (array_slice($rows, 1) as $row) {
         expect($row->fresh()->trashed())->toBe($archived);
@@ -47,70 +39,69 @@ test('structure lists recover from archiving or restoring the last row without l
 })->with(['organizations', 'brands', 'branches'])->with([false, true]);
 
 test('structure lists retain populated later pages after a lifecycle mutation', function (string $kind): void {
-    [$component, $rows, $pageName] = structureListFixture($kind, 17);
-    $component->call('setPage', 2, $pageName)
-        ->call('confirmDelete', $rows[16]->id)->call('delete')
-        ->assertSet('paginators.'.$pageName, 2)->assertSee('Visible 16');
-    expect($rows[16]->fresh()->trashed())->toBeTrue();
+    [$component, $rows, $pageName] = structureListFixture($kind, 22);
+    $component->call('setPage', 2, $pageName);
+    structureListChangeLifecycle($component, $rows[21], $kind);
+    $component->assertSet('paginators.'.$pageName, 2);
+    expect(structureListNames($component))->toBe(['Visible 21'])->and($rows[21]->fresh()->trashed())->toBeTrue();
 })->with(['organizations', 'brands', 'branches']);
 
 test('structure lists recover stale pages and distinguish empty search from an empty collection', function (string $kind): void {
     [$component, $rows, $pageName] = structureListFixture($kind, 1);
     $component->call('setPage', 99, $pageName)->assertSet('paginators.'.$pageName, 1)
-        ->assertSee('Visible 01')->set('search', 'No matching record')
-        ->assertSeeHtml('data-structure-empty="search"')
-        ->set('search', '')->call('confirmDelete', $rows[0]->id)->call('delete')
-        ->assertSet('paginators.'.$pageName, 1)
-        ->assertSeeHtml('data-structure-empty="collection"');
+        ->set('filters.search', 'No matching record')->assertSeeHtml('data-center-empty="search"')->set('filters.search', '');
+    expect(structureListNames($component))->toBe(['Visible 01']);
+    structureListChangeLifecycle($component, $rows[0], $kind);
+    $component->assertSet('paginators.'.$pageName, 1);
+    expect(structureListNames($component))->toBe([])->and($component->viewData('emptyState'))->not->toBe('search');
 })->with(['organizations', 'brands', 'branches']);
 
-test('structure list toolbar exposes one labelled offline-safe filter set and the visible count', function (string $kind): void {
+test('structure list toolbar exposes one labelled offline-safe filter set and bounded rows', function (string $kind): void {
     [$component] = structureListFixture($kind, 2);
     $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$component->html().'</body></html>');
-    expect($document->querySelectorAll('[data-structure-list-toolbar]')->length)->toBe(1)
-        ->and($document->querySelector('[data-structure-visible-count]')->textContent)
-        ->toContain(__('structure.list.visible_count', ['count' => 2]));
-
     foreach (['search', 'lifecycle', 'sort'] as $name) {
-        $controls = $document->querySelectorAll('[data-structure-list-toolbar] [name="'.$name.'"]');
+        $binding = $name === 'search' ? 'wire:model.live.debounce.300ms' : 'wire:model.live';
+        $controls = $document->querySelectorAll('[data-page="restaurant-center"] [name="filters.'.$name.'"]');
         expect($controls->length)->toBe(1);
         $control = $controls->item(0);
-        expect($control->hasAttribute('wire:offline.attr'))->toBeTrue()
-            ->and($control->getAttribute('id'))->not->toBeEmpty()
-            ->and($document->querySelector('[data-flux-label][for="'.$control->getAttribute('id').'"]'))->not->toBeNull();
+        $field = $control->parentElement;
+        while ($field !== null && ! $field->hasAttribute('data-flux-field')) {
+            $field = $field->parentElement;
+        }
+        expect($control->getAttribute($binding))->toBe('filters.'.$name)
+            ->and($control->getAttribute('wire:offline.attr'))->toBe('disabled')
+            ->and(trim($field?->querySelector('[data-flux-label]')?->textContent ?? ''))
+            ->toBe(__(match ($name) {
+                'search' => 'center.search', 'lifecycle' => 'center.lifecycle', default => 'center.sort'
+            }));
     }
-
-    expect($document->querySelector('[data-structure-list-loading]')->getAttribute('role'))->toBe('status');
+    expect(structureListNames($component))->toHaveCount(2)
+        ->and($document->querySelectorAll('.rm-restaurant-center__row')->length)->toBe(2);
 })->with(['organizations', 'brands', 'branches']);
 
-test('structure mutations cannot target another tenant through the list controls', function (string $kind, bool $archived): void {
-    [$component] = structureListFixture($kind, 1);
+test('structure mutations cannot target another tenant through the canonical editor', function (string $kind, bool $archived): void {
+    [$component, $rows] = structureListFixture($kind, 1);
     $foreign = match ($kind) {
         'organizations' => Organization::factory()->create(['deleted_at' => $archived ? now() : null]),
         'brands' => Brand::factory()->create(['deleted_at' => $archived ? now() : null]),
         default => Branch::factory()->create(['deleted_at' => $archived ? now() : null]),
     };
-
-    if ($archived) {
-        expect(fn () => $component->call('restore', $foreign->id))->toThrow(ModelNotFoundException::class);
-    } else {
-        $property = match ($kind) {
-            'organizations' => 'deletingOrganizationId',
-            'brands' => 'deletingBrandId',
-            default => 'deletingBranchId',
-        };
-        expect(fn () => $component->set($property, $foreign->id)->call('delete'))->toThrow(ModelNotFoundException::class);
-    }
-
+    $singular = structureListKind($kind);
+    Livewire::test(IdentityEditor::class, ['kind' => $singular, 'objectId' => $foreign->id])->assertForbidden();
+    $editor = Livewire::test(IdentityEditor::class, ['kind' => $singular, 'objectId' => $rows[0]->id]);
+    expect(fn () => $editor->set('objectId', $foreign->id))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
     expect($foreign->fresh()->trashed())->toBe($archived);
 })->with(['organizations', 'brands', 'branches'])->with([false, true]);
 
-test('structure filter changes preserve invalid editor input and its error', function (string $kind): void {
+test('structure filter changes preserve invalid canonical editor input and its error', function (string $kind): void {
     [$component, $rows] = structureListFixture($kind, 1);
-    $component->call('startEditing', $rows[0]->id)->set('editingName', '')
-        ->call('update')->assertHasErrors(['editingName' => 'required'])
-        ->set('sort', 'name_desc')->set('search', 'Visible 01')
-        ->assertSet('editingName', '')->assertHasErrors(['editingName']);
+    $editor = Livewire::test(IdentityEditor::class, ['kind' => structureListKind($kind), 'objectId' => $rows[0]->id])
+        ->set('form.name', '')->call('save')->assertHasErrors(['form.name' => 'required']);
+    $component->set('kind', structureListKind($kind))->set('objectId', $rows[0]->id)
+        ->set('filters.sort', 'name_desc')->set('filters.search', 'Visible 01')
+        ->assertSet('objectId', $rows[0]->id);
+    $editor->call('$refresh')->assertSet('form.name', '')->assertHasErrors(['form.name']);
     expect($rows[0]->fresh()->name)->toBe('Visible 01');
 })->with(['organizations', 'brands', 'branches']);
 
@@ -121,42 +112,27 @@ test('read-only structure membership cannot archive or restore a visible record'
     $member = User::factory()->create();
     OrganizationUser::factory()->forOrganization($organization)->forUser($member)
         ->forSystemRole(SystemRole::Waiter)->active()->create();
-    $component = match ($kind) {
-        'organizations' => Livewire::actingAs($member)->test(OrganizationIndex::class),
-        'brands' => Livewire::actingAs($member)->test(BrandIndex::class, ['organization' => $organization]),
-        default => Livewire::actingAs($member)->test(BranchIndex::class, ['organization' => $organization, 'brand' => $target->brand]),
-    };
-
+    $editor = Livewire::actingAs($member)->test(IdentityEditor::class, ['kind' => structureListKind($kind), 'objectId' => $target->id]);
     if ($archived) {
-        $component->call('restore', $target->id)->assertForbidden();
+        $editor->assertForbidden();
     } else {
-        $property = match ($kind) {
-            'organizations' => 'deletingOrganizationId',
-            'brands' => 'deletingBrandId',
-            default => 'deletingBranchId',
-        };
-        $component->set($property, $target->id)->call('delete')->assertForbidden();
+        $editor->set('confirmation', $target->name)->call('changeLifecycle')->assertForbidden();
     }
-
     expect($target->fresh()->trashed())->toBe($archived);
 })->with(['organizations', 'brands', 'branches'])->with([false, true]);
 
-test('structure breadcrumbs treat domain names as literal text and translate only navigation labels', function (string $kind, string $name): void {
+test('structure context treats domain names as literal text and translates only interface labels', function (string $kind, string $name): void {
     $owner = User::factory()->create();
     $organization = Organization::factory()->for($owner, 'owner')->create(['name' => $name]);
-    OrganizationUser::factory()->forOrganization($organization)->forUser($owner)
-        ->forSystemRole(SystemRole::Owner)->active()->create();
+    OrganizationUser::factory()->forOrganization($organization)->forUser($owner)->forSystemRole(SystemRole::Owner)->active()->create();
     $brand = Brand::factory()->for($organization)->create(['name' => $name]);
-    $component = $kind === 'brands'
-        ? Livewire::actingAs($owner)->test(BrandIndex::class, ['organization' => $organization])
-        : Livewire::actingAs($owner)->test(BranchIndex::class, ['organization' => $organization, 'brand' => $brand]);
+    $target = $kind === 'brands' ? $brand : Branch::factory()->for($organization)->for($brand)->create(['name' => $name]);
+    $component = Livewire::actingAs($owner)->test(IdentityEditor::class, ['kind' => structureListKind($kind), 'objectId' => $target->id]);
     $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$component->html().'</body></html>');
-    $breadcrumbs = $document->querySelector('.rm-page-header__breadcrumbs');
-
-    expect(trim($breadcrumbs->querySelector('a')->textContent))->toBe(__('navigation.organizations'))
-        ->and(trim($breadcrumbs->querySelector('[aria-current="page"]')->textContent))->toBe($name);
+    expect(trim($document->querySelector('h2')->textContent))->toBe($name)
+        ->and(trim($document->querySelector('[data-center-parent="organization"]')->textContent))->toBe($name);
     if ($kind === 'branches') {
-        expect(trim($breadcrumbs->querySelectorAll('a')->item(1)->textContent))->toBe($name);
+        expect(trim($document->querySelector('[data-center-parent="brand"]')->textContent))->toBe($name);
     }
 })->with(['brands', 'branches'])->with(['navigation.organizations', 'validation']);
 
@@ -166,12 +142,10 @@ function structureListFixture(string $kind, int $count, bool $archived = false):
     $owner = User::factory()->create();
     $organization = Organization::factory()->for($owner, 'owner')->create(['name' => 'Context organization']);
     if ($kind !== 'organizations') {
-        OrganizationUser::factory()->forOrganization($organization)->forUser($owner)
-            ->forSystemRole(SystemRole::Owner)->active()->create();
+        OrganizationUser::factory()->forOrganization($organization)->forUser($owner)->forSystemRole(SystemRole::Owner)->active()->create();
     }
     $brand = $kind === 'branches' ? Brand::factory()->for($organization)->create(['name' => 'Context brand']) : null;
     $rows = [];
-
     foreach (range(1, $count) as $number) {
         $attributes = ['name' => sprintf('Visible %02d', $number), 'deleted_at' => $archived ? now() : null];
         $row = match ($kind) {
@@ -180,17 +154,36 @@ function structureListFixture(string $kind, int $count, bool $archived = false):
             default => Branch::factory()->for($organization)->for($brand)->create($attributes),
         };
         if ($row instanceof Organization) {
-            OrganizationUser::factory()->forOrganization($row)->forUser($owner)
-                ->forSystemRole(SystemRole::Owner)->active()->create();
+            OrganizationUser::factory()->forOrganization($row)->forUser($owner)->forSystemRole(SystemRole::Owner)->active()->create();
         }
         $rows[] = $row;
     }
-
     $component = match ($kind) {
-        'organizations' => Livewire::actingAs($owner)->test(OrganizationIndex::class)->set('search', 'Visible'),
-        'brands' => Livewire::actingAs($owner)->test(BrandIndex::class, ['organization' => $organization])->set('search', 'Visible'),
-        default => Livewire::actingAs($owner)->test(BranchIndex::class, ['organization' => $organization, 'brand' => $brand])->set('search', 'Visible'),
+        'organizations' => Livewire::actingAs($owner)->test(Index::class)->set('filters.view', 'structure'),
+        'brands' => Livewire::actingAs($owner)->test(Index::class, ['organization' => $organization]),
+        default => Livewire::actingAs($owner)->test(Index::class, compact('organization', 'brand')),
     };
+    $component->set('filters.search', 'Visible')->set('filters.lifecycle', $archived ? 'archived' : 'active');
 
-    return [$component, $rows, $kind.'Page'];
+    return [$component, $rows, $kind === 'branches' ? 'page' : $kind.'Page'];
+}
+
+function structureListKind(string $kind): string
+{
+    return match ($kind) {
+        'organizations' => 'organization', 'brands' => 'brand', default => 'branch',
+    };
+}
+
+/** @return list<string> */
+function structureListNames(Testable $component): array
+{
+    return $component->viewData('rows')->getCollection()->pluck('name')->all();
+}
+
+function structureListChangeLifecycle(Testable $component, Model $target, string $kind): void
+{
+    Livewire::test(IdentityEditor::class, ['kind' => structureListKind($kind), 'objectId' => $target->getKey()])
+        ->set('confirmation', $target->getAttribute('name'))->call('changeLifecycle')->assertHasNoErrors()->assertDispatched('restaurant-lifecycle-saved');
+    $component->call('lifecycleSaved');
 }

@@ -81,3 +81,22 @@ test('local reference has a current navigation marker only in the local administ
     expect(collect(app(ApplicationNavigationPresenter::class)->handle($user, $request)['navigationItems'])->firstWhere('key', 'components'))
         ->toMatchArray(['current' => true]);
 });
+
+test('restaurant center and setup navigation have one current destination without changing workspace mode', function (string $route, array $parameters, string $current): void {
+    $user = User::factory()->create();
+    $request = Request::create(route($route, $parameters));
+    $matched = app('router')->getRoutes()->match($request);
+    $request->setRouteResolver(fn () => $matched);
+    $navigation = app(ApplicationNavigationPresenter::class)->handle($user, $request);
+    $items = collect($navigation['navigationItems']);
+
+    expect($items->where('current', true)->pluck('key')->values()->all())->toBe([$current])
+        ->and($items->pluck('key')->all())->toBe(['dashboard', 'organizations', 'onboarding'])
+        ->and($navigation['workspace']->mode)->toBe('structure');
+})->with([
+    'canonical setup' => ['restaurants.setup', ['setup' => 1], 'onboarding'],
+    'canonical creation' => ['restaurants.create', [], 'onboarding'],
+    'restaurant list' => ['restaurants.index', [], 'organizations'],
+    'selected properties' => ['restaurants.index', ['kind' => 'branch', 'object' => 1], 'organizations'],
+    'business structure' => ['restaurants.index', ['view' => 'structure'], 'organizations'],
+]);

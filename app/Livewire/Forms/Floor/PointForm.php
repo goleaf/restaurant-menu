@@ -15,11 +15,17 @@ use Livewire\Form;
 class PointForm extends Form
 {
     public mixed $areaNodeId = '';
+
     public mixed $type = 'table';
+
     public mixed $icon = 'squares-2x2';
+
     public mixed $name = '';
+
     public mixed $displayNumber = '';
+
     public mixed $capacity = 2;
+
     public mixed $isActive = true;
 
     public function loadPoint(ServicePoint $point): void
@@ -33,12 +39,15 @@ class PointForm extends Form
     public function payload(Branch $branch): array
     {
         foreach (['name', 'displayNumber'] as $field) {
-            if (is_string($this->{$field})) { $this->{$field} = trim($this->{$field}); }
+            if (is_string($this->{$field})) {
+                $this->{$field} = trim($this->{$field});
+            }
         }
         $data = $this->validate([
             'areaNodeId' => ['bail', 'nullable', 'numeric', 'integer', Rule::exists(AreaNode::class, 'id')->where('branch_id', $branch->id)->whereNull('deleted_at')],
             ...ServicePointRules::servicePoint(iconValues: FloorOptions::icons()),
         ], attributes: $this->validationAttributes());
+
         return ['area_node_id' => $data['areaNodeId'] === '' || $data['areaNodeId'] === null ? null : (int) $data['areaNodeId'],
             'type' => $data['type'], 'icon' => $data['icon'], 'name' => $data['name'], 'display_number' => $data['displayNumber'] === '' ? null : $data['displayNumber'],
             'capacity' => (int) $data['capacity'], 'is_active' => (bool) $data['isActive']];
@@ -47,7 +56,7 @@ class PointForm extends Form
     /** @return array<string,string> */
     protected function validationAttributes(): array
     {
-        return collect(['areaNodeId' => 'area', 'type' => 'type', 'icon' => 'icon', 'name' => 'name', 'displayNumber' => 'number', 'capacity' => 'capacity', 'isActive' => 'active'])
-            ->map(fn (string $key): string => __('floor.fields.'.$key))->all();
+        return collect(['areaNodeId' => 'floor.fields.area', 'type' => 'floor.fields.type', 'icon' => 'floor.fields.icon', 'name' => 'floor.fields.name', 'displayNumber' => 'floor.fields.number', 'capacity' => 'floor.fields.capacity', 'isActive' => 'floor.fields.active'])
+            ->map(fn (string $key): string => __($key))->all();
     }
 }

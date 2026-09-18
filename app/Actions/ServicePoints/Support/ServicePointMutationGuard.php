@@ -10,14 +10,12 @@ use App\Models\Branch;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 final class ServicePointMutationGuard
 {
     public function actor(?User $actor): User
     {
-        $actor ??= Auth::user();
         if (! $actor instanceof User) {
             throw new AuthorizationException;
         }

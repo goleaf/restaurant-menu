@@ -27,7 +27,7 @@ class ResolveWaiterAccessibleBranchIdsAction
         $codes = array_map(fn (SystemPermission $permission): string => $permission->value, $permissions);
         $singleCode = count($codes) === 1 ? $codes[0] : null;
         if ($user->isSuperadmin()) {
-            $branches = Branch::query()->when($includeArchived, fn ($query) => $query->withTrashed())->select(['id'])->orderBy('id')->pluck('id');
+            $branches = $this->branchQuery($includeArchived)->select(['id'])->orderBy('id')->pluck('id');
 
             return array_fill_keys($codes, $branches);
         }
@@ -51,7 +51,7 @@ class ResolveWaiterAccessibleBranchIdsAction
                 ])]),
             )->get();
         $organizationIds = $memberships->pluck('organization_id')->unique();
-        $branches = Branch::query()->when($includeArchived, fn ($query) => $query->withTrashed())
+        $branches = $this->branchQuery($includeArchived)
             ->whereIn('organization_id', $organizationIds)->orderBy('id')->pluck('organization_id', 'id');
         $assignments = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'status'])
             ->where('user_id', $user->id)
@@ -87,9 +87,9 @@ class ResolveWaiterAccessibleBranchIdsAction
     }
 
     /** @return Builder<Branch> */
-    public function authorizedBranchQuery(User $user): Builder
+    public function authorizedBranchQuery(User $user, bool $includeArchived = false): Builder
     {
-        $query = Branch::query()->select('branches.id');
+        $query = $this->branchQuery($includeArchived)->select('branches.id');
         if ($user->isSuperadmin()) {
             return $query;
         }
@@ -99,6 +99,15 @@ class ResolveWaiterAccessibleBranchIdsAction
             ->whereIn('organization_id', OrganizationUser::query()->select('organization_id')->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value))
             ->where(fn ($branch) => $branch->whereNotExists($assignments)
                 ->orWhereExists((clone $assignments)->whereColumn('branch_id', 'branches.id')->where('status', OrganizationUserStatus::Active->value)));
+    }
+
+    /** @return Builder<Branch> */
+    private function branchQuery(bool $includeArchived): Builder
+    {
+        return Branch::query()
+            ->when($includeArchived, fn (Builder $query): Builder => $query->withTrashed())
+            ->when(! $includeArchived, fn (Builder $query): Builder => $query->whereHas('brand', fn (Builder $brand): Builder => $brand
+                ->whereNull('brands.deleted_at')->whereColumn('brands.organization_id', 'branches.organization_id')));
     }
 
     private function permissionIsEnabled(Permission $permission): bool

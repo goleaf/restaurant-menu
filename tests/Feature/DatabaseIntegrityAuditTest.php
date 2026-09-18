@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
+use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AreaNodeType;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -11,6 +12,8 @@ use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,7 +40,7 @@ test('every foreign key has a leading supporting index', function (): void {
         }
     }
 
-    expect($violations)->toBeEmpty();
+    expect($violations)->toBe([]);
 });
 
 test('non unique indexes do not duplicate another index prefix', function (): void {
@@ -86,9 +89,14 @@ test('public and tenant identities have their required unique indexes', function
 });
 
 test('onboarding retry invariants have database uniqueness guards', function (): void {
-    expect(databaseAuditIndex('restaurant_onboardings', ['user_id'], unique: true))->not->toBeNull()
-        ->and(databaseAuditIndex('restaurant_onboardings', ['organization_id'], unique: true))->not->toBeNull()
-        ->and(databaseAuditIndex('restaurant_onboardings', ['brand_id'], unique: true))->not->toBeNull()
+    expect(databaseAuditIndex('restaurant_onboardings', ['user_id'], unique: true))->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['organization_id'], unique: true))->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['brand_id'], unique: true))->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['user_id', 'completed_at', 'id']))->not->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['organization_id']))->not->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['brand_id']))->not->toBeNull()
+        ->and(databaseAuditIndex('restaurant_onboardings', ['creation_key'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('structure_creation_receipts', ['actor_id', 'request_key'], unique: true))->not->toBeNull()
         ->and(databaseAuditIndex('restaurant_onboardings', ['branch_id'], unique: true))->not->toBeNull()
         ->and(databaseAuditIndex('restaurant_onboardings', ['area_node_id'], unique: true))->not->toBeNull()
         ->and(databaseAuditIndex('restaurant_onboardings', ['menu_id'], unique: true))->not->toBeNull()
@@ -228,7 +236,11 @@ test('branch tenant identity cannot disagree with its brand', function (): void 
 });
 
 test('area node creation rejects a parent from another branch', function (): void {
-    $branch = Branch::factory()->create();
+    $this->seed(SystemPermissionsSeeder::class);
+    $actor = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($actor, ['name' => 'Parent boundary group']);
+    $brand = Brand::factory()->for($organization)->create();
+    $branch = Branch::factory()->for($organization)->for($brand)->create();
     $otherBranch = Branch::factory()->create();
     $otherParent = AreaNode::factory()->forBranch($otherBranch)->create();
 
@@ -239,7 +251,7 @@ test('area node creation rejects a parent from another branch', function (): voi
         'icon' => null,
         'sort_order' => 10,
         'is_active' => true,
-    ]))->toThrow(InvalidArgumentException::class, 'errors.domain.selected_parent_area_unavailable');
+    ], $actor))->toThrow(InvalidArgumentException::class, 'errors.domain.selected_parent_area_unavailable');
 });
 
 test('guest opener relation is constrained and nulls safely when the guest is deleted', function (): void {

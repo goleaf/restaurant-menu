@@ -7,10 +7,9 @@ use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\BulkCreate;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\PointEditor;
-use App\Livewire\Organizations\Brands\Branches\ServicePoints\BulkCreate;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\SelectionOperations;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -54,25 +53,15 @@ test('service point page requires manage service points permission', function ()
         ->assertSee(__('floor.tables_empty_help'));
 });
 
-test('branch list shows service point link to users with permission or waiter role', function () {
-    [$organization, $brand, , $manager] = createServicePointCrudBranch();
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertDontSee('Service points');
-
+test('floor workspace allows permitted managers and waiters without exposing it to other members', function (): void {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))->assertForbidden();
     grantServicePointCrudPermission($manager, $organization);
-
-    Livewire::actingAs($manager)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee('Service points');
-
+    Livewire::actingAs($manager->fresh())->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertViewHas('abilities', fn (array $abilities): bool => $abilities['managePoints'])->assertSee(__('floor.title'));
     $waiter = User::factory()->create();
     attachServicePointCrudWaiter($waiter, $organization);
-
-    Livewire::actingAs($waiter)
-        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee('Service points');
+    Livewire::actingAs($waiter)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))->assertSee(__('floor.title'));
 });
 
 test('manager can create service points inside a branch area', function () {

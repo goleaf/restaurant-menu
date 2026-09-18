@@ -12,7 +12,7 @@ import { menuWorkspace } from './components/menu-workspace.js';
 import { workspaceNavigation } from './components/navigation-search.js';
 import { notificationPanel } from './components/notification-panel.js';
 import { passkeyRegistration, passkeyVerification } from './components/passkeys.js';
-import { catalogTransfer, catalogUpload, onboardingFocus, recoveryCodes, restaurantDashboard } from './components/presentation.js';
+import { catalogTransfer, catalogUpload, recoveryCodes, restaurantDashboard } from './components/presentation.js';
 import { securityClipboard } from './components/security-clipboard.js';
 import { restoreUpload } from './components/restore-upload.js';
 import { invitationClipboard, staffEditor, staffWorkspace } from './components/staff-workspace.js';
@@ -32,7 +32,7 @@ export function registerAlpineComponents(Alpine) {
         invitationClipboard, kitchenTimers, menuImagePicker, menuImagePresentationEditor,
         menuTranslations, menuWorkspace, notificationPanel, securityClipboard, staffEditor,
         staffWorkspace, twoFactorChallenge, waiterSounds, workspaceNavigation,
-        catalogTransfer, catalogUpload, onboardingFocus, recoveryCodes, restaurantDashboard, restoreUpload,
+        catalogTransfer, catalogUpload, recoveryCodes, restaurantDashboard, restoreUpload,
         passkeyRegistration: () => passkeyRegistration(passkeys),
         passkeyVerification: () => passkeyVerification(passkeys),
     };

@@ -12,7 +12,8 @@
         h2 { @include tokens.type('lg'); font-weight: 600; }
         p, dd, dt, h1, h2 { overflow-wrap: anywhere; }
         [data-flux-button],
-        [data-flux-select-button] { min-block-size: var(--rm-spacing-touch); block-size: auto !important; padding-block: tokens.space(2); white-space: normal !important; max-inline-size: 100%; }
+        [data-flux-select-button],
+        button[data-flux-accordion-heading] { min-block-size: var(--rm-spacing-touch); block-size: auto !important; padding-block: tokens.space(2); white-space: normal !important; max-inline-size: 100%; }
         [data-flux-field], form { min-inline-size: 0; }
     }
 
@@ -25,9 +26,11 @@
     .rm-restaurant-center__identity,
     .rm-restaurant-center__form,
     .rm-restaurant-center__filters,
+    .rm-restaurant-center__filter-fields,
     .rm-restaurant-center__panel { display: grid; gap: tokens.space(4); min-inline-size: 0; align-content: start; }
     .rm-restaurant-center__panel,
     .rm-restaurant-center__row { padding: tokens.space(4); border: 1px solid var(--rm-border-subtle); border-radius: var(--rm-radius-card); background: var(--rm-surface); }
+    .rm-restaurant-center__results { container: restaurant-results / inline-size; }
     .rm-restaurant-center__row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: tokens.space(3); }
     .rm-restaurant-center__row > .rm-restaurant-center__actions { grid-column: 1 / -1; }
     .rm-restaurant-center__thumbnail {
@@ -53,7 +56,10 @@
     }
 
     @container restaurant-center (min-width: 40rem) {
-        .rm-restaurant-center__filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .rm-restaurant-center__filter-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @container restaurant-results (min-width: 45rem) {
         .rm-restaurant-center__row { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
         .rm-restaurant-center__row .rm-restaurant-center__actions { grid-column: auto; max-inline-size: 22rem; justify-content: end; }
     }

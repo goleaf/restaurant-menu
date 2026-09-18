@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\OrganizationSubscriptionStatus;
+use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Organization;
@@ -23,7 +25,22 @@ final class OrganizationPolicy
 
     public function create(User $user): bool
     {
-        return $user->exists;
+        return $this->createFirstBusiness($user) || $this->createAdditionalBusiness($user);
+    }
+
+    public function createFirstBusiness(User $user): bool
+    {
+        return $user->exists
+            && ! $user->organizationMemberships()->exists()
+            && ! $user->roles()->where('roles.code', '!=', SystemRole::Owner->value)->exists();
+    }
+
+    public function createAdditionalBusiness(User $user): bool
+    {
+        return $user->exists && $user->organizationMemberships()
+            ->where('status', OrganizationUserStatus::Active->value)
+            ->whereHas('organization', fn ($query) => $query->whereHas('subscription', fn ($subscription) => $subscription->where('status', OrganizationSubscriptionStatus::Active->value)))
+            ->exists();
     }
 
     public function update(User $user, Organization $organization): bool

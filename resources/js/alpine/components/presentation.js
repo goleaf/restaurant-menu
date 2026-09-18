@@ -34,21 +34,6 @@ export function restaurantDashboard() {
     };
 }
 
-export function onboardingFocus() {
-    return {
-        focusStep() {
-            this.$nextTick(() => { if (this.$el.isConnected) this.$el.querySelector('[data-onboarding-step-heading]')?.focus(); });
-        },
-        focusValidationError() {
-            this.$nextTick(() => {
-                if (!this.$el.isConnected) return;
-                const field = this.$el.querySelector('[aria-invalid="true"]') ?? this.$el.querySelector('#onboarding-validation-summary');
-                field?.focus();
-            });
-        },
-    };
-}
-
 export function catalogTransfer() {
     return {
         focusFeedback() {

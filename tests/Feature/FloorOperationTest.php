@@ -15,8 +15,14 @@ it('records one exact floor command and reauthorizes every replay', function ():
     $request = (string) Str::uuid();
     $checks = 0;
     $writes = 0;
-    $authorize = function () use (&$checks): void { $checks++; };
-    $apply = function () use (&$writes): array { $writes++; return ['id' => 123]; };
+    $authorize = function () use (&$checks): void {
+        $checks++;
+    };
+    $apply = function () use (&$writes): array {
+        $writes++;
+
+        return ['id' => 123];
+    };
     $action = app(RunFloorOperationAction::class);
     expect($action->handle($actor, $branch, $request, 'create-table', null, ['name' => 'A'], $authorize, $apply))->toBe(['id' => 123]);
     expect($action->handle($actor, $branch, $request, 'create-table', null, ['name' => 'A'], $authorize, $apply))->toBe(['id' => 123]);

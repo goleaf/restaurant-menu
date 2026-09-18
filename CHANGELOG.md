@@ -4,6 +4,17 @@
 
 # Changelog
 
+## 2026-09-18 — Prompt 4 restaurant-center verification and consolidation
+
+- Retire duplicate organization/brand/restaurant list forms; keep the shared center, canonical identity/media editor and addressable four-group setup.
+- Fix archived visibility, incompatible URL parents and hierarchy search, keeping administrative viewing separate from the active workspace.
+- Reject malformed setup identities, preserve linked historical content through schema upgrade and recover QR file failures without changing permanent identities.
+- Restore parents with explicit inactive-restaurant/staff-access consequences and atomic audit; preserve owners, roles, overrides and access to other restaurants.
+- Share first-business and additional-business creation eligibility across the wizard and standalone entry; reject false intent and revoked contexts without granting ownership in an existing organization.
+- Apply twelve reviewed additive local schema prerequisites after private backup and rollback rehearsal, preserving every existing row and old column value; leave four unrelated migrations pending.
+- Improve dialog/error semantics, responsive filters/cards, visible parent context and upload help; remove obsolete styles/translations and update existing workflow tests.
+- Supported-runtime acceptance passes4,612 backend cases/80,260 assertions with92.3% coverage, the full89-case browser suite plus final11-case delta,275 JavaScript cases and all applicable quality/build gates. PHP8.6 application requirements remain blocked. PROGRESS.md records exact source/runtime boundaries and delivery separately; no deployment is performed.
+
 ## 2026-09-17 — Prompt 3 workspace verification refresh (partial)
 
 - Keep account, restaurant-management and platform modes authoritative over incidental restaurant query parameters. Preserve verified restaurant/department context in table and ticket return links, independently of another tab's preference.

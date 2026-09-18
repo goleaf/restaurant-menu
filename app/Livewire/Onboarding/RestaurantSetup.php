@@ -14,7 +14,6 @@ use App\Actions\Onboarding\UseExistingSetupMenuAction;
 use App\Actions\Onboarding\UseExistingSetupSpaceAction;
 use App\Livewire\Forms\Onboarding\RestaurantSetupForm;
 use App\Models\Organization;
-use App\Models\RestaurantOnboarding;
 use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
 use App\Services\Organizations\RestaurantCenterQuery;
@@ -85,7 +84,7 @@ final class RestaurantSetup extends Component
         $this->actorId = (int) Auth::id();
         $this->creationKey = (string) Str::uuid();
         $this->onboardingId = $setup;
-        $this->firstLaunch = Gate::forUser($this->actor())->allows('create', RestaurantOnboarding::class);
+        $this->firstLaunch = Gate::forUser($this->actor())->denies('createAdditionalBusiness', Organization::class);
         $this->form->branchTimezone = RestaurantSetupOptions::defaultTimezone(config('app.timezone'));
         if ($setup !== null) {
             $this->queries->findForUserOrFail($this->actor(), $setup);

@@ -9,7 +9,6 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
 use App\Models\AreaNode;
@@ -171,7 +170,8 @@ test('generate qr permission can access service points and create qr from ui', f
     [$organization, $brand, $branch, $manager] = createPrompt23Branch();
     grantPrompt23Permission($manager, $organization, SystemPermission::GenerateQr);
     $point = ServicePoint::factory()->for($branch)->create(['name' => 'QR table']);
-    Livewire::actingAs($manager)->test(BranchesIndex::class, compact('organization', 'brand'))->assertSet('canGenerateQr', true)->assertSee('Service points');
+    Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->assertViewHas('abilities', fn (array $abilities): bool => $abilities['qr'])->assertSee(__('floor.title'));
     $this->actingAs($manager)->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))->assertOk();
     Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
         ->assertViewHas('abilities', fn (array $abilities): bool => $abilities['qr'] && ! $abilities['managePoints'])

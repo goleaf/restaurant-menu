@@ -25,22 +25,13 @@ test('dashboard focuses prepared invalid fields and releases queued animation fr
     assert.equal(frames.size, 0); assert.equal(field.focused, 1);
 });
 
-test('onboarding and CSV focus stay inside a mounted scope and recovery visibility is local', async t => {
+test('CSV focus stays inside a mounted scope and recovery visibility is local', async t => {
     const app = browser(t);
-    const { onboardingFocus, catalogTransfer, recoveryCodes } = await factories();
-    const onboarding = app.component(onboardingFocus), heading = new Element(), error = new Element(), summary = new Element();
-    onboarding.$el.children.set('[data-onboarding-step-heading]', [heading]);
-    onboarding.$el.children.set('[aria-invalid="true"]', [error]);
-    onboarding.$el.children.set('#onboarding-validation-summary', [summary]);
-    onboarding.$el.children.set('[aria-invalid="true"], #onboarding-validation-summary', [summary, error]);
-    onboarding.focusStep(); onboarding.focusValidationError();
-    assert.equal(heading.focused, 1); assert.equal(error.focused, 1); assert.equal(summary.focused, 0);
-    onboarding.$el.children.delete('[aria-invalid="true"]');
-    onboarding.focusValidationError(); assert.equal(summary.focused, 1);
-    onboarding.$el.isConnected = false; onboarding.focusStep(); assert.equal(heading.focused, 1);
+    const { catalogTransfer, recoveryCodes } = await factories();
+    const heading = new Element();
     const transfer = app.component(catalogTransfer); transfer.$refs.feedback = heading;
-    transfer.focusFeedback(); assert.equal(heading.focused, 2);
-    transfer.$el.isConnected = false; transfer.focusFeedback(); assert.equal(heading.focused, 2);
+    transfer.focusFeedback(); assert.equal(heading.focused, 1);
+    transfer.$el.isConnected = false; transfer.focusFeedback(); assert.equal(heading.focused, 1);
     const codes = recoveryCodes(); codes.show(); assert.equal(codes.showRecoveryCodes, true); codes.hide(); assert.equal(codes.showRecoveryCodes, false);
 });
 

@@ -5,7 +5,7 @@ use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
 use App\Enums\OrganizationSubscriptionPaymentStatus;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Index as OrganizationsIndex;
+use App\Livewire\Restaurants\Index as OrganizationsIndex;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Models\OrganizationSubscription;
 use App\Models\Role;
@@ -78,7 +78,7 @@ test('ordinary user cannot access inactive organization from restaurant workspac
         ->handle($organization, OrganizationSubscriptionStatus::Inactive);
 
     Livewire::actingAs($owner)
-        ->test(OrganizationsIndex::class)
+        ->test(OrganizationsIndex::class)->set('filters.view', 'structure')
         ->assertDontSee('Paused Restaurant Group');
 
     $this->actingAs($owner)

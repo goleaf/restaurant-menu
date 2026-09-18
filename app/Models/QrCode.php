@@ -92,6 +92,7 @@ class QrCode extends Model
     {
         return $this->belongsTo(User::class, 'revoked_by_user_id');
     }
+
     /** @return list<string> */
     protected function structureVersionFields(): array
     {

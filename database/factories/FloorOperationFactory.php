@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\FloorOperation;
 use App\Models\Branch;
+use App\Models\FloorOperation;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;

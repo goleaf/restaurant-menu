@@ -10,9 +10,12 @@ use App\Livewire\Restaurants\Index;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
+use App\Models\Organization;
+use App\Models\OrganizationSubscription;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\PermissionUserOverride;
+use App\Models\RestaurantOnboarding;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Organizations\RestaurantCenterQuery;
@@ -83,13 +86,15 @@ it('clears an incompatible parent selection from an initial bookmarked URL befor
         ->assertViewHas('rows', fn ($rows): bool => $rows->pluck('id')->all() === [$this->branch->id]);
 });
 
-it('retains list context when opening a child structure and clears only incompatible filters', function (): void {
+it('retains list context while clearing the parent search when opening a child structure', function (): void {
     $query = app(RestaurantCenterQuery::class);
     $parameters = ['view' => 'structure', 'q' => 'Private', 'sort' => 'name_desc', 'lifecycle' => 'archived', 'organizationsPage' => 2];
     $row = $query->row($this->organization, 'organization', $parameters);
     parse_str(parse_url($row['children'], PHP_URL_QUERY), $child);
     expect($child)->toMatchArray(['view' => 'structure', 'organization' => (string) $this->organization->id,
-        'q' => 'Private', 'sort' => 'name_desc', 'lifecycle' => 'archived', 'organizationsPage' => '2']);
+        'q' => '', 'sort' => 'name_desc', 'lifecycle' => 'archived', 'organizationsPage' => '2']);
+    parse_str(parse_url($row['properties'], PHP_URL_QUERY), $properties);
+    expect($properties['q'])->toBe('Private');
 });
 
 it('prepares row logos from the selected identity without any extra queries', function (): void {
@@ -134,4 +139,58 @@ it('keeps the exact superadmin archive policy and loads archived ancestry when t
     $identity = $query->identity($superadmin, 'branch', $this->branch->id);
     expect($identity->organization->name)->toBe($this->organization->name)
         ->and($identity->brand->name)->toBe($this->brand->name);
+});
+
+it('offers the common restaurant creation entry to a global superadmin with an eligible existing parent', function (): void {
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->sole());
+    $query = app(RestaurantCenterQuery::class);
+
+    expect($superadmin->organizationMemberships()->exists())->toBeFalse()
+        ->and(Gate::forUser($superadmin)->allows('create', Organization::class))->toBeFalse()
+        ->and(Gate::forUser($superadmin)->allows('createAdditional', [RestaurantOnboarding::class, $this->organization]))->toBeTrue()
+        ->and($query->canCreateRestaurant($superadmin, ''))->toBeTrue();
+    Livewire::actingAs($superadmin)->test(Index::class)->assertViewHas('canCreateRestaurant', true)
+        ->assertSee(route('restaurants.create'), false);
+});
+
+it('rejects the common superadmin entry when no parent has active subscription and active identity', function (string $state): void {
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->sole());
+    if ($state === 'archived') {
+        $this->organization->delete();
+    } elseif ($state === 'inactive_subscription') {
+        $this->organization->subscription()->update(['status' => 'inactive']);
+    } else {
+        $this->organization->subscription->delete();
+    }
+
+    expect(Gate::forUser($superadmin)->allows('create', Organization::class))->toBeFalse()
+        ->and(Gate::forUser($superadmin)->allows('createAdditional', [RestaurantOnboarding::class, $this->organization]))->toBeFalse()
+        ->and(app(RestaurantCenterQuery::class)->canCreateRestaurant($superadmin, ''))->toBeFalse();
+    Livewire::actingAs($superadmin)->test(Index::class)->assertViewHas('canCreateRestaurant', false);
+})->with(['archived', 'inactive_subscription', 'missing_subscription']);
+
+it('finds an eligible creation parent beyond the first page and still applies its current policy', function (): void {
+    $this->organization->delete();
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->sole());
+    Organization::factory()->count(25)->has(OrganizationSubscription::factory()->inactive(), 'subscription')->create();
+    $eligible = Organization::factory()->has(OrganizationSubscription::factory()->active(), 'subscription')->create();
+    $query = app(RestaurantCenterQuery::class);
+
+    expect($query->canCreateRestaurant($superadmin, ''))->toBeTrue()
+        ->and($query->canCreateRestaurant($superadmin, (string) $eligible->id))->toBeTrue();
+    Gate::before(fn (User $user, string $ability): ?bool => $ability === 'createAdditional' ? false : null);
+    expect($query->canCreateRestaurant($superadmin, ''))->toBeFalse();
+});
+
+it('preserves creation permission denials for staff and owners on the selected parent', function (): void {
+    $query = app(RestaurantCenterQuery::class);
+    expect($query->canCreateRestaurant($this->waiter, (string) $this->organization->id))->toBeFalse();
+    $permission = Permission::query()->where('code', SystemPermission::ManageBranches->value)->sole();
+    PermissionUserOverride::factory()->forUser($this->owner)->forOrganization($this->organization)->forPermission($permission)->denied()->create();
+    expect($query->canCreateRestaurant($this->owner, (string) $this->organization->id))->toBeFalse();
+    $this->organization->memberships()->where('user_id', $this->waiter->id)->update(['status' => 'suspended']);
+    expect($query->canCreateRestaurant($this->waiter, ''))->toBeFalse();
 });

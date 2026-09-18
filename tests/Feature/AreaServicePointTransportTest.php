@@ -8,8 +8,8 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\AreaEditor;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\BulkCreate;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\PointEditor;
-use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -19,6 +19,9 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\Validation\Floor\FloorStateRules;
+use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /** @return array{User, Organization, Brand, Branch, AreaNode, ServicePoint} */
@@ -141,7 +144,8 @@ test('bulk preview and forged confirm reject a range of 201 without persistence'
         expect(fn () => $component->set('fingerprint', 'forged-review'))->toThrow(CannotUpdateLockedPropertyException::class);
     }
 
-    $component->update(calls: [['method' => $action, 'params' => [], 'path' => '']])->assertHasErrors(['form.bulkTo']);
+    $component->update(calls: [['method' => $action, 'params' => [], 'path' => '']])
+        ->assertHasErrors([$action === 'apply' ? 'form.bulkPrefix' : 'form.bulkTo']);
     expect(ServicePoint::query()->count())->toBe($count);
 })->with(['review', 'apply']);
 
@@ -155,3 +159,31 @@ test('bulk preview and confirm preserve valid numeric strings and reject a forei
     expect(ServicePoint::query()->where('branch_id', $branch->id)->count())->toBe($count + 2);
     $component->update(calls: [['method' => 'review', 'params' => [], 'path' => '']], updates: ['form.areaNodeId' => (string) $foreignArea->id])->assertHasErrors(['form.areaNodeId']);
 });
+
+test('floor page normalizes an explicitly empty optional URL value after validation', function (string $property): void {
+    [$user, $organization, $brand, $branch] = areaServicePointTransportFixture();
+    Livewire::actingAs($user)
+        ->test(Index::class, compact('organization', 'brand', 'branch'))->assertOk()
+        ->set($property, null)->assertOk()->assertSet($property, '');
+})->with([
+    'search' => ['areaSearch'],
+    'point' => ['point'],
+    'area editor' => ['areaEditor'],
+    'QR identity' => ['qrRecord'],
+    'panel' => ['panel'],
+]);
+
+test('floor URL rules reject malformed optional search input before normalization', function (mixed $value): void {
+    expect(fn () => FloorStateRules::validate([
+        'point' => '', 'areaEditor' => '', 'qrRecord' => '', 'panel' => '', 'areaSearch' => $value,
+        'areaLifecycle' => 'active', 'areaType' => 'all', 'areaActive' => 'all', 'areaSort' => 'position',
+    ]))->toThrow(ValidationException::class);
+})->with(['array' => [['unexpected']], 'boolean' => [true]]);
+
+test('floor page accepts numeric identities decoded by Livewire URL state', function (string $kind): void {
+    [$user, $organization, $brand, $branch, $area, $point] = areaServicePointTransportFixture();
+    $parameters = $kind === 'point' ? ['point' => (string) $point->id, 'panel' => 'properties'] : ['area_editor' => (string) $area->id, 'panel' => 'area'];
+    Livewire::actingAs($user)->withQueryParams($parameters)
+        ->test(Index::class, compact('organization', 'brand', 'branch'))
+        ->assertOk()->assertSet($kind === 'point' ? 'point' : 'areaEditor', (string) ($kind === 'point' ? $point->id : $area->id));
+})->with(['point', 'area']);

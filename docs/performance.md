@@ -2,6 +2,104 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 4 final creation-policy measurement — 2026-09-18
+
+The final frozen source (`6605a057edec59d9eb438322ad3061603769e09bc4226c748d77e03e95bad634`) is compared with the same saved partial-P4 baseline in six alternating isolated processes. The identical owner fixture contains100 restaurants,20 visible rows and15 warm HTTP plus15 warm Livewire samples per side. All six runs pass114 assertions. Reflection verifies both loaded source roots; fixture/test and asset hashes match. These measurements include the final creation-entry correction and supersede the older candidate SQL counts below.
+
+| Observed metric | Saved partial-P4 baseline | Final candidate |
+| --- | ---: | ---: |
+| Bounded row selection,25 /100 restaurants |7 /7 SQL|7 /7 SQL|
+| Complete list HTTP |53 SQL|57 SQL|
+| Search Livewire update |8 SQL|12 SQL|
+| Median server HTML |182037bytes|207872bytes|
+| HTTP allocated peak |70.5MiB|70.5MiB|
+| Livewire snapshot plus effects |83932–84203bytes|110760–111031bytes|
+| Livewire allocated peak |70.5MiB|72.5MiB|
+
+The four added queries recheck the current organization-creation context; authorization remains included in both complete-request measurements. The global-administrator fallback adds no query on this ordinary owner path. Row selection stays bounded, with no per-row readiness traversal. HTML grows25835bytes and Livewire state/effects grows26828bytes. No speed improvement is claimed: raw durations are retained but concurrent acceptance work prevents a meaningful latency comparison. Actual browser transfer is measured separately after the final browser suite.
+
+Evidence: `restaurant-p4-final-cta-measure-3w_n_ypz/measurement.json`. Both snapshots serve assets`6f5d4d4727bc2f5c87e8e51e212492bf6375336ec498b6da04e70634abd2f19f`; the unchanged fixture/test hash is`2e9b8c055cb97ff0b27d579c2476c1099ae1c20b257f7c80463a65a5259a2706`. The preceding source`3c012f26` measurement is retained in `/tmp/restaurant-p4-final-security-measure-rcebwz15/measurement.json`: it had the same SQL counts,207870-byte candidate HTML and HTTP peaks68.5→70.5MiB / Livewire70.5→70.5MiB. These independent process peaks are observations, not deterministic memory limits. The baseline already contains a partial restaurant center, so neither these measurements nor the traced interaction counts below establish a before/after improvement over the original pre-P4 interface.
+
+## Prompt 4 final browser network comparison — 2026-09-18
+
+The final source above passes six alternating real browser samples with78 assertions, using the same100-restaurant fixture and identical assets. Each process logs in through the real interface, measures a hard navigation with20 visible rows, then performs one server search returning one row. Both actual CLI and HTTP responders report PHP8.5.10. This measurement is separate from the product browser suite whose HTTP runtime is8.5.8.
+
+| Observed metric | Saved partial-P4 baseline | Final candidate |
+| --- | ---: | ---: |
+| Initial ResourceTiming entries, median [range] |8 [7–8]|8 [7–8]|
+| Positive-transfer entries, median [range] |6 [5–6]|6 [4–6]|
+| Initial transfer bytes, median [range] |117468 [81308–117468]|118444 [81034–118450]|
+| Laravel document bytes |182079|207914|
+| Browser decoded document bytes |183434|209269|
+| Browser encoded document bytes, median |21545|22526|
+| Search POST count / request bytes |1 /1004|1 /1004|
+| Search response bytes, raw / encoded median |40192 /5659|45778 /6565|
+| Search transfer bytes, median |5959|6865|
+
+Login warms shared resources; cache variation affects the font and center CSS, so positive-transfer counts are not claimed as a request reduction. The initial interval contains the existing Livewire remember operation. Pest injects the same1355-byte initialization script into both documents. Search payload increases5586 raw bytes while its request count stays one. The larger markup and measured transfer are explicit costs, not a performance improvement. No latency comparison is made under concurrent verification. Exact samples, runtime records and unchanged-source proof are in `restaurant-p4-final-cta-measure-3w_n_ypz/summary.json` and `final-source-verification.json`.
+
+## Prompt 4 earlier browser network comparison — 2026-09-18
+
+Six fixed browser samples alternate baseline/candidate three times each, with100 factory restaurants,20 initial rows and one real server search returning exactly one row. Each uses a fresh isolated browser process and real authenticated login; login/intended navigation warms shared assets before the measured hard navigation. PHP CLI and actual HTTP responder are both8.5.10/cli, with Playwright WebKit presenting Safari26.6. All6 cases pass78 assertions and strict JavaScript/console checks. The two failed harness pilots are retained separately and are not samples or retries.
+
+| Observed median | Saved partial-P4 baseline | Current candidate |
+| --- | ---: | ---: |
+| Navigation/ResourceTiming entries |8|8|
+| Entries with positive transfer / cache hits |6 /2|6 /2|
+| Initial browser-reported transfer bytes |117466|118456|
+| Laravel document bytes |182078|207914|
+| Browser decoded document bytes |183433|209269|
+| Browser encoded document bytes |21542|22532|
+| Search POST count |1|1|
+| Search request / response body bytes |1004 /40192|1004 /45778|
+| Search browser encoded response bytes |5659|6565|
+
+The larger document (+25836 raw bytes) and search response (+5586 bytes) are regressions in payload size, not an optimization claim. The measured initial transfer grows990bytes, with unchanged request counts. The initial interval includes the existing Livewire `remember` action; the two zero-transfer app/Flux resources are cache hits, not proven wire requests. Pest adds the same1355-byte initialization script to both documents, reported separately from Laravel HTML. Browser compression differs from the static gzip9 budget. Durations are retained in raw evidence but not compared because other acceptance work ran concurrently.
+
+Both snapshots intentionally serve identical final resources (digest`6f5d4d4727bc2f5c87e8e51e212492bf6375336ec498b6da04e70634abd2f19f`). Baseline source`46c81636c536cec960711441b08a65f0afa336596c4bc1c490241a6662ac802c` already contains a partial center; candidate source`5795fc2c31328081b4c04f23ff566677c63264bc55d75de9198c537f92386e3f`. The identical harness hash is`4a9c6e5e1690d9604fb8b69699ee5c2ac808e68a802734232d8923395c929507`. This is not a reconstruction of the original pre-P4 interface. Complete samples, HTTP runtime records, request body sizes, font/dependency proofs, JUnit and diagnostics: `/tmp/restaurant-p4-network.u7ulkw/summary.json` and adjacent artifacts. The earlier in-process SQL/memory/timing benchmark below remains separate.
+
+## Prompt 4 measured asset allocation — 2026-09-18
+
+The previous category gate failed in five places; those results remain historical failures in PROGRESS.md. After removal of the unreachable onboarding provider, the unchanged global delivery ceiling already contains the complete11-file graph:955631raw/386471gzip against959700/395700bytes. The restaurant-center scenario includes its own SCSS entry and passes935389/380580 against the same existing largest-page ceiling. This decision reallocates category reserves; it does not claim that the old CSS/JS category limits pass or that page payload shrank.
+
+| Category | Previous raw / gzip limit | Current raw / gzip limit | Observed raw / gzip bytes |
+| --- | ---: | ---: | ---: |
+| Framework CSS entry |343100 /44700|341900 /44300|334697 /43652|
+| Product app SCSS entry |31800 /6500|33000 /6900|32374 /6750|
+| Scoped restaurant-center SCSS |not individually budgeted|3500 /1000|3328 /918|
+| All CSS |378400 /52600|378400 /53600|377517 /53528|
+| All JavaScript, including lazy WebAuthn |348100 /109000|355000 /110000|354254 /109175|
+| All font subsets |235100 /235000|226000 /225000|223860 /223768|
+| Whole asset graph |959700 /395700|959700 /395700|955631 /386471|
+
+The framework/product entry reallocation is exactly zero-sum for both metrics. The category totals now sum to959400raw/388600gzip, within the unchanged whole-graph limits. Existing scenario ceilings and the app JavaScript entry ceiling348100/109000 remain unchanged. Font SHA256 values match the prior matched baseline for all three Latin, Latin Extended and Cyrillic WOFF2 files; no subset was removed. The JavaScript total counts the341130-byte app and13124-byte lazy WebAuthn chunk once each. Lazy loading does not remove that chunk from the aggregate gate. The new CSS allowance accounts explicitly for the scoped center stylesheet, rather than hiding its cost in an unmeasured entry.
+
+Independent review accepted this as a documented reserve reallocation under the unchanged global/page ceilings. The exact old/new configuration, font hashes and successful final asset report are retained in `restaurant-p4-speckit-uhgxj6lc/asset-budget-allocation.json` and `asset-budget-final.json`. No build-check implementation, compression settings, functionality or coverage threshold changed.
+
+
+## Prompt 4 continuation matched measurements — 2026-09-18
+
+These measurements compare the preserved incoming partial P4 center with this continuation, not with the older pre-center interface from the prompt. Six alternating B/C/C/B/B/C processes use PHP8.5.10, CLI OPcache off, no coverage,512M,100 identical restaurants and20 visible rows. Each side has15 warm HTTP and15 warm Livewire samples. Test, assets and fixtures are identical; classmap reflection confirms distinct owned source roots. The recorded candidate precedes later text-only terminology/QR labels and the separately recorded menu-prefill/floor corrections; none changes the measured restaurant list queries/composition.
+
+| Metric | Preserved baseline | Candidate | Interpretation |
+| --- | ---: | ---: | --- |
+| Bounded row query,25/100 fixtures |7 /7 SQL |7 /7 SQL | No growth with unrelated restaurants |
+| Complete list HTTP |53 SQL |53 SQL | Authorization remains included |
+| Search Livewire update |8 SQL |8 SQL | No per-row readiness computation |
+| HTTP median |69.887ms |73.506ms | +5.18%, no speedup claim |
+| HTTP HTML median |182037B |207872B | +25835B /14.19% |
+| HTTP allocated peak |68.5MiB |70.5MiB | +2MiB |
+| Livewire median |26.647ms |29.923ms | +12.30% |
+| Livewire snapshot plus effects |83932–84203B |110760–111031B | +26828B |
+| Livewire allocated peak |68.5–70.5MiB |70.5MiB | Absolute process peak |
+
+Durable parent labels, thumbnails/placeholders and accessible controls carry a measurable markup cost. An earlier intermediate decomposition attributed most growth to placeholder SVG blocks; it is not an exact decomposition of these final samples. No percentage is presented as a universal latency estimate. PHP timers exclude browser paint and network RTT; real network transfer/CPU paint costs have not been separately measured by this benchmark.
+
+Source digests: baseline `46c81636c536cec960711441b08a65f0afa336596c4bc1c490241a6662ac802c`, candidate `e64f4dfb4b671644fc1e0eea0173a48deb18c7770a7f81ae8b380db86a5a4347`. Both use assets `83a47458da92dfd851d2d3ac3b112a7869f7d4848d085222b91d5a46b2c17e32` and test SHA `2e9b8c055cb97ff0b27d579c2476c1099ae1c20b257f7c80463a65a5259a2706`. All six runs pass; raw72 samples/logs and preparation evidence are in `/tmp/restaurant-p4-final-matched.z0Vda6`.
+
+Code-derived task counts in both partial-center snapshots: find restaurant0 route changes/1 search input; rename and return2 route changes/1 edited field/1 save; add second from brand1 route/6 restaurant fields/0 repeated parents/1 confirmation; resume1 route plus1 group selection/0 repeated identity input. These are traced controls, not timed human usability measurements. Removing unreachable duplicate editors establishes one implementation but does not invent a reduction from already unified baseline navigation. The real publication journey additionally exposed and corrected a missing EN prefill; the saved restaurant/menu name is now reused without auto-translating secondary languages.
+
+
 # Performance
 
 ## Prompt 3 acceptance refresh — 2026-09-17

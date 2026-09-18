@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\QrCodes\ApplyFloorQrAction;
+use App\Enums\QrCodeStatus;
 use App\Livewire\Forms\Floor\QrOperationForm;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
-use App\Enums\QrCodeStatus;
-use App\Services\QrCodeSvgRenderer;
 use App\Services\QrCodes\QrCodeQueryService;
+use App\Services\QrCodeSvgRenderer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -18,8 +18,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use Throwable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class QrPanel extends Component
 {
@@ -181,6 +181,7 @@ class QrPanel extends Component
         if ($qr === null || $qr->status !== QrCodeStatus::Active || $qr->id !== $context['active_id'] || $qr->structure_version !== $this->displayedQrVersion) {
             throw ValidationException::withMessages(['expectedVersion' => __('floor.validation.changed')]);
         }
+
         return $qr;
     }
 }

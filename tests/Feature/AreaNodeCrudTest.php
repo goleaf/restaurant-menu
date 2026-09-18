@@ -1,14 +1,16 @@
 <?php
 
+use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Enums\AreaNodeType;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Livewire\Organizations\Brands\Branches\Areas;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\AreaEditor;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as FloorWorkspace;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Order;
@@ -20,6 +22,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
@@ -60,7 +63,8 @@ test('manager can create nested area nodes inside branch', function () {
         ->set('form.sortOrder', 10)
         ->call('save')
         ->assertHasNoErrors()
-        ->assertSee('First floor');
+        ->assertSet('form.name', 'First floor')
+        ->assertDispatched('floor-saved');
 
     $floor = AreaNode::query()
         ->where('branch_id', $branch->id)
@@ -85,6 +89,8 @@ test('manager can create nested area nodes inside branch', function () {
     expect($floor->type)->toBe(AreaNodeType::Floor);
     expect($hall->parent_id)->toBe($floor->id);
     expect($hall->type)->toBe(AreaNodeType::Hall);
+    Livewire::actingAs($manager)->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->assertSee('First floor')->assertSee('Main hall');
 });
 
 test('manager can rename move and disable area nodes', function () {
@@ -121,7 +127,7 @@ test('manager can rename move and disable area nodes', function () {
         ->set('form.isActive', false)
         ->call('save')
         ->assertHasNoErrors()
-        ->assertSee('VIP hall');
+        ->assertSet('form.name', 'VIP hall')->assertDispatched('floor-saved');
 
     $hall->refresh();
 
@@ -129,6 +135,8 @@ test('manager can rename move and disable area nodes', function () {
     expect($hall->name)->toBe('VIP hall');
     expect($hall->type)->toBe(AreaNodeType::VipRoom);
     expect($hall->is_active)->toBeFalse();
+    Livewire::actingAs($manager)->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->set('areaActive', 'inactive')->assertSee('VIP hall');
 
     Livewire::actingAs($manager)
         ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $hall->id])
@@ -162,8 +170,10 @@ test('manager can soft delete area node and keep children visible', function () 
         ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $floor->id])
         ->call('reviewArchive')
         ->call('archive')
-        ->assertDontSee('Floor to remove')
-        ->assertSee('Hall to keep');
+        ->assertHasNoErrors()->assertDispatched('floor-saved');
+
+    Livewire::actingAs($manager)->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->assertDontSee('Floor to remove')->assertSee('Hall to keep');
 
     expect(AreaNode::query()->whereKey($floor->id)->exists())->toBeFalse();
     expect(AreaNode::withTrashed()->whereKey($floor->id)->firstOrFail()->trashed())->toBeTrue();
@@ -243,7 +253,8 @@ test('manager cannot archive area node that contains a service point with an act
     expect($areaNode->fresh())->not->toBeNull();
 });
 
-test('area node cannot be moved inside its own child', function () {
+test('area node cannot be moved inside its own child', function (string $locale) {
+    app()->setLocale($locale);
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
     grantAreaCrudManageZones($manager, $organization);
     $floor = AreaNode::factory()->for($branch)->create([
@@ -258,22 +269,52 @@ test('area node cannot be moved inside its own child', function () {
         'icon' => 'squares-2x2',
     ]);
 
+    $originalFloor = $floor->fresh()->getAttributes();
+    $originalHall = $hall->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+
     Livewire::actingAs($manager)
         ->test(AreaEditor::class, ['branchId' => $branch->id, 'areaId' => $floor->id])
+        ->set('form.name', 'Unsaved floor name')
         ->set('form.parentId', (string) $hall->id)
         ->call('save')
-        ->assertHasErrors('form.parentId');
-});
+        ->assertHasErrors('form.parentId')
+        ->assertSee(__('errors.domain.area_cannot_move_into_child'))
+        ->assertSet('form.name', 'Unsaved floor name')
+        ->assertSet('form.parentId', (string) $hall->id);
+
+    expect($floor->fresh()->getAttributes())->toBe($originalFloor)
+        ->and($hall->fresh()->getAttributes())->toBe($originalHall)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+})->with(['en', 'lt', 'ru']);
 
 test('branch must belong to route brand and organization on area page', function () {
     [$organization, $brand, , $manager] = createAreaCrudBranch();
     grantAreaCrudManageZones($manager, $organization);
     [, , $otherBranch] = createAreaCrudBranch('Other Group', 'Other Brand');
 
+    $this->actingAs($manager)
+        ->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $otherBranch]))
+        ->assertNotFound();
     Livewire::actingAs($manager)
-        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $otherBranch])
+        ->test(FloorWorkspace::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $otherBranch])
         ->assertForbidden();
 });
+
+test('floor mutations require an explicit actor even when an owner is authenticated', function (string $kind): void {
+    $owner = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Explicit actor group']);
+    $brand = Brand::factory()->for($organization)->create();
+    $branch = Branch::factory()->for($organization)->for($brand)->create();
+    $this->actingAs($owner);
+
+    $operation = $kind === 'area'
+        ? fn () => app(CreateAreaNodeAction::class)->handle($branch, ['parent_id' => null, 'type' => 'hall', 'name' => 'Denied hall', 'icon' => 'home', 'sort_order' => 0, 'is_active' => true])
+        : fn () => app(CreateServicePointAction::class)->handle($branch, ['area_node_id' => null, 'type' => 'table', 'name' => 'Denied table', 'display_number' => '1', 'capacity' => 2, 'icon' => 'squares-2x2', 'is_active' => true]);
+    expect($operation)->toThrow(AuthorizationException::class)
+        ->and(AreaNode::query()->where('branch_id', $branch->id)->exists())->toBeFalse()
+        ->and(ServicePoint::query()->where('branch_id', $branch->id)->exists())->toBeFalse();
+})->with(['area', 'service_point']);
 
 test('zone manager is authorized to restore an archived area node', function () {
     [$organization, , $branch, $manager] = createAreaCrudBranch();

@@ -1,7 +1,20 @@
 <?php
 
+use App\Support\Floor\FloorOptions;
 use Illuminate\Support\Facades\File;
 use PHPUnit\Framework\Assert;
+
+test('rooms and table icon choices have translated labels for every persisted icon', function () {
+    foreach (['en' => 'Hall', 'lt' => 'Salė', 'ru' => 'Зал'] as $locale => $hall) {
+        app()->setLocale($locale);
+        $options = FloorOptions::iconOptions();
+        expect(array_keys($options))->toBe(FloorOptions::icons())
+            ->and($options['rectangle-group'])->toBe($hall);
+        foreach ($options as $label) {
+            expect($label)->not->toBeEmpty()->not->toStartWith('floor.');
+        }
+    }
+});
 
 test('field translation manifest has labels placeholders help text and validation attributes in every locale', function () {
     $translations = fieldTranslationAuditTranslations();
@@ -84,41 +97,41 @@ function fieldTranslationAuditManifest(): array
 {
     return [
         'organization form' => [
-            'name' => ['label' => 'ui.organizations.index.organization_name', 'attribute' => 'validation.attributes.name'],
+            'name' => ['label' => 'center.organization_name', 'attribute' => 'validation.attributes.name'],
             'logo' => ['label' => 'uploads.labels.logo', 'attribute' => 'validation.attributes.logo'],
         ],
         'brand form' => [
-            'name' => ['label' => 'ui.organizations.brands.index.brand_name', 'attribute' => 'validation.attributes.name'],
+            'name' => ['label' => 'center.brand_name', 'attribute' => 'validation.attributes.name'],
             'logo' => ['label' => 'uploads.labels.logo', 'attribute' => 'validation.attributes.logo'],
         ],
         'branch form' => [
-            'name' => ['label' => 'ui.organizations.brands.branches.index.nazvanie_filiala', 'attribute' => 'validation.attributes.name'],
-            'address' => ['label' => 'ui.livewire.onboarding.restaurantsetup.adres', 'attribute' => 'validation.attributes.address'],
-            'city' => ['label' => 'ui.onboarding.restaurant_setup.gorod', 'attribute' => 'validation.attributes.city'],
-            'country' => ['label' => 'ui.onboarding.restaurant_setup.strana', 'attribute' => 'validation.attributes.country'],
-            'timezone' => ['label' => 'ui.onboarding.restaurant_setup.casovoi_poias', 'attribute' => 'validation.attributes.timezone'],
-            'currency' => ['label' => 'ui.onboarding.restaurant_setup.valiuta', 'attribute' => 'validation.attributes.currency'],
-            'active' => ['label' => 'ui.organizations.brands.branches.index.filial_rabotaet', 'attribute' => 'validation.attributes.is_active'],
+            'name' => ['label' => 'center.restaurant_name', 'attribute' => 'validation.attributes.name'],
+            'address' => ['label' => 'center.address', 'attribute' => 'validation.attributes.address'],
+            'city' => ['label' => 'center.city', 'attribute' => 'validation.attributes.city'],
+            'country' => ['label' => 'center.country', 'attribute' => 'validation.attributes.country'],
+            'timezone' => ['label' => 'center.timezone', 'attribute' => 'validation.attributes.timezone'],
+            'currency' => ['label' => 'center.currency', 'attribute' => 'validation.attributes.currency'],
+            'active' => ['label' => 'center.administrative_active', 'attribute' => 'validation.attributes.is_active'],
         ],
         'restaurant onboarding form' => [
-            'organization_name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_kompanii', 'attribute' => 'validation.attributes.organization_name'],
-            'brand_name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_restorana', 'attribute' => 'validation.attributes.brand_name'],
-            'branch_name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_filiala', 'attribute' => 'validation.attributes.branch_name'],
-            'branch_address' => ['label' => 'ui.onboarding.restaurant_setup.adres_filiala', 'attribute' => 'validation.attributes.branch_address'],
-            'branch_city' => ['label' => 'ui.onboarding.restaurant_setup.gorod', 'attribute' => 'validation.attributes.branch_city'],
-            'branch_country' => ['label' => 'ui.onboarding.restaurant_setup.strana', 'attribute' => 'validation.attributes.branch_country'],
-            'branch_timezone' => ['label' => 'ui.onboarding.restaurant_setup.casovoi_poias', 'attribute' => 'validation.attributes.branch_timezone'],
-            'branch_currency' => ['label' => 'ui.onboarding.restaurant_setup.valiuta', 'attribute' => 'validation.attributes.branch_currency'],
-            'area_name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_zony', 'attribute' => 'validation.attributes.area_name'],
-            'area_type' => ['label' => 'ui.onboarding.restaurant_setup.tip_zony', 'attribute' => 'validation.attributes.area_type'],
+            'organization_name' => ['label' => 'center.organization_name', 'attribute' => 'validation.attributes.organization_name'],
+            'brand_name' => ['label' => 'center.brand_name', 'attribute' => 'validation.attributes.brand_name'],
+            'branch_name' => ['label' => 'center.restaurant_name', 'attribute' => 'validation.attributes.branch_name'],
+            'branch_address' => ['label' => 'center.address', 'attribute' => 'validation.attributes.branch_address'],
+            'branch_city' => ['label' => 'center.city', 'attribute' => 'validation.attributes.branch_city'],
+            'branch_country' => ['label' => 'center.country', 'attribute' => 'validation.attributes.branch_country'],
+            'branch_timezone' => ['label' => 'center.timezone', 'attribute' => 'validation.attributes.branch_timezone'],
+            'branch_currency' => ['label' => 'center.currency', 'attribute' => 'validation.attributes.branch_currency'],
+            'area_name' => ['label' => 'center.room_name', 'attribute' => 'validation.attributes.area_name'],
+            'area_type' => ['label' => 'ui.onboarding.restaurant_setup.cto_eto', 'attribute' => 'validation.attributes.area_type'],
             'area_icon' => ['label' => 'ui.onboarding.restaurant_setup.ikonka', 'attribute' => 'validation.attributes.area_icon'],
-            'table_count' => ['label' => 'ui.onboarding.restaurant_setup.skolko_stolov', 'attribute' => 'validation.attributes.table_count'],
-            'table_prefix' => ['label' => 'ui.onboarding.restaurant_setup.prefiks_nazvaniia_stolov', 'attribute' => 'validation.attributes.table_prefix'],
-            'table_capacity' => ['label' => 'ui.onboarding.restaurant_setup.mest_za_kazdym_stolom', 'attribute' => 'validation.attributes.table_capacity'],
-            'menu_name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_meniu', 'attribute' => 'validation.attributes.menu_name'],
-            'category_name' => ['label' => 'ui.onboarding.restaurant_setup.razdel_meniu', 'attribute' => 'validation.attributes.category_name'],
-            'item_name' => ['label' => 'ui.onboarding.restaurant_setup.pervoe_bliudo', 'attribute' => 'validation.attributes.item_name'],
-            'item_price' => ['label' => 'ui.onboarding.restaurant_setup.cena', 'attribute' => 'validation.attributes.item_price'],
+            'table_count' => ['label' => 'center.table_count', 'attribute' => 'validation.attributes.table_count'],
+            'table_prefix' => ['label' => 'center.table_prefix', 'attribute' => 'validation.attributes.table_prefix'],
+            'table_capacity' => ['label' => 'center.capacity', 'attribute' => 'validation.attributes.table_capacity'],
+            'menu_name' => ['label' => 'center.menu_name', 'attribute' => 'validation.attributes.menu_name'],
+            'category_name' => ['label' => 'center.category_name', 'attribute' => 'validation.attributes.category_name'],
+            'item_name' => ['label' => 'center.item_name', 'attribute' => 'validation.attributes.item_name'],
+            'item_price' => ['label' => 'center.price', 'attribute' => 'validation.attributes.item_price'],
         ],
         'availability pause form' => [
             'pause.reason' => ['label' => 'availability.public_reason', 'help' => 'availability.public_reason_description', 'attribute' => 'availability.fields.reason'],
@@ -145,13 +158,13 @@ function fieldTranslationAuditManifest(): array
             'active' => ['label' => 'ui.organizations.brands.branches.area_node_row.ispolzovat_seicas', 'attribute' => 'validation.attributes.is_active'],
         ],
         'service_point form' => [
-            'name' => ['label' => 'ui.organizations.brands.branches.service_points.index.nazvanie', 'attribute' => 'validation.attributes.name'],
-            'display_number' => ['label' => 'ui.organizations.brands.branches.service_points.index.nomer_na_nakleike', 'attribute' => 'validation.attributes.display_number'],
-            'type' => ['label' => 'ui.organizations.brands.branches.service_points.index.tip_mesta', 'attribute' => 'validation.attributes.type'],
-            'area' => ['label' => 'ui.livewire.onboarding.restaurantsetup.zona', 'attribute' => 'validation.attributes.area_node_id'],
-            'capacity' => ['label' => 'ui.organizations.brands.branches.service_points.index.skolko_gostei', 'attribute' => 'validation.attributes.capacity'],
-            'bulk_prefix' => ['label' => 'ui.organizations.brands.branches.service_points.index.prefix', 'placeholder' => 'fields.placeholders.service_point_prefix_example', 'attribute' => 'validation.attributes.bulk_prefix'],
-            'search' => ['label' => 'ui.organizations.brands.branches.service_points.index.poisk', 'placeholder' => 'qr.placeholders.service_point_search', 'attribute' => 'validation.attributes.search'],
+            'name' => ['label' => 'floor.fields.name', 'attribute' => 'validation.attributes.name'],
+            'display_number' => ['label' => 'floor.fields.number', 'attribute' => 'validation.attributes.display_number'],
+            'type' => ['label' => 'floor.fields.type', 'attribute' => 'validation.attributes.type'],
+            'area' => ['label' => 'floor.fields.area', 'attribute' => 'validation.attributes.area_node_id'],
+            'capacity' => ['label' => 'floor.fields.capacity', 'attribute' => 'validation.attributes.capacity'],
+            'bulk_prefix' => ['label' => 'floor.fields.prefix', 'attribute' => 'validation.attributes.bulk_prefix'],
+            'search' => ['label' => 'floor.search_tables', 'attribute' => 'validation.attributes.search'],
         ],
         'QR form/page' => [
             'short_code' => ['label' => 'qr.labels.short_code', 'placeholder' => 'qr.placeholders.short_code_example', 'attribute' => 'validation.attributes.short_code'],

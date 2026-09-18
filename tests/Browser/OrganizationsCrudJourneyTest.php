@@ -12,12 +12,19 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\DemoRestaurantSeeder;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Pest\Browser\Api\PendingAwaitablePage;
 
 test('demo owner can complete the organization administration browser journey', function (): void {
     $this->withVite();
-    Storage::fake('public');
+    $fixtureDirectoryName = 'browser-fixtures/'.bin2hex(random_bytes(8));
+    $fixtureDirectory = public_path($fixtureDirectoryName);
+    File::ensureDirectoryExists($fixtureDirectory);
+    $this->beforeApplicationDestroyed(fn () => File::deleteDirectory($fixtureDirectory));
+    config()->set('filesystems.disks.public.root', $fixtureDirectory);
+    config()->set('filesystems.disks.public.url', '/'.$fixtureDirectoryName);
+    Storage::forgetDisk('public');
     config()->set('demo-login.enabled', true);
     config()->set('demo-login.allowed_hosts', ['ruflo.test', 'restaurant-menu.test', '127.0.0.1', 'localhost']);
     $this->seed(DemoRestaurantSeeder::class);
@@ -84,20 +91,34 @@ test('demo owner can complete the organization administration browser journey', 
         ->and($temporaryOrganization->brands()->exists())->toBeFalse();
 
     clickOrganizationsBrowserElement($page, 'button[wire\\:click="$set(\'confirming\', true)"]');
+    $page->assertVisible('dialog[data-modal="structure-lifecycle"]')
+        ->assertScript('document.getElementById(document.querySelector("dialog[open]").getAttribute("aria-labelledby"))?.textContent.trim()', __('center.organization').': Browser CRUD Updated Group')
+        ->assertScript('document.activeElement.getAttribute("aria-label")', __('ui.accessibility.close_dialog'))
+        ->assertScript('document.querySelector("dialog[open]").contains(document.activeElement)');
+    $page->resize(390, 844)->script('document.documentElement.style.fontSize = "200%"');
+    $page->assertScript('document.querySelector("dialog[open]").getBoundingClientRect().right <= innerWidth + 1')
+        ->assertScript('document.querySelector("dialog[open]").getBoundingClientRect().left >= -1');
+    $page->script('document.documentElement.style.removeProperty("font-size")');
+    clickOrganizationsBrowserElement($page, 'dialog[open] button[autofocus]');
+    $page->assertMissing('dialog[open]');
+    expect($temporaryOrganization->fresh()->trashed())->toBeFalse();
+    clickOrganizationsBrowserElement($page, '[data-center-lifecycle-trigger]');
     $page->assertSee(__('center.archive_notice'))->fill('input[wire\\:model="confirmation"]', 'Browser CRUD Updated Group');
     clickOrganizationsBrowserElement($page, 'form[wire\\:submit="changeLifecycle"] button[type="submit"]');
     $page->assertDontSee('Browser CRUD Updated Group');
     expect($temporaryOrganization->fresh()->trashed())->toBeTrue();
 
-    $page->select('select[wire\\:model\\.live="filters.lifecycle"]', 'archived')->assertSee('Browser CRUD Updated Group');
+    $page->click('[data-center-filter-toggle]')->select('select[wire\\:model\\.live="filters.lifecycle"]', 'archived')->assertSee('Browser CRUD Updated Group');
     clickOrganizationsBrowserElement($page, sprintf('article[wire\\:key="organization-%d"] a[href*="object=%d"]', $temporaryOrganization->id, $temporaryOrganization->id));
     clickOrganizationsBrowserElement($page, 'button[wire\\:click="$set(\'confirming\', true)"]');
-    $page->assertSee(__('center.restore_notice'))->fill('input[wire\\:model="confirmation"]', 'Browser CRUD Updated Group');
+    $page->assertSee(__('center.restore_organization_notice'))->fill('input[wire\\:model="confirmation"]', 'Browser CRUD Updated Group');
     clickOrganizationsBrowserElement($page, 'form[wire\\:submit="changeLifecycle"] button[type="submit"]');
     $page->assertDontSee('Browser CRUD Updated Group');
     expect($temporaryOrganization->fresh()->trashed())->toBeFalse();
 
     $brand = $branch->brand;
+    $qrShowUrl = route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false);
+    $qrPrintUrl = route('organizations.brands.branches.service-points.qr.print', [$organization, $brand, $branch, $servicePoint, $qrCode], false);
     $routeChain = [
         [route('organizations.index', absolute: false), '[data-page="restaurant-center"]'],
         [route('organizations.staff.index', [$organization], false), '[data-page="organization-staff"]'],
@@ -107,8 +128,8 @@ test('demo owner can complete the organization administration browser journey', 
         [route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false), '[data-page="branch-settings"]'],
         [route('organizations.brands.branches.areas.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
         [route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
-        [route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false), '[data-page="branch-service-point-qr"]'],
-        [route('organizations.brands.branches.service-points.qr.print', [$organization, $brand, $branch, $servicePoint, $qrCode], false), '[data-page="qr-print-template"]'],
+        [$qrShowUrl, '[data-page="branch-service-points"]'],
+        [$qrPrintUrl, '[data-page="branch-service-points"]'],
         [route('organizations.brands.branches.staff.index', [$organization, $brand, $branch], false), '[data-page="branch-staff"]'],
         [route('organizations.brands.branches.menu.index', [$organization, $brand, $branch], false), '[data-page="branch-menu"]'],
     ];
@@ -116,6 +137,12 @@ test('demo owner can complete the organization administration browser journey', 
     foreach ($routeChain as [$path, $pageSelector]) {
         $page->resize(1440, 1000)->navigate($path);
         assertOrganizationsBrowserPage($page, $pageSelector);
+        if (in_array($path, [$qrShowUrl, $qrPrintUrl], true)) {
+            $page->assertVisible($path === $qrShowUrl ? '[data-floor-qr-panel]' : '[data-floor-print-panel]')
+                ->assertQueryStringHas('point', (string) $servicePoint->id)
+                ->assertQueryStringHas('qr_record', (string) $qrCode->id)
+                ->assertQueryStringHas('panel', $path === $qrShowUrl ? 'qr' : 'print');
+        }
         if ($pageSelector === '[data-page="employee-card"]') {
             $page->assertSee($staffMember->name)->assertSee($organization->name)->assertSee(__('team.card.organization_scope'))
                 ->assertAttribute('[data-team-section="access"]', 'aria-current', 'page');
@@ -123,6 +150,12 @@ test('demo owner can complete the organization administration browser journey', 
 
         $page->resize(375, 812)->navigate($path);
         assertOrganizationsBrowserPage($page, $pageSelector);
+        if (in_array($path, [$qrShowUrl, $qrPrintUrl], true)) {
+            $page->assertVisible($path === $qrShowUrl ? '[data-floor-qr-panel]' : '[data-floor-print-panel]')
+                ->assertQueryStringHas('point', (string) $servicePoint->id)
+                ->assertQueryStringHas('qr_record', (string) $qrCode->id)
+                ->assertQueryStringHas('panel', $path === $qrShowUrl ? 'qr' : 'print');
+        }
         if ($pageSelector === '[data-page="employee-card"]') {
             $page->assertSee($staffMember->name)->assertSee($organization->name)->assertSee(__('team.card.organization_scope'))
                 ->assertAttribute('[data-team-section="access"]', 'aria-current', 'page');
@@ -201,35 +234,27 @@ test('demo owner can complete the organization administration browser journey', 
     $page->click('[data-menu-section="photos"]')->assertSee(__('uploads.labels.gallery'));
     $page->click('a[href*="section=catalog"]')->assertPresent('[data-section="menu-catalog"]');
 
-    $page->navigate(route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false));
-    clickOrganizationsBrowserElement($page, 'button[wire\\:click="confirmReissue"]');
-    $page->assertPresent('dialog[open]');
-    $page->assertScript('document.getElementById(document.querySelector("dialog[open]").getAttribute("aria-labelledby"))?.textContent.trim().length > 0');
-    expect(trim((string) $page->script('document.activeElement.textContent')))->toBe(__('ui.actions.cancel'));
-    $page->resize(390, 844);
-    $page->script('document.documentElement.style.fontSize = "200%"');
-    $page->assertScript('document.querySelector("dialog[open]").getBoundingClientRect().right <= innerWidth + 1');
+    $qrStateBeforePreview = QrCode::query()->where('service_point_id', $servicePoint->id)->orderBy('id')
+        ->get(['id', 'public_token', 'short_code', 'status'])->toArray();
+    $page->navigate($qrShowUrl)->assertVisible('[data-floor-qr-panel]');
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="prepareOperation(\'reissue\')"]');
+    $page->assertVisible('[data-floor-qr-operation]')
+        ->assertSee(__('floor.qr.operation.reissue'))
+        ->assertSee(__('floor.qr.reissue_warning'))
+        ->assertSee(__('qr.labels.current_short_code'))
+        ->assertSee(__('floor.fields.reason'))
+        ->assertVisible('[data-floor-qr-operation] button[data-floor-cancel]');
+    $page->resize(390, 844)->script('document.documentElement.style.fontSize = "200%"');
+    assertOrganizationsBrowserPage($page, '[data-page="branch-service-points"]');
+    $page->screenshot(true, 'organization-qr-reissue-preview-390-text200');
     $page->script('document.documentElement.style.removeProperty("font-size")');
-
-    $modalFocusState = $page->script(<<<'JAVASCRIPT'
-        (() => {
-            const dialog = document.querySelector('dialog[open]');
-
-            return dialog instanceof HTMLDialogElement
-                && document.activeElement instanceof HTMLElement
-                && dialog.contains(document.activeElement);
-        })()
-    JAVASCRIPT);
-
-    expect($modalFocusState)->toBeTrue();
-
-    clickOrganizationsBrowserElement($page, 'dialog[open] button[autofocus]');
-    $page->assertMissing('dialog[open]');
-
-    $page->resize(1440, 1000);
-    $page->script("document.documentElement.style.fontSize = '200%'");
-    assertOrganizationsBrowserPage($page, '[data-page="branch-service-point-qr"]');
-    $page->script("document.documentElement.style.fontSize = ''");
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="cancelOperation"]');
+    $page->assertMissing('[data-floor-qr-operation]')->assertVisible('[data-floor-qr-panel]');
+    expect(QrCode::query()->where('service_point_id', $servicePoint->id)->orderBy('id')
+        ->get(['id', 'public_token', 'short_code', 'status'])->toArray())->toBe($qrStateBeforePreview);
+    $page->resize(1440, 1000)->script('document.documentElement.style.fontSize = "200%"');
+    assertOrganizationsBrowserPage($page, '[data-page="branch-service-points"]');
+    $page->script('document.documentElement.style.removeProperty("font-size")');
 
     $page
         ->assertNoJavaScriptErrors()
@@ -238,22 +263,7 @@ test('demo owner can complete the organization administration browser journey', 
 
 function clickOrganizationsBrowserElement(PendingAwaitablePage $page, string $selector): void
 {
-    $encodedSelector = json_encode($selector, JSON_THROW_ON_ERROR);
-    $clicked = $page->script(<<<JAVASCRIPT
-        (() => {
-            const element = document.querySelector({$encodedSelector});
-
-            if (!(element instanceof HTMLElement)) {
-                return false;
-            }
-
-            element.click();
-
-            return true;
-        })()
-    JAVASCRIPT);
-
-    expect($clicked)->toBeTrue("Browser element was not found: {$selector}");
+    $page->assertVisible($selector)->click($selector);
 }
 
 function assertOrganizationsBrowserPage(PendingAwaitablePage $page, string $pageSelector): void

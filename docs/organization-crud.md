@@ -4,6 +4,14 @@
 
 # Organization administration CRUD evidence index
 
+## Prompt 4 canonical restaurant center — 2026-09-18
+
+The first three resources now share Restaurants/Business structure in `App\Livewire\Restaurants\Index`, with a canonical `IdentityEditor` for a selected organization, brand or physical restaurant. Old organization/brand/branch list URLs resolve to this center; the three retired PHP list classes and their views have been removed. The26-resource executable inventory points to the current components and Actions, and still has all original resources and feature evidence.
+
+A property card does not switch the working restaurant. The explicit workspace action uses the shared workspace mechanism. Restaurant creation opens an addressable class-based wizard with an explicit private attempt; adding a second restaurant does not reuse the first attempt. Identity/media save, historical preparation completion and publication are distinct operations. Parent restore keeps child restaurants inactive and does not automatically renew staff access; the detailed consequences and deliberate reactivation are defined in architecture.md and security.md.
+
+Current acceptance is in PROGRESS.md and testing.md. The dated completion figures below describe their original source, not the present aggregate. The current browser journey uses the real center lifecycle dialog and canonical floor QR/print panels; QR reissue cancellation preserves every identity/token/status and text zoom/focus/resource checks remain enforced.
+
 ## Atomic branch configuration
 
 Rows 4–7 share one Save operation. `BranchSettingsForm` validates all fields and `SaveBranchConfigurationAction` reloads/authorizes the branch and composes the existing Actions in one transaction. Late failure restores settings, profile, closure, schedule and original media; filesystem replacements follow commit/rollback. Separate forms are not required for independent controls that already have focused validation boundaries.

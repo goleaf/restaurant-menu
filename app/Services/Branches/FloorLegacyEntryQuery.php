@@ -21,12 +21,15 @@ final class FloorLegacyEntryQuery
     {
         abort_unless($brand->organization_id === $organization->id && $branch->organization_id === $organization->id && $branch->brand_id === $brand->id, 404);
         $this->workspace->branch($actor, $branch->id);
-        if ($ability !== null) { Gate::forUser($actor)->authorize($ability, $branch); }
+        if ($ability !== null) {
+            Gate::forUser($actor)->authorize($ability, $branch);
+        }
         if ($point !== null || $qr !== null) {
             abort_unless($point !== null && $qr !== null && $point->branch_id === $branch->id && $qr->service_point_id === $point->id, 404);
             Gate::forUser($actor)->authorize('generateQr', $branch);
             $state = [...$state, 'point' => $point->id, 'qr_record' => $qr->id];
         }
+
         return route('organizations.brands.branches.service-points.index', [
             'organization' => $organization->id, 'brand' => $brand->id, 'branch' => $branch->id, ...$state,
         ]);

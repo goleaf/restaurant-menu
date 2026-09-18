@@ -12,6 +12,7 @@ use App\Models\Brand;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Branches\FloorWorkspaceQuery;
 use App\Services\QrCodeSvgRenderer;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -38,6 +39,21 @@ test('opening QR and print panels does not generate an identity or image', funct
         ->assertSet('previewId', null)->assertDontSee('data:image/svg+xml;base64,', false);
     expect(Storage::disk('public')->allFiles('qr'))->toBe([])
         ->and(QrCode::query()->where('service_point_id', $this->point->id)->count())->toBe(1);
+});
+
+test('legacy floor QR selection verifies both table and restaurant ownership without mutation', function (): void {
+    $query = app(FloorWorkspaceQuery::class);
+    $original = $this->qr->fresh()->getAttributes();
+    $query->validateQr($this->branch, $this->point->id, $this->qr->id);
+
+    $otherPoint = ServicePoint::factory()->for($this->branch)->create();
+    $foreignBranch = Branch::factory()->create();
+    expect(fn () => $query->validateQr($this->branch, $otherPoint->id, $this->qr->id))
+        ->toThrow(ModelNotFoundException::class);
+    expect(fn () => $query->validateQr($foreignBranch, $this->point->id, $this->qr->id))
+        ->toThrow(ModelNotFoundException::class);
+    expect($this->qr->fresh()->getAttributes())->toBe($original)
+        ->and(Storage::disk('public')->allFiles('qr'))->toBe([]);
 });
 
 test('one QR panel keeps the selected table through disable and replacement', function (): void {

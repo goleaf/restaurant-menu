@@ -7,6 +7,7 @@ use App\Enums\SystemPermission;
 use App\Livewire\Restaurants\IdentityEditor;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\PermissionUserOverride;
 use App\Models\RestaurantOnboarding;
@@ -15,6 +16,22 @@ use App\Services\Organizations\RestaurantCenterQuery;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
+
+it('clears the parent name search only when opening its child level', function (): void {
+    $organization = Organization::factory()->create(['name' => 'North Group']);
+    $brand = Brand::factory()->for($organization)->create(['name' => 'Daily Kitchen']);
+    foreach ([[$organization, 'organization'], [$brand, 'brand']] as [$resource, $kind]) {
+        $parameters = ['view' => 'structure', 'q' => $resource->name, 'sort' => 'name_desc',
+            'lifecycle' => 'active', 'organizationsPage' => 2, 'brandsPage' => 5, 'page' => 3];
+        $row = app(RestaurantCenterQuery::class)->row($resource, $kind, $parameters);
+        parse_str(parse_url($row['children'], PHP_URL_QUERY), $children);
+        parse_str(parse_url($row['properties'], PHP_URL_QUERY), $properties);
+        expect($children['q'])->toBe('')->and($children['sort'])->toBe('name_desc')
+            ->and($children['lifecycle'])->toBe('active')
+            ->and($children[$kind === 'organization' ? 'brandsPage' : 'page'])->toBe('1')
+            ->and($properties['q'])->toBe($resource->name)->and($properties['organizationsPage'])->toBe('2');
+    }
+});
 
 it('returns authorized restaurants in a bounded page with actor-owned continuation only', function (): void {
     $this->seed(SystemPermissionsSeeder::class);

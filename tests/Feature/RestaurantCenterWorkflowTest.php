@@ -121,29 +121,38 @@ it('does not mark deferred groups complete or enable any resource by visiting re
     expect($this->prior->fresh()->completed_at)->toBeNull();
 });
 
-it('measures the original branch list and the unified center on the same fixture', function (): void {
+it('does not retain separately callable legacy structure editors', function (): void {
+    foreach (['Organizations/Index', 'Organizations/Brands/Index', 'Organizations/Brands/Branches/Index'] as $path) {
+        expect(file_exists(app_path('Livewire/'.$path.'.php')))->toBeFalse()
+            ->and(view()->exists('livewire.'.strtolower(str_replace('/', '.', $path))))->toBeFalse();
+    }
+});
+
+it('keeps the canonical center bounded on the thirty restaurant fixture', function (): void {
     Branch::factory()->count(29)->for($this->organization)->for($this->brand)
         ->sequence(fn ($sequence): array => ['name' => 'Measured restaurant '.str_pad((string) $sequence->index, 3, '0', STR_PAD_LEFT)])->create();
-    $results = [];
-    foreach (['previous' => App\Livewire\Organizations\Brands\Branches\Index::class, 'center' => Index::class] as $label => $component) {
-        $models = 0;
-        Event::listen('eloquent.retrieved: *', function () use (&$models): void {
-            $models++;
+    $models = 0;
+    Event::listen('eloquent.retrieved: *', function () use (&$models): void {
+        $models++;
+    });
+    gc_collect_cycles();
+    memory_reset_peak_usage();
+    $memory = memory_get_usage();
+    $start = hrtime(true);
+    try {
+        $queries = countDatabaseQueries(function () use (&$page): void {
+            $page = Livewire::actingAs($this->actor)->test(Index::class, ['organization' => $this->organization, 'brand' => $this->brand]);
         });
-        gc_collect_cycles();
-        memory_reset_peak_usage();
-        $memory = memory_get_usage();
-        $start = hrtime(true);
-        $queries = countDatabaseQueries(function () use ($component, &$page): void {
-            $page = Livewire::actingAs($this->actor)->test($component, ['organization' => $this->organization, 'brand' => $this->brand]);
-        });
-        $results[$label] = ['sql' => $queries, 'models' => $models, 'peak_memory_delta_bytes' => memory_get_peak_usage() - $memory,
+        $result = ['sql' => $queries, 'models' => $models, 'peak_memory_delta_bytes' => memory_get_peak_usage() - $memory,
             'html_bytes' => strlen($page->html()), 'snapshot_bytes' => strlen(json_encode($page->snapshot, JSON_THROW_ON_ERROR)), 'milliseconds' => round((hrtime(true) - $start) / 1000000, 2)];
+    } finally {
         Event::forget('eloquent.retrieved: *');
     }
-    fwrite(STDOUT, "\nRestaurant center fixture (30 restaurants): ".json_encode($results, JSON_THROW_ON_ERROR)."\n");
-    expect($results['center']['snapshot_bytes'])->toBeLessThan($results['previous']['snapshot_bytes'])
-        ->and($results['center']['html_bytes'])->toBeLessThan($results['previous']['html_bytes']);
+    fwrite(STDOUT, "\nRestaurant center fixture (30 restaurants): ".json_encode($result, JSON_THROW_ON_ERROR)."\n");
+    expect($result['snapshot_bytes'])->toBeLessThan(1500)
+        ->and($result['html_bytes'])->toBeLessThan(150000)
+        ->and($result['sql'])->toBeLessThanOrEqual(60)
+        ->and($page->viewData('rows')->items())->toHaveCount(20);
 });
 
 it('does not turn an outdated archive confirmation into restoration', function (): void {
@@ -292,9 +301,9 @@ it('center refresh searches bounded parent options beyond the first page and cle
 
 it('center refresh distinguishes empty structure from denied access without exposing foreign names', function (): void {
     $newActor = User::factory()->create();
-    Livewire::actingAs($newActor)->test(Index::class)->assertViewHas('emptyState', 'empty')->assertDontSee($this->first->name);
+    Livewire::actingAs($newActor)->test(Index::class)->assertViewHas('emptyState', 'empty')->assertViewHas('canCreateRestaurant', true)->assertDontSee($this->first->name);
     $this->organization->memberships()->where('user_id', $this->actor->id)->update(['status' => 'suspended']);
-    Livewire::actingAs($this->actor)->test(Index::class)->assertViewHas('emptyState', 'empty')->assertViewHas('canCreateRestaurant', true)->assertDontSee($this->first->name);
+    Livewire::actingAs($this->actor)->test(Index::class)->assertViewHas('emptyState', 'no_access')->assertViewHas('canCreateRestaurant', false)->assertDontSee($this->first->name);
     expect(app(RestaurantCenterQuery::class)->canCreateRestaurant($this->actor, (string) $this->organization->id))->toBeFalse();
     Gate::before(fn (User $user, string $ability, array $arguments): ?bool => $ability === 'create' && ($arguments[0] ?? null) === Organization::class ? false : null);
     Livewire::actingAs($this->actor)->test(Index::class)->assertViewHas('emptyState', 'no_access')->assertViewHas('canCreateRestaurant', false);

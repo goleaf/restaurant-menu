@@ -7,8 +7,6 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
-use App\Models\QrCode;
-use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\FloorLegacyEntryQuery;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +19,7 @@ class Areas extends Component
     {
         $actor = Auth::user();
         abort_unless($actor instanceof User, 401);
-        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ["area_search" => request()->query("q", ""), "area_lifecycle" => request()->query("lifecycle", "active"), "area_type" => request()->query("type", "all"), "area_active" => request()->query("active", "all"), "area_sort" => request()->query("sort", "position")]), navigate: true);
+        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ['area_search' => request()->query('q', ''), 'area_lifecycle' => request()->query('lifecycle', 'active'), 'area_type' => request()->query('type', 'all'), 'area_active' => request()->query('active', 'all'), 'area_sort' => request()->query('sort', 'position')]), navigate: true);
     }
 
     public function render(): View

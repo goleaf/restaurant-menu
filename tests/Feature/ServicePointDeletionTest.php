@@ -7,6 +7,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\SystemRole;
 use App\Exceptions\BusinessRuleViolation;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\PointEditor;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -25,6 +26,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -138,37 +140,47 @@ test('repeated delete confirmation cannot delete a different service point', fun
     $selected = ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Selected deletion row']);
     $other = ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Other protected row']);
 
-    Livewire::actingAs($owner)
-        ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
-        ->call('startEditing', $other->id)
-        ->set('editingName', 'Unfinished table name')
-        ->call('deleteServicePoint', $selected->id)
+    $otherEditor = Livewire::actingAs($owner)
+        ->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $other->id])
+        ->set('form.name', 'Unfinished table name');
+    $selectedEditor = Livewire::actingAs($owner)
+        ->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $selected->id])
+        ->set('confirmArchive', true)
+        ->call('archive')
         ->assertHasNoErrors()
-        ->assertDispatched('modal-close', name: 'delete-service-point-'.$selected->id)
-        ->assertSet('editingServicePointId', $other->id)
-        ->assertSet('editingName', 'Unfinished table name')
+        ->assertDispatched('floor-saved')
+        ->assertSet('pointId', $selected->id)
+        ->assertSet('confirmArchive', false);
+
+    expect(fn () => $selectedEditor->set('confirmArchive', true)->call('archive'))->toThrow(ModelNotFoundException::class);
+    expect(fn () => $selectedEditor->set('pointId', $other->id))->toThrow(CannotUpdateLockedPropertyException::class);
+    $otherEditor->call('$refresh')->assertSet('pointId', $other->id)
+        ->assertSet('form.name', 'Unfinished table name');
+    Livewire::actingAs($owner)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
         ->assertDontSee('Selected deletion row')
         ->assertSee('Other protected row');
 
     expect(fn () => app(DeleteServicePointAction::class)->handle($owner, $branch, $selected))
         ->toThrow(ModelNotFoundException::class);
 
-    expect($other->fresh())->not->toBeNull();
+    expect($other->fresh())->not->toBeNull()
+        ->and($other->fresh()->name)->toBe('Other protected row')
+        ->and($selected->fresh()->trashed())->toBeTrue();
 });
 
 test('delete control is shown to service point managers', function () {
     [$owner, $organization, $brand, $branch] = createServicePointDeletionContext();
-    ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Control table']);
+    $point = ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Control table']);
 
-    Livewire::actingAs($owner)
-        ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
-        ->assertSet('canManageServicePoints', true)
-        ->assertSeeHtml('wire:click="deleteServicePoint(');
+    $workspace = Livewire::actingAs($owner)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'));
+    expect($workspace->viewData('abilities')['managePoints'])->toBeTrue();
+    Livewire::actingAs($owner)->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $point->id])
+        ->assertSeeHtml('wire:click="archive"')->assertSeeHtml('wire:model="confirmArchive"');
 });
 
 test('delete control is hidden from users without service point management permission', function () {
     [, $organization, $brand, $branch] = createServicePointDeletionContext();
-    ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Protected deletion table']);
+    $point = ServicePoint::factory()->for($branch)->blocked()->create(['name' => 'Protected deletion table']);
     $waiter = User::factory()->create();
     OrganizationUser::factory()
         ->forOrganization($organization)
@@ -177,10 +189,11 @@ test('delete control is hidden from users without service point management permi
         ->active()
         ->create();
 
-    Livewire::actingAs($waiter)
+    $workspace = Livewire::actingAs($waiter)
         ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
-        ->assertSet('canManageServicePoints', false)
-        ->assertDontSeeHtml('wire:click="deleteServicePoint(');
+        ->assertDontSeeHtml('wire:click="createPoint"');
+    expect($workspace->viewData('abilities')['managePoints'])->toBeFalse();
+    Livewire::actingAs($waiter)->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $point->id])->assertForbidden();
 });
 
 test('owned demo service point can be restored by the CRUD seeder', function () {
@@ -224,15 +237,20 @@ test('service point manager can view and restore an archived service point witho
     ]);
     $servicePoint->deleteOrFail();
 
-    Livewire::actingAs($owner)
+    $workspace = Livewire::actingAs($owner)
         ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
         ->assertDontSee('Archived Service Point')
-        ->set('filterLifecycle', 'archived')
+        ->set('filters.lifecycle', 'archived')
         ->assertSee('Archived Service Point')
-        ->call('restoreServicePoint', $servicePoint->id)
-        ->assertHasNoErrors();
+        ->call('openPoint', $servicePoint->id)->assertSet('point', (string) $servicePoint->id);
+    Livewire::actingAs($owner)->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $servicePoint->id])
+        ->assertSeeHtml('wire:click="restore"')->assertDontSeeHtml('wire:click="archive"')
+        ->call('restore')->assertHasNoErrors()->assertDispatched('floor-saved');
+    $workspace->dispatch('floor-saved')->set('filters.lifecycle', 'active')->assertSee('Archived Service Point');
 
-    expect($servicePoint->fresh())->not->toBeNull();
+    expect($servicePoint->fresh())->not->toBeNull()
+        ->and($servicePoint->fresh()->trashed())->toBeFalse()
+        ->and($servicePoint->fresh()->is_active)->toBeFalse();
 });
 
 test('livewire payload cannot restore a service point from another branch', function () {
@@ -244,8 +262,8 @@ test('livewire payload cannot restore a service point from another branch', func
 
     try {
         Livewire::actingAs($owner)
-            ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
-            ->call('restoreServicePoint', $foreignServicePoint->id);
+            ->test(PointEditor::class, ['branchId' => $branch->id, 'pointId' => $foreignServicePoint->id])
+            ->call('restore');
     } catch (Throwable $exception) {
         $caughtException = $exception;
     }

@@ -33,8 +33,8 @@
                 <flux:text>{{ __('floor.move_separately') }}</flux:text>
             @endif
             <flux:select wire:model="form.icon" :label="__('floor.fields.icon')">
-                @forelse ($icons as $icon)
-                    <flux:select.option :value="$icon">{{ __('floor.icon.'.$icon) }}</flux:select.option>
+                @forelse ($icons as $icon => $iconLabel)
+                    <flux:select.option :value="$icon">{{ $iconLabel }}</flux:select.option>
                 @empty
                 @endforelse
             </flux:select>

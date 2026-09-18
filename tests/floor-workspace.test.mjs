@@ -179,6 +179,31 @@ test('pending child operations block dismissal and transitions until sync releas
     app.instance.destroy();
 });
 
+test('discard cannot replace a room draft while its save is awaiting acknowledgement', t => {
+    const app = setup(t), button = new Element(), updates = [];
+    app.dirty();
+    button.ancestors.set('form', app.form);
+    button.ancestors.set('[wire\\:id]', app.child);
+    const baseline = { name: 'Saved room' };
+    app.window.Livewire.find = () => ({ $get: () => baseline, $set: (...args) => updates.push(args) });
+    const request = app.message({ id: 'child', el: app.child }, [{ name: 'save' }]);
+    request.send();
+
+    const blocked = event({ currentTarget: button });
+    app.instance.discardFormLocally(blocked, 'form', 'baseline');
+    assert.equal(blocked.prevented && blocked.stopped, true);
+    assert.deepEqual(updates, []);
+    assert.equal(app.instance.dirtyForms.has(app.form), true);
+    assert.equal(app.instance.pendingRequests, 1);
+
+    request.sync();
+    app.instance.discardFormLocally(event({ currentTarget: button }), 'form', 'baseline');
+    assert.deepEqual(updates, [['form', baseline, false]]);
+    assert.equal(app.instance.dirtyForms.has(app.form), false);
+    assert.deepEqual(app.calls, []);
+    app.instance.destroy();
+});
+
 test('successful child save clears only submitted drafts and scoped lifecycle focuses and cleans subscriptions', t => {
     const app = setup(t);
     app.dirty();

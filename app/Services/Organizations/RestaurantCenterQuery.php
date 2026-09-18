@@ -109,9 +109,18 @@ final readonly class RestaurantCenterQuery
     public function canCreateRestaurant(User $actor, string $organizationId): bool
     {
         if ($organizationId === '') {
-            return Gate::forUser($actor)->allows('create', Organization::class);
+            if (Gate::forUser($actor)->allows('create', Organization::class)) {
+                return true;
+            }
+            if (! $actor->isSuperadmin()) {
+                return false;
+            }
+            $organization = $this->organizationQuery($actor)
+                ->whereHas('subscription', fn ($query) => $query->where('status', OrganizationSubscriptionStatus::Active->value))
+                ->orderBy('id')->first();
+        } else {
+            $organization = $this->organizationQuery($actor)->whereKey($organizationId)->first();
         }
-        $organization = $this->organizationQuery($actor)->whereKey($organizationId)->first();
 
         return $organization !== null && Gate::forUser($actor)->allows('createAdditional', [RestaurantOnboarding::class, $organization]);
     }
@@ -249,7 +258,7 @@ final readonly class RestaurantCenterQuery
             'description' => $resource instanceof Branch ? implode(' · ', [$resource->organization->name, $resource->brand->name, $resource->city, $resource->address]) : '',
             'state' => $resource->trashed() ? __('center.archived') : ($resource instanceof Branch ? ($resource->is_active ? __('center.administrative_active') : __('center.administrative_inactive')) : ''),
             'properties' => $properties,
-            'children' => $resource instanceof Organization ? route('restaurants.index', [...$parameters, 'view' => 'structure', 'organization' => $resource->id, 'brand' => '', 'brandsPage' => 1]) : ($resource instanceof Brand ? route('restaurants.index', [...$parameters, 'view' => 'restaurants', 'organization' => $resource->organization_id, 'brand' => $resource->id, 'page' => 1]) : null),
+            'children' => $resource instanceof Organization ? route('restaurants.index', [...$parameters, 'q' => '', 'view' => 'structure', 'organization' => $resource->id, 'brand' => '', 'brandsPage' => 1]) : ($resource instanceof Brand ? route('restaurants.index', [...$parameters, 'q' => '', 'view' => 'restaurants', 'organization' => $resource->organization_id, 'brand' => $resource->id, 'page' => 1]) : null),
             'work' => $work,
             'setup' => $continuation,
             'preparation_confirmed' => $confirmed,

@@ -138,8 +138,14 @@ class Index extends Component
             'active' => $filters['active'], 'setup' => $filters['setup'], 'lifecycle' => $filters['lifecycle'], 'sort' => $filters['sort'],
             ...array_intersect_key($this->paginators, array_flip(['page', 'organizationsPage', 'brandsPage']))];
         $rows->through(fn ($resource): array => $this->queries->row($resource, $rowKind, $parameters));
+        $secondaryFilterCount = count(array_filter([
+            $filters['organization'] !== '', $filters['brand'] !== '',
+            $filters['active'] !== 'all', $filters['setup'] !== 'all',
+            $filters['lifecycle'] !== 'active', $filters['sort'] !== 'name_asc',
+        ]));
 
         return view('livewire.restaurants.index', ['rows' => $rows, 'rowKind' => $rowKind, 'view' => $filters['view'],
+            'secondaryFilterCount' => $secondaryFilterCount,
             'organizations' => $this->queries->filterOrganizations($actor, trim($this->organizationSearch ?? ''), $filters['organization']),
             'brands' => $this->queries->filterBrands($actor, $filters['organization'], trim($this->brandSearch ?? ''), $filters['brand']),
             'emptyState' => $rows->isEmpty() ? $this->queries->emptyState($actor, $filters) : null,

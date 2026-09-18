@@ -10,6 +10,10 @@ Creation is explicit. One table property form preserves textual numbers and cann
 
 Current Prompt 3 offline lifecycle: a response already received before disconnection can finish morphing after the browser goes offline. The single application bootstrap uses the installed Livewire message `onRender` callback to reapply only the offline event. It never replays online on each morph, because that could clear another operation's disabled state. Cached navigation retains its existing connectivity replay. Deterministic browser and Node regressions cover the late response, reconnect, one registration and no online re-enabling; see testing.md.
 
+Floor selection uses one locked server ID set across cards/list/page/filter changes; the Flux checked property reflects this set after server updates, and pointer/Space both call the same authorized selection action. Clear/page-selection and restored DOM state are exercised in the actual browser. Closing an online editor restores focus after confirmed Livewire rendering; offline close remains local without replay on reconnect.
+
+The legacy areas address opens the room region through `view=zones`, preserving its existing filters. Table and QR links continue to select their own canonical region/object. These are authorized compatibility entries, not additional editors or catalogues.
+
 ## Prompt 4 center interaction boundary (2026-09-18)
 
 Restaurant discovery and Business structure share one URL-backed center. One selected canonical identity editor receives literal prepared organization/brand labels; list identity thumbnails have a placeholder and no upload control. File commits and identity commits remain separate. The addressable preparation page has four independent groups and the existing shared unsaved-navigation owner. Flux native dialogs explicitly reference their heading; field error IDs, described-by and accessible error color use installed component attributes and existing product styles. Own compositions stay in resources/scss/components/_restaurant-center.scss. Mobile search remains immediate while secondary filters can collapse without duplicating the form.

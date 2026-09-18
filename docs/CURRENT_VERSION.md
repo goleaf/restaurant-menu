@@ -6,7 +6,9 @@
 
 Fresh owned preflight confirms stable PHP8.5.10 CLI / Composer2.10.3: capabilities, strict manifest, installed and locked platform requirements pass. The actually available experimental executable is PHP8.6.0beta2; capabilities/manifest pass, both real platform checks fail on Nette Schema1.3.6 (PHP8.1–8.5), and Composer reports the Oniguruma deprecation. No dependency constraint or production/Herd selection is changed. The [official PHP site](https://www.php.net/) checked18September lists Beta3 as testing-only, with RC1 planned24September; that does not make Beta3 the installed binary.
 
-Node24.21.0 is retained. Shell npm11.19.0 is not the accepted engine; builds explicitly invoke the preserved owned npm12.0.2 prefix from Prompt4. Installed application/package locks remain unchanged. Fresh browser/web identity and final syntax/application evidence will be recorded with P5 acceptance; prior figures below retain their original scope.
+Node24.21.0 is retained. Shell npm11.19.0 is not the accepted engine; builds explicitly invoke the preserved owned npm12.0.2 prefix from Prompt4. Installed application/package locks remain unchanged. The final production build passes all entry, category and page budgets.
+
+The final immutable candidate `4209f986ec7a8ca0d4c3af7a027939a19b5406e11d987b2fd050e8a66a52752a` passes1,359/1,359 first-party PHP syntax checks on the actual8.6.0beta2 binary. This is syntax evidence only. Backend application/coverage checks use8.5.10/Xdebug3.5.0. The complete100-case browser acceptance responder reports8.5.8/cli; a separate runtime-only request to the configured Herd85 socket reports8.5.8/fpm-fcgi,500M. The temporary probe is removed without application bootstrap or database access. Complete acceptance is recorded separately in PROGRESS.md; physical hardware and native OS zoom have not been tested.
 
 # Current version baseline
 

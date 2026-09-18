@@ -19,7 +19,7 @@ class Areas extends Component
     {
         $actor = Auth::user();
         abort_unless($actor instanceof User, 401);
-        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ['area_search' => request()->query('q', ''), 'area_lifecycle' => request()->query('lifecycle', 'active'), 'area_type' => request()->query('type', 'all'), 'area_active' => request()->query('active', 'all'), 'area_sort' => request()->query('sort', 'position')]), navigate: true);
+        $this->redirect($entry->destination($actor, $organization, $brand, $branch, ['view' => 'zones', 'area_search' => request()->query('q', ''), 'area_lifecycle' => request()->query('lifecycle', 'active'), 'area_type' => request()->query('type', 'all'), 'area_active' => request()->query('active', 'all'), 'area_sort' => request()->query('sort', 'position')]), navigate: true);
     }
 
     public function render(): View

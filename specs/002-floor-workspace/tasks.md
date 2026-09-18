@@ -29,19 +29,19 @@ Authoritative status: docs/IMPLEMENTATION_PLAN.md P5R. Paths repository-relative
 - [x] T014 [US3] Make QR add-to-print preserve bounded selection in ServicePoints/Index.php; test mode/page/filter/foreign/tampered IDs and hidden targets in FloorWorkspaceTest.php.
 
 ## US4 — Durable QR and checked print
-- [ ] T015 [P] [US4] Prove partial/corrupt image and alternate-host cases in FloorQrSafetyTest.php; repair QrCode Actions/services only after RED, retaining identity and post-commit recovery.
-- [ ] T016 [US4] Prepare per-target ready/missing/nonactive display and permitted recovery in PrintPanel/QrPrintSnapshotQuery and print-panel Blade; retain immutable versioned snapshot contract.
-- [ ] T017 [US4] Prove then fix Livewire-open print assets and print-only prepared labels through QR SCSS/PrintPanel Blade; no duplicate print catalogue.
-- [ ] T018 [US4] Decode QR, rasterize actual multi-page PDF, validate quiet zone/white background/physical geometry, and measure100-label buffered download in existing QR tests and isolated artifacts.
+- [x] T015 [P] [US4] Prove partial/corrupt image and alternate-host cases in FloorQrSafetyTest.php; repair QrCode Actions/services only after RED, retaining identity and post-commit recovery.
+- [x] T016 [US4] Prepare per-target ready/missing/nonactive display and permitted recovery in PrintPanel/QrPrintSnapshotQuery and print-panel Blade; retain immutable versioned snapshot contract.
+- [x] T017 [US4] Prove then fix Livewire-open print assets and print-only prepared labels through QR SCSS/PrintPanel Blade; no duplicate print catalogue.
+- [x] T018 [US4] Decode QR, rasterize actual multi-page PDF, validate quiet zone/white background/physical geometry, and measure100-label buffered download in existing QR tests and isolated artifacts.
 
 ## Integration and acceptance
 - [x] T019 Remove only proven orphan area views and update tests/style-pipeline.test.mjs; retain safe legacy redirect adapters.
 - [x] T020 Root updates EN/LT/RU, canonical requirement/architecture/security/data/interface docs and all first-party Markdown notices.
-- [ ] T021 Execute real floor workflow browser matrix, offline/dirty/history/account/revocation scenarios and inspect screenshots in tests/Browser/FloorWorkspaceBrowserTest.php.
-- [ ] T022 Record matched baseline/candidate SQL,hydration,memory,HTML,payload,PDF/time and task transitions in docs/performance.md.
-- [ ] T023 Freeze source; run complete discovered backend/browser/coverage and all applicable static/format/JS/SCSS/translation/build/schema/cache gates; verify315+ worker artifacts and exact IDs rather than assuming counts.
-- [ ] T024 Check actual stable CLI/web and available isolated PHP8.6 constraints/syntax; record unexecuted application/hardware/native-zoom gates honestly.
-- [ ] T025 Independent non-author diff/security/contract review, Spec Kit convergence and repair/retest confirmed findings.
+- [x] T021 Execute real floor workflow browser matrix, offline/dirty/history/account/revocation scenarios and inspect screenshots in tests/Browser/FloorWorkspaceBrowserTest.php.
+- [x] T022 Record matched baseline/candidate SQL,hydration,memory,HTML,payload,PDF/time and task transitions in docs/performance.md.
+- [x] T023 Freeze source; run complete discovered backend/browser/coverage and all applicable static/format/JS/SCSS/translation/build/schema/cache gates; verify315+ worker artifacts and exact IDs rather than assuming counts.
+- [x] T024 Check actual stable CLI/web and available isolated PHP8.6 constraints/syntax; record unexecuted application/hardware/native-zoom gates honestly.
+- [x] T025 Independent non-author diff/security/contract review, Spec Kit convergence and repair/retest confirmed findings.
 - [ ] T026 Root stages only verified attributable files, commits locally and ordinary pushes to existing origin; record observed delivery without remote verification or deployment.
 
 ## Dependencies

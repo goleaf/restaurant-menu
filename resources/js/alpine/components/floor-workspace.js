@@ -50,13 +50,17 @@ export function floorWorkspace() {
                 onFinish(release);
                 onSuccess(({ onSync }) => onSync(release));
                 if (message.component.el !== ownerRoot) return;
-                const navigation = Array.from(message.actions).find(action => /^(?:openPoint|openArea|createPoint|createArea|openBulk|openSelection|showAreas|showTables|chooseArea)$/.test(action.name));
+                const navigation = Array.from(message.actions).find(action => /^(?:openPoint|openArea|createPoint|createArea|openBulk|openSelection|showAreas|showTables|chooseArea|clearEditor)$/.test(action.name));
                 if (!navigation) return;
                 onSuccess(({ payload, onRender }) => onRender(() => {
                     if (this.destroyed || !ownerRoot.isConnected) return;
                     const snapshot = typeof payload.snapshot === 'string' ? JSON.parse(payload.snapshot) : payload.snapshot;
                     if (Object.keys(snapshot?.memo?.errors ?? {}).length > 0) return;
                     this.locallyClosed = false;
+                    if (navigation.name === 'clearEditor') {
+                        this.restoreFocus();
+                        return;
+                    }
                     if (['showAreas', 'showTables', 'chooseArea'].includes(navigation.name)) {
                         const selector = navigation.name === 'showAreas' ? '[data-floor-areas-heading]' : '[data-floor-results-heading]';
                         this.$nextTick(() => ownerRoot.querySelector(selector)?.focus());
@@ -114,7 +118,6 @@ export function floorWorkspace() {
                 try {
                     await this.$wire.clearEditor();
                     this.locallyClosed = false;
-                    this.restoreFocus();
                 } catch {
                     this.dirtyForms = drafts;
                     this.dirtySections = sections;

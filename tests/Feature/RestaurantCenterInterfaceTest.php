@@ -154,9 +154,11 @@ it('targets the actual invalid Flux listbox button when it is the only failed fi
 it('opens the canonical rooms editor for a saved room before any tables or QR exist', function (): void {
     $page = Livewire::actingAs($this->actor)->test(RestaurantSetup::class, ['setup' => $this->setup->id])
         ->set('form.areaName', 'Saved empty room')->call('createArea')->assertHasNoErrors();
-    $url = route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $this->branch]);
+    $area = $this->setup->fresh()->areaNode;
+    expect($area)->not->toBeNull()->and($area->name)->toBe('Saved empty room');
+    $url = route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $this->branch, 'zone' => $area->id]);
 
-    $page->assertSeeHtml('href="'.$url.'"');
+    $page->assertSeeHtml('href="'.e($url).'"');
     expect($this->setup->servicePoints()->count())->toBe(0);
 });
 

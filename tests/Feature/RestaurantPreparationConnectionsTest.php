@@ -140,7 +140,7 @@ it('retries a QR image write failure after commit without recreating tables or p
         Storage::set('public', $proxy);
         $action = app(GenerateOnboardingQrCodesAction::class);
 
-        expect(fn () => $action->handle($actor, $setup->id))->toThrow(RuntimeException::class, 'Unable to store the QR image');
+        expect(fn () => $action->handle($actor, $setup->id))->toThrow(RuntimeException::class, 'Unable to publish a complete QR image.');
         $identities = QrCode::on('restaurant_setup_qr_read')->orderBy('id')->get()->map->getAttributes()->all();
         $auditCount = AuditLog::query()->count();
         expect($levels)->toBe([0, 0])->and($identities)->toHaveCount(2)

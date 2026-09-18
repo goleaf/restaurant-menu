@@ -2,6 +2,14 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 browser lifecycle corrections — 2026-09-18
+
+Real browser regression showed closing a bookmarked room editor left focus on BODY even though the correct room heading was visible. A resolved Livewire action promise is not proof that morphing has finished; focus restoration now uses the existing message interceptor's confirmed onRender callback. Offline closure keeps its local path and never sends a queued mutation. Unit regressions assert no early focus and focus the replacement DOM node; the corresponding browser case passes.
+
+The actual bulk→clear→subset journey also proved Flux's checked attribute is an initial value: server selection and the component's checked/aria-checked state diverged after a parent morph. Keep selectedIds locked and validated on the server, project that state to the installed checkbox's checked property through Alpine, and use the change event so pointer and Space share the same server action. The installed Pro checkbox setter detangles its programmatic update and does not emit another selection mutation. Do not unlock the array, replace Flux internals, remount every checkbox or patch dependencies to hide the mismatch. Browser assertions cover visual state, exact selected IDs and no unintended writes.
+
+Legacy area links explicitly select `view=zones` when redirecting into the canonical floor workspace. This preserves the old link's purpose after mobile regions become sequential; its search, lifecycle, type, activity and ordering remain intact. The adapter continues to authorize the original branch and performs no mutation. Feature and actual390px browser RED/GREEN reproduce the previously hidden room list.
+
 ## Prompt 5 measured QR stylesheet reserve — 2026-09-18
 
 The actual second candidate build compiled but failed the previous QR entry checks:4500raw/1218gzip versus4000/1200. Compared with baseline3804/1105, the required print-shell isolation and shared physical geometry add696raw/113gzip after orphan/duplicate rules were removed. Framework CSS falls604raw/36gzip and product Sass40raw/16gzip; total CSS rises52raw/61gzip. This is a measured cost, not a payload reduction.

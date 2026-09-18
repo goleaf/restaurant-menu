@@ -51,6 +51,36 @@ test('area node page requires manage zones permission', function () {
     Livewire::actingAs($manager)->test(AreaEditor::class, ['branchId' => $branch->id])->assertOk();
 });
 
+test('legacy area bookmarks open the room view with their exact filters without changing records', function (string $lifecycle): void {
+    [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+    $area = AreaNode::factory()->for($branch)->create([
+        'name' => 'Legacy north hall', 'type' => 'hall', 'is_active' => false,
+        'deleted_at' => $lifecycle === 'archived' ? now() : null,
+    ]);
+    AreaNode::factory()->for($branch)->create(['name' => 'Other room']);
+    $original = AreaNode::withTrashed()->findOrFail($area->id)->getAttributes();
+    $auditCount = AuditLog::query()->count();
+    $filters = ['q' => 'Legacy north', 'lifecycle' => $lifecycle, 'type' => 'hall', 'active' => 'inactive', 'sort' => 'name_desc'];
+    $state = ['view' => 'zones', 'area_search' => 'Legacy north', 'area_lifecycle' => $lifecycle, 'area_type' => 'hall', 'area_active' => 'inactive', 'area_sort' => 'name_desc'];
+
+    $response = $this->actingAs($manager)->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch, ...$filters]));
+    $destination = route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch, ...$state]);
+    $response->assertRedirect($destination);
+    $this->get($destination)->assertOk()->assertSeeHtml('data-mobile-view="zones"')->assertSee($area->name);
+    Livewire::actingAs($manager)->withQueryParams($state)
+        ->test(FloorWorkspace::class, compact('organization', 'brand', 'branch'))
+        ->assertSet('mobileView', 'zones')->assertSet('areaSearch', 'Legacy north')
+        ->assertSet('areaLifecycle', $lifecycle)->assertSet('areaType', 'hall')
+        ->assertSet('areaActive', 'inactive')->assertSet('areaSort', 'name_desc')
+        ->assertViewHas('areaRows', fn (array $rows): bool => array_column($rows, 'id') === [$area->id]);
+
+    expect(AreaNode::withTrashed()->findOrFail($area->id)->getAttributes())->toBe($original)
+        ->and(AreaNode::withTrashed()->count())->toBe(2)
+        ->and(ServicePoint::withTrashed()->count())->toBe(0)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+})->with(['active', 'archived']);
+
 test('manager can create nested area nodes inside branch', function () {
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
     grantAreaCrudManageZones($manager, $organization);

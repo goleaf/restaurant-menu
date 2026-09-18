@@ -63,13 +63,25 @@ test('print integration loads only on print layouts and preserves physical QR di
         ->toContain("@vite('resources/scss/qr-print.scss')");
     expect(File::get(resource_path('views/partials/head.blade.php')))->not->toContain('qr-print.css');
     expect(File::get(resource_path('css/app.css')))->not->toContain('.qr-sticker');
+    expect(File::get(resource_path('scss/print/_geometry.scss')))
+        ->toContain('$width: 76mm;', '$height: 104mm;', '$qr: 48mm;');
     expect(File::get(resource_path('scss/print/_qr.scss')))
-        ->toContain('--qr-sticker-width: 76mm;')
-        ->toContain('--qr-sticker-height: 104mm;')
+        ->toContain("@use 'geometry';")
+        ->toContain('--qr-sticker-width: #{geometry.$width};')
+        ->toContain('--qr-sticker-height: #{geometry.$height};')
+        ->toContain('width: geometry.$qr;')
         ->toContain('print-color-adjust: exact;')
         ->toContain(":root,\n    body[data-layout='print']")
         ->toContain('background: var(--qr-paper) !important;')
         ->toContain('break-inside: avoid;');
+
+    $manifest = json_decode(File::get(public_path('build/manifest.json')), true, flags: JSON_THROW_ON_ERROR);
+    $printCss = File::get(public_path('build/'.$manifest['resources/scss/qr-print.scss']['file']));
+
+    expect($printCss)
+        ->toMatch('/--qr-sticker-width:\s*76mm[;}]/')
+        ->toMatch('/--qr-sticker-height:\s*104mm[;}]/')
+        ->toMatch('/\.qr-sticker-image\s*\{[^}]*(?<![\w-])width:\s*48mm[;}]/');
 });
 
 test('unused generic control clones are not published alongside Flux', function (): void {

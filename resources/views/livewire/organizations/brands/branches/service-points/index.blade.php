@@ -18,7 +18,7 @@
             <flux:select wire:model.live="areaLifecycle" :label="__('floor.area_lifecycle')">
                 <flux:select.option value="active">{{ __('floor.current') }}</flux:select.option><flux:select.option value="archived">{{ __('floor.archived') }}</flux:select.option>
             </flux:select>
-            <flux:accordion><flux:accordion.item><flux:accordion.heading>{{ __('floor.filters') }}</flux:accordion.heading><flux:accordion.content>
+            <flux:accordion><flux:accordion.item><flux:accordion.heading>{{ __('floor.area_filters') }}</flux:accordion.heading><flux:accordion.content>
                 <div class="rm-floor__form">
                     <flux:select wire:model.live="areaType" :label="__('floor.fields.type')"><flux:select.option value="all">{{ __('floor.all_types') }}</flux:select.option>@forelse ($areaTypeOptions as $option)<flux:select.option :value="$option['value']">{{ $option['label'] }}</flux:select.option>@empty @endforelse</flux:select>
                     <flux:select wire:model.live="areaActive" :label="__('floor.usability')"><flux:select.option value="all">{{ __('floor.all_states') }}</flux:select.option><flux:select.option value="active">{{ __('floor.active') }}</flux:select.option><flux:select.option value="inactive">{{ __('floor.inactive') }}</flux:select.option></flux:select>
@@ -81,7 +81,7 @@
                 @forelse ($rows as $row)
                     <article class="rm-floor__point" wire:key="floor-point-{{ $row['id'] }}" data-selected="{{ $detail !== null && $detail['id'] === $row['id'] ? 'true' : 'false' }}">
                         <div class="rm-floor__point-heading">
-                            @if (($abilities['managePoints'] || $abilities['qr']) && ! $row['archived'])<flux:checkbox wire:click="selectPoint({{ $row['id'] }})" :checked="$row['selected']" :aria-label="__('floor.select_table_named', ['name' => $row['name']])" wire:offline.attr="disabled" />@endif
+                            @if (($abilities['managePoints'] || $abilities['qr']) && ! $row['archived'])<flux:checkbox wire:change="selectPoint({{ $row['id'] }})" x-effect="$el.checked = $wire.selectedIds.includes({{ $row['id'] }})" :checked="$row['selected']" wire:loading.attr="disabled" :aria-label="__('floor.select_table_named', ['name' => $row['name']])" wire:offline.attr="disabled" />@endif
                             <flux:button data-floor-transition wire:click="openPoint({{ $row['id'] }})" variant="ghost" class="rm-floor__point-link" wire:offline.attr="disabled">{{ $row['name'] }}</flux:button>
                         </div>
                         <p class="rm-floor__point-meta">{{ $row['number'] }} · {{ $row['type'] }} · {{ __('floor.capacity_count', ['count' => $row['capacity']]) }}</p>

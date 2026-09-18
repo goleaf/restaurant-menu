@@ -2,19 +2,19 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
-## Active Prompt 5 — unified floor workspace (2026-09-18)
+## Prompt 5 — acceptance passed, delivery pending (2026-09-18)
 
 Baseline `main` / `5e2987c` is clean after accepted Prompt4. Source/index/diff archive: `restaurant-p5-z2py0b1b`. Use [working spec](../specs/002-floor-workspace/spec.md), [technical plan](../specs/002-floor-workspace/plan.md) and [tasks](../specs/002-floor-workspace/tasks.md), mapped to existing canonical IDs. The earlier P5 checkpoint remains history, not current acceptance. No working database/key/QR changes, dependency upgrade, deployment or GitHub operation beyond ordinary authorized push.
 
 | Step | Exclusive owner / boundary | User outcome | Verification / status |
 | --- | --- | --- | --- |
-| P5R.1 | Root: shared Forms/Index/transport tests | Room bookmark→table→rename preserves identity and context | Implemented; root vertical/context plus existing transport80/424 pass; later print reload and full integration under verification |
+| P5R.1 | Root: shared Forms/Index/transport tests | Room bookmark→table→rename preserves identity and context | Accepted; root80/424 and complete backend4694/80427 pass, including final print/legacy integration |
 | P5R.2 | Area specialist: Area Actions/query/AreaEditor and area tests | Consistent bounded hierarchy, pinned selected room, searchable independent parents and saved URL | Implemented; area66/295 pass; independent domain review clear |
 | P5R.3 | Table specialist: ServicePoint Actions/PointEditor/BulkCreate and domain tests | Explicit safe movement, all-skipped truthful bulk result and no active-service damage | Implemented; affected236/1155 pass, including four independent SQLite races; independent review clear |
-| P5R.4 | QR specialist: QR Actions/read/PrintPanel/QrPanel/print SCSS and QR/browser tests | Exact selection→ready/missing targets→safe image/PDF/print, persistent token | Real file/host and browser RED confirmed; QR/PDF66/396 and candidate print2/13 pass; documents/matrix/build under verification |
-| P5R.5 | Root: Index Blade/_floor.scss/JS, legacy entries, shared lang/routes/docs | Mobile zone→tables→card, additive print selection, named dialogs and no duplicate screens | T005–T007/T014/T019–T020; preserve one global context and dirty owner |
-| P5R.6 | Root + specialists with serialized browser/build | Exact current runtime/test/document/screenshot and matched-cost proof | T021–T024; supported stable and experimental blockers separate, no inherited acceptance |
-| P5R.7 | Non-author reviewers; root Git delivery | Reviewed attributable result and truthful ledgers | T025–T026; pending required gates |
+| P5R.4 | QR specialist: QR Actions/read/PrintPanel/QrPanel/print SCSS and QR/browser tests | Exact selection→ready/missing targets→safe image/PDF/print, persistent token | Accepted; QR81/430,121/121 decoded URLs,76mm labels/48mm QR, final build, complete100/6911 browser and4694/80427 backend pass |
+| P5R.5 | Root: Index Blade/_floor.scss/JS, legacy entries, shared lang/routes/docs | Mobile zone→tables→card, additive print selection, named dialogs and no duplicate screens | Implemented; one global context/dirty owner, final floor9/360 and full browser100/6911 pass, including the legacy mobile entry |
+| P5R.6 | Root + specialists with serialized browser/build | Exact current runtime/test/document/screenshot and matched-cost proof | T021–T024 accepted: exact inventories,92.3573% PHP/100% JS lines, final matched measurements and runtime limitations recorded |
+| P5R.7 | Non-author reviewers; root Git delivery | Reviewed attributable result and truthful ledgers | Independent review and Spec Kit convergence clear; T026 commit/push pending |
 
 Each file has one active owner; request transfer before cross-boundary edits. Root coordinates Forms/translations/routes/schema and integrates agent patches directly in shared main. Existing floor implementation is reused, tested and repaired; no second floor editor or booking/service system is created. Tests use only owned database/storage/cache. Initial free space8.0GiB; retained P4 evidence remains intact.
 

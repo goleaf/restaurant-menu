@@ -2,6 +2,34 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 matched floor measurements — 2026-09-18
+
+Six alternating owned processes compare baseline`5e2987c` with final candidate`4209f986ec7a8ca0d4c3af7a027939a19b5406e11d987b2fd050e8a66a52752a`, including the legacy `/areas` entry and visible100-target limit corrections. The same factory fixture, final assets and test execute on PHP8.5.10 without Xdebug/PCOV; all6 tests/174 assertions pass. Seven reflected source paths prove the intended root is loaded. These are application response-body observations; the separate actual browser network samples below measure wire responses. The prepared measurement copy has digest`c6c91fc756694ceab921fc80d7e5a39baaa2a39813f62ccc1a7f8d6cb58f08a7`; all1205 production files and12 asset files match the final working source.
+
+| Operation / metric | Baseline | Candidate |
+| --- | ---: | ---: |
+| HTTP SQL / hydrated models |88 /140|88 /140|
+| HTTP HTML bytes |322771|331383|
+| HTTP incremental peak bytes |9676400|9912504|
+| HTTP allocated peak bytes |78118912|78118912|
+| Livewire mount SQL / models |41 /57|41 /57|
+| Livewire mount HTML bytes |208559–208560|217174|
+| Search SQL / models |41 /16|41 /16|
+| Search component fragment bytes |117124|124075|
+| Search response-body bytes |117153|124104|
+| Mode response-body bytes |117151|124102|
+| Query-only pagination,40 /200 tables |5 /5 SQL|5 /5 SQL|
+
+The visible20-row page hydrates21 service points including the lookahead; searching down to one row hydrates one service point. Queries remain constant as the fixture grows40→200. Markup grows8612bytes HTTP and6951bytes for the search response. Search incremental heap rises2286352→2308920bytes; its allocated peak remains80,216,064bytes on both sides. No latency or broad performance improvement is claimed while coverage verification runs concurrently. Raw samples, memory and elapsed distributions and source/fixture/assets hashes are in `restaurant-p5-z2py0b1b/floor-network-final-limit/php-summary.json`; older measurements remain separately preserved.
+
+Actual WebKit network measurement passes6/6 alternating samples and120 assertions on the same10-room/200-table fixture, with20 rows initially and one after search. CLI and HTTP both report PHP8.5.10. Initial navigation remains one document plus the existing `remember` POST; search remains one POST. Browser-decoded document bytes grow322951→331563; search request1243→1305bytes, decoded response107961→114900bytes, median encoded response9457→10087bytes and transfer9757→10387bytes. ResourceTiming reports6–7 baseline entries and7 candidate entries; font-cache variation is not evidence of fewer application requests. Both copies serve the same final12 asset files. PHP and browser fixtures differ in prior selection state, so compare before/after within each method rather than their absolute byte counts.
+
+The first network attempt failed before measurement because its temporary future Carbon clock invalidated real file-session mtimes. A dedicated probe reproduced this; removing only the temporary browser fixture clock restored real authentication. Failed evidence remains in the earlier `floor-network-final/clock-probe.json` and original sample directory. All six reported final-limit samples ran afterward without retries or authentication bypass. `floor-network-final-limit/summary.json` and `final-source-verification.json` record exact test/source/assets hashes,1205 production-file equality and every sample. Other PHP checks ran concurrently; no wall-time speedup is claimed.
+
+The code-derived interaction comparison uses the actual already-unified baseline, not the old2255449 screen. Ordinary choose-room→open-table→save has3 activations before and4 on mobile now because choosing the room list is explicit; both use zero page navigations, zero repeated restaurant selection and one save. Direct two-table printing stays5 activations. The repaired inspect-B-QR-while-A-is-selected path takes6 activations and retainsA+B; previously6 incorrectly retained onlyB, and manual recovery needed3 additional activations and one repeated selection. This specific9→6 recovery improvement is not claimed for all print tasks. Actual browser journeys separately establish that the implemented path succeeds.
+
+The measured100-label document is230070 PDF bytes with835450 snapshot bytes,2608.5ms generation and107479040 peak allocated bytes. Across7EN+7LT+7RU+100EN labels,121/121 decoded URLs match the prepared data. Raster dimensions are76.02/75.85mm at144dpi, within pixel rounding of76mm; QR remains48mm with a four-module vector quiet zone. Long content can increase the104mm minimum label height without clipping. Browser print/PDF data and styles share geometry; no physical printer or phone scan is asserted.
+
 ## Prompt 4 final creation-policy measurement — 2026-09-18
 
 The final frozen source (`6605a057edec59d9eb438322ad3061603769e09bc4226c748d77e03e95bad634`) is compared with the same saved partial-P4 baseline in six alternating isolated processes. The identical owner fixture contains100 restaurants,20 visible rows and15 warm HTTP plus15 warm Livewire samples per side. All six runs pass114 assertions. Reflection verifies both loaded source roots; fixture/test and asset hashes match. These measurements include the final creation-entry correction and supersede the older candidate SQL counts below.

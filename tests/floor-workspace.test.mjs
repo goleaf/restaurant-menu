@@ -58,6 +58,8 @@ test('online closing restores focus and a failed close retains draft protection'
     await app.instance.handleTransition(event({ target: button }));
     await app.instance.closeEditor();
     assert.deepEqual(app.calls, ['clear']);
+    assert.equal(button.focused, 0);
+    app.message({ id: 'floor', el: app.instance.$el }, [{ name: 'clearEditor' }]).finish();
     assert.equal(button.focused, 1);
     app.dirty(); app.instance.$wire.clearEditor = async () => { throw new Error('Disconnected'); };
     app.instance.closeEditor();
@@ -242,13 +244,18 @@ test('mobile room navigation focuses the visible region after its confirmed rend
     app.instance.destroy();
 });
 
-test('closing a bookmarked area editor returns focus to the visible room list', async t => {
+test('closing a bookmarked area editor waits for the confirmed render before restoring room focus', async t => {
     const app = setup(t), areas = new Element(), tables = new Element();
     app.instance.$wire.mobileView = 'zones';
     app.instance.$el.children.set('[data-floor-areas-heading]', [areas]);
     app.instance.$el.children.set('[data-floor-results-heading]', [tables]);
     await app.instance.closeEditor();
-    assert.equal(areas.focused, 1);
+    assert.equal(areas.focused, 0);
+    const replacement = new Element();
+    app.instance.$el.children.set('[data-floor-areas-heading]', [replacement]);
+    app.message({ id: 'floor', el: app.instance.$el }, [{ name: 'clearEditor' }]).finish();
+    assert.equal(replacement.focused, 1);
+    assert.equal(areas.focused, 0);
     assert.equal(tables.focused, 0);
     app.instance.destroy();
 });

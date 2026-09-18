@@ -31,10 +31,10 @@ Authoritative status: docs/IMPLEMENTATION_PLAN.md P4S. This checklist is its exe
 - [x] T014 Root: validate clean/upgrade schema and isolated stable/experimental runtime identity/platform without bypasses.
 - [x] T015 Root: run current full backend/browser/coverage, static/format/architecture/JS/SCSS/translation/build gates with inventory and exact failures.
 - [x] T016 Root: measure matched fixture user steps/repeated input/confirmations, SQL/memory/HTML/payload/network in docs/performance.md.
-- [ ] T017 Non-author review real attributable diff, fix findings and repeat affected checks; root completes scoped local commit and ordinary push only when required gates pass.
+- [x] T017 Non-author review real attributable diff, fix findings and repeat affected checks; root completed scoped implementation commit `e472d6c` after required gates passed; ordinary `git push origin main` returned exit0 (`a3c8926..e472d6c main -> main`). No remote verification or deployment.
 
 ## Dependencies and parallel execution
-T001–T003 precede new behavior. Domain T004–T006, center T007–T009 and UI T010–T012 have distinct file owners and may proceed concurrently; root owns routes/migrations/translations/docs. UI coordinates prepared row fields with center. Browser/build are serialized. T013–T017 integrate all stories; supported-runtime gates pass and T017 remains open only until actual Git delivery is observed. PHP8.6 application constraints and unverified physical-device/native-zoom checks remain explicit limitations. No automatic hooks or Git branch changes.
+T001–T003 precede new behavior. Domain T004–T006, center T007–T009 and UI T010–T012 have distinct file owners and may proceed concurrently; root owns routes/migrations/translations/docs. UI coordinates prepared row fields with center. Browser/build are serialized. T013–T017 integrate all stories; supported-runtime gates pass and T017 is closed from the actual successful implementation commit/push. PHP8.6 application constraints and unverified physical-device/native-zoom checks remain explicit limitations. No automatic hooks or Git branch changes.
 
 ## Phase 6: Convergence — verified additional gaps
 

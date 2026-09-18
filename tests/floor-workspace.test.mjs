@@ -227,3 +227,28 @@ test('successful child save clears only submitted drafts and scoped lifecycle fo
     assert.equal(app.state.interceptors.size, 0);
     assert.equal(app.window.listenerCount() + app.document.listenerCount() + app.instance.$el.listenerCount(), 0);
 });
+
+test('mobile room navigation focuses the visible region after its confirmed render', t => {
+    const app = setup(t), areas = new Element(), tables = new Element();
+    app.instance.$el.children.set('[data-floor-areas-heading]', [areas]);
+    app.instance.$el.children.set('[data-floor-results-heading]', [tables]);
+    app.message({ id: 'floor', el: app.instance.$el }, [{ name: 'showAreas' }]).finish();
+    assert.equal(areas.focused, 1);
+    for (const name of ['showTables', 'chooseArea']) {
+        app.message({ id: 'floor', el: app.instance.$el }, [{ name }]).finish();
+    }
+    assert.equal(tables.focused, 2);
+    assert.equal(app.editor.focused, 0);
+    app.instance.destroy();
+});
+
+test('closing a bookmarked area editor returns focus to the visible room list', async t => {
+    const app = setup(t), areas = new Element(), tables = new Element();
+    app.instance.$wire.mobileView = 'zones';
+    app.instance.$el.children.set('[data-floor-areas-heading]', [areas]);
+    app.instance.$el.children.set('[data-floor-results-heading]', [tables]);
+    await app.instance.closeEditor();
+    assert.equal(areas.focused, 1);
+    assert.equal(tables.focused, 0);
+    app.instance.destroy();
+});

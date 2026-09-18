@@ -1,10 +1,21 @@
 <section class="rm-floor__editor" data-floor-print-panel>
-    @pushOnce('page-scripts', 'floor-qr-print-styles')
+    @assets
         @vite('resources/scss/qr-print.scss')
-    @endPushOnce
+    @endassets
     <div class="qr-print-controls">
         <flux:heading size="lg">{{ __('floor.print.title') }}</flux:heading>
         <flux:text>{{ __('floor.print.selection_count', ['count' => $selectedCount]) }}</flux:text>
+        <ul class="qr-print-availability" aria-label="{{ __('floor.print.availability') }}">
+            @forelse ($availability as $target)
+                <li data-floor-print-target="{{ $target['id'] }}" data-qr-state="{{ $target['state'] }}" wire:key="floor-print-target-{{ $target['id'] }}">
+                    <span>{{ $target['name'] }} · {{ $target['label'] }}</span>
+                    @if ($target['state'] !== 'ready')
+                        <flux:button data-floor-transition wire:click="reviewQr({{ $target['id'] }})" wire:offline.attr="disabled">{{ __('floor.print.review_qr') }}</flux:button>
+                    @endif
+                </li>
+            @empty
+            @endforelse
+        </ul>
         <form wire:submit="preparePrint" data-floor-editor data-menu-draft-form class="rm-floor__form" novalidate>
             <flux:select wire:model="form.preset" :label="__('floor.print.preset')">
                 @forelse ($presetOptions as $option)<flux:select.option :value="$option['value']">{{ __($option['label']) }}</flux:select.option>@empty @endforelse

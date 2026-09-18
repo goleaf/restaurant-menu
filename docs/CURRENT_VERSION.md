@@ -2,9 +2,15 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 current runtime verification — 2026-09-18
+
+Fresh owned preflight confirms stable PHP8.5.10 CLI / Composer2.10.3: capabilities, strict manifest, installed and locked platform requirements pass. The actually available experimental executable is PHP8.6.0beta2; capabilities/manifest pass, both real platform checks fail on Nette Schema1.3.6 (PHP8.1–8.5), and Composer reports the Oniguruma deprecation. No dependency constraint or production/Herd selection is changed. The [official PHP site](https://www.php.net/) checked18September lists Beta3 as testing-only, with RC1 planned24September; that does not make Beta3 the installed binary.
+
+Node24.21.0 is retained. Shell npm11.19.0 is not the accepted engine; builds explicitly invoke the preserved owned npm12.0.2 prefix from Prompt4. Installed application/package locks remain unchanged. Fresh browser/web identity and final syntax/application evidence will be recorded with P5 acceptance; prior figures below retain their original scope.
+
 # Current version baseline
 
-Current execution stage is Prompt 4 restaurant-center refresh on existing `main`, starting at `0dbbebbd64235aae7b6c36897b3612e38d2be430` with 27 preserved incoming changed paths. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Prompt 3's local tooltip/runtime repairs remain incoming work, not a new package release. Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify the combined worktree.
+Current execution stage is Prompt 5 floor-workspace continuation on existing `main`, starting at clean `5e2987c52c4be032144c6f1499aad7f0fd31b666`. Prompt 4 delivery is preserved. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Prompt 3's local tooltip/runtime repairs remain incoming work, not a new package release. Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify the combined worktree.
 
 ## Prompt 4 continuation runtime evidence — 2026-09-18
 

@@ -2,6 +2,12 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — Current verification scope (2026-09-18)
+
+Current results belong to the Prompt5 section of PROGRESS.md; prior accepted Prompt4 results are baseline evidence only. New floor regressions exercise real URL hydration, one canonical editor, textual numbers/permanent QR preservation, created-room identity, selection and last-page recovery. Area tests cover64/65-node depth, deep subtree moves/restoration, corrupted paths, parent pagination and localized lifecycle failures. Physical-table tests cover hidden-field tampering, unchanged drafts on version conflicts, zero-created bulk replay and real signed Livewire account changes.
+
+Independent file-SQLite processes race archive/move against service opening. QR tests exercise real partial-file failures, same-record repair, alternate request hosts, per-target preparation and buffered documents. Browser acceptance must inspect mobile/history/focus/offline and actual print media, and decode/rasterize generated QR/PDF. Physical printer/phone/native zoom claims require separate evidence. Use owned storage/databases and reconcile all discovered/executed tests before aggregate acceptance; unchanged coverage thresholds apply.
+
 ## Prompt 4 current verification — 2026-09-18
 
 Current acceptance is recorded in PROGRESS.md and supersedes no historical run below. Use the exact current source and all discovered tests; do not treat earlier aggregate percentages as current acceptance. Stable backend checks use isolated SQLite/storage/cache and PHP8.5.10. Browser HTTP reports PHP8.5.8/cli; a separate configured Herd FPM probe reports8.5.8/fpm-fcgi. Available experimental PHP8.6.0beta2 is rejected by real Composer platform requirements; no bypass or application pass is claimed.

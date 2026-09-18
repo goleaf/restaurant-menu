@@ -91,24 +91,27 @@ class AreaEditor extends Component
     {
         $branch = $this->branch();
         $data = $this->form->payload($branch);
+        $creating = $this->areaId === null;
         try {
             $area = $this->areaId === null
                 ? $this->createFloorAreaAction->handle($this->actor(), $branch, $data, $this->requestId)
                 : $this->updateAreaNodeAction->handle($this->floorWorkspaceQuery->area($branch, $this->areaId), $data, $this->actor(), $this->version);
         } catch (InvalidArgumentException $exception) {
-            $message = match ($exception->getMessage()) {
-                'errors.domain.area_cannot_move_into_child' => __('errors.domain.area_cannot_move_into_child'),
-                'errors.domain.selected_parent_area_unavailable' => __('errors.domain.selected_parent_area_unavailable'),
-                'floor.errors.invalid_hierarchy' => __('floor.errors.invalid_hierarchy'),
-                default => throw $exception,
-            };
-            throw ValidationException::withMessages(['form.parentId' => $message]);
+            throw $this->hierarchyValidationException($exception);
         }
         $this->areaId = $area->id;
         $this->version = $area->structure_version;
         $this->baseline = $this->form->all();
         $this->message = __('floor.saved');
+        if ($creating) {
+            $this->dispatch('floor-area-created', id: $area->id);
+        }
         $this->saved();
+    }
+
+    public function updatedParentSearch(): void
+    {
+        $this->resetPage('parentAreasPage');
     }
 
     public function reviewArchive(): void
@@ -124,7 +127,11 @@ class AreaEditor extends Component
     {
         abort_unless($this->areaId !== null && $this->archivePreview !== null, 422);
         $branch = $this->branch();
-        $this->deleteAreaNodeAction->handle($this->actor(), $branch, $this->floorWorkspaceQuery->area($branch, $this->areaId), $this->version, $this->archivePreview['fingerprint']);
+        try {
+            $this->deleteAreaNodeAction->handle($this->actor(), $branch, $this->floorWorkspaceQuery->area($branch, $this->areaId), $this->version, $this->archivePreview['fingerprint']);
+        } catch (InvalidArgumentException $exception) {
+            throw $this->hierarchyValidationException($exception);
+        }
         $this->archivePreview = null;
         $this->mount($this->branchId, $this->areaId);
         $this->message = __('floor.archived');
@@ -135,21 +142,38 @@ class AreaEditor extends Component
     {
         abort_unless($this->areaId !== null, 422);
         $branch = $this->branch();
-        $this->restoreAreaNodeAction->handle($this->actor(), $branch, $this->floorWorkspaceQuery->area($branch, $this->areaId), $this->version);
+        try {
+            $this->restoreAreaNodeAction->handle($this->actor(), $branch, $this->floorWorkspaceQuery->area($branch, $this->areaId), $this->version);
+        } catch (InvalidArgumentException $exception) {
+            throw $this->hierarchyValidationException($exception);
+        }
         $this->mount($this->branchId, $this->areaId);
         $this->message = __('floor.restored');
         $this->saved();
+    }
+
+    private function hierarchyValidationException(InvalidArgumentException $exception): ValidationException
+    {
+        $message = match ($exception->getMessage()) {
+            'errors.domain.area_cannot_move_into_child' => __('errors.domain.area_cannot_move_into_child'),
+            'errors.domain.selected_parent_area_unavailable' => __('errors.domain.selected_parent_area_unavailable'),
+            'floor.errors.invalid_hierarchy' => __('floor.errors.invalid_hierarchy'),
+            default => throw $exception,
+        };
+
+        return ValidationException::withMessages(['form.parentId' => $message]);
     }
 
     public function render(): View
     {
         $branch = $this->branch();
         $selected = is_string($this->form->parentId) && ctype_digit($this->form->parentId) ? (int) $this->form->parentId : null;
-        $parents = $this->areaNodeQueryService->browser($branch, $this->parentSearch, $selected, $this->areaId);
+        $parents = $this->areaNodeQueryService->browser($branch, $this->parentSearch, $selected, $this->areaId, pageName: 'parentAreasPage');
+        $area = $this->areaId === null ? null : $this->floorWorkspaceQuery->area($branch, $this->areaId);
 
         return view('livewire.organizations.brands.branches.service-points.area-editor', [
-            'area' => $this->areaId === null ? null : $this->floorWorkspaceQuery->area($branch, $this->areaId),
-            'archived' => $this->areaId !== null && $this->floorWorkspaceQuery->area($branch, $this->areaId)->trashed(), 'parents' => $parents['rows'], 'parentPages' => $parents['paginator'], 'types' => FloorOptions::types(true), 'icons' => FloorOptions::iconOptions(),
+            'area' => $area,
+            'archived' => $area?->trashed() ?? false, 'parents' => $parents['rows'], 'parentPages' => $parents['paginator'], 'types' => FloorOptions::types(true), 'icons' => FloorOptions::iconOptions(),
         ]);
     }
 }

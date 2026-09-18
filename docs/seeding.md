@@ -2,6 +2,10 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 floor fixtures
+
+Existing AreaNode, ServicePoint, QrCode, TableSession, order and organization factories compose nested/empty/foreign rooms, textual/duplicate display numbers, archived internal-code reservations, direct and merged unfinished service, nonactive QR and damaged files. Bulk bounds use real200/201-record scenarios. No new production/demo seed behavior or business entity is needed. Fixtures, images and documents are written only to owned test databases/storage; repeating this stage does not change working names, staff assignments, keys or permanent QR.
+
 # Factories and seeding
 
 ## Prompt 7 availability fixtures — 2026-09-17

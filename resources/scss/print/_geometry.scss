@@ -1,0 +1,21 @@
+// Shared browser and PDF physical label dimensions.
+$width: 76mm;
+$height: 104mm;
+$qr: 48mm;
+$page-margin: 8mm;
+$gap: 4mm;
+$padding: 4mm;
+$border: 0.5mm;
+$brand-size: 12pt;
+$title-size: 10pt;
+$code-size: 12pt;
+$number-size: 10pt;
+
+$presets: (
+    minimal: (accent: #0a0a0a, background: #ffffff, border: #0a0a0a, text: #0a0a0a),
+    classic: (accent: #4a3728, background: #fffdf5, border: #4a3728, text: #171717),
+    restaurant: (accent: #b91c1c, background: #fffafa, border: #b91c1c, text: #171717),
+    bar: (accent: #3f2a56, background: #fafafa, border: #3f2a56, text: #111827),
+    hotel: (accent: #0369a1, background: #f8fcff, border: #0369a1, text: #0f172a),
+    premium: (accent: #9a6b12, background: #ffffff, border: #0a0a0a, text: #0a0a0a),
+);

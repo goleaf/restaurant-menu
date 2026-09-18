@@ -8,14 +8,20 @@ use App\Actions\QrCodes\ApplyFloorQrAction;
 use App\Actions\QrCodes\BuildQrLabelsPdfAction;
 use App\Actions\QrCodes\DisableQrCodeAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
+use App\Enums\SystemRole;
 use App\Models\Branch;
+use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\FloorOperation;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodes\PublicQrUrl;
+use App\Services\QrCodes\QrCodeQueryService;
 use App\Services\QrCodes\QrPrintSnapshotQuery;
 use App\Services\QrCodeSvgRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -24,7 +30,12 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -38,6 +49,105 @@ beforeEach(function (): void {
     $this->point = ServicePoint::factory()->for($this->branch)->create(['name' => 'Window table', 'display_number' => '12']);
     $this->qr = QrCode::factory()->for($this->point)->create();
 });
+
+test('QR image publication rejects a short successful write and retry preserves the identity', function (): void {
+    $actual = Storage::disk('public');
+    $shortWrite = true;
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('exists')->andReturnUsing(fn (string $path): bool => $actual->exists($path));
+    $disk->shouldReceive('get')->andReturnUsing(fn (string $path): ?string => $actual->get($path));
+    $disk->shouldReceive('put')->andReturnUsing(function (string $path, string $contents) use ($actual, &$shortWrite): bool {
+        return $actual->put($path, $shortWrite ? substr($contents, 0, 32) : $contents, 'public');
+    });
+    $disk->shouldReceive('move')->andReturnUsing(fn (string $from, string $to): bool => $actual->move($from, $to));
+    $disk->shouldReceive('delete')->andReturnUsing(fn (string $path): bool => $actual->delete($path));
+    $factory = Mockery::mock(FilesystemFactory::class);
+    $factory->shouldReceive('disk')->with('public')->andReturn($disk);
+    $action = app()->makeWith(StoreQrCodeImageAction::class, ['filesystem' => $factory]);
+    $identity = $this->qr->public_token;
+
+    expect(fn () => $action->handle($this->qr))->toThrow(RuntimeException::class);
+    expect($actual->allFiles('qr'))->toBe([]);
+    $shortWrite = false;
+    $path = $action->handle($this->qr);
+    expect($actual->allFiles('qr'))->toBe([$path])->and($actual->get($path))->toContain('</svg>')
+        ->and($this->qr->fresh()->public_token)->toBe($identity)
+        ->and(QrCode::query()->where('service_point_id', $this->point->id)->count())->toBe(1);
+});
+
+test('a corrupt existing QR image is not presented as ready and repair keeps its identity', function (): void {
+    $images = app(StoreQrCodeImageAction::class);
+    $path = $images->pathFor($this->qr);
+    Storage::disk('public')->put($path, '<svg>partial');
+    $query = app(QrCodeQueryService::class);
+    expect($query->presentPanel($query->panel($this->branch, $this->point->id))['image_url'])->toBeNull();
+    $images->handle($this->qr);
+    expect($query->presentPanel($query->panel($this->branch, $this->point->id))['image_url'])->not->toBeNull()
+        ->and(QrCode::query()->where('service_point_id', $this->point->id)->count())->toBe(1);
+});
+
+test('QR image print and public link use the configured origin despite an alternate request host', function (): void {
+    config()->set('app.url', 'https://trusted.restaurant.test/restaurant');
+    $original = app('request');
+    URL::setRequest(Request::create('https://alternate.example.test/workspace'));
+    try {
+        $expectedUrl = 'https://trusted.restaurant.test/restaurant'.route('public.qr.show', ['token' => $this->qr->public_token], false);
+        $query = app(QrCodeQueryService::class);
+        expect($query->presentPanel($query->panel($this->branch, $this->point->id))['public_url'])->toBe($expectedUrl);
+        $path = app(StoreQrCodeImageAction::class)->handle($this->qr);
+        expect(Storage::disk('public')->get($path))->toBe(app(QrCodeSvgRenderer::class)->render($expectedUrl));
+        $snapshot = app(QrPrintSnapshotQuery::class)->prepare($this->actor, $this->branch, [$this->point->id], QrLabelPreset::Classic, true, 'en');
+        expect(base64_decode(substr($snapshot['items'][0]['qr_image_data_uri'], strlen('data:image/svg+xml;base64,')), true))
+            ->toBe(app(QrCodeSvgRenderer::class)->render($expectedUrl, 420));
+    } finally {
+        URL::setRequest($original);
+    }
+});
+
+test('public QR URL rejects unsafe configured origins', function (string $origin): void {
+    config()->set('app.url', $origin);
+    expect(fn () => app(PublicQrUrl::class)->forToken($this->qr->public_token))->toThrow(LogicException::class);
+})->with(['javascript:alert(1)', 'https://user:password@example.test', 'https://example.test?redirect=foreign', 'https://example.test/#foreign', "https://example.test/\nforeign"]);
+
+test('print availability rejects an archived current branch despite a stale object and active assignment', function (): void {
+    $role = Role::query()->where('code', SystemRole::Owner->value)->firstOrFail();
+    BranchUser::factory()->forBranch($this->branch)->forUser($this->actor)->forRole($role)->create();
+    $stale = $this->branch->fresh();
+    expect(app(QrPrintSnapshotQuery::class)->availability($this->actor, $stale, [$this->point->id]))->toHaveCount(1);
+    $this->branch->delete();
+    expect(fn () => app(QrPrintSnapshotQuery::class)->availability($this->actor, $stale, [$this->point->id]))
+        ->toThrow(ModelNotFoundException::class);
+});
+
+test('real QR PDF preserves bounded selected identities across long localized multipage labels', function (int $count, string $locale): void {
+    config()->set('app.url', 'https://trusted.restaurant.test');
+    $this->branch->update(['name' => 'Riverside family restaurant — Šeimos restoranas — Семейный ресторан у реки']);
+    $points = ServicePoint::factory()->count($count)->for($this->branch)->has(QrCode::factory())->create([
+        'name' => 'Window table — Stalas prie lango — Стол у большого окна',
+        'display_number' => null,
+    ]);
+    $before = memory_get_usage(true);
+    $started = hrtime(true);
+    $snapshot = app(QrPrintSnapshotQuery::class)->prepare($this->actor, $this->branch, $points->modelKeys(), QrLabelPreset::Restaurant, true, $locale);
+    $pdf = app(BuildQrLabelsPdfAction::class)->handle($this->actor, $this->branch, $points->modelKeys(), QrLabelPreset::Restaurant, true, $snapshot);
+    expect($snapshot['items'])->toHaveCount($count)->and($pdf['contents'])->toStartWith('%PDF-')
+        ->and(strlen($pdf['contents']))->toBeLessThan(4_000_000)
+        ->and(preg_match_all('/\/Type\s*\/Page\b/', $pdf['contents']))->toBeGreaterThan(1);
+    $artifacts = getenv('P5_QR_ARTIFACTS');
+    if (is_string($artifacts) && is_dir($artifacts)) {
+        $prefix = $artifacts.'/labels-'.$count.'-'.$locale;
+        file_put_contents($prefix.'.pdf', $pdf['contents']);
+        file_put_contents($prefix.'.json', json_encode([
+            'count' => $count, 'locale' => $locale, 'pdf_bytes' => strlen($pdf['contents']),
+            'snapshot_bytes' => strlen(serialize($snapshot)), 'elapsed_ms' => (hrtime(true) - $started) / 1_000_000,
+            'memory_delta' => memory_get_usage(true) - $before, 'peak_memory' => memory_get_peak_usage(true),
+            'expected_urls' => $points->load('activeQrCode')->map(fn (ServicePoint $point): string => app(PublicQrUrl::class)->forToken($point->activeQrCode->public_token))->all(),
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        foreach ($snapshot['items'] as $index => $item) {
+            file_put_contents($prefix.'-'.$index.'.svg', base64_decode(substr($item['qr_image_data_uri'], strlen('data:image/svg+xml;base64,')), true));
+        }
+    }
+})->with([[7, 'en'], [7, 'lt'], [7, 'ru'], [100, 'en']]);
 
 test('QR SVG itself preserves four quiet zone modules without relying on page padding', function (): void {
     $url = route('public.qr.show', ['token' => $this->qr->public_token]);
@@ -77,6 +187,28 @@ test('reviewed print selection binds identities labels preset and language witho
         ->and($snapshot['items'][0]['qr_image_data_uri'])->toStartWith('data:image/svg+xml;base64,')
         ->and(Storage::disk('public')->allFiles('qr'))->toBe([]);
 });
+
+test('additive print selection preserves explicit QR identities while allowing other selected tables', function (): void {
+    $other = ServicePoint::factory()->for($this->branch)->has(QrCode::factory())->create();
+    $ids = [$this->point->id, $other->id];
+    $expected = [$this->point->id => $this->qr->id];
+    $query = app(QrPrintSnapshotQuery::class);
+    expect($query->availability($this->actor, $this->branch, $ids, $expected))->toHaveCount(2);
+    $snapshot = $query->prepare($this->actor, $this->branch, $ids, QrLabelPreset::Minimal, false, 'en', $expected);
+    expect($snapshot['items'])->toHaveCount(2);
+    app(ReissueQrCodeForServicePointAction::class)->handle($this->qr, $this->actor);
+    expect(fn () => $query->prepare($this->actor, $this->branch, $ids, QrLabelPreset::Minimal, false, 'en', $expected))->toThrow(ValidationException::class);
+});
+
+test('partial print identity maps reject foreign targets and invalid QR identifiers', function (string $invalid): void {
+    $expected = match ($invalid) {
+        'foreign' => [$this->point->id + 999 => $this->qr->id],
+        'string' => [$this->point->id => (string) $this->qr->id],
+        default => [$this->point->id => 0],
+    };
+    expect(fn () => app(QrPrintSnapshotQuery::class)->prepare($this->actor, $this->branch, [$this->point->id], QrLabelPreset::Minimal, false, 'en', $expected))
+        ->toThrow(ValidationException::class);
+})->with(['foreign', 'string', 'zero']);
 
 test('reviewed PDF rejects a reissued selected QR instead of silently printing its replacement', function (): void {
     $snapshot = app(QrPrintSnapshotQuery::class)->prepare($this->actor, $this->branch, [$this->point->id], QrLabelPreset::Minimal, false, 'en');

@@ -1,17 +1,10 @@
 @use 'sass:map';
 
-// PDF presets retain their renderer-specific palette, independent of browser stickers.
-$presets: (
-    minimal: (accent: #18181b, background: #ffffff, border: #18181b, text: #18181b),
-    classic: (accent: #1f2937, background: #f8fafc, border: #64748b, text: #111827),
-    restaurant: (accent: #9f2d15, background: #fff7ed, border: #fb923c, text: #431407),
-    bar: (accent: #164e63, background: #ecfeff, border: #06b6d4, text: #083344),
-    hotel: (accent: #3f3f46, background: #fafafa, border: #a1a1aa, text: #27272a),
-    premium: (accent: #713f12, background: #fffbeb, border: #d97706, text: #422006),
-);
+@use 'geometry';
 
 @page {
-    margin: 10mm;
+    size: A4;
+    margin: geometry.$page-margin;
 }
 
 * {
@@ -25,16 +18,26 @@ body {
 }
 
 .sheet {
-    width: 100%;
+    width: auto;
+    margin: 0 auto;
     border-collapse: separate;
-    border-spacing: 6mm;
+    border-spacing: geometry.$gap;
     table-layout: fixed;
 }
 
+.slot {
+    width: geometry.$width;
+    padding: 0;
+    vertical-align: top;
+    word-wrap: break-word;
+}
+
 .label {
-    width: 50%;
-    padding: 7mm;
-    border-width: 1.5pt;
+    // Dompdf uses content-box dimensions for the bordered label.
+    width: geometry.$width - 2 * geometry.$padding - 2 * geometry.$border;
+    min-height: geometry.$height - 2 * geometry.$padding - 2 * geometry.$border;
+    padding: geometry.$padding;
+    border-width: geometry.$border;
     border-style: solid;
     text-align: center;
     page-break-inside: avoid;
@@ -43,34 +46,35 @@ body {
 
 .brand {
     margin: 0 0 3mm;
-    font-size: 15pt;
+    font-size: geometry.$brand-size;
     font-weight: 700;
 }
 
 .instruction {
     margin: 0 0 4mm;
-    font-size: 10pt;
+    font-size: geometry.$title-size;
 }
 
 .qr {
-    width: 55mm;
-    height: 55mm;
+    width: geometry.$qr;
+    height: geometry.$qr;
 }
 
 .code {
     margin-top: 3mm;
-    font-size: 14pt;
+    font-size: geometry.$code-size;
     font-weight: 700;
     letter-spacing: 1pt;
 }
 
 .table-number {
+    word-wrap: break-word;
     margin-top: 2mm;
-    font-size: 11pt;
+    font-size: geometry.$number-size;
     font-weight: 700;
 }
 
-@each $preset, $theme in $presets {
+@each $preset, $theme in geometry.$presets {
     [data-qr-preset='#{$preset}'] {
         color: map.get($theme, text);
 

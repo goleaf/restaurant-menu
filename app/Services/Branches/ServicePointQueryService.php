@@ -130,13 +130,27 @@ final class ServicePointQueryService
     }
 
     /** @param array<mixed> $ids */
-    private function validateIds(array $ids): void
+    private function validateIds(array $ids, int $maximum = 100): void
     {
-        if (count($ids) < 1 || count($ids) > 100
+        if (count($ids) < 1 || count($ids) > $maximum
             || array_any($ids, static fn ($id): bool => ! is_int($id) || $id < 1)
             || count(array_unique($ids)) !== count($ids)) {
             throw ValidationException::withMessages(['servicePointIds' => __('floor.errors.invalid_selection')]);
         }
+    }
+
+    /** @param list<int> $ids
+     * @return list<int>
+     */
+    public function createdSelection(Branch $branch, array $ids): array
+    {
+        $this->validateIds($ids, 200);
+        $count = $branch->servicePoints()->whereKey($ids)->count();
+        if ($count !== count($ids)) {
+            throw ValidationException::withMessages(['servicePointIds' => __('floor.errors.selection_changed')]);
+        }
+
+        return array_slice($ids, 0, 100);
     }
 
     /**

@@ -27,7 +27,7 @@ final class UpdateAreaNodeAction
             $data = $this->validateInput->handle($data);
             $area = $context['area'];
             assert($area instanceof AreaNode);
-            $this->ensureParent->handle($context['branch'], $data['parent_id'], $area->id);
+            $this->ensureParent->handle($context['branch'], $data['parent_id'], $area->id, withDescendants: $area->parent_id !== $data['parent_id']);
             $before = $area->only(['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'structure_version']);
             $area->fill([...$data, 'type' => AreaNodeType::from($data['type'])]);
             if (! $area->isDirty()) {

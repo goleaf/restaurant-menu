@@ -37,6 +37,6 @@
         @endif
     @endif
     @if ($result !== null)
-        <flux:callout variant="success" :heading="__('floor.bulk_result', ['created' => $result['created_count'], 'skipped' => $result['skipped_count']])" :text="__('floor.bulk_next')" role="status" />
+        <flux:callout variant="success" :heading="__('floor.bulk_result', ['created' => $result['created_count'], 'skipped' => $result['skipped_count']])" :text="$result['created_count'] === 0 ? __('floor.bulk_no_new_tables') : __('floor.bulk_next')" role="status" />
     @endif
 </div>

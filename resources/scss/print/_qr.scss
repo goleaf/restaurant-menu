@@ -1,6 +1,10 @@
+@use 'geometry';
+@use '../settings/tokens';
+@use 'sass:map';
+
 :root {
-    --qr-sticker-width: 76mm;
-    --qr-sticker-height: 104mm;
+    --qr-sticker-width: #{geometry.$width};
+    --qr-sticker-height: #{geometry.$height};
     --qr-paper: #ffffff;
     --qr-ink: #0a0a0a;
 }
@@ -8,14 +12,14 @@
 .qr-sticker {
     display: flex;
     width: 100%;
-    max-width: 20rem;
+    max-width: geometry.$width;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 2mm;
     border-radius: 0.5rem;
     border-style: solid;
-    padding: 1.25rem;
+    padding: geometry.$padding;
     text-align: center;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 10%), 0 1px 2px -1px rgb(0 0 0 / 10%);
     --qr-label-bg: var(--qr-paper);
@@ -24,7 +28,8 @@
     --qr-label-accent: var(--qr-ink);
     --qr-label-code-bg: var(--qr-paper);
     --qr-label-code-text: var(--qr-ink);
-    aspect-ratio: 3 / 4;
+    min-height: geometry.$height;
+    overflow-wrap: anywhere;
     background: var(--qr-label-bg);
     border-color: var(--qr-label-border);
     border-width: 2px;
@@ -32,29 +37,15 @@
     print-color-adjust: exact;
 }
 
-.qr-sticker-brand {
-    display: flex;
-    min-height: 3rem;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-}
-
-.qr-sticker-logo {
-    max-height: 3rem;
-    max-width: 13rem;
-    object-fit: contain;
-}
-
 .qr-sticker-logotype {
-    font-size: 1.125rem;
+    font-size: geometry.$brand-size;
     line-height: calc(1.75 / 1.125);
     font-weight: 600;
     color: var(--qr-label-accent);
 }
 
 .qr-sticker-title {
-    font-size: 1.25rem;
+    font-size: geometry.$title-size;
     font-weight: 600;
     line-height: 1.25;
     color: var(--qr-label-text);
@@ -63,7 +54,7 @@
 .qr-sticker-image {
     aspect-ratio: 1;
     width: 100%;
-    max-width: 15rem;
+    max-width: geometry.$qr;
     background: var(--qr-paper);
 }
 
@@ -73,7 +64,7 @@
     border-style: solid;
     padding-inline: 0.75rem;
     padding-block: 0.25rem;
-    font-size: 1rem;
+    font-size: geometry.$code-size;
     line-height: 1.5;
     font-weight: 600;
     background: var(--qr-label-code-bg);
@@ -82,16 +73,12 @@
 }
 
 .qr-sticker-table-number {
-    font-size: 0.875rem;
+    font-size: geometry.$number-size;
     line-height: calc(1.25 / 0.875);
     font-weight: 500;
 }
 
 .qr-sticker-preset-classic {
-    --qr-label-bg: #fffdf5;
-    --qr-label-text: #171717;
-    --qr-label-border: var(--qr-label-accent);
-    --qr-label-accent: #4a3728;
     border-style: double;
     border-width: 5px;
 }
@@ -101,10 +88,6 @@
 }
 
 .qr-sticker-preset-restaurant {
-    --qr-label-bg: #fffafa;
-    --qr-label-text: #171717;
-    --qr-label-border: var(--qr-label-accent);
-    --qr-label-accent: #b91c1c;
     border-width: 3px;
 }
 
@@ -113,10 +96,6 @@
 }
 
 .qr-sticker-preset-bar {
-    --qr-label-bg: #fafafa;
-    --qr-label-text: #111827;
-    --qr-label-border: var(--qr-label-accent);
-    --qr-label-accent: #3f2a56;
     --qr-label-code-bg: var(--qr-label-accent);
     --qr-label-code-text: var(--qr-paper);
     border-width: 3px;
@@ -128,10 +107,6 @@
 }
 
 .qr-sticker-preset-hotel {
-    --qr-label-bg: #f8fcff;
-    --qr-label-text: #0f172a;
-    --qr-label-border: var(--qr-label-accent);
-    --qr-label-accent: #0369a1;
     border-width: 3px;
 }
 
@@ -140,7 +115,6 @@
 }
 
 .qr-sticker-preset-premium {
-    --qr-label-accent: #9a6b12;
     --qr-label-code-bg: var(--qr-ink);
     --qr-label-code-text: var(--qr-paper);
     border-width: 3px;
@@ -152,10 +126,65 @@
     font-weight: 700;
 }
 
+@each $preset, $theme in geometry.$presets {
+    @if $preset != minimal {
+    .qr-sticker-preset-#{$preset} {
+        --qr-label-bg: #{map.get($theme, background)};
+        --qr-label-text: #{map.get($theme, text)};
+        --qr-label-border: #{map.get($theme, border)};
+        --qr-label-accent: #{map.get($theme, accent)};
+    }
+    }
+}
+
+.qr-print-availability {
+    display: grid;
+    gap: tokens.space(2);
+    padding: 0;
+    list-style: none;
+
+    li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: tokens.space(2);
+        overflow-wrap: anywhere;
+    }
+}
+
 @media print {
+    body:has([data-floor-print-labels]) {
+        display: block !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #0a0a0a !important;
+
+        *:not([data-floor-print-labels], [data-floor-print-labels] *):not(:has([data-floor-print-labels])) {
+            display: none !important;
+        }
+
+        *:has([data-floor-print-labels]) {
+            display: block !important;
+            position: static !important;
+            width: auto !important;
+            max-width: none !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+            contain: none !important;
+        }
+    }
+
     @page {
         size: A4;
-        margin: 8mm;
+        margin: geometry.$page-margin;
     }
 
     :root,
@@ -170,9 +199,7 @@
 
     .qr-print-toolbar,
     .qr-print-warning,
-    .qr-print-controls,
-    .qr-print-list,
-    .qr-print-empty-preview {
+    .qr-print-controls {
         display: none !important;
     }
 
@@ -181,44 +208,32 @@
         max-width: none !important;
         min-height: var(--qr-sticker-height) !important;
         gap: 2mm;
-        padding: 4mm;
+        padding: geometry.$padding;
         border-radius: 0 !important;
         box-shadow: none !important;
         break-inside: avoid;
     }
 
-    .qr-sticker-brand {
-        min-height: 8mm;
-    }
-
-    .qr-sticker-logo {
-        max-height: 8mm;
-    }
-
     .qr-sticker-image {
-        width: 48mm;
+        width: geometry.$qr;
         flex-shrink: 0;
     }
 
     .qr-sticker-title {
-        font-size: 1rem;
+        font-size: geometry.$code-size;
         line-height: 1.25;
     }
 
     .qr-sticker-code {
-        font-size: 0.875rem;
+        font-size: geometry.$number-size;
         line-height: 1.25;
-    }
-
-    .qr-print-page-single .qr-sticker {
-        margin: 0 auto !important;
     }
 
     .qr-bulk-sticker-grid {
         display: grid !important;
         grid-template-columns: repeat(2, var(--qr-sticker-width)) !important;
         justify-content: center !important;
-        gap: 4mm !important;
+        gap: geometry.$gap !important;
         width: 100% !important;
         max-width: none !important;
     }

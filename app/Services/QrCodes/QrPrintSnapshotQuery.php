@@ -18,7 +18,42 @@ final readonly class QrPrintSnapshotQuery
 {
     public const int MAX_SERVICE_POINTS = 100;
 
-    public function __construct(private QrCodeSvgRenderer $renderer) {}
+    public function __construct(private QrCodeSvgRenderer $renderer, private PublicQrUrl $publicUrl) {}
+
+    /** @param list<int> $servicePointIds @param array<int,int> $expectedQrIds @return list<array{id:int,name:string,state:string,label:string}> */
+    public function availability(User $actor, Branch $branch, array $servicePointIds, array $expectedQrIds = []): array
+    {
+        $this->validateSelection($servicePointIds, 'en', $expectedQrIds);
+        $actor = $actor->fresh();
+        abort_unless($actor instanceof User, 401);
+        $branch = Branch::query()->select(['id', 'organization_id', 'brand_id', 'name', 'is_active', 'deleted_at'])
+            ->whereKey($branch->id)->where('organization_id', $branch->organization_id)->where('brand_id', $branch->brand_id)->firstOrFail();
+        Gate::forUser($actor)->authorize('viewAny', [QrCode::class, $branch]);
+        $points = ServicePoint::query()->select(['id', 'branch_id', 'name'])
+            ->where('branch_id', $branch->id)->whereKey($servicePointIds)->limit(self::MAX_SERVICE_POINTS)
+            ->with([
+                'activeQrCode:id,service_point_id,status',
+                'qrCodes' => fn ($query) => $query->select(['id', 'service_point_id', 'status'])->latest('id')->limit(1),
+            ])->orderBy('name')->orderBy('id')->get();
+        if ($points->count() !== count($servicePointIds)) {
+            throw ValidationException::withMessages(['service_points' => __('floor.validation.print_changed')]);
+        }
+
+        return $points->map(function (ServicePoint $point) use ($expectedQrIds): array {
+            $latest = $point->qrCodes->first();
+            $state = $point->activeQrCode instanceof QrCode ? 'ready' : ($latest?->status->value ?? 'missing');
+            if (isset($expectedQrIds[$point->id]) && $expectedQrIds[$point->id] !== $point->activeQrCode?->id) {
+                $state = 'changed';
+            }
+
+            return ['id' => $point->id, 'name' => $point->name, 'state' => $state,
+                'label' => match ($state) {
+                    'ready' => __('floor.print.ready'),
+                    'changed' => __('floor.validation.print_changed'),
+                    default => $latest === null ? __('floor.qr.missing') : __($latest->status->label()),
+                }];
+        })->all();
+    }
 
     /**
      * @param  list<int>  $servicePointIds
@@ -49,7 +84,7 @@ final readonly class QrPrintSnapshotQuery
         $items = [];
         foreach ($points as $point) {
             $qrCode = $point->activeQrCode;
-            if ($expectedQrIds !== [] && $expectedQrIds[$point->id] !== $qrCode->id) {
+            if (isset($expectedQrIds[$point->id]) && $expectedQrIds[$point->id] !== $qrCode->id) {
                 throw ValidationException::withMessages(['service_points' => __('floor.validation.print_changed')]);
             }
             $items[] = [
@@ -63,7 +98,7 @@ final readonly class QrPrintSnapshotQuery
                 'qr_code_id' => $qrCode->id,
                 'qr_version' => $qrCode->structure_version,
                 'short_code' => $qrCode->short_code,
-                'qr_image_data_uri' => 'data:image/svg+xml;base64,'.base64_encode($this->renderer->render(route('public.qr.show', ['token' => $qrCode->public_token]), 420)),
+                'qr_image_data_uri' => 'data:image/svg+xml;base64,'.base64_encode($this->renderer->render($this->publicUrl->forToken($qrCode->public_token), 420)),
             ];
         }
 
@@ -106,8 +141,8 @@ final readonly class QrPrintSnapshotQuery
         if (! array_is_list($ids) || $ids === [] || count($ids) > self::MAX_SERVICE_POINTS
             || count(array_filter($ids, fn (mixed $id): bool => is_int($id) && $id > 0)) !== count($ids)
             || count(array_unique($ids)) !== count($ids) || ! in_array($locale, ['en', 'lt', 'ru'], true)
-            || ($expectedQrIds !== [] && (count($expectedQrIds) !== count($ids) || array_diff($ids, array_keys($expectedQrIds)) !== []
-                || count(array_filter($expectedQrIds, fn (mixed $id): bool => is_int($id) && $id > 0)) !== count($ids)))) {
+            || array_diff(array_keys($expectedQrIds), $ids) !== []
+            || count(array_filter($expectedQrIds, fn (mixed $id): bool => is_int($id) && $id > 0)) !== count($expectedQrIds)) {
             throw ValidationException::withMessages(['service_points' => __('floor.validation.print_selection', ['max' => self::MAX_SERVICE_POINTS])]);
         }
     }

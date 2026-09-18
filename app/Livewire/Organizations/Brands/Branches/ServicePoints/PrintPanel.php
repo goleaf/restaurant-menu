@@ -72,6 +72,16 @@ class PrintPanel extends Component
         $this->dispatch('floor-editor-saved');
     }
 
+    public function reviewQr(int $pointId): void
+    {
+        $branch = $this->authorizePrint();
+        abort_unless(in_array($pointId, $this->ids, true), 403);
+        $this->points->findForBranch($branch, $pointId);
+        $this->prepared->forget($this->actor(), $branch, $this->previewId);
+        $this->previewId = null;
+        $this->dispatch('floor-print-recover-qr', pointId: $pointId);
+    }
+
     public function downloadPdf(BuildQrLabelsPdfAction $build): StreamedResponse
     {
         $branch = $this->authorizePrint();
@@ -104,9 +114,18 @@ class PrintPanel extends Component
     {
         $branch = $this->authorizePrint();
         $snapshot = $this->prepared->find($this->actor(), $branch, $this->previewId);
+        try {
+            $availability = $this->snapshots->availability($this->actor(), $branch, $this->ids, $this->expectedQrIds);
+        } catch (ValidationException $exception) {
+            $availability = [];
+            foreach ($exception->errors() as $field => $messages) {
+                $this->addError($field, $messages[0]);
+            }
+        }
 
         return view('livewire.organizations.brands.branches.service-points.print-panel', [
             'selectedCount' => count($this->ids), 'snapshot' => $snapshot, 'presetOptions' => QrLabelPreset::options(),
+            'availability' => $availability,
             'presetClass' => $snapshot === null ? '' : QrLabelPreset::from($snapshot['preset'])->cssClass(),
             'printHeading' => $snapshot === null ? '' : __('qr.print.pdf_title', ['branch' => $snapshot['branch_name']], $snapshot['locale']),
             'stickerTitle' => $snapshot === null ? '' : __('qr.print.sticker_title', [], $snapshot['locale']),

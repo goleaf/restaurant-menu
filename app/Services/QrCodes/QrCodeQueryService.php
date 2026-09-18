@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 
 final class QrCodeQueryService
 {
-    public function __construct(private readonly StoreQrCodeImageAction $images, private readonly Factory $filesystem) {}
+    public function __construct(private readonly StoreQrCodeImageAction $images, private readonly Factory $filesystem, private readonly PublicQrUrl $publicUrl) {}
 
     /** @return array{point:ServicePoint,qr:?QrCode,active_id:?int} */
     public function panel(Branch $branch, int $pointId, ?int $qrId = null): array
@@ -33,7 +33,6 @@ final class QrCodeQueryService
     public function presentPanel(array $context): array
     {
         $qr = $context['qr'];
-        $path = $qr === null ? null : $this->images->pathFor($qr);
         $disk = $this->filesystem->disk('public');
 
         return [
@@ -43,8 +42,8 @@ final class QrCodeQueryService
             'created_at' => $qr === null ? null : LocalizedDateFormatter::dateTime($qr->created_at),
             'short_code' => $qr?->short_code,
             'status_label' => $qr === null ? 'qr.labels.no_qr' : $qr->status->label(),
-            'image_url' => $path !== null && $disk->exists($path) ? $disk->url($path) : null,
-            'public_url' => $qr === null ? null : route('public.qr.show', ['token' => $qr->public_token]),
+            'image_url' => $qr !== null && $this->images->isReady($qr) ? $disk->url($this->images->pathFor($qr)) : null,
+            'public_url' => $qr === null ? null : $this->publicUrl->forToken($qr->public_token),
             'can_generate' => $qr === null,
             'can_disable' => $qr?->status === QrCodeStatus::Active,
             'can_repair' => $qr?->status === QrCodeStatus::Active && $qr->id === $context['active_id'],

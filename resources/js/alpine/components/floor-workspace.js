@@ -50,12 +50,18 @@ export function floorWorkspace() {
                 onFinish(release);
                 onSuccess(({ onSync }) => onSync(release));
                 if (message.component.el !== ownerRoot) return;
-                if (!Array.from(message.actions).some(action => /^(?:openPoint|openArea|createPoint|createArea|openBulk|openSelection)$/.test(action.name))) return;
+                const navigation = Array.from(message.actions).find(action => /^(?:openPoint|openArea|createPoint|createArea|openBulk|openSelection|showAreas|showTables|chooseArea)$/.test(action.name));
+                if (!navigation) return;
                 onSuccess(({ payload, onRender }) => onRender(() => {
                     if (this.destroyed || !ownerRoot.isConnected) return;
                     const snapshot = typeof payload.snapshot === 'string' ? JSON.parse(payload.snapshot) : payload.snapshot;
                     if (Object.keys(snapshot?.memo?.errors ?? {}).length > 0) return;
                     this.locallyClosed = false;
+                    if (['showAreas', 'showTables', 'chooseArea'].includes(navigation.name)) {
+                        const selector = navigation.name === 'showAreas' ? '[data-floor-areas-heading]' : '[data-floor-results-heading]';
+                        this.$nextTick(() => ownerRoot.querySelector(selector)?.focus());
+                        return;
+                    }
                     const editor = ownerRoot.querySelector('[data-floor-editor-shell]');
                     if (editor) editor.hidden = false;
                     this.focusEditor();
@@ -161,7 +167,7 @@ export function floorWorkspace() {
             this.$nextTick(() => {
                 if (this.destroyed || !ownerRoot.isConnected) return;
                 if (returnFocus?.isConnected) returnFocus.focus();
-                else ownerRoot.querySelector('[data-floor-results-heading]')?.focus();
+                else ownerRoot.querySelector(this.$wire.mobileView === 'zones' ? '[data-floor-areas-heading]' : '[data-floor-results-heading]')?.focus();
             });
         },
         destroy() {

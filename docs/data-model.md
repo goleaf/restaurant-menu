@@ -2,6 +2,12 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — Existing floor identities, no schema change
+
+AreaNode parent_id, ServicePoint area_node_id/internal_code/display_number/type, QrCode public_token/short_code and direct/merged TableSession identities remain distinct. The64-node valid path includes the selected node. Reparent validates affected descendants; restore includes archived descendants. There is no artificial No room row, geometric coordinate model or new readiness flag.
+
+Existing structure_version and FloorOperation receipts retain conflict/replay semantics. Zero-created bulk results preserve the UI selection;200 created IDs are all scoped before suggesting100. Restoring a table retains its original ID/code and inactive/closed state; disabled/revoked codes stay nonactive. No migration or working-data transformation is part of Prompt5.
+
 ## Prompt 4 refresh — structure creation receipts (2026-09-17)
 
 The additive `structure_creation_receipts` table records actor_id, request_key, payload_hash, kind, organization_id and resource_id with timestamps. `(actor_id, request_key)` is unique. The actor foreign key cascades only its receipts on user deletion; the organization reference becomes null on hard deletion. Kind is restricted by the Action to organization or brand, and resource identities always come from the authorized creation result. Request key/hash are hidden from normal model serialization. This is replay protection for explicit standalone structure creation, not a new organization/restaurant entity or workspace-context table.

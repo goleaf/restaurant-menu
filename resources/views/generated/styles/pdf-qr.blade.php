@@ -1,6 +1,7 @@
 /* Generated from resources/scss/pdf-qr.scss. Do not edit. */
 @page {
-  margin: 10mm;
+  size: A4;
+  margin: 8mm;
 }
 * {
   box-sizing: border-box;
@@ -13,16 +14,25 @@ body {
 }
 
 .sheet {
-  width: 100%;
+  width: auto;
+  margin: 0 auto;
   border-collapse: separate;
-  border-spacing: 6mm;
+  border-spacing: 4mm;
   table-layout: fixed;
 }
 
+.slot {
+  width: 76mm;
+  padding: 0;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
 .label {
-  width: 50%;
-  padding: 7mm;
-  border-width: 1.5pt;
+  width: 67mm;
+  min-height: 95mm;
+  padding: 4mm;
+  border-width: 0.5mm;
   border-style: solid;
   text-align: center;
   page-break-inside: avoid;
@@ -31,7 +41,7 @@ body {
 
 .brand {
   margin: 0 0 3mm;
-  font-size: 15pt;
+  font-size: 12pt;
   font-weight: 700;
 }
 
@@ -41,85 +51,86 @@ body {
 }
 
 .qr {
-  width: 55mm;
-  height: 55mm;
+  width: 48mm;
+  height: 48mm;
 }
 
 .code {
   margin-top: 3mm;
-  font-size: 14pt;
+  font-size: 12pt;
   font-weight: 700;
   letter-spacing: 1pt;
 }
 
 .table-number {
+  word-wrap: break-word;
   margin-top: 2mm;
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 700;
 }
 
 [data-qr-preset=minimal] {
-  color: #18181b;
+  color: #0a0a0a;
 }
 [data-qr-preset=minimal] .label {
-  border-color: #18181b;
+  border-color: #0a0a0a;
   background: #ffffff;
 }
 [data-qr-preset=minimal] .brand {
-  color: #18181b;
+  color: #0a0a0a;
 }
 
 [data-qr-preset=classic] {
-  color: #111827;
+  color: #171717;
 }
 [data-qr-preset=classic] .label {
-  border-color: #64748b;
-  background: #f8fafc;
+  border-color: #4a3728;
+  background: #fffdf5;
 }
 [data-qr-preset=classic] .brand {
-  color: #1f2937;
+  color: #4a3728;
 }
 
 [data-qr-preset=restaurant] {
-  color: #431407;
+  color: #171717;
 }
 [data-qr-preset=restaurant] .label {
-  border-color: #fb923c;
-  background: #fff7ed;
+  border-color: #b91c1c;
+  background: #fffafa;
 }
 [data-qr-preset=restaurant] .brand {
-  color: #9f2d15;
+  color: #b91c1c;
 }
 
 [data-qr-preset=bar] {
-  color: #083344;
+  color: #111827;
 }
 [data-qr-preset=bar] .label {
-  border-color: #06b6d4;
-  background: #ecfeff;
+  border-color: #3f2a56;
+  background: #fafafa;
 }
 [data-qr-preset=bar] .brand {
-  color: #164e63;
+  color: #3f2a56;
 }
 
 [data-qr-preset=hotel] {
-  color: #27272a;
+  color: #0f172a;
 }
 [data-qr-preset=hotel] .label {
-  border-color: #a1a1aa;
-  background: #fafafa;
+  border-color: #0369a1;
+  background: #f8fcff;
 }
 [data-qr-preset=hotel] .brand {
-  color: #3f3f46;
+  color: #0369a1;
 }
 
 [data-qr-preset=premium] {
-  color: #422006;
+  color: #0a0a0a;
 }
 [data-qr-preset=premium] .label {
-  border-color: #d97706;
-  background: #fffbeb;
+  border-color: #0a0a0a;
+  background: #ffffff;
 }
 [data-qr-preset=premium] .brand {
-  color: #713f12;
+  color: #9a6b12;
 }

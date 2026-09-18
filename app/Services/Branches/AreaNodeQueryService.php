@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionServicePoint;
+use App\Support\Floor\FloorOptions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,27 +26,30 @@ final class AreaNodeQueryService
      * @param  array{type?:string,active?:string,sort?:string}  $filters
      * @return array{rows:list<array<string,mixed>>,paginator:Paginator<int,AreaNode>}
      */
-    public function browser(Branch $branch, string $search, ?int $selectedId = null, ?int $excludingId = null, int $perPage = 20, string $lifecycle = 'active', array $filters = []): array
+    public function browser(Branch $branch, string $search, ?int $selectedId = null, ?int $excludingId = null, int $perPage = 20, string $lifecycle = 'active', array $filters = [], string $pageName = 'areasPage'): array
     {
         $query = $branch->areaNodes()->select($this->columns())
-            ->when($lifecycle === 'archived', fn ($query) => $query->onlyTrashed())
             ->withCount([
                 'children' => fn ($query) => $query->where('branch_id', $branch->id),
                 'servicePoints as tables_count' => fn ($query) => $query->where('branch_id', $branch->id),
                 'waiterAssignments as assignments_count' => fn ($query) => $query->where('branch_id', $branch->id)->where('organization_id', $branch->organization_id),
             ]);
         $filtered = clone $query;
+        if ($lifecycle === 'archived') {
+            $filtered->onlyTrashed();
+        }
         $this->applyFilters($filtered, ['search' => $search, 'type' => $filters['type'] ?? 'all', 'active' => $filters['active'] ?? 'all', 'lifecycle' => $lifecycle, 'sort' => $filters['sort'] ?? 'position']);
         $this->applySort($filtered, $filters['sort'] ?? 'position');
-        $paginator = $filtered->simplePaginate(max(1, min(50, $perPage)), pageName: 'areasPage')->withQueryString();
+        $paginator = $filtered->simplePaginate(max(1, min(50, $perPage)), pageName: $pageName)->withQueryString();
         $nodes = $paginator->getCollection();
         if ($selectedId !== null && ! $nodes->contains('id', $selectedId)) {
-            $selected = (clone $query)->whereKey($selectedId)->first();
+            $selected = (clone $query)->withTrashed()->whereKey($selectedId)->first();
             if ($selected instanceof AreaNode) {
                 $nodes = new EloquentCollection([$selected, ...$nodes->all()]);
             }
         }
         $paths = $this->paths($branch, $nodes);
+        $types = array_column(FloorOptions::types(true), 'label', 'value');
         $rows = [];
         foreach ($nodes as $node) {
             $path = $paths[$node->id];
@@ -54,8 +58,8 @@ final class AreaNodeQueryService
             }
             $rows[] = [
                 'id' => $node->id, 'parent_id' => $node->parent_id, 'name' => $node->name,
-                'label' => $path['path'], 'path' => $path['path'], 'hierarchy_valid' => $path['valid'],
-                'type' => $node->type->value, 'type_label' => $node->type->label(), 'icon' => $node->icon,
+                'label' => $path['path'], 'path' => $path['path'], 'hierarchy_valid' => $path['valid'], 'parent_available' => $path['available'],
+                'type' => $node->type->value, 'type_label' => $types[$node->type->value], 'icon' => $node->icon,
                 'is_active' => $node->is_active, 'is_archived' => $node->trashed(), 'selected' => $selectedId === $node->id,
                 'children_count' => (int) $node->getAttribute('children_count'), 'tables_count' => (int) $node->getAttribute('tables_count'),
                 'assignments_count' => (int) $node->getAttribute('assignments_count'), 'version' => $node->structure_version,
@@ -126,7 +130,7 @@ final class AreaNodeQueryService
         return array_keys($ids);
     }
 
-    /** @param EloquentCollection<int,AreaNode> $nodes @return array<int,array{path:string,valid:bool,ids:list<int>}> */
+    /** @param EloquentCollection<int,AreaNode> $nodes @return array<int,array{path:string,valid:bool,available:bool,ids:list<int>}> */
     private function paths(Branch $branch, EloquentCollection $nodes): array
     {
         $known = $nodes->keyBy('id');
@@ -136,7 +140,7 @@ final class AreaNodeQueryService
             if ($missing === []) {
                 break;
             }
-            $parents = AreaNode::withTrashed()->select(['id', 'parent_id', 'name'])->where('branch_id', $branch->id)->whereIn('id', $missing)->get();
+            $parents = AreaNode::withTrashed()->select(['id', 'parent_id', 'name', 'deleted_at'])->where('branch_id', $branch->id)->whereIn('id', $missing)->get();
             foreach ($parents as $parent) {
                 $known->put($parent->id, $parent);
             }
@@ -148,6 +152,7 @@ final class AreaNodeQueryService
             $visited = [];
             $id = $node->id;
             $valid = true;
+            $available = true;
             while ($id !== null) {
                 if (isset($visited[$id]) || count($visited) >= 64 || ! $known->has($id)) {
                     $valid = false;
@@ -155,10 +160,11 @@ final class AreaNodeQueryService
                 }
                 $visited[$id] = true;
                 $parent = $known->get($id);
+                $available = $available && ! $parent->trashed();
                 $names[] = $parent->name;
                 $id = $parent->parent_id;
             }
-            $result[$node->id] = ['path' => implode(' / ', array_reverse($names)), 'valid' => $valid, 'ids' => array_keys($visited)];
+            $result[$node->id] = ['path' => implode(' / ', array_reverse($names)), 'valid' => $valid, 'available' => $valid && $available && count($visited) < 64, 'ids' => array_keys($visited)];
         }
 
         return $result;

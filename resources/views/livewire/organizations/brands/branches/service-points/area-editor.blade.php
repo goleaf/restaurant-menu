@@ -14,7 +14,7 @@
                 <x-slot name="search"><flux:select.search data-menu-search wire:model.live.debounce.300ms="parentSearch" /></x-slot>
                 <flux:select.option value="">{{ __('floor.no_parent') }}</flux:select.option>
                 @forelse ($parents as $parent)
-                    <flux:select.option :value="(string) $parent['id']">{{ $parent['label'] }}</flux:select.option>
+                    <flux:select.option :value="(string) $parent['id']" :disabled="! $parent['parent_available']">{{ $parent['label'] }}</flux:select.option>
                 @empty
                 @endforelse
             </flux:select>

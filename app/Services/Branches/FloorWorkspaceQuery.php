@@ -79,7 +79,7 @@ final class FloorWorkspaceQuery
         $occupied = $session !== null || $linkedSession !== null;
 
         return ['id' => $point->id, 'name' => $point->name, 'number' => $point->display_number, 'capacity' => $point->capacity,
-            'type' => __($point->type->label()), 'area' => $point->areaNode === null ? __('floor.no_area') : $point->areaNode->name.($point->areaNode->trashed() ? ' · '.__('floor.archived') : ''),
+            'type' => __(sprintf('reports.service_point_types.%s', $point->type->value)), 'area' => $point->areaNode === null ? __('floor.no_area') : $point->areaNode->name.($point->areaNode->trashed() ? ' · '.__('floor.archived') : ''),
             'active' => $point->is_active, 'archived' => $point->trashed(), 'status' => __($point->status->label()),
             'version' => $point->structure_version, 'occupied' => $occupied, 'linked' => $linkedSession !== null,
             'sessionTime' => LocalizedDateFormatter::dateTime(($session ?? $linkedSession)?->started_at),

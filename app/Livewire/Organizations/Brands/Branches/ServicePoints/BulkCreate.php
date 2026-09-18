@@ -80,7 +80,9 @@ class BulkCreate extends Component
         } catch (ValidationException $exception) {
             throw $this->scopeFieldErrors($exception);
         }
-        $this->dispatch('floor-bulk-created', ids: array_slice($this->result['created_ids'], 0, 100));
+        if ($this->result['created_ids'] !== []) {
+            $this->dispatch('floor-bulk-created', ids: array_slice($this->result['created_ids'], 0, 100));
+        }
         $this->dispatch('menu-workspace-dirty', key: 'bulk-preview', dirty: false);
         $this->saved();
     }

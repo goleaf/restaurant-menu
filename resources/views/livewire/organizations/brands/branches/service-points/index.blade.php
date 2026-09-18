@@ -11,9 +11,9 @@
     </header>
     <x-floor.errors />
     <flux:callout wire:offline variant="warning" :heading="__('floor.offline')" :text="__('floor.offline_help')" />
-    <div class="rm-floor__workspace" data-editor-open="{{ $panel !== '' ? 'true' : 'false' }}">
+    <div class="rm-floor__workspace" data-mobile-view="{{ $mobileView }}" data-editor-open="{{ $panel !== '' ? 'true' : 'false' }}" x-bind:data-editor-open="$wire.panel !== '' && !locallyClosed ? 'true' : 'false'">
         <aside class="rm-floor__areas" aria-label="{{ __('floor.areas') }}">
-            <flux:heading size="lg">{{ __('floor.areas') }}</flux:heading>
+            <div class="rm-floor__results-header"><flux:heading size="lg" data-floor-areas-heading tabindex="-1">{{ __('floor.areas') }}</flux:heading><flux:button class="rm-floor__mobile-navigation" data-floor-transition wire:click="showTables" icon="arrow-left" wire:offline.attr="disabled">{{ __('floor.back_to_tables') }}</flux:button></div>
             <flux:input wire:model.live.debounce.300ms="areaSearch" :label="__('floor.search_areas')" icon="magnifying-glass" maxlength="100" />
             <flux:select wire:model.live="areaLifecycle" :label="__('floor.area_lifecycle')">
                 <flux:select.option value="active">{{ __('floor.current') }}</flux:select.option><flux:select.option value="archived">{{ __('floor.archived') }}</flux:select.option>
@@ -34,6 +34,7 @@
                         <div class="rm-floor__area-meta">
                             <span>{{ $area['type_label'] }} · {{ __('floor.area_table_count', ['count' => $area['tables_count']]) }}</span>
                             @if ($area['is_archived'])<span>{{ __('floor.archived') }}</span>@elseif (! $area['is_active'])<span>{{ __('floor.inactive') }}</span>@endif
+                            @if (! $area['hierarchy_valid'])<span role="status">{{ __('floor.invalid_hierarchy') }}</span>@endif
                             @if ($abilities['manageAreas'])<flux:button data-floor-transition wire:click="openArea({{ $area['id'] }})" variant="ghost" size="sm" :aria-label="__('floor.edit_area_named', ['name' => $area['name']])" wire:offline.attr="disabled">{{ __('floor.edit') }}</flux:button>@endif
                         </div>
                     </div>
@@ -45,6 +46,7 @@
             <flux:text size="sm">{{ __('floor.area_direct_scope') }}</flux:text>
         </aside>
         <section class="rm-floor__results" aria-labelledby="floor-results-heading">
+            <div class="rm-floor__room-context"><flux:text>{{ $selectedAreaLabel }}</flux:text><flux:button class="rm-floor__mobile-navigation" data-floor-transition wire:click="showAreas" icon="squares-2x2" wire:offline.attr="disabled">{{ __('floor.choose_area') }}</flux:button></div>
             <div class="rm-floor__results-header"><h2 id="floor-results-heading" data-floor-results-heading tabindex="-1">{{ __('floor.tables') }}</h2><flux:text role="status">{{ __('floor.result_count', ['count' => $resultCount]) }}</flux:text></div>
             <div class="rm-floor__search">
                 <flux:input wire:model.live.debounce.300ms="filters.search" :label="__('floor.search_tables')" icon="magnifying-glass" maxlength="100" />
@@ -132,7 +134,7 @@
         </div>
     </div>
     <flux:modal name="floor-unsaved" class="rm-floor__confirmation">
-        <flux:heading>{{ __('floor.unsaved_title') }}</flux:heading><flux:text>{{ __('floor.unsaved_help') }}</flux:text>
+        <flux:heading id="floor-unsaved-heading" x-bind="dialogLabel">{{ __('floor.unsaved_title') }}</flux:heading><flux:text>{{ __('floor.unsaved_help') }}</flux:text>
         <div class="rm-floor__actions"><flux:button x-on:click="cancelNavigation">{{ __('floor.stay') }}</flux:button><flux:button variant="danger" x-on:click="discardAndNavigate">{{ __('floor.discard_leave') }}</flux:button></div>
     </flux:modal>
 </section>

@@ -43,7 +43,11 @@ class FloorFilterForm extends Form
     /** @return array{search:string,area_node_id:string,type:string,status:string,active:string,qr:string,lifecycle:string,sort:string} */
     public function filters(): array
     {
-        $data = Validator::make(['filters' => $this->all()], [
+        $state = $this->all();
+        if (is_int($state['area'])) {
+            $state['area'] = (string) $state['area'];
+        }
+        $data = Validator::make(['filters' => $state], [
             'filters.search' => ['nullable', 'string', 'max:100'],
             'filters.area' => ['required', 'string', 'regex:/\A(?:all|none|[1-9][0-9]*)\z/'],
             'filters.mode' => ['required', Rule::in(['cards', 'list'])],

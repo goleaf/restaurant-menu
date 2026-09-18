@@ -2,6 +2,16 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — One rooms, tables and QR workspace
+
+`sys-area-001`, `sys-service-point-001`, `sys-qr-001`, `sys-tenant-001`, `data-integrity-001`, `livewire-001`, `i18n-001`, `ui-accessibility-001`, `ui-responsive-001` and `ui-workspace-003` share one restaurant-scoped process: exact room → one cards/list result set → canonical properties/QR controls → reviewed selection → print. All rooms and No room are virtual filters; selecting a room covers its direct tables only. URL state includes permitted filters, selected editor and mobile region, never drafts, bulk IDs or QR tokens. Mobile shows rooms, tables or one editor sequentially; desktop retains these regions together. Existing aliases and preparation links enter the same authorized context.
+
+A valid room path has at most64 nodes. Moving/restoring a subtree must preserve this bound and reject cycles, foreign or archived ancestors at write time; ordinary rename does not traverse unchanged descendants. Damaged paths remain bounded and visibly require repair. Display numbers stay text; capacity remains configured seats. Physical-property saving cannot change an existing table's area through a hidden field: moving uses the separately reviewed operation. Direct/merged unfinished service and active orders continue to block unsafe structural changes. Archive/restore preserves identity/history and never silently activates QR.
+
+Bulk creation retains200 targets, archived-code reservation and actor/payload-bound replay. An all-skipped result creates nothing and preserves selection. A200-created result explicitly suggests only its first100; actions/print retain the100-target bound. Current-page selection, hidden selected rows and additive QR-to-print selection are explicit; filters never silently expand targets. Every target is reauthorized.
+
+QR image repair and reprint preserve the permanent code. Public URLs come from trusted application configuration. Partial/corrupt file output is not readiness; recovery must use the existing record. Print accounts for every selected target, names unavailable codes, and opens their canonical QR controls without losing selection. Preview/browser/PDF use one reviewed bounded snapshot and physical template geometry; stale labels/QR require new preparation. A prepared file or browser print dialog is not physical scan/placement evidence. No new service dashboard, booking/floorplan entity, controller, worker, global switcher or working-database mutation belongs to this stage.
+
 # Canonical requirements catalogue
 
 ## Prompt 4 — One restaurant management and preparation process

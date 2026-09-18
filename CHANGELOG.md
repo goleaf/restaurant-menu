@@ -2,6 +2,10 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — Rooms, tables and QR continuation (2026-09-18, verification in progress)
+
+Continue the existing unified floor workspace from5e2987c: repair numeric room URLs, preserve mobile/editor/selection context, align safe hierarchy depth, reject hidden table moves, retain zero-created bulk selections, and prepare durable QR/print recovery. Remove only proven orphan area templates/styles; keep authorized legacy entry routes and the shared restaurant context. Prompt5 acceptance and delivery are tracked separately in the current local ledgers; earlier prompt records do not certify this source.
+
 # Changelog
 
 ## 2026-09-18 — Prompt 4 restaurant-center verification and consolidation

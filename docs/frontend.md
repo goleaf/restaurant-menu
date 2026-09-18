@@ -2,6 +2,12 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — Rooms, tables and QR
+
+The current restaurant stays in the shared workspace header. Exact room selection, search, filters, cards/list and editor use one Livewire page. The `view` URL parameter identifies the mobile rooms/tables region; a selected panel takes precedence. Container queries show one mobile region and the desktop composition without duplicate active forms. Returning from an editor preserves filters and focuses the visible region, including a directly bookmarked room editor. The named unsaved Flux dialog reuses the shared actor/dirty/history/offline lifecycle.
+
+Creation is explicit. One table property form preserves textual numbers and cannot silently move a saved table. QR controls remain separate from properties and service transitions. Printing continues the selected set; unavailable codes are listed with a return to canonical QR controls. The former orphan area templates are removed; old authorized URLs still enter this composition. First-party styles remain Sass with the separate Tailwind/Flux CSS bridge.
+
 Current Prompt 3 offline lifecycle: a response already received before disconnection can finish morphing after the browser goes offline. The single application bootstrap uses the installed Livewire message `onRender` callback to reapply only the offline event. It never replays online on each morph, because that could clear another operation's disabled state. Cached navigation retains its existing connectivity replay. Deterministic browser and Node regressions cover the late response, reconnect, one registration and no online re-enabling; see testing.md.
 
 ## Prompt 4 center interaction boundary (2026-09-18)

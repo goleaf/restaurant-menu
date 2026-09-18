@@ -14,6 +14,7 @@ use App\Services\Branches\ServicePointQueryService;
 use App\Support\Floor\FloorOptions;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -88,6 +89,10 @@ class PointEditor extends Component
             $this->pointId = $point->id;
             $this->dispatch('floor-point-created', id: $point->id);
         } else {
+            $originalAreaId = ($this->baseline['areaNodeId'] ?? '') === '' ? null : (int) $this->baseline['areaNodeId'];
+            if ($data['area_node_id'] !== $originalAreaId) {
+                throw ValidationException::withMessages(['form.areaNodeId' => __('floor.move_separately')]);
+            }
             $point = $this->updateServicePointAction->handle($this->servicePointQueryService->findForBranch($branch, $this->pointId), $data, $this->actor(), $this->version);
         }
         $this->version = $point->structure_version;

@@ -15,6 +15,7 @@ use App\Services\Branches\ServicePointQueryService;
 use App\Support\Floor\FloorOptions;
 use App\Support\Validation\Floor\FloorStateRules;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -37,6 +38,9 @@ class Index extends Component
     #[Url(as: 'panel', history: true, except: '')]
     public mixed $panel = '';
 
+    #[Url(as: 'view', history: true, except: 'tables')]
+    public mixed $mobileView = 'tables';
+
     #[Url(as: 'area_search', except: '')]
     public mixed $areaSearch = '';
 
@@ -54,6 +58,10 @@ class Index extends Component
 
     #[Locked]
     public array $selectedIds = [];
+
+    /** @var array<int, int> */
+    #[Locked]
+    public array $printQrIds = [];
 
     #[Locked]
     public int $editorRevision = 0;
@@ -163,6 +171,7 @@ class Index extends Component
         $this->panel = '';
         $this->legacyQrId = null;
         $this->qrRecord = '';
+        $this->printQrIds = [];
         $this->editorRevision++;
     }
 
@@ -172,7 +181,22 @@ class Index extends Component
         $filters = $this->filters->filters();
         $this->floorContext->validateArea($this->branch(), $filters['area_node_id']);
         $this->clearEditor();
+        $this->mobileView = 'tables';
         $this->resetPage();
+    }
+
+    public function showAreas(): void
+    {
+        $this->branch();
+        $this->clearEditor();
+        $this->mobileView = 'zones';
+    }
+
+    public function showTables(): void
+    {
+        $this->branch();
+        $this->clearEditor();
+        $this->mobileView = 'tables';
     }
 
     public function selectPoint(int $id): void
@@ -220,11 +244,25 @@ class Index extends Component
         $this->panel = 'properties';
     }
 
+    #[On('floor-area-created')]
+    public function areaCreated(int $id): void
+    {
+        $area = $this->floorContext->area($this->branch(), $id);
+        Gate::forUser($this->actor())->authorize('update', $area);
+        $this->areaEditor = (string) $id;
+        $this->point = '';
+        $this->panel = 'area';
+    }
+
     #[On('floor-bulk-created')]
     public function bulkCreated(array $ids): void
     {
-        $this->servicePointQueryService->selected($this->branch(), $ids);
-        $this->selectedIds = array_slice($ids, 0, 100);
+        $branch = $this->branch();
+        Gate::forUser($this->actor())->authorize('manageServicePoints', $branch);
+        if ($ids === []) {
+            return;
+        }
+        $this->selectedIds = $this->servicePointQueryService->createdSelection($branch, $ids);
     }
 
     #[On('floor-print-point')]
@@ -234,10 +272,17 @@ class Index extends Component
         Gate::forUser($this->actor())->authorize('generateQr', $branch);
         $this->servicePointQueryService->findForBranch($branch, $pointId);
         $this->floorContext->validateQr($this->branch(), $pointId, $qrId);
+        $ids = array_values(array_unique([...$this->selectedIds, $pointId]));
+        $this->servicePointQueryService->selected($branch, $ids);
+        $expected = array_intersect_key($this->printQrIds, array_flip($ids));
+        $expected[$pointId] = $qrId;
         $this->clearEditor();
-        $this->point = (string) $pointId;
-        $this->qrRecord = (string) $qrId;
-        $this->selectedIds = [$pointId];
+        if (count($ids) === 1) {
+            $this->point = (string) $pointId;
+            $this->qrRecord = (string) $qrId;
+        }
+        $this->printQrIds = $expected;
+        $this->selectedIds = $ids;
         $this->panel = 'print';
     }
 
@@ -248,29 +293,51 @@ class Index extends Component
         $this->openSelection('move');
     }
 
+    #[On('floor-print-recover-qr')]
+    public function recoverPrintQr(int $pointId): void
+    {
+        Gate::forUser($this->actor())->authorize('generateQr', $this->branch());
+        abort_unless(in_array($pointId, $this->selectedIds, true), 403);
+        $this->openPoint($pointId, 'qr');
+    }
+
     #[On('floor-saved')]
     public function refreshList(): void
     {
-        $this->branch();
+        $branch = $this->branch();
+        $filters = $this->filters->filters();
+        $this->floorContext->validateArea($branch, $filters['area_node_id']);
+        $lastPage = max(1, (int) ceil($this->servicePointQueryService->count($branch, $filters) / 20));
+        if ($this->getPage() > $lastPage) {
+            $this->setPage($lastPage);
+        }
     }
 
     public function render(): View
     {
-        $this->validateState();
         $branch = $this->branch();
         $query = $this->servicePointQueryService;
         $workspace = $this->floorContext;
-        $filters = $this->filters->filters();
-        $workspace->validateArea($branch, $filters['area_node_id']);
+        try {
+            $this->validateState();
+            $filters = $this->filters->filters();
+            $workspace->validateArea($branch, $filters['area_node_id']);
+        } catch (ValidationException) {
+            abort(422, __('floor.errors.filters'));
+        }
         $abilities = $workspace->abilities($this->actor(), $branch);
         $points = $query->paginate($branch, $filters, 20);
         $rows = $points->getCollection()->map(fn ($point): array => [...$workspace->present($point, $branch, $abilities), 'selected' => in_array($point->id, $this->selectedIds, true)])->all();
         $detail = $this->point === '' ? null : $query->selected($branch, [(int) $this->point])->first();
         $selectedArea = ctype_digit($filters['area_node_id']) ? (int) $filters['area_node_id'] : null;
         $areaData = $this->areaNodeQueryService->browser($branch, $this->areaSearch, $selectedArea, lifecycle: $this->areaLifecycle, filters: ['type' => $this->areaType, 'active' => $this->areaActive, 'sort' => $this->areaSort]);
+        $selectedAreaLabel = $filters['area_node_id'] === 'none' ? __('floor.no_area') : __('floor.all_areas');
+        if ($selectedArea !== null) {
+            $selectedAreaLabel = array_find($areaData['rows'], fn (array $row): bool => $row['id'] === $selectedArea)['label'];
+        }
 
         return view('livewire.organizations.brands.branches.service-points.index', [
-            'expectedQrIds' => $this->legacyQrId === null ? [] : [(int) $this->point => $this->legacyQrId],
+            'expectedQrIds' => $this->legacyQrId === null ? $this->printQrIds : [(int) $this->point => $this->legacyQrId],
             'areaTypeOptions' => FloorOptions::types(true),
             'typeOptions' => FloorOptions::types(),
             'statusOptions' => array_map(fn ($case): array => ['value' => $case->value, 'label' => __($case->label())], ServicePointStatus::cases()),
@@ -283,6 +350,7 @@ class Index extends Component
             ],
             'branchName' => $branch->name, 'abilities' => $abilities, 'rows' => $rows, 'points' => $points,
             'areaRows' => $areaData['rows'], 'areaPages' => $areaData['paginator'], 'selectedArea' => $selectedArea,
+            'selectedAreaLabel' => $selectedAreaLabel,
             'detail' => $detail === null ? null : $workspace->present($detail, $branch, $abilities),
             'selectedCount' => count($this->selectedIds), 'hiddenSelectedCount' => count(array_diff($this->selectedIds, array_column($rows, 'id'))),
             'resultCount' => $query->count($branch, $filters), 'evaluatedAt' => now()->format('H:i:s'),
@@ -300,6 +368,7 @@ class Index extends Component
             'point' => $this->point, 'areaEditor' => $this->areaEditor, 'qrRecord' => $this->qrRecord,
             'panel' => $this->panel, 'areaSearch' => $this->areaSearch, 'areaLifecycle' => $this->areaLifecycle,
             'areaType' => $this->areaType, 'areaActive' => $this->areaActive, 'areaSort' => $this->areaSort,
+            'mobileView' => $this->mobileView,
         ]);
         foreach (['point', 'areaEditor', 'qrRecord', 'panel', 'areaSearch'] as $property) {
             if ($this->{$property} === null) {

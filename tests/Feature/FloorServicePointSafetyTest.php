@@ -373,6 +373,63 @@ test('independent sqlite table writers preserve one receipt or reject the obsole
     }
 })->with(['same request', 'overlapping bulk', 'move']);
 
+test('independent sqlite archive and session opening cannot leave an active session on an archived table', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'floor-point-archive-race-');
+    $original = config('database.default');
+    $connection = config('database.connections.sqlite');
+    $connection['database'] = $path;
+
+    try {
+        config(['database.default' => 'floor_point_concurrency', 'database.connections.floor_point_concurrency' => $connection]);
+        DB::purge('floor_point_concurrency');
+        expect($connection['transaction_mode'])->toBe('IMMEDIATE');
+        expect(Artisan::call('migrate', ['--database' => 'floor_point_concurrency', '--force' => true]))->toBe(0);
+        $this->seed(SystemPermissionsSeeder::class);
+        $actor = User::factory()->create();
+        $organization = app(CreateOrganizationAction::class)->handle($actor, ['name' => 'Concurrent archive and opening']);
+        $branch = Branch::factory()->for($organization)->create();
+        $point = ServicePoint::factory()->for($branch)->free()->create();
+        $qr = QrCode::factory()->forServicePoint($point)->active()->create();
+        $identity = $point->only(['id', 'internal_code', 'area_node_id']);
+        $qrIdentity = $qr->only(['id', 'public_token', 'short_code']);
+        $command = ['id' => $point->id, 'version' => $point->structure_version];
+        $tasks = array_map(fn (string $kind): Closure => FloorServicePointConcurrencyTasks::write($connection, $actor->id, $branch->id, $kind, $command), ['archive', 'open']);
+
+        config(['database.default' => $original]);
+        $results = Concurrency::driver('process')->run($tasks, 20);
+        config(['database.default' => 'floor_point_concurrency']);
+        DB::purge('floor_point_concurrency');
+        $states = array_column($results, 'result');
+        sort($states);
+        $point = $point->fresh();
+        $qr = $qr->fresh();
+        $archiveWon = $results[0]['result'] === 'saved';
+
+        expect(array_unique(array_column($results, 'pid')))->toHaveCount(2)
+            ->and($states)->toBe(['conflict', 'saved'])
+            ->and($point->only(array_keys($identity)))->toBe($identity)
+            ->and($qr->only(array_keys($qrIdentity)))->toBe($qrIdentity)
+            ->and($point->trashed())->toBe($archiveWon)
+            ->and($point->is_active)->toBe(! $archiveWon)
+            ->and($point->status)->toBe($archiveWon ? ServicePointStatus::Closed : ServicePointStatus::Occupied)
+            ->and($qr->status)->toBe($archiveWon ? QrCodeStatus::Disabled : QrCodeStatus::Active)
+            ->and(TableSession::query()->count())->toBe($archiveWon ? 0 : 1)
+            ->and(AuditLog::query()->where('action', AuditLogAction::ServicePointDeleted)->count())->toBe($archiveWon ? 1 : 0);
+        if (! $archiveWon) {
+            $session = TableSession::query()->findOrFail($results[1]['value']);
+            expect($session->service_point_id)->toBe($point->id)
+                ->and($session->status)->toBe(TableSessionStatus::Active)
+                ->and($session->opened_by_user_id)->toBe($actor->id);
+        }
+    } finally {
+        config(['database.default' => $original]);
+        DB::disconnect('floor_point_concurrency');
+        DB::purge('floor_point_concurrency');
+        File::delete([$path, $path.'-wal', $path.'-shm']);
+        File::delete(glob($path.'.ready.*'));
+    }
+});
+
 test('bounded table selection and pagination do not load unrelated restaurant tables', function (): void {
     $point = ServicePoint::factory()->for($this->floorBranch)->create(['name' => 'Needle']);
     QrCode::factory()->forServicePoint($point)->active()->create();

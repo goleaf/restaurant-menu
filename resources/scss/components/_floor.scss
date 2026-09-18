@@ -57,6 +57,10 @@
     .rm-floor__content { order: 1; }
     .rm-floor__results { order: 2; }
     .rm-floor__workspace[data-editor-open='false'] .rm-floor__content { display: none; }
+    .rm-floor__workspace .rm-floor__areas { display: none; }
+    .rm-floor__workspace[data-editor-open='false'][data-mobile-view='zones'] .rm-floor__areas { display: grid; }
+    :where(.rm-floor__workspace[data-editor-open='true']) .rm-floor__results,
+    :where(.rm-floor__workspace[data-mobile-view='zones']) .rm-floor__results { display: none; }
 
     .rm-floor__areas,
     .rm-floor__editor {
@@ -83,6 +87,7 @@
     .rm-floor__actions,
     .rm-floor__badges,
     .rm-floor__results-header,
+    .rm-floor__room-context,
     .rm-floor__point-heading,
     .rm-floor__editor-header {
         display: flex;
@@ -160,6 +165,9 @@
     .rm-floor__confirmation { inline-size: min(28rem, calc(100vw - 2rem)); }
 
     @container floor (inline-size >= 48rem) {
+        .rm-floor__workspace .rm-floor__areas,
+        .rm-floor__workspace .rm-floor__results { display: grid; }
+        .rm-floor__mobile-navigation { display: none !important; }
         .rm-floor__workspace { grid-template-columns: minmax(12rem, 0.65fr) minmax(0, 2fr); align-items: start; }
         .rm-floor__areas { grid-column: 1; grid-row: 1 / span 2; }
         .rm-floor__results { grid-column: 2; grid-row: 1; }

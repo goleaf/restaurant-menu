@@ -108,7 +108,7 @@ test('restaurant preparation links to its room editor separately from QR printin
     $component = restaurantOnboardingComponentAtStep($user, 5, 'Rooms Link');
     $setup = RestaurantOnboarding::query()->findOrFail($component->get('onboardingId'));
     $summary = app(RestaurantSetupQueryService::class)->presentation($user, $setup->id)['summary'];
-    expect($summary['rooms_url'])->toBe(route('organizations.brands.branches.service-points.index', [$setup->organization_id, $setup->brand_id, $setup->branch_id]))
+    expect($summary['rooms_url'])->toBe(route('organizations.brands.branches.service-points.index', [$setup->organization_id, $setup->brand_id, $setup->branch_id, 'zone' => $setup->area_node_id]))
         ->not->toBe($summary['print_url']);
     Livewire::actingAs($user)->test(RestaurantSetup::class, ['setup' => $setup->id])
         ->assertSet('existingAreaId', $setup->area_node_id);

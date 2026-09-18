@@ -24,7 +24,7 @@ final class RestoreAreaNodeAction
             $context = $this->prepare->handle($branch->id, $actor, 'restore', $areaNode->id, $expectedVersion);
             $area = $context['area'];
             assert($area instanceof AreaNode);
-            $this->ensureParent->handle($context['branch'], $area->parent_id, $area->id);
+            $this->ensureParent->handle($context['branch'], $area->parent_id, $area->id, withDescendants: true);
             $before = $area->only(['parent_id', 'deleted_at', 'structure_version']);
             if (! $area->restore()) {
                 throw new RuntimeException('Required area restoration was rejected.');

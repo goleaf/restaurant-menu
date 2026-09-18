@@ -9,6 +9,7 @@ use App\Enums\QrCodeStatus;
 use App\Livewire\Forms\Floor\QrOperationForm;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Services\QrCodes\PublicQrUrl;
 use App\Services\QrCodes\QrCodeQueryService;
 use App\Services\QrCodeSvgRenderer;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -128,11 +129,11 @@ class QrPanel extends Component
         $this->resetValidation();
     }
 
-    public function downloadQrImage(QrCodeSvgRenderer $renderer): StreamedResponse
+    public function downloadQrImage(QrCodeSvgRenderer $renderer, PublicQrUrl $publicUrl): StreamedResponse
     {
         $context = $this->context();
         $qr = $this->displayedQr($context);
-        $svg = $renderer->render(route('public.qr.show', ['token' => $qr->public_token]));
+        $svg = $renderer->render($publicUrl->forToken($qr->public_token));
 
         return response()->streamDownload(static function () use ($svg): void {
             echo $svg;

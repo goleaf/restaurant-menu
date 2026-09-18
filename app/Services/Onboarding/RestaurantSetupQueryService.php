@@ -15,6 +15,7 @@ use App\Models\QrCode;
 use App\Models\RestaurantOnboarding;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodes\PublicQrUrl;
 use App\Services\Restaurant\BranchReadinessService;
 use App\Support\MoneyFormatter;
 use App\Support\RestaurantSetupOptions;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Gate;
 
 final class RestaurantSetupQueryService
 {
-    public function __construct(private readonly BranchReadinessService $branchReadiness) {}
+    public function __construct(private readonly BranchReadinessService $branchReadiness, private readonly PublicQrUrl $publicQrUrl) {}
 
     /** @return array<string, mixed> */
     public function readiness(User $actor, int $setupId): array
@@ -99,12 +100,12 @@ final class RestaurantSetupQueryService
             'summary' => [
                 'organization' => $organization?->name, 'brand' => $brand?->name, 'branch' => $branch?->name, 'area' => $area?->name,
                 'service_points' => $pointsValid ? $points->count() : 0, 'qr_codes' => $qrValid ? $qrCodes->count() : 0, 'menu' => $menu?->name,
-                'guest_url' => $qrCode instanceof QrCode ? route('public.qr.show', ['token' => $qrCode->public_token]) : null,
+                'guest_url' => $qrCode instanceof QrCode ? $this->publicQrUrl->forToken($qrCode->public_token) : null,
                 'branch_url' => $branch instanceof Branch ? route('restaurants.index', ['kind' => 'branch', 'object' => $branch->id]) : null,
                 'menu_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch
                     ? ($item instanceof MenuItem ? route('organizations.brands.branches.menu.dish.edit', [$organization, $brand, $branch, $item]) : route('organizations.brands.branches.menu.index', [$organization, $brand, $branch])) : null,
                 'print_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.qr.print', [$organization, $brand, $branch]) : null,
-                'rooms_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]) : null,
+                'rooms_url' => $organization instanceof Organization && $brand instanceof Brand && $branch instanceof Branch ? route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch, 'zone' => $area?->id]) : null,
             ],
             'form' => $this->formValues(
                 $organizationReference,

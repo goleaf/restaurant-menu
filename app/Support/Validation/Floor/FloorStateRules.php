@@ -15,6 +15,7 @@ final class FloorStateRules
     {
         $id = ['nullable', 'string', 'regex:/\A[1-9][0-9]*\z/'];
         Validator::make($state, [
+            'mobileView' => ['sometimes', 'required', 'string', Rule::in(['zones', 'tables'])],
             'areaType' => ['required', 'string', Rule::in(['all', ...AreaNodeType::values()])],
             'areaActive' => ['required', 'string', Rule::in(['all', 'active', 'inactive'])],
             'areaSort' => ['required', 'string', Rule::in(['position', 'name_asc', 'name_desc', 'newest', 'oldest'])],

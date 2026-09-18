@@ -39,6 +39,97 @@ function floorAreaPayload(AreaNode $area, array $changes = []): array
     return array_replace($area->only(['parent_id', 'name', 'icon', 'sort_order', 'is_active']), ['type' => $area->type->value], $changes);
 }
 
+function floorAreaChain(Branch $branch, int $length, ?AreaNode $parent = null): AreaNode
+{
+    for ($level = 0; $level < $length; $level++) {
+        $parent = AreaNode::factory()->for($branch)->create(['parent_id' => $parent?->id]);
+    }
+
+    assert($parent instanceof AreaNode);
+
+    return $parent;
+}
+
+test('area creation accepts the deepest readable path but rejects its sixty fifth node atomically', function () {
+    $parent = floorAreaChain($this->branch, 63);
+    $leaf = app(CreateAreaNodeAction::class)->handle($this->branch, floorAreaPayload($this->area, ['name' => 'Deepest valid hall', 'parent_id' => $parent->id]), $this->actor);
+    $rows = app(AreaNodeQueryService::class)->browser($this->branch, 'Deepest valid hall')['rows'];
+    expect($rows)->toHaveCount(1)->and($rows[0]['hierarchy_valid'])->toBeTrue();
+    $before = AreaNode::query()->orderBy('id')->get()->toArray();
+    $audits = AuditLog::query()->count();
+
+    expect(fn () => app(CreateAreaNodeAction::class)->handle($this->branch, floorAreaPayload($this->area, ['parent_id' => $leaf->id]), $this->actor))
+        ->toThrow(InvalidArgumentException::class, 'floor.errors.invalid_hierarchy');
+    expect(AreaNode::query()->orderBy('id')->get()->toArray())->toBe($before)
+        ->and(AuditLog::query()->count())->toBe($audits);
+});
+
+test('area moves include the complete subtree when enforcing the readable depth limit', function () {
+    $parent = floorAreaChain($this->branch, 62);
+    $child = AreaNode::factory()->for($this->branch)->create(['parent_id' => $this->area->id]);
+    $move = app(UpdateAreaNodeAction::class);
+    $area = $move->handle($this->area, floorAreaPayload($this->area, ['parent_id' => $parent->id]), $this->actor, 0);
+    expect($area->parent_id)->toBe($parent->id)
+        ->and(collect(app(AreaNodeQueryService::class)->browser($this->branch, '', $child->id)['rows'])->firstWhere('id', $child->id)['hierarchy_valid'])->toBeTrue();
+    $deeperParent = AreaNode::factory()->for($this->branch)->create(['parent_id' => $parent->id]);
+    $before = $area->fresh()->getRawOriginal();
+    $childBefore = $child->fresh()->getRawOriginal();
+    $audits = AuditLog::query()->count();
+
+    expect(fn () => $move->handle($area, floorAreaPayload($area, ['parent_id' => $deeperParent->id]), $this->actor, $area->structure_version))
+        ->toThrow(InvalidArgumentException::class, 'floor.errors.invalid_hierarchy');
+    expect($area->fresh()->getRawOriginal())->toBe($before)->and($child->fresh()->getRawOriginal())->toBe($childBefore)
+        ->and(AuditLog::query()->count())->toBe($audits);
+});
+
+test('restoring a deep area cannot make its retained descendants unreadable', function () {
+    $parent = floorAreaChain($this->branch, 63);
+    $this->area->forceFill(['parent_id' => $parent->id])->save();
+    $child = AreaNode::factory()->for($this->branch)->create(['parent_id' => $this->area->id]);
+    $this->area->delete();
+    $before = $child->fresh()->getRawOriginal();
+
+    expect(fn () => app(RestoreAreaNodeAction::class)->handle($this->actor, $this->branch, $this->area, $this->area->structure_version))
+        ->toThrow(InvalidArgumentException::class, 'floor.errors.invalid_hierarchy');
+    expect(AreaNode::withTrashed()->findOrFail($this->area->id)->trashed())->toBeTrue()
+        ->and($child->fresh()->getRawOriginal())->toBe($before);
+});
+
+test('moving a cyclic root to the top repairs only its parent edge and keeps descendants', function () {
+    $child = AreaNode::factory()->for($this->branch)->create(['parent_id' => $this->area->id]);
+    $this->area->forceFill(['parent_id' => $child->id])->save();
+    $updated = app(UpdateAreaNodeAction::class)->handle($this->area, floorAreaPayload($this->area, ['parent_id' => null]), $this->actor, $this->area->structure_version);
+    expect($updated->parent_id)->toBeNull()->and($child->fresh()->parent_id)->toBe($this->area->id)
+        ->and(collect(app(AreaNodeQueryService::class)->browser($this->branch, '', $child->id)['rows'])->firstWhere('id', $child->id)['hierarchy_valid'])->toBeTrue();
+});
+
+test('renaming an area does not load an unrelated descendant graph', function () {
+    $first = countDatabaseQueries(fn () => app(UpdateAreaNodeAction::class)->handle($this->area, floorAreaPayload($this->area, ['name' => 'First name']), $this->actor, 0));
+    $area = $this->area->fresh();
+    AreaNode::factory()->for($this->branch)->count(300)->create(['parent_id' => $area->id]);
+    $second = countDatabaseQueries(fn () => app(UpdateAreaNodeAction::class)->handle($area, floorAreaPayload($area, ['name' => 'Second name']), $this->actor, $area->structure_version));
+    expect($second)->toBe($first)->and($area->fresh()->name)->toBe('Second name');
+});
+
+test('area browser pins selected context across lifecycle without widening search results', function (bool $archived) {
+    if ($archived) {
+        $this->area->delete();
+    }
+    $result = app(AreaNodeQueryService::class)->browser($this->branch, 'No matches', $this->area->id, lifecycle: $archived ? 'active' : 'archived');
+    expect($result['paginator']->count())->toBe(0)->and($result['rows'])->toHaveCount(1)
+        ->and($result['rows'][0])->toMatchArray(['id' => $this->area->id, 'selected' => true, 'is_archived' => $archived]);
+})->with([false, true]);
+
+test('area browser prepares translated types and unavailable parent paths', function (string $locale) {
+    app()->setLocale($locale);
+    $this->area->forceFill(['type' => 'hall'])->save();
+    $child = AreaNode::factory()->for($this->branch)->create(['parent_id' => $this->area->id, 'type' => 'hall']);
+    $this->area->delete();
+    $row = collect(app(AreaNodeQueryService::class)->browser($this->branch, '', $child->id)['rows'])->firstWhere('id', $child->id);
+    expect($row['type_label'])->toBe(__('ui.livewire.organizations.brands.branches.areas.zal'))
+        ->and($row['parent_available'])->toBeFalse()->and($row['hierarchy_valid'])->toBeTrue();
+})->with(['en', 'lt', 'ru']);
+
 test('area writes reject a current actor without management permission', function (string $operation) {
     $actor = User::factory()->create();
     OrganizationUser::factory()->forOrganization($this->branch->organization)->for($actor)->forSystemRole(SystemRole::Waiter)->active()->create();

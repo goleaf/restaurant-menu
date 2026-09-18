@@ -6,13 +6,17 @@ use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
+use App\Models\FloorOperation;
 use App\Models\OrganizationUser;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
@@ -173,3 +177,59 @@ test('direct bulk range errors are localized for every supported locale', functi
         }
     }
 })->with(['en', 'lt', 'ru']);
+
+test('a saved bulk request cannot be reused with different content actor or restaurant', function (string $change): void {
+    [$branch, $actor] = authorizedBulkServicePointBranch();
+    $action = app(BulkCreateServicePointsAction::class);
+    $data = bulkServicePointActionData();
+    $preview = $action->previewState($branch, $data, $actor);
+    $key = (string) Str::uuid();
+    $result = $action->handle($branch, $data, $actor, $key, $preview['fingerprint']);
+    $points = ServicePoint::query()->orderBy('id')->get()->map->getRawOriginal()->all();
+    $receipt = FloorOperation::query()->sole()->getRawOriginal();
+    $auditCount = AuditLog::query()->count();
+    $targetBranch = $branch;
+    $targetActor = $actor;
+    if ($change === 'payload') {
+        $data['capacity'] = 9;
+    } elseif ($change === 'actor') {
+        $targetActor = User::factory()->create();
+        OrganizationUser::factory()->forOrganization($branch->organization)->forUser($targetActor)->forSystemRole(SystemRole::Owner)->active()->create();
+    } else {
+        $targetBranch = Branch::factory()->for($branch->organization)->create();
+    }
+
+    try {
+        $action->handle($targetBranch, $data, $targetActor, $key, $preview['fingerprint']);
+        $this->fail('A saved operation must remain bound to its original command and scope.');
+    } catch (ValidationException $exception) {
+        expect($exception->errors())->toBe(['requestId' => [__('floor.errors.command_conflict')]]);
+    }
+
+    expect(ServicePoint::query()->orderBy('id')->get()->map->getRawOriginal()->all())->toBe($points)
+        ->and(FloorOperation::query()->sole()->getRawOriginal())->toBe($receipt)
+        ->and(AuditLog::query()->count())->toBe($auditCount)
+        ->and($result['created_ids'])->toBe(array_column($points, 'id'))
+        ->and(QrCode::query()->count())->toBe(0);
+})->with(['payload', 'actor', 'restaurant']);
+
+test('bulk confirmation and response replay both reauthorize a membership revoked after preview', function (bool $alreadySaved): void {
+    [$branch, $actor] = authorizedBulkServicePointBranch();
+    $action = app(BulkCreateServicePointsAction::class);
+    $data = bulkServicePointActionData();
+    $preview = $action->previewState($branch, $data, $actor);
+    $key = (string) Str::uuid();
+    if ($alreadySaved) {
+        $action->handle($branch, $data, $actor, $key, $preview['fingerprint']);
+    }
+    $points = ServicePoint::query()->orderBy('id')->get()->map->getRawOriginal()->all();
+    $receipts = FloorOperation::query()->orderBy('id')->get()->map->getRawOriginal()->all();
+    $auditCount = AuditLog::query()->count();
+    $branch->organization->memberships()->where('user_id', $actor->id)->update(['status' => 'suspended']);
+
+    expect(fn () => $action->handle($branch, $data, $actor, $key, $preview['fingerprint']))->toThrow(AuthorizationException::class)
+        ->and(ServicePoint::query()->orderBy('id')->get()->map->getRawOriginal()->all())->toBe($points)
+        ->and(FloorOperation::query()->orderBy('id')->get()->map->getRawOriginal()->all())->toBe($receipts)
+        ->and(AuditLog::query()->count())->toBe($auditCount)
+        ->and(QrCode::query()->count())->toBe(0);
+})->with(['before creation' => false, 'lost response replay' => true]);

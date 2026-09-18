@@ -12,15 +12,15 @@
             @foreach ($rows as $row)
                 <tr>
                     @foreach ($row as $item)
-                        <td class="label">
+                        <td class="slot"><div class="label">
                             <p class="brand">{{ $branchName }}</p>
                             <p class="instruction">{{ __('qr.print.sticker_title') }}</p>
-                            <img class="qr" src="{{ $item['qr_image_data_uri'] }}" alt="{{ __('qr.labels.image') }}" width="208" height="208">
+                            <img class="qr" src="{{ $item['qr_image_data_uri'] }}" alt="{{ __('qr.labels.image') }}" width="181" height="181">
                             <div class="code">{{ $item['short_code'] }}</div>
                             @if ($printTableNumber)
                                 <div class="table-number">{{ __('qr.labels.table') }}: {{ $item['service_point_label'] }}</div>
                             @endif
-                        </td>
+                        </div></td>
                     @endforeach
                     @if (count($row) === 1)
                         <td></td>

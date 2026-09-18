@@ -156,22 +156,15 @@ test('two-factor QR contrast follows the existing dark class without inline styl
     assert.doesNotMatch(view, /:style=|\$flux\.(?:appearance|dark)/);
 });
 
-test('area tree indentation uses nine bounded depths and preserves physical left spacing', async () => {
+test('floor area navigation uses the canonical responsive workspace without legacy depth utilities', async () => {
     const css = compileStyles('app');
-    const selectors = [];
-    postcss.parse(css).walkRules((rule) => {
-        if (rule.selector.startsWith('.rm-area-node-label[')) selectors.push(rule.selector);
-    });
-    assert.equal(selectors.length, 9);
-    for (let depth = 0; depth <= 8; depth++) {
-        const styles = declarations(css, `.rm-area-node-label[data-depth="${depth}"]`);
-        assert.equal(styles['padding-left'], `${depth * 1.25}rem`);
-        assert.equal(styles['padding-inline-start'], undefined);
-    }
-    const view = await readFile('resources/views/livewire/organizations/brands/branches/area-node-row.blade.php', 'utf8');
-    assert.match(view, /class="rm-area-node-label min-w-0"/);
-    assert.ok(view.includes('data-depth="{{ max(0, min($node[\'depth\'], 8)) }}"'));
-    assert.doesNotMatch(view, /style="padding-left:/);
+    assert.doesNotMatch(css, /\.rm-area-node-label/);
+    assert.equal(declarations(css, '.rm-floor__area-list')['overscroll-behavior'], 'contain');
+    assert.equal(declarations(css, '.rm-floor__mobile-navigation').display, 'none');
+    const view = await readFile('resources/views/livewire/organizations/brands/branches/service-points/index.blade.php', 'utf8');
+    assert.match(view, /data-mobile-view/);
+    assert.match(view, /data-floor-areas-heading/);
+    assert.match(view, /floor.invalid_hierarchy/);
 });
 
 test('print styles preserve physical QR geometry and standalone PDF palettes', () => {
@@ -189,8 +182,11 @@ test('print styles preserve physical QR geometry and standalone PDF palettes', (
     for (const preset of ['minimal', 'classic', 'restaurant', 'bar', 'hotel', 'premium']) {
         assert.ok(declarations(pdf, `[data-qr-preset="${preset}"] .label`)['border-color'], preset);
     }
-    assert.equal(declarations(pdf, '.qr').width, '55mm');
-    assert.equal(declarations(pdf, '.qr').height, '55mm');
+    assert.equal(declarations(pdf, '.qr').width, '48mm');
+    assert.equal(declarations(pdf, '.qr').height, '48mm');
+    assert.equal(declarations(pdf, '.slot').width, '76mm');
+    assert.equal(declarations(pdf, '.label')['min-height'], '95mm');
+    assert.match(pdf, /margin: 8mm/);
 });
 
 test('the application owns SCSS sources independently of the framework bridge', async () => {

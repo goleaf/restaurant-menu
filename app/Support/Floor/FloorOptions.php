@@ -6,6 +6,7 @@ namespace App\Support\Floor;
 
 use App\Enums\AreaNodeType;
 use App\Enums\ServicePointType;
+use App\Support\RestaurantSetupOptions;
 
 final class FloorOptions
 {
@@ -38,6 +39,8 @@ final class FloorOptions
     /** @return list<array{value:string,label:string}> */
     public static function types(bool $area = false): array
     {
-        return array_map(fn ($case): array => ['value' => $case->value, 'label' => __($case->label())], $area ? AreaNodeType::cases() : ServicePointType::cases());
+        $areaLabels = $area ? RestaurantSetupOptions::areaTypeOptions() : [];
+
+        return array_map(fn ($case): array => ['value' => $case->value, 'label' => $area ? $areaLabels[$case->value] : __(sprintf('reports.service_point_types.%s', $case->value))], $area ? AreaNodeType::cases() : ServicePointType::cases());
     }
 }

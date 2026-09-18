@@ -1,0 +1,15 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
+# Research and decisions
+
+The installed floor workspace already unifies cards/list and uses exact-area filters, current policies, receipts, guarded service operations and bounded print snapshots. Preserve this design and repair proven gaps. Rebuilding it or wrapping legacy pages in tabs would duplicate established behavior.
+
+Keep the64-node path bound consistent across read/create/subtree-move and fail safely on corrupt graph data. Parent options need independent pagination and pinned current context. Shared WorkspaceActorGuard already enforces account identity; do not add another actor mechanism.
+
+Use existing mobile/dirty state owner, one editor and one selection. Add explicit mobile region navigation rather than mounting duplicate breakpoint forms. Existing safe legacy adapters stay; orphan views can be removed after references/tests are reconciled.
+
+Print preparation owns immutable targets/labels/QR fingerprints; a mixed set is disclosed before preparation. Reuse generator and file lifecycle with atomic materialization after proving truncated-write behavior. QR URL building must use configured public origin, verified against an alternate request host. Print CSS/assets must be proven through the actual Livewire-open path, not only direct GET.
+
+Official sources checked2026-09-18: [pages](https://livewire.laravel.com/docs/4.x/pages), [URL state](https://livewire.laravel.com/docs/4.x/url), [Forms](https://livewire.laravel.com/docs/4.x/forms), [security](https://livewire.laravel.com/docs/4.x/security), [buffered downloads](https://livewire.laravel.com/docs/4.x/downloads), [Policies](https://laravel.com/docs/13.x/authorization), [Flux modal](https://fluxui.dev/components/modal), [QR quiet zone](https://www.qrcode.com/en/howto/code.html), [drag alternatives](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html), [Tailwind compatibility](https://tailwindcss.com/docs/compatibility), [container queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries). Installed source determines available APIs. Boost application-info/search-docs returned invalid JSON; no successful MCP inspection is claimed. Spec Kit1.0.8 is installed with zero missing files; its15 modified managed Markdown files contain intentional project restrictions and are preserved.

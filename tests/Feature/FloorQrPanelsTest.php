@@ -41,6 +41,37 @@ test('opening QR and print panels does not generate an identity or image', funct
         ->and(QrCode::query()->where('service_point_id', $this->point->id)->count())->toBe(1);
 });
 
+test('print selection identifies every unavailable QR and opens recovery without silently dropping tables', function (): void {
+    $missing = ServicePoint::factory()->for($this->branch)->create(['name' => 'No QR table']);
+    $disabled = ServicePoint::factory()->for($this->branch)->create(['name' => 'Disabled QR table']);
+    QrCode::factory()->for($disabled)->create(['status' => QrCodeStatus::Disabled]);
+    $revoked = ServicePoint::factory()->for($this->branch)->create(['name' => 'Revoked QR table']);
+    QrCode::factory()->for($revoked)->create(['status' => QrCodeStatus::Revoked]);
+    $ids = [$this->point->id, $missing->id, $disabled->id, $revoked->id];
+    $component = Livewire::actingAs($this->actor)->test(PrintPanel::class, ['branchId' => $this->branch->id, 'ids' => $ids]);
+    foreach ([$this->point->id => 'ready', $missing->id => 'missing', $disabled->id => 'disabled', $revoked->id => 'revoked'] as $id => $state) {
+        $component->assertSeeHtml('data-floor-print-target="'.$id.'" data-qr-state="'.$state.'"');
+    }
+    $component->call('preparePrint')->assertHasErrors('service_points')->assertSet('previewId', null)
+        ->call('reviewQr', $missing->id)->assertDispatched('floor-print-recover-qr', pointId: $missing->id)
+        ->assertSet('ids', $ids);
+    expect(QrCode::query()->where('service_point_id', $missing->id)->count())->toBe(0);
+});
+
+test('print recovery refuses an unselected target even in the same restaurant', function (): void {
+    $other = ServicePoint::factory()->for($this->branch)->create();
+    Livewire::actingAs($this->actor)->test(PrintPanel::class, ['branchId' => $this->branch->id, 'ids' => [$this->point->id]])
+        ->call('reviewQr', $other->id)->assertForbidden();
+});
+
+test('a replaced expected print identity offers explicit recovery instead of claiming readiness', function (): void {
+    app(ReissueQrCodeForServicePointAction::class)->handle($this->qr, $this->actor);
+    Livewire::actingAs($this->actor)->test(PrintPanel::class, ['branchId' => $this->branch->id, 'ids' => [$this->point->id], 'expectedQrIds' => [$this->point->id => $this->qr->id]])
+        ->assertSeeHtml('data-floor-print-target="'.$this->point->id.'" data-qr-state="changed"')
+        ->call('preparePrint')->assertHasErrors('service_points')
+        ->call('reviewQr', $this->point->id)->assertDispatched('floor-print-recover-qr', pointId: $this->point->id);
+});
+
 test('legacy floor QR selection verifies both table and restaurant ownership without mutation', function (): void {
     $query = app(FloorWorkspaceQuery::class);
     $original = $this->qr->fresh()->getAttributes();

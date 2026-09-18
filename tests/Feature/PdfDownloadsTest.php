@@ -69,7 +69,7 @@ test('PDF QR presets use self contained compiled styles without browser assets',
     expect($html)
         ->toContain('data-qr-preset="'.$preset->value.'"')
         ->toMatch('/\[data-qr-preset=["\']?'.preg_quote($preset->value, '/').'["\']?\]/')
-        ->toContain('55mm')
+        ->toContain('48mm', '76mm', '95mm')
         ->toContain('DejaVu Sans')
         ->not->toContain('var(', '@vite', 'data-flux', '<script', 'rel="stylesheet"');
 })->with(QrLabelPreset::cases());

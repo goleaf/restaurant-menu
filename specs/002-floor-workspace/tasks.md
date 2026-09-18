@@ -42,7 +42,7 @@ Authoritative status: docs/IMPLEMENTATION_PLAN.md P5R. Paths repository-relative
 - [x] T023 Freeze source; run complete discovered backend/browser/coverage and all applicable static/format/JS/SCSS/translation/build/schema/cache gates; verify315+ worker artifacts and exact IDs rather than assuming counts.
 - [x] T024 Check actual stable CLI/web and available isolated PHP8.6 constraints/syntax; record unexecuted application/hardware/native-zoom gates honestly.
 - [x] T025 Independent non-author diff/security/contract review, Spec Kit convergence and repair/retest confirmed findings.
-- [ ] T026 Root stages only verified attributable files, commits locally and ordinary pushes to existing origin; record observed delivery without remote verification or deployment.
+- [x] T026 Root stages only verified attributable files, commits locally and ordinary pushes to existing origin; record observed delivery without remote verification or deployment.
 
 ## Dependencies
 T001–T004 establish the first vertical slice. T008–T013 area/table work can proceed with exclusive owners; QR T015–T018 uses different files. Root owns shared Forms/routes/lang/schema/Index/UI integration. Browser/build runs are serialized. T019–T026 close every story; failed acceptance remains open. No task authorizes working database changes.

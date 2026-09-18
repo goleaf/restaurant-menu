@@ -2,7 +2,7 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
-## Prompt 5 — acceptance passed, delivery pending (2026-09-18)
+## Prompt 5 — accepted and delivered (2026-09-18)
 
 Baseline `main` / `5e2987c` is clean after accepted Prompt4. Source/index/diff archive: `restaurant-p5-z2py0b1b`. Use [working spec](../specs/002-floor-workspace/spec.md), [technical plan](../specs/002-floor-workspace/plan.md) and [tasks](../specs/002-floor-workspace/tasks.md), mapped to existing canonical IDs. The earlier P5 checkpoint remains history, not current acceptance. No working database/key/QR changes, dependency upgrade, deployment or GitHub operation beyond ordinary authorized push.
 
@@ -14,7 +14,7 @@ Baseline `main` / `5e2987c` is clean after accepted Prompt4. Source/index/diff a
 | P5R.4 | QR specialist: QR Actions/read/PrintPanel/QrPanel/print SCSS and QR/browser tests | Exact selection→ready/missing targets→safe image/PDF/print, persistent token | Accepted; QR81/430,121/121 decoded URLs,76mm labels/48mm QR, final build, complete100/6911 browser and4694/80427 backend pass |
 | P5R.5 | Root: Index Blade/_floor.scss/JS, legacy entries, shared lang/routes/docs | Mobile zone→tables→card, additive print selection, named dialogs and no duplicate screens | Implemented; one global context/dirty owner, final floor9/360 and full browser100/6911 pass, including the legacy mobile entry |
 | P5R.6 | Root + specialists with serialized browser/build | Exact current runtime/test/document/screenshot and matched-cost proof | T021–T024 accepted: exact inventories,92.3573% PHP/100% JS lines, final matched measurements and runtime limitations recorded |
-| P5R.7 | Non-author reviewers; root Git delivery | Reviewed attributable result and truthful ledgers | Independent review and Spec Kit convergence clear; T026 commit/push pending |
+| P5R.7 | Non-author reviewers; root Git delivery | Reviewed attributable result and truthful ledgers | Independent review and Spec Kit convergence clear; T026 complete from local2ecc247 and observed ordinary origin/main push exit0 |
 
 Each file has one active owner; request transfer before cross-boundary edits. Root coordinates Forms/translations/routes/schema and integrates agent patches directly in shared main. Existing floor implementation is reused, tested and repaired; no second floor editor or booking/service system is created. Tests use only owned database/storage/cache. Initial free space8.0GiB; retained P4 evidence remains intact.
 

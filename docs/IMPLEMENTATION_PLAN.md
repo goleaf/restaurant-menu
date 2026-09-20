@@ -2,6 +2,20 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — current-source convergence (2026-09-20)
+
+Start at clean `main` / `ad1cac6`; retain the accepted P5 implementation and subsequent dish-card work. Reuse `specs/002-floor-workspace` rather than recreate the three old catalogues. Current-source evidence is being collected in the owned `restaurant-p5-refresh-elqmgwhx` directory; past acceptance remains dated evidence. The working database, application key, dependencies and deployment are outside this continuation.
+
+| Step / owner | Exclusive responsibility | Execution / acceptance |
+| --- | --- | --- |
+| P5C.1 Root | Workspace Index, shared Forms/routes/translations/docs, selection operation PHP/Blade and BulkQrPrintTest | Trace existing room → table → QR → print flow; reproduce per-target QR failure blocking later targets; keep five-per-request/100-target bounds and explicit retry without repeating completed work. |
+| P5C.2 Area specialist | AreaNode Actions/query, AreaEditor PHP/Blade, FloorAreaSafetyTest/AreaNodeCrudTest/FloorAreaEditorTest | Recheck hierarchy, write-time races, lifecycle and revoked editor capabilities; change only reproduced defects. |
+| P5C.3 Table specialist | ServicePoint Actions, PointEditor/BulkCreate PHP/Blade, focused table/bulk/receipt tests | Recheck direct/merged service, identity, versioned movement/archive and bulk200/replay; change only reproduced defects. |
+| P5C.4 QR specialist | QR Actions/query/support, QrPanel/PrintPanel PHP/Blade, QR print SCSS and focused QR tests | Reproduce text display number `0` on labels; recheck immutable preparation, file recovery, decoder and physical geometry. |
+| P5C.5 Root + independent cross-review | Integration, browser/SCSS and isolated acceptance | Fresh focused/full suites, coverage, JS/styles/build/translations, matched current-baseline measurements, actual PHP CLI/web/experimental runtime checks, non-author review and scoped local commit/ordinary push. Record every blocker explicitly. |
+
+Shared Forms, migrations, routes and catalogues have one root owner; specialists request changes there. Build/browser/full gates are serialized after integration. No remote GitHub inspection, hooks, working-data mutation or new server. Spec Kit integration is intact with intentional local template/skill modifications; no reinstall or upgrade. Boost MCP currently returns invalid JSON, so supported-PHP local invocation and official documentation are used for verification.
+
 ## Prompt 5 — accepted and delivered (2026-09-18)
 
 Baseline `main` / `5e2987c` is clean after accepted Prompt4. Source/index/diff archive: `restaurant-p5-z2py0b1b`. Use [working spec](../specs/002-floor-workspace/spec.md), [technical plan](../specs/002-floor-workspace/plan.md) and [tasks](../specs/002-floor-workspace/tasks.md), mapped to existing canonical IDs. The earlier P5 checkpoint remains history, not current acceptance. No working database/key/QR changes, dependency upgrade, deployment or GitHub operation beyond ordinary authorized push.

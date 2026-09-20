@@ -30,6 +30,7 @@
                 <flux:input wire:model="form.sortOrder" type="number" min="0" max="9999" :label="__('floor.fields.order')" />
             </div>
             <flux:select wire:model="form.icon" :label="__('floor.fields.icon')">
+                <flux:select.option value="">{{ __('floor.no_icon') }}</flux:select.option>
                 @forelse ($icons as $icon => $iconLabel)
                     <flux:select.option :value="$icon">{{ $iconLabel }}</flux:select.option>
                 @empty

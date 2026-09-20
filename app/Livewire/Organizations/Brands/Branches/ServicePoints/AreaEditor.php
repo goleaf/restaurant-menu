@@ -167,9 +167,15 @@ class AreaEditor extends Component
     public function render(): View
     {
         $branch = $this->branch();
+        $area = $this->areaId === null ? null : $this->floorWorkspaceQuery->area($branch, $this->areaId);
+        $gate = Gate::forUser($this->actor());
+        if ($area instanceof AreaNode) {
+            $gate->authorize($area->trashed() ? 'restore' : 'update', $area);
+        } else {
+            $gate->authorize('create', [AreaNode::class, $branch]);
+        }
         $selected = is_string($this->form->parentId) && ctype_digit($this->form->parentId) ? (int) $this->form->parentId : null;
         $parents = $this->areaNodeQueryService->browser($branch, $this->parentSearch, $selected, $this->areaId, pageName: 'parentAreasPage');
-        $area = $this->areaId === null ? null : $this->floorWorkspaceQuery->area($branch, $this->areaId);
 
         return view('livewire.organizations.brands.branches.service-points.area-editor', [
             'area' => $area,

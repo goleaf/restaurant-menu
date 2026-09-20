@@ -42,12 +42,12 @@ final class AreaRules
      * @param  list<string>  $iconValues
      * @return array<string, list<mixed>>
      */
-    public static function areaNode(string $prefix = '', array $iconValues = []): array
+    public static function areaNode(string $prefix = '', array $iconValues = [], bool $iconRequired = true): array
     {
         return [
             RuleFields::name($prefix, 'name') => ['bail', 'required', 'string', 'max:160'],
             RuleFields::name($prefix, 'type') => ['required', 'string', Rule::in(AreaNodeType::values())],
-            RuleFields::name($prefix, 'icon') => EnumRules::text($iconValues, required: true),
+            RuleFields::name($prefix, 'icon') => EnumRules::text($iconValues, required: $iconRequired),
             RuleFields::name($prefix, 'sortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
             RuleFields::name($prefix, 'isActive') => ['boolean'],
         ];

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
@@ -20,6 +21,9 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -89,6 +93,81 @@ test('floor selection opens canonical printing only with generate qr permission'
     Livewire::actingAs($manager->fresh())->test(FloorIndex::class, compact('organization', 'brand', 'branch'))
         ->call('selectPoint', $points['mainWithQr']->id)->assertSee(__('floor.print_selected'))
         ->call('openSelection', 'print')->assertSet('panel', 'print');
+});
+
+test('bulk QR generation accounts for a nonactive QR and continues with later selected tables', function (QrCodeStatus $status): void {
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $blocked = $points['mainWithQr'];
+    $missing = $points['mainWithoutQr'];
+    $qr = $blocked->activeQrCode;
+    $token = $qr->public_token;
+    $qr->forceFill(['status' => $status])->save();
+    expect($qr->fresh()->status)->toBe($status);
+
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, [
+        'branchId' => $branch->id, 'ids' => [$blocked->id, $missing->id], 'operation' => 'generate',
+    ])->call('generateNext')->assertHasNoErrors()
+        ->assertSet('completedIds', [$missing->id])
+        ->assertSet('skippedIds', [$blocked->id => 'reissue_required'])
+        ->assertSet('finished', true)
+        ->assertSee(__('floor.qr.result.reissue_required'))
+        ->assertDontSee('variant="success"', false);
+
+    $component->call('generateNext')->assertHasNoErrors()->assertSet('completedIds', [$missing->id]);
+    expect($qr->fresh()->public_token)->toBe($token)
+        ->and($qr->fresh()->status)->toBe($status)
+        ->and(QrCode::query()->where('service_point_id', $blocked->id)->count())->toBe(1)
+        ->and(QrCode::query()->where('service_point_id', $missing->id)->count())->toBe(1);
+})->with([QrCodeStatus::Disabled, QrCodeStatus::Revoked]);
+
+test('bulk QR file failure does not block later targets and explicit retry repairs only the unfinished image', function (): void {
+    Storage::fake('public');
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $first = $points['mainWithoutQr'];
+    $second = ServicePoint::factory()->for($branch)->create();
+    $actual = Storage::disk('public');
+    $rejectFirstWrite = true;
+    $writes = 0;
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('exists')->andReturnUsing(fn (string $path): bool => $actual->exists($path));
+    $disk->shouldReceive('get')->andReturnUsing(fn (string $path): ?string => $actual->get($path));
+    $disk->shouldReceive('put')->andReturnUsing(function (string $path, string $contents) use ($actual, &$rejectFirstWrite, &$writes): bool {
+        $writes++;
+        if ($rejectFirstWrite) {
+            $rejectFirstWrite = false;
+
+            return $actual->put($path, substr($contents, 0, 32), 'public');
+        }
+
+        return $actual->put($path, $contents, 'public');
+    });
+    $disk->shouldReceive('move')->andReturnUsing(fn (string $from, string $to): bool => $actual->move($from, $to));
+    $disk->shouldReceive('delete')->andReturnUsing(fn (string $path): bool => $actual->delete($path));
+    $factory = Mockery::mock(FilesystemFactory::class);
+    $factory->shouldReceive('disk')->with('public')->andReturn($disk);
+    $images = app()->makeWith(StoreQrCodeImageAction::class, ['filesystem' => $factory]);
+    app()->instance(StoreQrCodeImageAction::class, $images);
+
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, [
+        'branchId' => $branch->id, 'ids' => [$first->id, $second->id], 'operation' => 'generate',
+    ])->call('generateNext')->assertHasNoErrors()
+        ->assertSet('completedIds', [$second->id])
+        ->assertSet('failedIds', [$first->id => 'image_failed'])
+        ->assertSet('finished', true)
+        ->assertSee(__('floor.qr.result.image_failed'));
+    $firstQr = QrCode::query()->where('service_point_id', $first->id)->sole();
+    $secondQr = QrCode::query()->where('service_point_id', $second->id)->sole();
+    expect($writes)->toBe(2)->and($actual->allFiles('qr'))->toHaveCount(1);
+
+    $component->call('generateNext')->assertSet('failedIds', [$first->id => 'image_failed']);
+    expect($writes)->toBe(2);
+    $component->call('retryFailed')->assertHasNoErrors()->assertSet('failedIds', [])->assertSet('finished', true);
+    expect($component->get('completedIds'))->toEqualCanonicalizing([$first->id, $second->id]);
+    expect($writes)->toBe(3)->and($actual->allFiles('qr'))->toHaveCount(2)
+        ->and(QrCode::query()->where('service_point_id', $first->id)->sole()->public_token)->toBe($firstQr->public_token)
+        ->and(QrCode::query()->where('service_point_id', $second->id)->sole()->public_token)->toBe($secondQr->public_token);
 });
 
 function createPrompt27QrContext(): array

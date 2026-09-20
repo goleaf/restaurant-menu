@@ -5,10 +5,13 @@ declare(strict_types=1);
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
 use App\Enums\QrCodeStatus;
+use App\Enums\SystemPermission;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\PrintPanel;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\QrPanel;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\Permission;
+use App\Models\PermissionUserOverride;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
@@ -16,6 +19,7 @@ use App\Services\Branches\FloorWorkspaceQuery;
 use App\Services\QrCodeSvgRenderer;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -154,4 +158,52 @@ test('QR image download is bound to the displayed identity and rejects a subsequ
     $component->call('downloadQrImage')->assertHasErrors('expectedVersion')->assertNoFileDownloaded();
     $component->call('openCurrentQr')->assertSet('qrId', $replacement->id)->assertSee($replacement->short_code)
         ->call('downloadQrImage')->assertFileDownloaded(strtolower($replacement->short_code).'.svg', contentType: 'image/svg+xml');
+});
+
+test('QR and print panels recheck QR permission when other floor access remains', function (string $panel, string $method): void {
+    $component = Livewire::actingAs($this->actor)->test($panel, $panel === QrPanel::class
+        ? ['branchId' => $this->branch->id, 'pointId' => $this->point->id]
+        : ['branchId' => $this->branch->id, 'ids' => [$this->point->id]]);
+    if ($panel === PrintPanel::class) {
+        $component->call('preparePrint')->assertHasNoErrors();
+    }
+    PermissionUserOverride::factory()->forUser($this->actor)->forOrganization($this->branch->organization)
+        ->forPermission(Permission::query()->where('code', SystemPermission::GenerateQr->value)->firstOrFail())
+        ->denied()->create();
+    expect(Gate::forUser($this->actor->fresh())->allows('manageServicePoints', $this->branch))->toBeTrue();
+
+    $component->call($method)->assertForbidden();
+    expect($this->qr->fresh()->status)->toBe(QrCodeStatus::Active)
+        ->and(Storage::disk('public')->allFiles('qr'))->toBe([]);
+})->with([
+    [QrPanel::class, '$refresh'],
+    [QrPanel::class, 'downloadQrImage'],
+    [QrPanel::class, 'requestPrint'],
+    [PrintPanel::class, '$refresh'],
+    [PrintPanel::class, 'downloadPdf'],
+    [PrintPanel::class, 'printLabels'],
+]);
+
+test('maximum reviewed print selection downloads a real bounded PDF through Livewire', function (): void {
+    $points = ServicePoint::factory()->count(100)->for($this->branch)->has(QrCode::factory())->create();
+    $started = hrtime(true);
+    $before = memory_get_usage(true);
+    $component = Livewire::actingAs($this->actor)->test(PrintPanel::class, ['branchId' => $this->branch->id, 'ids' => $points->modelKeys()])
+        ->call('preparePrint')->assertHasNoErrors();
+    $snapshotBytes = strlen(json_encode($component->snapshot, JSON_THROW_ON_ERROR));
+    $component->call('downloadPdf')->assertHasNoErrors()->assertFileDownloaded(contentType: 'application/pdf');
+    $encoded = $component->effects['download']['content'];
+    $pdf = base64_decode($encoded, true);
+    expect($pdf)->toStartWith('%PDF-')
+        ->and(strlen($pdf))->toBeLessThan(4_000_000)
+        ->and(strlen($encoded))->toBe(4 * (int) ceil(strlen($pdf) / 3))
+        ->and(json_encode($component->snapshot, JSON_THROW_ON_ERROR))->not->toContain('data:image/svg+xml;base64,');
+    $artifacts = getenv('P5_QR_ARTIFACTS');
+    if (is_string($artifacts) && is_dir($artifacts)) {
+        file_put_contents($artifacts.'/livewire-100.json', json_encode([
+            'pdf_bytes' => strlen($pdf), 'base64_bytes' => strlen($encoded), 'snapshot_bytes' => $snapshotBytes,
+            'elapsed_ms' => (hrtime(true) - $started) / 1_000_000,
+            'memory_delta' => memory_get_usage(true) - $before, 'peak_memory' => memory_get_peak_usage(true),
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    }
 });

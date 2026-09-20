@@ -188,6 +188,27 @@ test('reviewed print selection binds identities labels preset and language witho
         ->and(Storage::disk('public')->allFiles('qr'))->toBe([]);
 });
 
+test('print snapshots preserve textual table numbers including zero', function (?string $number, string $label): void {
+    $this->point->update(['display_number' => $number]);
+    $snapshot = app(QrPrintSnapshotQuery::class)->prepare($this->actor, $this->branch, [$this->point->id], QrLabelPreset::Classic, true, 'en');
+
+    expect($snapshot['items'][0]['service_point_label'])->toBe($label);
+    $html = view('pdf.qr-labels', [
+        'branchName' => $snapshot['branch_name'],
+        'rows' => array_chunk($snapshot['items'], 2),
+        'printTableNumber' => true,
+        'preset' => $snapshot['preset'],
+    ])->render();
+    expect($html)->toContain(e(__('qr.labels.table').': '.$label));
+})->with([
+    ['0', '0'],
+    ['01', '01'],
+    ['A-4', 'A-4'],
+    ['Терраса 2', 'Терраса 2'],
+    ['', 'Window table'],
+    [null, 'Window table'],
+]);
+
 test('additive print selection preserves explicit QR identities while allowing other selected tables', function (): void {
     $other = ServicePoint::factory()->for($this->branch)->has(QrCode::factory())->create();
     $ids = [$this->point->id, $other->id];

@@ -100,6 +100,7 @@ class BulkCreate extends Component
     public function render(): View
     {
         $branch = $this->branch();
+        Gate::forUser($this->actor())->authorize('manageServicePoints', $branch);
 
         return view('livewire.organizations.brands.branches.service-points.bulk-create', [
             'types' => FloorOptions::types(), 'areas' => $this->areaOptions($this->areaSearch, $this->form->areaNodeId),

@@ -46,3 +46,10 @@ Authoritative status: docs/IMPLEMENTATION_PLAN.md P5R. Paths repository-relative
 
 ## Dependencies
 T001–T004 establish the first vertical slice. T008–T013 area/table work can proceed with exclusive owners; QR T015–T018 uses different files. Root owns shared Forms/routes/lang/schema/Index/UI integration. Browser/build runs are serialized. T019–T026 close every story; failed acceptance remains open. No task authorizes working database changes.
+
+## Phase 2: Convergence (2026-09-20)
+
+- [ ] T027 [US3] Report a bounded per-target QR outcome and continue past a disabled/revoked code or image failure in SelectionOperations; explicitly retry only unfinished targets and preserve completed identities (partial: US3/US4, Constitution III/V).
+- [ ] T028 [US4] Preserve the valid display number `0` in the shared QR print snapshot and prove matching labels/identity with a failing regression (partial: US4, permanent identity/text display-number contract).
+- [ ] T029 Recheck current editor read authorization after capability revocation, area hierarchy/concurrency, table/bulk safety and workspace entry/return paths; add tasks for reproduced gaps only (Constitution II/III).
+- [ ] T030 Execute fresh final-source integration, browser/document/coverage/build/runtime evidence and independent review; update canonical ledgers and deliver only verified attributable changes (partial: current-source acceptance, Constitution V).

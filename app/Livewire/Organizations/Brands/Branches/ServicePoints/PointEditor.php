@@ -126,6 +126,11 @@ class PointEditor extends Component
     {
         $branch = $this->branch();
         $point = $this->pointId === null ? null : $this->servicePointQueryService->findForBranch($branch, $this->pointId, true);
+        if ($point === null) {
+            Gate::forUser($this->actor())->authorize('create', [ServicePoint::class, $branch]);
+        } else {
+            Gate::forUser($this->actor())->authorize($point->trashed() ? 'restore' : 'update', $point);
+        }
 
         return view('livewire.organizations.brands.branches.service-points.point-editor', [
             'point' => $point, 'archived' => $point?->trashed() ?? false, 'types' => FloorOptions::types(), 'icons' => FloorOptions::iconOptions(),

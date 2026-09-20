@@ -28,11 +28,11 @@ class AreaForm extends Form
     public function loadArea(AreaNode $area): void
     {
         $this->fill(['parentId' => $area->parent_id === null ? '' : (string) $area->parent_id,
-            'type' => $area->type->value, 'icon' => $area->icon ?? 'folder', 'name' => $area->name,
+            'type' => $area->type->value, 'icon' => $area->icon ?? '', 'name' => $area->name,
             'sortOrder' => $area->sort_order, 'isActive' => $area->is_active]);
     }
 
-    /** @return array{parent_id:?int,type:string,icon:string,name:string,sort_order:int,is_active:bool} */
+    /** @return array{parent_id:?int,type:string,icon:?string,name:string,sort_order:int,is_active:bool} */
     public function payload(Branch $branch): array
     {
         if (is_string($this->name)) {
@@ -40,11 +40,11 @@ class AreaForm extends Form
         }
         $data = $this->validate([
             'parentId' => ['bail', 'nullable', 'numeric', 'integer', Rule::exists(AreaNode::class, 'id')->where('branch_id', $branch->id)->whereNull('deleted_at')],
-            ...AreaRules::areaNode(iconValues: FloorOptions::icons()),
+            ...AreaRules::areaNode(iconValues: FloorOptions::icons(), iconRequired: false),
         ], attributes: ['parentId' => __('floor.fields.parent'), 'name' => __('floor.fields.name'), 'type' => __('floor.fields.type'),
             'icon' => __('floor.fields.icon'), 'sortOrder' => __('floor.fields.order'), 'isActive' => __('floor.fields.active')]);
 
         return ['parent_id' => $data['parentId'] === '' || $data['parentId'] === null ? null : (int) $data['parentId'],
-            'type' => $data['type'], 'icon' => $data['icon'], 'name' => $data['name'], 'sort_order' => (int) $data['sortOrder'], 'is_active' => (bool) $data['isActive']];
+            'type' => $data['type'], 'icon' => $data['icon'] === '' ? null : $data['icon'], 'name' => $data['name'], 'sort_order' => (int) $data['sortOrder'], 'is_active' => (bool) $data['isActive']];
     }
 }

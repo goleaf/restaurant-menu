@@ -5,9 +5,11 @@ use App\Livewire\Organizations\Brands\Branches\ServicePoints\AreaEditor;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\OrganizationUser;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Dom\HTMLDocument;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -83,3 +85,49 @@ test('an unavailable ancestor during an area lifecycle mutation produces a local
         ->assertSee(__('errors.domain.selected_parent_area_unavailable'));
     expect(AreaNode::withTrashed()->findOrFail($area->id)->getRawOriginal())->toBe($before);
 })->with([false, true]);
+
+test('an open area editor stops returning protected form data after zone management is revoked', function (string $state) {
+    $area = $state === 'new' ? null : AreaNode::factory()->for($this->branch)->create(['name' => 'Protected room properties']);
+    if ($state === 'archived') {
+        $area->delete();
+    }
+    $editor = Livewire::actingAs($this->actor)->test(AreaEditor::class, ['branchId' => $this->branch->id, 'areaId' => $area?->id])
+        ->assertOk();
+    $membership = OrganizationUser::query()->where('organization_id', $this->branch->organization_id)->where('user_id', $this->actor->id)->sole();
+    $membership->forceFill(['role_id' => Role::query()->where('code', SystemRole::Waiter->value)->sole()->id])->save();
+    expect(Gate::forUser($this->actor->fresh())->allows('view', $this->branch))->toBeTrue()
+        ->and(Gate::forUser($this->actor->fresh())->allows('manageZones', $this->branch))->toBeFalse();
+
+    $editor->call('$refresh')->assertForbidden();
+})->with(['new', 'active', 'archived']);
+
+test('renaming an area preserves an existing absent optional icon', function () {
+    $area = AreaNode::factory()->for($this->branch)->create(['name' => 'Before rename', 'icon' => null]);
+
+    Livewire::actingAs($this->actor)->test(AreaEditor::class, ['branchId' => $this->branch->id, 'areaId' => $area->id])
+        ->set('form.name', 'After rename')->call('save')->assertHasNoErrors();
+
+    expect($area->fresh()->name)->toBe('After rename')->and($area->fresh()->icon)->toBeNull();
+});
+
+test('the area editor allows an explicit empty icon without changing other properties', function (string $locale) {
+    app()->setLocale($locale);
+    $area = AreaNode::factory()->for($this->branch)->create(['icon' => 'home']);
+    $before = $area->only(['parent_id', 'name', 'type', 'sort_order', 'is_active']);
+
+    Livewire::actingAs($this->actor)->test(AreaEditor::class, ['branchId' => $this->branch->id, 'areaId' => $area->id])
+        ->assertSee(__('floor.no_icon'))->set('form.icon', '')->call('save')->assertHasNoErrors();
+
+    expect($area->fresh()->icon)->toBeNull()
+        ->and($area->fresh()->only(array_keys($before)))->toBe($before);
+})->with(['en', 'lt', 'ru']);
+
+test('optional area icons still reject malformed or unknown values without changing the record', function (mixed $icon) {
+    $area = AreaNode::factory()->for($this->branch)->create(['icon' => 'home']);
+    $before = $area->fresh()->getRawOriginal();
+
+    Livewire::actingAs($this->actor)->test(AreaEditor::class, ['branchId' => $this->branch->id, 'areaId' => $area->id])
+        ->set('form.icon', $icon)->call('save')->assertHasErrors('form.icon');
+
+    expect($area->fresh()->getRawOriginal())->toBe($before);
+})->with(['unknown icon' => ['unknown'], 'array' => [['home']], 'boolean' => [true]]);

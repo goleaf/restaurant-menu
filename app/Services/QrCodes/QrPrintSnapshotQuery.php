@@ -90,7 +90,7 @@ final readonly class QrPrintSnapshotQuery
             $items[] = [
                 'service_point_id' => $point->id,
                 'service_point_name' => $point->name,
-                'service_point_label' => $point->display_number ?: $point->name,
+                'service_point_label' => filled($point->display_number) ? $point->display_number : $point->name,
                 'service_point_version' => $point->structure_version,
                 'area_node_id' => $point->area_node_id,
                 'is_active' => $point->is_active,

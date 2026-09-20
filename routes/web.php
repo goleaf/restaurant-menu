@@ -8,6 +8,7 @@ use App\Http\Controllers\Restaurant\DownloadPreparedFileController;
 use App\Http\Controllers\Superadmin\RestoreSqliteBackupController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
+use App\Livewire\Departments\Dashboard as PreparationDashboard;
 use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
 use App\Livewire\Exports\Index as DataExportsIndex;
 use App\Livewire\Guest\Home as GuestHome;
@@ -181,6 +182,10 @@ Route::middleware(['auth'])
             ->name('files.download');
         Route::livewire('qr-lookup', QrShortCodeLookup::class)->name('qr-lookup.index');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
+
+        Route::prefix('preparation')->name('preparation.')->group(function () {
+            Route::livewire('/', PreparationDashboard::class)->name('dashboard');
+        });
 
         Route::prefix('departments')
             ->name('departments.')

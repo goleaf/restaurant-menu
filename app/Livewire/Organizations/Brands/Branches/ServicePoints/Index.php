@@ -13,6 +13,7 @@ use App\Models\Organization;
 use App\Services\Branches\AreaNodeQueryService;
 use App\Services\Branches\ServicePointQueryService;
 use App\Support\Floor\FloorOptions;
+use App\Support\LocalizedDateFormatter;
 use App\Support\Validation\Floor\FloorStateRules;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -353,7 +354,7 @@ class Index extends Component
             'selectedAreaLabel' => $selectedAreaLabel,
             'detail' => $detail === null ? null : $workspace->present($detail, $branch, $abilities),
             'selectedCount' => count($this->selectedIds), 'hiddenSelectedCount' => count(array_diff($this->selectedIds, array_column($rows, 'id'))),
-            'resultCount' => $query->count($branch, $filters), 'evaluatedAt' => now()->format('H:i:s'),
+            'resultCount' => $query->count($branch, $filters), 'evaluatedAt' => LocalizedDateFormatter::timeWithSeconds(now()),
         ])->title(__('floor.title'));
     }
 

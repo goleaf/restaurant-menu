@@ -18,6 +18,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -106,6 +107,16 @@ class BuildManualPaymentSummaryAction
             'unpaid_guests_count' => count($unpaidGuests),
             'payments' => $this->paymentRows($tableSession->manualPayments, $currency),
         ];
+
+        $summary['settlement_fingerprint'] = hash('sha256', json_encode([
+            $tableSession->id, $currency, $settings, $confirmedTotalCents, $remainingSubtotalCents,
+            $remainingServiceChargeCents, $summary['has_open_draft'],
+            array_map(static fn (array $balance): array => Arr::only($balance, [
+                'guest_id', 'subtotal_due_cents', 'service_charge_cents', 'covered_subtotal_cents',
+                'remaining_subtotal_cents', 'remaining_service_charge_cents', 'remaining_cents',
+            ]), $guestBalances),
+            $tableSession->manualPayments->map(fn (ManualPayment $payment): array => $payment->only(['id', 'amount_cents', 'currency']))->all(),
+        ], JSON_THROW_ON_ERROR));
 
         $this->warnAboutNormalizedSnapshots($tableSession, $normalization);
 

@@ -17,32 +17,17 @@ class TicketPrint extends Component
 {
     public KitchenTicket $kitchenTicket;
 
-    /**
-     * @var array{
-     *     ticket: array<string, mixed>,
-     *     branch: array<string, mixed>,
-     *     service_point: array<string, mixed>,
-     *     department: array<string, mixed>,
-     *     items: list<array<string, mixed>>
-     * }
-     */
-    public array $print = [
-        'ticket' => [],
-        'branch' => [],
-        'service_point' => [],
-        'department' => [],
-        'items' => [],
-    ];
-
-    public function mount(KitchenTicket $kitchenTicket, BuildDepartmentTicketPrintAction $buildPrint): void
+    public function mount(KitchenTicket $kitchenTicket): void
     {
         $this->kitchenTicket = $kitchenTicket;
-        $this->print = $buildPrint->handle($this->currentUser(), $kitchenTicket);
     }
 
     public function render(): View
     {
-        return view('livewire.departments.ticket-print')
+        return view('livewire.departments.ticket-print', [
+            'print' => app(BuildDepartmentTicketPrintAction::class)->handle($this->currentUser(), $this->kitchenTicket),
+        ])
+            ->layoutData(['printStyles' => 'resources/scss/preparation-print.scss'])
             ->title(__('ui.livewire.departments.ticketprint.kitchen_ticket_print'));
     }
 

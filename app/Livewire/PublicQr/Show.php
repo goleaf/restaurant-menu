@@ -8,6 +8,7 @@ use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
+use App\Models\BranchSetting;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Services\PublicQr\PublicQrQueryService;
@@ -124,7 +125,8 @@ class Show extends Component
 
         $this->applyGuestLocale();
         $this->state = 'ready';
-        $this->title = $branch->publicDisplayName();
+        $settings = $branch->getRelation('settings');
+        $this->title = $branch->publicDisplayName($this->language, $settings instanceof BranchSetting ? $settings->default_language : 'en');
         $this->message = __('guest.table.enter_name');
         $this->shortCode = $qrCode->short_code;
     }
@@ -136,6 +138,7 @@ class Show extends Component
             : SupportedLocale::normalize($this->language);
 
         $this->applyGuestLocale();
+        $this->refreshProfileTitle();
         $this->message = __('guest.table.enter_name');
 
         if ($this->branchId > 0) {
@@ -153,6 +156,7 @@ class Show extends Component
             : SupportedLocale::normalize($language, $this->language);
 
         $this->applyGuestLocale();
+        $this->refreshProfileTitle();
         $this->message = __('guest.table.enter_name');
     }
 
@@ -168,6 +172,18 @@ class Show extends Component
     private function findQrCode(string $token): ?QrCode
     {
         return $this->publicQrQueries->qrCodeForGuestPage($token);
+    }
+
+    private function refreshProfileTitle(): void
+    {
+        if ($this->state !== 'ready') {
+            return;
+        }
+        $branch = $this->findQrCode($this->token)?->servicePoint?->branch;
+        if ($branch !== null) {
+            $settings = $branch->getRelation('settings');
+            $this->title = $branch->publicDisplayName($this->language, $settings instanceof BranchSetting ? $settings->default_language : 'en');
+        }
     }
 
     private function showError(string $state, string $title, string $message): void

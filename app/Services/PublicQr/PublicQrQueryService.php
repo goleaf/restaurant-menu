@@ -43,8 +43,9 @@ final class PublicQrQueryService
                     ->select(['id', 'branch_id', 'is_active'])
                     ->with([
                         'branch' => fn ($branchQuery) => $branchQuery
-                            ->select(['id', 'organization_id', 'name', 'public_name'])
+                            ->select(['id', 'organization_id', 'name', 'public_name', 'public_translations'])
                             ->with([
+                                'settings' => fn ($settingsQuery) => $settingsQuery->select(['id', 'branch_id', 'default_language']),
                                 'organization' => fn ($organizationQuery) => $organizationQuery
                                     ->select(['id'])
                                     ->with([

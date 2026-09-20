@@ -13,6 +13,7 @@ enum DepartmentTicketFilter: string
     case Ready = 'ready';
     case Completed = 'completed';
     case Cancelled = 'cancelled';
+    case History = 'history';
 
     public function label(): string
     {
@@ -24,12 +25,13 @@ enum DepartmentTicketFilter: string
             self::Ready => 'statuses.kitchen_ticket_item.ready',
             self::Completed => 'ui.departments.dashboard.completed',
             self::Cancelled => 'statuses.kitchen_ticket_item.cancelled',
+            self::History => 'preparation.views.history',
         });
     }
 
     public function isHistory(): bool
     {
-        return in_array($this, [self::Completed, self::Cancelled], true);
+        return in_array($this, [self::Completed, self::Cancelled, self::History], true);
     }
 
     /**

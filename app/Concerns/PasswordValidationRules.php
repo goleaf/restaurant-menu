@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Concerns;
 
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -14,7 +16,7 @@ trait PasswordValidationRules
      */
     protected function passwordRules(): array
     {
-        return ['required', 'string', Password::default(), 'confirmed'];
+        return ['bail', 'required', 'string', 'confirmed', Password::default()];
     }
 
     /**

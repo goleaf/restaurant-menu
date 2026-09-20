@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support\Reports;
 
 use App\Models\Branch;
+use App\Support\DisplayPreferences;
+use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -71,11 +73,11 @@ final readonly class BranchReportPeriod
         return hash('sha256', json_encode([$this->preset, $this->ranges], JSON_THROW_ON_ERROR));
     }
 
-    public function label(): string
+    public function label(?DisplayPreferences $preferences = null): string
     {
         return collect($this->ranges)->map(fn (array $range): string => $range['date_from'] === $range['date_to']
-            ? $range['date_from']
-            : $range['date_from'].' – '.$range['date_to'])->unique()->implode(' / ');
+            ? LocalizedDateFormatter::date(CarbonImmutable::parse($range['date_from']), $preferences)
+            : LocalizedDateFormatter::date(CarbonImmutable::parse($range['date_from']), $preferences).' – '.LocalizedDateFormatter::date(CarbonImmutable::parse($range['date_to']), $preferences))->unique()->implode(' / ');
     }
 
     /**

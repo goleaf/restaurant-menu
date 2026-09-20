@@ -41,9 +41,9 @@ enum McpAbility: string
     /** @return list<string> */
     public static function readOnly(): array
     {
-        return array_values(array_map(
-            static fn (self $ability): string => $ability->value,
-            array_filter(self::cases(), static fn (self $ability): bool => ! $ability->isMutation()),
-        ));
+        return array_column(array_filter(
+            self::cases(),
+            static fn (self $ability): bool => ! $ability->isMutation(),
+        ), 'value');
     }
 }

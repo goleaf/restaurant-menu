@@ -14,6 +14,8 @@ use App\Enums\SupportedLocale;
 use App\Models\BranchSetting;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Services\Branches\BranchPublicProfilePresenter;
+use App\Support\DisplayPreferences;
 use Illuminate\Support\Facades\App;
 
 final readonly class BuildGuestEntryContextAction
@@ -22,6 +24,7 @@ final readonly class BuildGuestEntryContextAction
         private GetGuestMenuForBranchAction $getGuestMenuForBranch,
         private GetBranchOpeningStatusAction $getBranchOpeningStatus,
         private GetBranchPollingIntervalAction $getBranchPollingInterval,
+        private BranchPublicProfilePresenter $profilePresenter,
     ) {}
 
     /**
@@ -75,21 +78,12 @@ final readonly class BuildGuestEntryContextAction
 
         $branchSettingsRelation = $branch->getRelation('settings');
         $branchSettings = $branchSettingsRelation instanceof BranchSetting ? $branchSettingsRelation : null;
-        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
+        $openingStatus = $this->getBranchOpeningStatus->handle($branch, preferences: DisplayPreferences::defaults());
         $defaultLanguage = SupportedLocale::normalize($branchSettings?->default_language);
-        $defaultCurrency = SupportedCurrency::normalize(
-            $branchSettings instanceof BranchSetting ? $branchSettings->default_currency : $branch->currency,
-        );
+        $defaultCurrency = SupportedCurrency::normalize($branch->currency);
         $languageLabels = SupportedLocale::labels();
-        $venueName = $branch->publicDisplayName();
-        $contactLinks = [
-            'phone' => $this->nullableString($branch->phone),
-            'email' => $this->nullableString($branch->email),
-            'website_url' => $this->nullableString($branch->website_url),
-            'instagram_url' => $this->nullableString($branch->instagram_url),
-            'facebook_url' => $this->nullableString($branch->facebook_url),
-            'tiktok_url' => $this->nullableString($branch->tiktok_url),
-        ];
+        $profile = $this->profilePresenter->present($branch, $language, $defaultLanguage);
+        $venueName = $profile['venue_name'];
 
         return [
             'state' => 'ready',
@@ -111,14 +105,7 @@ final readonly class BuildGuestEntryContextAction
                 'default_language_label' => $languageLabels[$defaultLanguage] ?? $defaultLanguage,
                 'default_currency' => $defaultCurrency,
                 'polling_interval_seconds' => $this->getBranchPollingInterval->handle($branch->id),
-                'venue_name' => $venueName,
-                'public_description' => filled($branch->public_description)
-                    ? (string) $branch->public_description
-                    : __('guest.table.restaurant_description_placeholder'),
-                'logo_url' => $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl(),
-                'cover_image_url' => $branch->coverImageUrl(),
-                ...$contactLinks,
-                'has_contact_details' => collect($contactLinks)->filter()->isNotEmpty(),
+                ...$profile,
                 'opening_status_label' => $openingStatus['label'],
                 'opening_status_detail' => $openingStatus['detail'],
                 'opening_status_tone' => $openingStatus['tone'],
@@ -149,6 +136,7 @@ final readonly class BuildGuestEntryContextAction
                                 'name',
                                 'public_name',
                                 'public_description',
+                                'public_translations',
                                 'logo_path',
                                 'cover_image_path',
                                 'address',
@@ -208,10 +196,5 @@ final readonly class BuildGuestEntryContextAction
             'qr_code' => null,
             'landing' => null,
         ];
-    }
-
-    private function nullableString(mixed $value): ?string
-    {
-        return is_string($value) && filled($value) ? $value : null;
     }
 }

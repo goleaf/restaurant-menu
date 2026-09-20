@@ -43,6 +43,7 @@ final class WorkspaceAccessQuery
                 Permission::ManageMenu, Permission::ManageServicePoints, Permission::GenerateQr,
             ]), ...$kitchen, ...$bar])),
             'waiter' => $union([Permission::ViewOrders]),
+            'preparation' => array_values(array_unique([...$kitchen, ...$bar])),
             'kitchen' => $kitchen,
             'bar' => $bar,
             'menu' => $union([Permission::ManageMenu]),

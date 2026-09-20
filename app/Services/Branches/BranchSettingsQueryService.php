@@ -10,6 +10,16 @@ use App\Models\BranchSetting;
 
 final class BranchSettingsQueryService
 {
+    public function effective(Branch $branch): BranchSetting
+    {
+        $settings = BranchSetting::query()->where('branch_id', $branch->id)->first();
+        if ($settings instanceof BranchSetting) {
+            return $settings;
+        }
+
+        return (new BranchSetting)->forceFill(['branch_id' => $branch->id, ...BranchSetting::defaults($branch)]);
+    }
+
     public function find(Branch $branch, int $settingsId): BranchSetting
     {
         return BranchSetting::query()

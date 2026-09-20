@@ -35,6 +35,11 @@ class Dashboard extends DepartmentDashboard
         return [SystemPermission::ViewKitchen];
     }
 
+    protected function workspaceDestination(): string
+    {
+        return 'kitchen';
+    }
+
     protected function screenTitle(): string
     {
         return __('ui.livewire.kitchen.dashboard.kitchen_screen');

@@ -2,6 +2,66 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## 2026-09-20 — Prompt14 restaurant settings integration
+
+Added five thematic sections with localized search, URL navigation, independent drafts/saves/cancel, public EN/LT/RU preview and explicit media operations. Removed the broad public save and retired its full Form. Exact Actions now check group fingerprints, current policy and durable retry receipts. Currency changes veto monetary history; manual payment review detects changed financial inputs. Guest entry permissions are rechecked on actual actions, cleanup uses bounded preview and transactional activity checks, and cache invalidation follows affected consumers. Aggregate acceptance remains in progress; no deployment or working migration is implied.
+
+
+## 2026-09-20 — Personal date, time and number formats
+
+Added account format presets and live examples to Profile, separate validated persistence, locale refresh with retained drafts, shared date/number/money presentation, guest and staff-cache isolation, and targeted catalogue/report date/measurement labels. Added a reversible user-column migration and focused regressions. Documented existing user settings and next candidates without altering restaurant timezone/currency or canonical data/CSV contracts. Working evidence and remaining scope are in PROGRESS.md and specs/005-user-display-formats/.
+
+
+## HTTP response privacy optimization — 2026-09-20
+
+- Decode each path once when matching privacy-protected HTTP responses, removing one intermediate Collection and preserving the existing route/header/path protection rules.
+- Add 41 direct regression cases and record the passing 196-test related suite, static analysis, formatting and matched performance measurements in the existing project ledgers.
+
+## Prompt 10 preparation workspace — pending acceptance
+
+- Added one restaurant-scoped Preparation entry with compatible kitchen/bar links and exact permitted ticket links from waiter fulfilment.
+- Corrected filtered ticket/full order readiness, bounded displayed rows, retained historical configuration and current service location, and separated waiting for service from cooking/history.
+- Preserved versioned transitions while adding reviewed bounded per-row batches, durable existing-event notification retries, terminal visit guards and safe department lifecycle handling.
+- Added shared Flux preparation/SCSS/print presentation and focused authorization, concurrency, localization, browser and offline regressions. Full acceptance and Git delivery remain in progress; no deployment.
+
+
+## Localization audit and first repairs — 2026-09-20
+
+- Localize standard department names in menu management, catalogue labels and dish selectors; support searches by translated names while retaining custom names and canonical stored values.
+- Add fourteen EN/LT/RU branch service/order-flow labels and descriptions. Preserve concurrent preparation catalogue additions.
+- Make the audit fail for used keys missing in all catalogues and stop misclassifying concatenated semantic prefixes; retain standalone invalid-key rejection. Reuse the existing inactive-status translation in the preparation view.
+- Record the system-wide source audit and remaining enum/component gaps in docs/localization.md; correct i18n-001 status to partially implemented pending their completion.
+
+## Enum projection optimization — 2026-09-20
+
+- Remove intermediate collections and redundant array passes from12 projection methods across six enums. Session subsets allocate zero collections instead of four; label maps allocate zero instead of two.
+- Preserve stored values/order, workflow predicates, read-only MCP abilities and fresh localized labels. Add19 direct characterization cases; current verification and matched measurements are recorded in PROGRESS.md and performance.md.
+
+## Report period DTO optimization — 2026-09-20
+
+- Resolve only missing report dates, avoiding unused current-day conversion and duplicate parsing. Complete ranges use two date parses instead of five; one-sided ranges use three instead of four.
+- Add21 direct regression cases while retaining strict date errors, inclusive31-day bounds and branch timezone/DST semantics. Existing MenuItemData projection and translation semantics remain unchanged.
+
+## Validation Concern optimization — 2026-09-20
+
+- Stop password validation before breach verification when confirmation is invalid, and reject overlong profile emails before parsing. Preserve configured password requirements, unique-email self-exclusion and supported locales; return the first failure per affected field.
+- Add23 validation regressions with isolated SQLite and faked external HTTP. Measured work and verification limits are recorded in performance.md and PROGRESS.md.
+
+## Translation Action optimization — 2026-09-20
+
+- Batch fresh menu/category/dish translation lookups into one bounded query while retaining per-model events, partial updates and unique-conflict recovery. Matched create/update queries fall15→13,18→16 and24→22 respectively.
+- Respect rejected required translation writes and category deletions; category removal now triggers cache invalidation. Add25 regression cases; related209-test suite and scoped static/format checks pass. Global-analysis findings in concurrent preparation changes remain documented in PROGRESS.md.
+
+## Branch settings legacy service-mode repair — 2026-09-20
+
+- Read legacy JSON-string-wrapped `service_modes` through a read-only BranchSetting accessor, restoring settings rendering while preserving selections and canonical validated writes. Add storage-shape, GET/mount/save and incoming-string rejection regressions; no working-data rewrite or migration.
+- Fix the source in `DemoTenantPortfolioSeeder`: transfer cast attribute values instead of already encoded storage strings for settings, dishes, areas and tables. Initial/repeated seed regressions verify canonical raw JSON and existing preservation/production guards remain covered.
+
+## Menu catalogue legacy label repair — 2026-09-20
+
+- Decode legacy JSON-string-wrapped allergen and dietary lists at the `MenuItem` read boundary, restoring catalogue/card rendering and preserving selections across explicit saves without rewriting data during reads.
+- Add catalogue-to-card/save regression coverage and correct the existing model-default preservation assertion. Scoped verification:275 tests/3462 assertions, Pint, Larastan and isolated Chrome catalogue/card checks pass on PHP8.5.8; full Prompt6 acceptance remains separate.
+
 ## Prompt 5 — Current-source convergence (2026-09-20)
 
 Preserve the existing unified rooms/tables/QR workspace and subsequent dish-card changes. Reauthorize editor reads after capability revocation, retain absent room icons and the printed text number `0`. Report each bulk QR result, continue later targets after a recoverable failure, and explicitly retry only unfinished images using the original receipts and tokens. Keep QR recovery inside the same selected workspace. Fresh browser, decoded document, runtime and matched performance evidence is recorded in PROGRESS.md; full acceptance and delivery remain distinct.

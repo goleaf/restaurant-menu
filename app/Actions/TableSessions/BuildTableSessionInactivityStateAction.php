@@ -7,14 +7,11 @@ namespace App\Actions\TableSessions;
 use App\Enums\TableSessionStatus;
 use App\Models\BranchSetting;
 use App\Models\TableSession;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
 class BuildTableSessionInactivityStateAction
 {
-    public const DEFAULT_INACTIVITY_WARNING_MINUTES = 45;
-
-    public const DEFAULT_PENDING_SESSION_EXPIRE_MINUTES = 30;
-
     /**
      * @return array{
      *     should_warn: bool,
@@ -28,13 +25,14 @@ class BuildTableSessionInactivityStateAction
     public function handle(TableSession $tableSession, ?BranchSetting $settings = null): array
     {
         $settings ??= $this->settingsFor($tableSession);
+        $defaults = BranchSetting::defaults();
         $warningMinutes = $this->positiveMinutes(
             $settings?->inactivity_warning_minutes,
-            self::DEFAULT_INACTIVITY_WARNING_MINUTES,
+            $defaults['inactivity_warning_minutes'],
         );
         $pendingExpireMinutes = $this->positiveMinutes(
             $settings?->pending_session_expire_minutes,
-            self::DEFAULT_PENDING_SESSION_EXPIRE_MINUTES,
+            $defaults['pending_session_expire_minutes'],
         );
         $lastActivityAt = $this->lastActivityAt($tableSession);
         $minutesInactive = $this->minutesInactive($tableSession, $lastActivityAt);
@@ -79,6 +77,14 @@ class BuildTableSessionInactivityStateAction
             $tableSession->updated_at,
             $tableSession->started_at,
             $tableSession->created_at,
+            ...array_map(function (string $attribute) use ($tableSession): ?CarbonInterface {
+                $value = $tableSession->getAttributes()[$attribute] ?? null;
+
+                return is_string($value) ? CarbonImmutable::parse($value, 'UTC') : null;
+            }, [
+                'guests_max_joined_at', 'guests_max_left_at', 'guests_max_ready_at',
+                'join_requests_max_created_at', 'waiter_calls_max_requested_at', 'waiter_calls_max_handled_at',
+            ]),
         ])
             ->filter(fn (mixed $value): bool => $value instanceof CarbonInterface)
             ->sortDesc()

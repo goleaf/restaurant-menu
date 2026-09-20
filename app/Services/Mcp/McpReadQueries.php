@@ -27,6 +27,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\WaiterCall;
 use App\Services\Reports\BranchReportQuery;
+use App\Support\DisplayPreferences;
 use App\Support\Reports\BranchReportPeriod;
 use BackedEnum;
 use DateTimeInterface;
@@ -184,7 +185,7 @@ final class McpReadQueries
         if ($orderCurrencies->count() > 50 || $paymentCurrencies->count() > 50 || $itemGroups->count() > 500) {
             throw ValidationException::withMessages(['period' => __('mcp.errors.summary_limit')]);
         }
-        $report = $this->reports->handle($branches, $period);
+        $report = $this->reports->handle($branches, $period, DisplayPreferences::defaults());
 
         return ['branch_id' => $context->branch->id, 'period' => $period->ranges[$context->branch->id], 'report' => [
             'orders_count' => $report['orders_count'], 'order_total_cents' => $report['order_total_cents'],

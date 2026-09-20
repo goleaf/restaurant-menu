@@ -49,6 +49,7 @@ test('every product page route uses its explicit class based Livewire screen', f
         'restaurant.dashboard' => Screens\Restaurant\Dashboard::class,
         'restaurant.qr-lookup.index' => Screens\QrCodes\ShortCodeLookup::class,
         'restaurant.audit-log.index' => Screens\AuditLogs\Index::class,
+        'restaurant.preparation.dashboard' => Screens\Departments\Dashboard::class,
         'restaurant.departments.tickets.print' => Screens\Departments\TicketPrint::class,
         'restaurant.exports.index' => Screens\Exports\Index::class,
         'restaurant.exports.download' => Screens\Exports\Index::class,

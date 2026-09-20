@@ -11,6 +11,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Availability\AvailabilityEvaluator;
 use App\Support\LocalImageVariants;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MenuImagePresentation;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
@@ -80,7 +81,7 @@ final readonly class DishPreviewQuery
         }
 
         return [...$payload, 'images' => $images, 'formatted_price' => $formattedPrice, 'configuration_error' => $error,
-            'language' => $locale, 'availability' => $availability->toArray(), 'source' => $draft === null ? 'saved' : 'draft', 'evaluated_at' => $at->setTimezone($branch->timezone)->format('Y-m-d H:i:s'),
+            'language' => $locale, 'availability' => $availability->toArray(), 'source' => $draft === null ? 'saved' : 'draft', 'evaluated_at' => LocalizedDateFormatter::dateTime($at->setTimezone($branch->timezone)),
             'variants' => array_map(fn (array $variant): array => [...$variant, 'formatted_price' => MoneyFormatter::formatCents($variant['price_cents'], $branch->currency)], $payload['variants']),
             'modifier_groups' => array_map(fn (array $group): array => [...$group, 'selection_limits' => __($group['max_select'] === 0 ? 'dish.preview.minimum_selection' : 'dish.preview.selection_limits', ['min' => max($group['is_required'] ? 1 : 0, $group['min_select']), 'max' => $group['max_select']]), 'options' => array_map(fn (array $option): array => [...$option, 'formatted_price' => MoneyFormatter::formatCents($option['price_delta_cents'], $branch->currency)], $group['options'])], $payload['modifier_groups']),
         ];

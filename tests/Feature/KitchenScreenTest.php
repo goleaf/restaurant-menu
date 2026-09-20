@@ -80,9 +80,9 @@ test('head chef kitchen screen excludes bar tickets and rejects a forged bar ite
         ->test(KitchenDashboard::class)
         ->assertSet('selectedDepartmentId', (string) $kitchen->id)
         ->assertSee('data-department-priority-queue', false)
-        ->assertSee('data-priority-row', false)
-        ->assertSee('xl:grid-cols-[minmax(15rem,22rem)_minmax(12rem,18rem)_auto]', false)
-        ->assertSee('min-h-operational-touch', false)
+        ->assertSee('data-preparation-item="'.$kitchenItem->id.'"', false)
+        ->assertSee('data-preparation-transition="accepted"', false)
+        ->assertSee('prep-primary', false)
         ->assertSee('Prompt 61 Pizza')
         ->assertSee('Prompt 61 Table')
         ->assertSee('Prompt 61 Hall')
@@ -130,13 +130,13 @@ test('a failed department transition clears feedback from the previous success',
         ->test(KitchenDashboard::class)
         ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Accepted->value)
         ->assertHasNoErrors()
-        ->assertSet('feedbackMessage', __('ui.livewire.departments.dashboard.status_updated'));
+        ->assertSet('feedbackMessage', __('preparation.updated_item', ['id' => $kitchenItem->id, 'result' => __('ui.livewire.departments.dashboard.status_updated')]));
 
     $component
         ->call('setItemStatus', $foreignItem ? $barItem->id : $kitchenItem->id, $foreignItem ? KitchenTicketItemStatus::Ready->value : 'unknown')
         ->assertHasErrors('ticket_item_status')
         ->assertSet('feedbackMessage', null)
-        ->assertDontSee(__('ui.livewire.departments.dashboard.status_updated'));
+        ->assertDontSee(__('preparation.updated_item', ['id' => $kitchenItem->id, 'result' => __('ui.livewire.departments.dashboard.status_updated')]));
 
     expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::Accepted)
         ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::New);
@@ -440,7 +440,7 @@ test('department filters return only matching tickets and matching items', funct
         )
         ->and($queries)->toBeLessThanOrEqual(23);
 })->with([
-    'active' => [DepartmentTicketFilter::Active, ['new', 'accepted', 'in_progress', 'ready'], KitchenTicketItemStatus::Cancelled],
+    'active' => [DepartmentTicketFilter::Active, ['new', 'accepted', 'in_progress'], KitchenTicketItemStatus::Cancelled],
     'new' => [DepartmentTicketFilter::New, ['new'], KitchenTicketItemStatus::Accepted],
     'accepted' => [DepartmentTicketFilter::Accepted, ['accepted'], KitchenTicketItemStatus::New],
     'in progress' => [DepartmentTicketFilter::InProgress, ['in_progress'], KitchenTicketItemStatus::New],

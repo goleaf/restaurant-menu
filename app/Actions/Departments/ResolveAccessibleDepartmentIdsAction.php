@@ -27,10 +27,10 @@ class ResolveAccessibleDepartmentIdsAction
      * @param  array<string, Collection<int, int>>|null  $permissionBranchIds  Internal decisions freshly resolved for this user in the current read operation.
      * @return Collection<int, int>
      */
-    public function handle(User $user, array $departmentTypes, array $roleCodes, array $permissionCodes, ?array $permissionBranchIds = null): Collection
+    public function handle(User $user, array $departmentTypes, array $roleCodes, array $permissionCodes, ?array $permissionBranchIds = null, ?int $branchId = null): Collection
     {
         if ($user->isSuperadmin()) {
-            return $this->departmentIdQuery($departmentTypes)->pluck('id');
+            return $this->departmentIdQuery($departmentTypes, $branchId)->pluck('id');
         }
 
         $branchIds = $this->roleAccessibleBranchIds($user, $roleCodes);
@@ -46,7 +46,7 @@ class ResolveAccessibleDepartmentIdsAction
             return collect();
         }
 
-        return $this->departmentIdQuery($departmentTypes)
+        return $this->departmentIdQuery($departmentTypes, $branchId)
             ->whereIn('branch_id', $branchIds)
             ->pluck('id');
     }
@@ -64,7 +64,7 @@ class ResolveAccessibleDepartmentIdsAction
     /**
      * @param  list<KitchenDepartmentType>  $departmentTypes
      */
-    private function departmentIdQuery(array $departmentTypes): Builder
+    private function departmentIdQuery(array $departmentTypes, ?int $branchId): Builder
     {
         return KitchenDepartment::query()
             ->select(['id', 'branch_id', 'type', 'sort_order', 'name', 'is_active'])
@@ -74,7 +74,11 @@ class ResolveAccessibleDepartmentIdsAction
                     array_map(fn (KitchenDepartmentType $type): string => $type->value, $departmentTypes),
                 );
             })
-            ->where('is_active', true)
+            ->when($branchId !== null, fn (Builder $query): Builder => $query->where('branch_id', $branchId))
+            ->where(fn (Builder $query): Builder => $query
+                ->where('is_active', true)
+                ->orWhereHas('kitchenTickets', fn (Builder $tickets): Builder => $tickets
+                    ->whereColumn('kitchen_tickets.branch_id', 'kitchen_departments.branch_id')))
             ->orderBy('branch_id')
             ->orderBy('sort_order')
             ->orderBy('name')

@@ -22,10 +22,7 @@ enum SupportedLocale: string
      */
     public static function values(): array
     {
-        return array_map(
-            fn (self $locale): string => $locale->value,
-            self::cases(),
-        );
+        return array_column(self::cases(), 'value');
     }
 
     /**
@@ -33,9 +30,12 @@ enum SupportedLocale: string
      */
     public static function labels(): array
     {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $locale): array => [$locale->value => $locale->label()])
-            ->all();
+        $labels = [];
+        foreach (self::cases() as $locale) {
+            $labels[$locale->value] = $locale->label();
+        }
+
+        return $labels;
     }
 
     public static function normalize(?string $locale, ?string $fallback = 'en'): string

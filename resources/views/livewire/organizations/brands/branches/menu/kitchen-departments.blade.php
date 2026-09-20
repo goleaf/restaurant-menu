@@ -28,6 +28,7 @@
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($kitchenDepartmentRows as $department)
                 <div wire:key="kitchen-department-{{ $department['id'] }}" class="px-4 py-4">
+                    <flux:error :name="'kitchenDepartment.'.$department['id']" />
                     @if ($editingDepartmentId === $department['id'])
                         <form wire:submit="updateKitchenDepartment" class="grid gap-3 md:grid-cols-[1fr_160px_120px_auto] md:items-end">
                             <flux:input wire:model="editingDepartmentName" :label="__('reports.csv.name')" type="text" required maxlength="120" />

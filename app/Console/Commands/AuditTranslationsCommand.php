@@ -131,6 +131,17 @@ class AuditTranslationsCommand extends Command
         $codeScan = $this->option('no-code-scan')
             ? ['files' => 0, 'findings' => [], 'used_keys' => []]
             : $this->scanTranslationCalls($this->scanPaths(), $catalogKeys);
+
+        foreach ($codeScan['used_keys'] as $key) {
+            if (preg_match(self::KEY_PATTERN, $key) !== 1 || in_array($key, $catalogKeys, true)) {
+                continue;
+            }
+
+            foreach (self::LOCALES as $locale) {
+                $missingKeys[] = sprintf('%s missing %s (used in code)', $locale, $key);
+            }
+        }
+
         $unusedKeys = $this->option('no-code-scan')
             ? []
             : array_values(array_diff($catalogKeys, $codeScan['used_keys']));
@@ -396,6 +407,11 @@ class AuditTranslationsCommand extends Command
             );
 
             foreach ($matches[2] as [$key, $offset]) {
+                if (preg_match('/\A[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.\z/', $key) === 1
+                    && str_starts_with(ltrim(substr($contents, $offset + strlen($key) + 1)), '.')) {
+                    continue;
+                }
+
                 $usedKeys[] = $key;
 
                 if ($this->badKeyReasons($key) === []) {

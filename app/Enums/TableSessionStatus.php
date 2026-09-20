@@ -88,10 +88,7 @@ enum TableSessionStatus: string
      */
     public static function values(): array
     {
-        return array_map(
-            fn (self $status): string => $status->value,
-            self::cases(),
-        );
+        return array_column(self::cases(), 'value');
     }
 
     /**
@@ -99,11 +96,10 @@ enum TableSessionStatus: string
      */
     public static function guestViewableValues(): array
     {
-        return collect(self::cases())
-            ->filter(fn (self $status): bool => $status->allowsGuestViewing())
-            ->map(fn (self $status): string => $status->value)
-            ->values()
-            ->all();
+        return array_column(array_filter(
+            self::cases(),
+            fn (self $status): bool => $status->allowsGuestViewing(),
+        ), 'value');
     }
 
     /**
@@ -111,11 +107,10 @@ enum TableSessionStatus: string
      */
     public static function occupyingValues(): array
     {
-        return collect(self::cases())
-            ->filter(fn (self $status): bool => $status->occupiesServicePoint())
-            ->map(fn (self $status): string => $status->value)
-            ->values()
-            ->all();
+        return array_column(array_filter(
+            self::cases(),
+            fn (self $status): bool => $status->occupiesServicePoint(),
+        ), 'value');
     }
 
     /**
@@ -123,11 +118,10 @@ enum TableSessionStatus: string
      */
     public static function guestEntryBlockedValues(): array
     {
-        return collect(self::cases())
-            ->filter(fn (self $status): bool => $status->blocksNewGuestEntry())
-            ->map(fn (self $status): string => $status->value)
-            ->values()
-            ->all();
+        return array_column(array_filter(
+            self::cases(),
+            fn (self $status): bool => $status->blocksNewGuestEntry(),
+        ), 'value');
     }
 
     /**
@@ -147,8 +141,11 @@ enum TableSessionStatus: string
      */
     public static function options(): array
     {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $status): array => [$status->value => $status->label()])
-            ->all();
+        $options = [];
+        foreach (self::cases() as $status) {
+            $options[$status->value] = $status->label();
+        }
+
+        return $options;
     }
 }

@@ -40,21 +40,19 @@ test('branch manager can update public restaurant profile from settings', functi
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('form.publicName', 'Bella Pizza Old Town')
-        ->set('form.publicDescription', 'Wood-fired pizza, fresh pasta, and family dinners.')
-        ->set('form.phone', '+370 600 00000')
-        ->set('form.email', 'hello@bella.example')
-        ->set('form.websiteUrl', 'https://bella.example')
-        ->set('form.instagramUrl', 'https://instagram.com/bella')
-        ->set('form.facebookUrl', 'https://facebook.com/bella')
-        ->set('form.tiktokUrl', 'https://tiktok.com/@bella')
-        ->set('form.defaultLanguage', 'lt')
-        ->set('form.defaultCurrency', 'usd')
-        ->set('form.publicLogo', UploadedFile::fake()->image('restaurant-logo.png')->size(512))
-        ->set('form.coverImage', UploadedFile::fake()->image('restaurant-cover.jpg')->size(1024))
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertSee('Settings saved.');
+        ->set('profileForm.publicName', 'Bella Pizza Old Town')
+        ->set('profileForm.publicDescription', 'Wood-fired pizza, fresh pasta, and family dinners.')
+        ->set('profileForm.phone', '+370 600 00000')
+        ->set('profileForm.email', 'hello@bella.example')
+        ->set('profileForm.websiteUrl', 'https://bella.example')
+        ->set('profileForm.instagramUrl', 'https://instagram.com/bella')
+        ->set('profileForm.facebookUrl', 'https://facebook.com/bella')
+        ->set('profileForm.tiktokUrl', 'https://tiktok.com/@bella')
+        ->call('saveProfile')->assertHasNoErrors()
+        ->set('logo', UploadedFile::fake()->image('restaurant-logo.png')->size(512))
+        ->call('saveLogo')->assertHasNoErrors()
+        ->set('cover', UploadedFile::fake()->image('restaurant-cover.jpg')->size(1024))
+        ->call('saveCover')->assertHasNoErrors();
 
     $branch->refresh();
     $settings = $branch->settings()->firstOrFail();
@@ -67,9 +65,9 @@ test('branch manager can update public restaurant profile from settings', functi
     expect($branch->instagram_url)->toBe('https://instagram.com/bella');
     expect($branch->facebook_url)->toBe('https://facebook.com/bella');
     expect($branch->tiktok_url)->toBe('https://tiktok.com/@bella');
-    expect($settings->default_language)->toBe('lt');
-    expect($settings->default_currency)->toBe('USD');
-    expect($branch->currency)->toBe('USD');
+    expect($settings->default_language)->toBe('en');
+    expect($settings->default_currency)->toBe('EUR');
+    expect($branch->currency)->toBe('EUR');
     expect($branch->logo_path)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/logos/');
     expect($branch->cover_image_path)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/covers/');
 
@@ -103,6 +101,7 @@ test('public qr landing displays branch public profile and local media', functio
 
     $branch->update([
         'public_name' => 'Bella Public Profile',
+        'currency' => 'USD',
         'public_description' => 'Fresh pizza near the cathedral.',
         'logo_path' => $logoPath,
         'cover_image_path' => $coverPath,

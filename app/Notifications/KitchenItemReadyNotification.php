@@ -14,6 +14,8 @@ class KitchenItemReadyNotification extends Notification
 
     public function __construct(
         public readonly KitchenTicketItem $ticketItem,
+        public readonly ?string $occurredAt = null,
+        public readonly ?int $eventId = null,
     ) {}
 
     /**
@@ -43,8 +45,12 @@ class KitchenItemReadyNotification extends Notification
             'kitchenTicket.branch:id,name',
             'kitchenTicket.servicePoint:id,branch_id,area_node_id,name,display_number',
             'kitchenTicket.servicePoint.areaNode:id,branch_id,name',
+            'kitchenTicket.tableSession:id,branch_id,service_point_id',
+            'kitchenTicket.tableSession.servicePoint:id,branch_id,area_node_id,name,display_number',
+            'kitchenTicket.tableSession.servicePoint.areaNode:id,branch_id,name',
         ]);
         $kitchenTicket = $ticketItem->kitchenTicket;
+        $servicePoint = $kitchenTicket->tableSession->servicePoint ?? $kitchenTicket->servicePoint;
 
         return [
             'kitchen_ticket_item_id' => $ticketItem->id,
@@ -53,16 +59,18 @@ class KitchenItemReadyNotification extends Notification
             'table_session_id' => $kitchenTicket->table_session_id,
             'branch_id' => $kitchenTicket->branch_id,
             'branch_name' => $kitchenTicket->branch->name,
-            'service_point_id' => $kitchenTicket->service_point_id,
-            'service_point_name' => $kitchenTicket->servicePoint->name,
-            'service_point_display_number' => $kitchenTicket->servicePoint->display_number,
-            'area_name' => $kitchenTicket->servicePoint->areaNode?->name,
+            'service_point_id' => $servicePoint->id,
+            'original_service_point_id' => $kitchenTicket->service_point_id,
+            'service_point_name' => $servicePoint->name,
+            'service_point_display_number' => $servicePoint->display_number,
+            'area_name' => $servicePoint->areaNode?->name,
             'department_type' => $kitchenTicket->department_type,
             'department_name' => $kitchenTicket->department_name,
             'item_name' => $ticketItem->item_name,
             'guest_name' => $ticketItem->guest_name,
             'quantity' => $ticketItem->quantity,
-            'ready_at' => $ticketItem->updated_at?->toISOString(),
+            'ready_at' => $this->occurredAt,
+            'preparation_event_id' => $this->eventId,
             'message' => __('ui.notifications.kitchenitemreadynotification.kuxnia_ili_bar_otmetili_pozic'),
         ];
     }

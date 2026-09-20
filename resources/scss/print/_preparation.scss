@@ -1,0 +1,9 @@
+.prep-print { color: #0a0a0a; padding: 1rem; overflow-wrap: anywhere; }
+.prep-print__document, .prep-print__toolbar { max-width: 52rem; margin-inline: auto; padding: 1rem; }
+.prep-print__document { background: #fff; }
+.prep-print__toolbar, .prep-print__actions, .prep-print__facts { display: flex; flex-wrap: wrap; gap: 1rem; }
+.prep-print :is(h1, h2), .prep-print__quantity { font-size: 1.5rem; font-weight: 600; }
+.prep-print :is(h3, dt) { font-weight: 600; }
+.prep-print__item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; padding-block: 1rem; border-top: 1px solid; }
+.prep-print__warning { border: 1px solid; padding: .5rem; white-space: pre-wrap; }
+@media print { .prep-print__toolbar { display: none; } .prep-print, .prep-print__document { padding: 0; } .prep-print__item { break-inside: avoid; } }

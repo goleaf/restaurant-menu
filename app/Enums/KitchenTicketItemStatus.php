@@ -26,6 +26,13 @@ enum KitchenTicketItemStatus: string
         }, true);
     }
 
+    /** @return list<self> */
+    public function productionTransitions(): array
+    {
+        return array_values(array_filter([self::Accepted, self::InProgress, self::Ready],
+            fn (self $next): bool => $next !== $this && $this->canTransitionTo($next)));
+    }
+
     public function label(): string
     {
         return __($this->translationKey());

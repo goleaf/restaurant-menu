@@ -60,7 +60,7 @@ test('kitchen staff can open a browser print friendly ticket page', function () 
         ->assertSeeText('Prompt 127 Pizza')
         ->assertSeeText('Size: Large')
         ->assertSeeText('Crispy crust')
-        ->assertSeeText('Zara')
+        ->assertDontSeeText('Zara')
         ->assertSee('x-bind="printDocument"', false);
 });
 

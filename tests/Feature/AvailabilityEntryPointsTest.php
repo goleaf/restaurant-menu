@@ -22,7 +22,7 @@ test('saving an already open restaurant profile preserves a later pause and its 
     $component = Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'));
     $branch->forceFill(['is_temporarily_closed' => true, 'temporary_closed_reason' => 'Planned service', 'pause_version' => 4])->save();
 
-    $component->set('form.publicName', 'Updated public name')->call('save')->assertHasNoErrors();
+    $component->set('profileForm.publicName', 'Updated public name')->call('saveProfile')->assertHasNoErrors();
 
     expect($branch->fresh()->public_name)->toBe('Updated public name')
         ->and($branch->fresh()->is_temporarily_closed)->toBeTrue()

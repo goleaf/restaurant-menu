@@ -24,6 +24,7 @@ use App\Services\Reports\BranchReportQuery;
 use App\Services\Restaurant\BranchReadinessService;
 use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\BranchReportCacheVersion;
+use App\Support\DisplayPreferences;
 use App\Support\LocalizedDateFormatter;
 use App\Support\Reports\BranchReportPeriod;
 use Carbon\CarbonImmutable;
@@ -139,7 +140,7 @@ class BuildRestaurantDashboardAction
     /**
      * @param  array<string, Collection<int, covariant int>>  $access
      */
-    public static function cacheKeyForAccess(array $access, ?CarbonImmutable $date = null): string
+    public static function cacheKeyForAccess(array $access, ?CarbonImmutable $date = null, ?DisplayPreferences $preferences = null): string
     {
         $date ??= CarbonImmutable::now();
         $signature = collect($access)
@@ -158,7 +159,7 @@ class BuildRestaurantDashboardAction
 
         return 'restaurant-dashboard:v5:'.sha1($signature)
             .':today:'.$date->toDateString()
-            .':locale:'.App::currentLocale();
+            .':locale:'.App::currentLocale().':formats:'.($preferences ?? DisplayPreferences::current())->fingerprint();
     }
 
     private static function cache(): CacheRepository
@@ -232,12 +233,13 @@ class BuildRestaurantDashboardAction
      */
     private function buildDashboard(User $user, array $context, string $preset, ?string $from, ?string $to): array
     {
+        $preferences = DisplayPreferences::forUser($user);
         $access = $context['access'];
         $selected = $context['selected'];
         $branches = $context['branches']->whereIn('id', $access['dashboard'])->values();
         $reportBranches = $branches->whereIn('id', $access['reports'])->values();
         $period = BranchReportPeriod::fromSelection($branches, $preset, $from, $to);
-        $cacheKey = self::cacheKeyForAccess($access).':period:'.$period->fingerprint();
+        $cacheKey = self::cacheKeyForAccess($access, preferences: $preferences).':period:'.$period->fingerprint();
         $reportPeriod = BranchReportPeriod::fromSelection($reportBranches, $preset, $from, $to);
         $reportKey = $cacheKey.':generation:'.BranchReportCacheVersion::fingerprint(self::cache(), 'dashboard', $access['dashboard']);
         $canViewReports = $reportBranches->isNotEmpty();
@@ -246,10 +248,10 @@ class BuildRestaurantDashboardAction
         $locale = App::currentLocale();
         if ($canViewReports) {
             try {
-                $report = self::cache()->flexible($reportKey, [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS], function () use ($reportBranches, $reportPeriod, $reportKey, $locale): array {
+                $report = self::cache()->flexible($reportKey, [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS], function () use ($reportBranches, $reportPeriod, $reportKey, $locale, $preferences): array {
                     $this->pruneReportCache->handle(self::cache());
 
-                    return $this->withLocale($locale, fn (): array => [...$this->reportQuery->handle($reportBranches, $reportPeriod), 'cache_key' => $reportKey, 'generated_at' => CarbonImmutable::now()->toIso8601String(), 'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now())]);
+                    return $this->withLocale($locale, fn (): array => [...$this->reportQuery->handle($reportBranches, $reportPeriod, $preferences), 'cache_key' => $reportKey, 'generated_at' => CarbonImmutable::now()->toIso8601String(), 'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now(), $preferences)]);
                 }, lock: ['seconds' => 30]);
                 self::cache()->put($cacheKey.':last-success', $report, 600);
                 $this->rememberBranchCacheKeys($access['dashboard'], $reportKey);
@@ -260,7 +262,7 @@ class BuildRestaurantDashboardAction
             }
         }
         $reportSnapshot = $report;
-        $operationsKey = self::cacheKeyForAccess($access).':operations:actor:'.$user->id;
+        $operationsKey = self::cacheKeyForAccess($access, preferences: $preferences).':operations:actor:'.$user->id;
         $operationsStale = false;
         try {
             $operationSnapshot = ['items' => $this->operationCards($user, $branches, $access, $selected), 'at' => CarbonImmutable::now()->toIso8601String()];
@@ -272,7 +274,7 @@ class BuildRestaurantDashboardAction
         }
         $operations = $operationSnapshot['items'];
         if (is_array($report) && isset($report['generated_at'])) {
-            $report['cached_at'] = LocalizedDateFormatter::dateTime(CarbonImmutable::parse($report['generated_at'])->setTimezone($selected?->timezone ?: 'UTC'));
+            $report['cached_at'] = LocalizedDateFormatter::dateTime(CarbonImmutable::parse($report['generated_at'])->setTimezone($selected?->timezone ?: 'UTC'), $preferences);
         }
         $readiness = $selected instanceof Branch ? $this->readiness->handle($user, $selected) : null;
         $quickActions = $this->quickActions($access, $selected);
@@ -308,16 +310,16 @@ class BuildRestaurantDashboardAction
         ];
 
         return [
-            'report_snapshot' => $reportSnapshot, 'cache_key' => $reportKey, 'cached_at' => $report['cached_at'] ?? null, 'period_label' => $period->label(),
+            'report_snapshot' => $reportSnapshot, 'cache_key' => $reportKey, 'cached_at' => $report['cached_at'] ?? null, 'period_label' => $period->label($preferences),
             'branch_count' => $branches->count(), 'branch_names' => $branches->pluck('name')->all(),
             'branches' => $context['branches']->map(fn (Branch $branch): array => $this->branchPresentation($branch))->all(),
             'selected_branch' => $selected instanceof Branch ? $this->branchPresentation($selected) : null,
             'can_view_reports' => $canViewReports, 'metrics' => $metrics, 'popular_items' => $popularItems,
             'quick_actions' => $quickActions, 'main_links' => $mainLinks, 'operations' => $operations,
-            'operations_updated_at' => ($operationSnapshot['at'] === null ? '—' : LocalizedDateFormatter::dateTime(CarbonImmutable::parse($operationSnapshot['at'])->setTimezone($selected?->timezone ?: 'UTC'))),
+            'operations_updated_at' => ($operationSnapshot['at'] === null ? '—' : LocalizedDateFormatter::dateTime(CarbonImmutable::parse($operationSnapshot['at'])->setTimezone($selected?->timezone ?: 'UTC'), $preferences)),
             'operations_stale' => $operationsStale, 'readiness' => $readiness, 'ordering' => $readiness['ordering'] ?? null,
             'report' => [
-                'can_view_reports' => $canViewReports, 'period_label' => $period->label(), 'cached_at' => $report['cached_at'] ?? null,
+                'can_view_reports' => $canViewReports, 'period_label' => $period->label($preferences), 'cached_at' => $report['cached_at'] ?? null,
                 'stale' => $stale, 'unavailable' => $canViewReports && $report === null,
                 'metrics' => $this->reportCards($report), 'popular_items' => array_map(fn (array $item): array => ['key' => $item['item_name'], ...$item], $popularItems),
                 'empty' => $report !== null && $report['orders_count'] === 0,

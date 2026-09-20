@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { menuWorkspace } from '../resources/js/alpine/components/menu-workspace.js';
+import { settingsWorkspace } from '../resources/js/alpine/components/settings-workspace.js';
 import { staffWorkspace, invitationClipboard, staffEditor } from '../resources/js/alpine/components/staff-workspace.js';
 import { browser, Element, Events, event } from './alpine-support.mjs';
 
@@ -25,6 +26,100 @@ function dirtyMenu(app) {
     app.instance.$el.dispatchEvent({ type: 'input', target: input });
     return { form, input, child };
 }
+
+function settings(t) {
+    const app = workspace(t, settingsWorkspace, 'https://menu.test/settings?section=profile'), page = app.instance;
+    const data = { profileForm: { phone: 'Saved' }, guests: {}, settlement: {}, locale: {}, advanced: {}, logo: null, cover: null };
+    data.baselines = { profile: { phone: 'Saved' }, guests: {}, settlement: {}, locale: {}, advanced: {} };
+    page.$wire = data;
+    data.$get = key => key.split('.').reduce((value, part) => value[part], data);
+    data.$set = (key, value, live) => { assert.equal(live, false); data[key] = value; };
+    return app;
+}
+
+test('settings preserve independent drafts through section history and discard only on confirmed departure', async t => {
+    const app = settings(t), page = app.instance;
+    assert.equal(page.hasUnsavedChanges(), false);
+    assert.equal(page.groupDirty('unknown'), false);
+    page.$wire.profileForm.phone = 'Draft';
+    page.$wire.settlement = { tipsEnabled: true };
+    page.$wire.logo = 'temporary upload';
+    assert.equal(page.groupDirty('profile'), true);
+    page.$wire.selectSection = async section => { page.$wire.section = section; };
+    await page.navigateSection(event(), 'settlement');
+    assert.equal(page.$wire.profileForm.phone, 'Draft');
+    app.window.location.href = 'https://menu.test/settings?section=advanced&language=lt&group=inactivity';
+    page.guardHistory(event());
+    const cached = event({ type: 'livewire:navigate', detail: { history: true, url: new URL(app.window.location.href) } });
+    app.document.dispatchEvent(cached);
+    assert.equal(cached.prevented, true);
+    assert.equal(page.hasUnsavedChanges(), true);
+    assert.deepEqual(app.dialogs, []);
+    let departed = 0;
+    page.requestNavigation(() => departed++);
+    page.cancelNavigation();
+    assert.equal(departed, 0);
+    assert.equal(page.$wire.profileForm.phone, 'Draft');
+    page.requestNavigation(() => departed++);
+    page.discardAndNavigate();
+    assert.equal(departed, 1);
+    assert.equal(page.hasUnsavedChanges(), false);
+    assert.notEqual(page.$wire.profileForm, page.$wire.baselines.profile);
+    page.$wire.cover = 'new upload';
+    assert.equal(page.hasUnsavedChanges(), true);
+    page.destroy();
+});
+
+test('settings offline cancellation restores one group locally without clearing a saved group or media draft', t => {
+    const app = settings(t), page = app.instance;
+    page.$wire.profileForm.phone = 'Unsaved';
+    page.$wire.baselines.settlement = { tipsEnabled: true };
+    page.$wire.settlement = { tipsEnabled: true };
+    page.$wire.logo = 'temporary upload';
+    const form = new Element(), button = new Element();
+    button.ancestors.set('form', form);
+    app.navigator.onLine = false;
+    page.discardGroupLocally(event({ currentTarget: button }), 'unknown');
+    assert.equal(page.$wire.profileForm.phone, 'Unsaved');
+    const click = event({ currentTarget: button });
+    page.discardGroupLocally(click, 'profile');
+    assert.equal(click.prevented && click.stopped, true);
+    assert.equal(page.$wire.profileForm.phone, 'Saved');
+    assert.deepEqual(page.$wire.settlement, { tipsEnabled: true });
+    assert.equal(page.$wire.logo, 'temporary upload');
+    page.destroy();
+});
+
+test('settings focuses the owning group after reveal and releases pending focus on departure', t => {
+    const frames = new Map(); let sequence = 0;
+    const originals = { requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame, CSS: globalThis.CSS };
+    globalThis.requestAnimationFrame = callback => { frames.set(++sequence, callback); return sequence; };
+    globalThis.cancelAnimationFrame = id => frames.delete(id);
+    globalThis.CSS = { escape: value => value };
+    t.after(() => { for (const [key, value] of Object.entries(originals)) { if (value) globalThis[key] = value; else delete globalThis[key]; } });
+    const app = settings(t), page = app.instance, root = page.$el, target = new Element();
+    root.children.set('#profile-heading', [target]);
+    page.$el = new Element();
+    app.window.dispatchEvent({ type: 'settings-focus', detail: { target: 'profile-heading' } });
+    assert.equal(target.focused, 0);
+    frames.get(sequence)();
+    assert.equal(target.focused, 1);
+    app.window.dispatchEvent({ type: 'settings-focus', detail: { target: 'missing' } });
+    app.window.dispatchEvent({ type: 'settings-focus', detail: { target: 'profile-heading' } });
+    assert.equal(frames.size, 2);
+    const pending = frames.get(sequence);
+    page.destroy();
+    pending();
+    assert.equal(target.focused, 1);
+    assert.equal(app.state.interceptors.size, 0);
+    assert.equal(root.listenerCount() + app.window.listenerCount() + app.document.listenerCount(), 0);
+    let delayed;
+    const late = settings(t);
+    late.instance.$nextTick = callback => { delayed = callback; };
+    late.window.dispatchEvent({ type: 'settings-focus', detail: { target: 'profile-heading' } });
+    late.instance.destroy();
+    delayed();
+});
 
 test('menu keeps edits made during a save, preserves validation errors, and clears only a successful matching revision', t => {
     const app = workspace(t, menuWorkspace), menu = app.instance;

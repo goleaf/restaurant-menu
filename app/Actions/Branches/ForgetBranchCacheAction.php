@@ -36,17 +36,24 @@ class ForgetBranchCacheAction
         }
     }
 
-    public function handle(int $branchId): void
+    public function handle(int $branchId, bool $guestMenu = true, bool $polling = true): void
     {
         if ($branchId < 1) {
             return;
         }
 
         $cache = $this->cache();
-        if ($cache instanceof Repository) {
+        if ($guestMenu && $cache instanceof Repository) {
             BranchReportCacheVersion::invalidate($cache, 'guest-menu', $branchId);
         }
-        $cacheKeys = self::cacheKeysForBranch($branchId);
+        $cacheKeys = [
+            ...($guestMenu ? GetGuestMenuForBranchAction::cacheKeysForBranch($branchId) : []),
+            ...($polling ? [GetBranchPollingIntervalAction::cacheKey($branchId)] : []),
+        ];
+
+        if ($cacheKeys === []) {
+            return;
+        }
 
         if ($this->forgetDatabaseKeys($cache, $cacheKeys)) {
             return;

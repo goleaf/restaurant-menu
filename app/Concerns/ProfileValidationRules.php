@@ -49,10 +49,11 @@ trait ProfileValidationRules
     protected function emailRules(?int $userId = null): array
     {
         return [
+            'bail',
             'required',
             'string',
-            'email',
             'max:255',
+            'email',
             $userId === null
                 ? Rule::unique(User::class)
                 : Rule::unique(User::class)->ignore($userId),

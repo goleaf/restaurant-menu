@@ -2,11 +2,24 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 fixtures
+
+BranchSetting model defaults remain the single source used by EnsureBranchSettingsAction and its existing factory. Settings are absent in the explicit legacy-read fixture; opening that page must not seed. Profile tests use independent EN/LT/RU and legacy fallback, inherited/own media, paid/history blockers and separate memberships. BranchSettingsChangeFactory creates valid actor/branch-scoped receipts. File-backed concurrency fixtures use owned temporary SQLite files and independent PHP processes, never the working database. No new demo seeder or overwrite of saved settings is introduced.
+
+
+## Locale-independent department defaults — 2026-09-20
+
+KitchenDepartmentType now separates canonical `defaultName()` from translated `label()`. The standard department seeder keeps the existing English natural names irrespective of the interface locale; repeat seeding still preserves existing/custom departments. Model presentation recognizes previous supported localized defaults without rewriting them. No seed command is run on the working database for this localization repair.
+
 ## Prompt 5 floor fixtures
 
 Existing AreaNode, ServicePoint, QrCode, TableSession, order and organization factories compose nested/empty/foreign rooms, textual/duplicate display numbers, archived internal-code reservations, direct and merged unfinished service, nonactive QR and damaged files. Bulk bounds use real200/201-record scenarios. No new production/demo seed behavior or business entity is needed. Fixtures, images and documents are written only to owned test databases/storage; repeating this stage does not change working names, staff assignments, keys or permanent QR.
 
 # Factories and seeding
+
+## Tenant portfolio JSON storage repair — 2026-09-20
+
+`DemoTenantPortfolioSeeder` transfers factory values with `attributesToArray()` for BranchSetting, MenuItem, AreaNode and ServicePoint. Passing `getAttributes()` into `forceFill()` encoded JSON storage strings a second time: service modes were affected on initial creation, and allergens, dietary labels and room/table metadata on repeated seeding. The regression verifies raw JSON after both runs in isolated SQLite. Existing settings are still preserved rather than reset; production refusal, natural keys and tenant boundaries are unchanged. This repair does not reseed the working database. Read-only compatibility accessors on BranchSetting and MenuItem allow existing double-encoded list values to remain usable until an explicit validated save.
 
 ## Prompt 7 availability fixtures — 2026-09-17
 

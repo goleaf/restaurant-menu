@@ -299,6 +299,7 @@ class BuildWaiterDashboardAction
         return TableSession::query()
             ->select(['id', 'branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'created_at', 'updated_at'])
             ->withCount(['activeGuests'])
+            ->withInactivityActivity()
             ->with([
                 'openedByUser' => fn ($query) => $query->select(['id', 'name']),
                 'openedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),

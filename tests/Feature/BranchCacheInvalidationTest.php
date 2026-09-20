@@ -3,9 +3,8 @@
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\Branches\GetBranchPollingIntervalAction;
-use App\Actions\Branches\UpdateBranchSettingsAction;
+use App\Actions\Branches\SaveBranchSettingsGroupAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
-use App\Enums\BranchOrderFlowMode;
 use App\Enums\MenuStatus;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -15,6 +14,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
+use App\Support\Branches\BranchSettingsGroup;
 use App\Support\BranchReportCacheVersion;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Cache\DatabaseStore;
@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -207,7 +208,7 @@ test('menu changes clear the centralized branch cache', function () {
         ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
 });
 
-test('branch settings changes clear guest menu and polling caches', function () {
+test('polling settings clear only polling cache and keep the guest menu generation', function () {
     $branch = createPrompt93CachedBranch();
     $settings = $branch->settings()->firstOrFail();
     $cache = prompt93BranchCache();
@@ -217,33 +218,23 @@ test('branch settings changes clear guest menu and polling caches', function () 
     expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeTrue()
         ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeTrue();
 
-    app(UpdateBranchSettingsAction::class)->handle($settings, [
-        'require_waiter_confirmation_for_orders' => true,
-        'allow_guest_created_sessions' => true,
-        'allow_waiter_opened_sessions' => true,
-        'allow_guest_invite_links' => true,
-        'guest_join_requires_approval' => true,
-        'polling_interval_seconds' => 3,
-        'default_language' => 'lt',
-        'default_currency' => 'EUR',
-        'service_charge_enabled' => false,
-        'tips_enabled' => false,
-        'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,
-    ]);
+    app(SaveBranchSettingsGroupAction::class)->handle($branch->organization->owner, $branch, 'advanced', [
+        'polling_interval_seconds' => 3, 'inactivity_warning_minutes' => 45, 'pending_session_expire_minutes' => 30,
+    ], BranchSettingsGroup::fingerprint($branch, $settings, 'advanced'), (string) Str::uuid());
 
-    expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeFalse()
+    expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeTrue()
         ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
 });
 
-test('logo changes clear cache for affected branches', function () {
+test('branch profile changes preserve catalog and polling while ancestor invalidation stays compatible', function () {
     $branch = createPrompt93CachedBranch();
     $cache = prompt93BranchCache();
 
     warmPrompt93BranchCaches($branch);
-    $branch->update(['logo_path' => 'media/prompt-093/branch-logo.png']);
+    $branch->update(['logo_path' => 'media/prompt-093/branch-logo.png', 'phone' => '+370 600 11111']);
 
-    expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeFalse()
-        ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
+    expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeTrue()
+        ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeTrue();
 
     warmPrompt93BranchCaches($branch);
     $branch->brand()->firstOrFail()->update(['logo_path' => 'media/prompt-093/brand-logo.png']);
@@ -256,6 +247,78 @@ test('logo changes clear cache for affected branches', function () {
 
     expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en')))->toBeFalse()
         ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
+});
+
+test('settings invalidate only the cache that consumes their changed values', function (array $changes, bool $menuRemains, bool $pollingRemains): void {
+    $branch = createPrompt93CachedBranch();
+    $settings = $branch->settings()->firstOrFail();
+    $cache = prompt93BranchCache();
+    warmPrompt93BranchCaches($branch);
+    $generation = BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branch->id]));
+
+    $settings->update($changes);
+
+    expect($cache->has(GetGuestMenuForBranchAction::cacheKey($branch->id)))->toBe($menuRemains)
+        ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBe($pollingRemains)
+        ->and(BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branch->id])) === $generation)->toBe($menuRemains);
+})->with([
+    'language' => [['default_language' => 'lt'], false, true],
+    'polling' => [['polling_interval_seconds' => 15], true, false],
+    'guest access' => [['allow_guest_invite_links' => false], true, true],
+    'settlement' => [['service_charge_enabled' => true, 'service_charge_basis_points' => 1500], true, true],
+    'inactivity' => [['inactivity_warning_minutes' => 120], true, true],
+]);
+
+test('branch availability changes expire menus without resetting the polling cache', function (): void {
+    $branch = createPrompt93CachedBranch();
+    warmPrompt93BranchCaches($branch);
+
+    $branch->update(['is_temporarily_closed' => true]);
+
+    expect(prompt93BranchCache()->has(GetGuestMenuForBranchAction::cacheKey($branch->id)))->toBeFalse()
+        ->and(prompt93BranchCache()->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeTrue();
+});
+
+test('an older catalog builder cannot replace an entry published for a newer generation', function (): void {
+    $branch = createPrompt93CachedBranch();
+    $cache = prompt93BranchCache();
+    $key = GetGuestMenuForBranchAction::cacheKey($branch->id);
+    $replacement = null;
+    MenuItem::retrieved(function (MenuItem $item) use ($branch, $cache, $key, &$replacement): void {
+        if ($replacement !== null) {
+            return;
+        }
+        $replacement = [];
+        $item->update(['is_available' => false]);
+        $replacement = [
+            'generation' => BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branch->id])),
+            'valid_until' => now()->addMinute()->toIso8601String(),
+            'payload' => ['published' => 'new generation'],
+        ];
+        $cache->put($key, $replacement, 60);
+    });
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id);
+
+    expect($replacement)->not->toBeNull()->and($cache->get($key))->toBe($replacement);
+});
+
+test('a language change during default-language read does not publish under a newer generation', function (): void {
+    $branch = createPrompt93CachedBranch();
+    $settings = $branch->settings()->firstOrFail();
+    $changed = false;
+    DB::listen(function ($query) use ($settings, &$changed): void {
+        if (! $changed && str_contains($query->sql, 'select "default_language" from "branch_settings"')) {
+            $changed = true;
+            $settings->update(['default_language' => 'lt']);
+        }
+    });
+
+    $action = app(GetGuestMenuForBranchAction::class);
+    $action->handle($branch->id, 'en');
+    $payload = $action->handle($branch->id, 'en');
+
+    expect($changed)->toBeTrue()->and($payload['default_language'])->toBe('lt');
 });
 
 function createPrompt93CachedBranch(): Branch

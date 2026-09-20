@@ -2,6 +2,15 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 current runtime verification — 2026-09-20
+
+Primary backend CLI is actual Herd PHP8.5.8, with Xdebug3.5.0 available only for the coverage command. Strict Composer validation, installed lock platform requirements and Composer/npm audits pass. `herd which-php` selects php85 for restaurant-menu; a certificate-verified HEAD response from the real Herd host identifies PHP8.5.8 separately. Boost's configured URL remains stale ruflo.test (certificate mismatch); an invocation with the current process-only APP_URL=https://restaurant-menu.test resolves the real Herd host. No environment file, site isolation or global runtime is changed.
+
+An owned CLI-only PHP8.6.0beta3 was freshly compiled from the official archive, verified SHA256 e8daf9546c4d4244dad961b5412734db57823c2e967df3fcfbb819a62d520ea6. Required native capabilities and GD JPEG/PNG/WebP pass;1430/1430 first-party non-Blade PHP files pass syntax with no source drift. Both actual Composer platform checks fail: locked Nette Schema allows PHP8.1–8.5; installed ParaTest allows PHP8.3–8.5. The Composer Oniguruma deprecation remains visible. No8.6 application/browser/coverage acceptance or requirement bypass is claimed. The production range stays >=8.5.0<8.6.0.
+
+[PHP's current prerelease record](https://www.php.net/pre-release-builds.php) and [2026 archive](https://www.php.net/archive/2026.php) were checked on the execution date: Beta3 is a testing release, not production authorization. Native identity, capability, platform and syntax evidence is in owned restaurant-p14-n90kyx55/php86-preflight and php86-syntax-summary.json. Previous stages' historical runtime results remain distinct.
+
+
 ## Prompt 5 current-source runtime verification — 2026-09-20
 
 Supported CLI checks use actual PHP8.5.10 and Composer2.10.3, with strict manifest, installed/locked platform checks and Composer audit passing. Node24.21.0 and existing owned npm12.0.2 pass the declared engines. Installed Laravel13.31.0, Livewire4.4.1, FluxFree2.17.0 and local FluxPro0.1.1 remain unchanged; Pro's upstream version is unknown. Official Packagist metadata currently offers13.32.0/4.4.5/2.20.0 in those respective major lines; this does not prove compatibility with the local Pro adaptation or authorize another stack upgrade. Current official npm versions remain Tailwind4.3.3/Vite8.3.0/sass-embedded1.104.1. No lock or dependency is changed.

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\KitchenDepartmentType;
+use App\Enums\SupportedLocale;
 use Database\Factories\KitchenDepartmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +44,51 @@ class KitchenDepartment extends Model
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function localizedName(): string
+    {
+        if ($this->type === KitchenDepartmentType::Custom) {
+            return $this->name;
+        }
+
+        return in_array($this->name, self::standardNamesFor($this->type), true) ? $this->type->label() : $this->name;
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    #[Scope]
+    protected function matchingDisplayName(Builder $query, string $search): Builder
+    {
+        return $query->select(['id', 'type', 'name', 'is_active'])
+            ->where(function (Builder $names) use ($search): void {
+                $names->where('name', 'like', '%'.$search.'%');
+
+                foreach (KitchenDepartmentType::cases() as $type) {
+                    if ($type === KitchenDepartmentType::Custom || ! str_contains(mb_strtolower($type->label()), mb_strtolower($search))) {
+                        continue;
+                    }
+
+                    $names->orWhere(fn (Builder $defaults): Builder => $defaults
+                        ->where('type', $type->value)
+                        ->whereIn('name', self::standardNamesFor($type)));
+                }
+            });
+    }
+
+    /** @return list<string> */
+    private static function standardNamesFor(KitchenDepartmentType $type): array
+    {
+        $key = 'preparation.types.'.$type->value;
+        $standardNames = [$type->defaultName()];
+
+        foreach (SupportedLocale::values() as $locale) {
+            $standardNames[] = __($key, [], $locale);
+        }
+
+        return $standardNames;
     }
 
     /**

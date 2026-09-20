@@ -4,22 +4,19 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
-use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
+use App\Actions\Departments\ResolvePreparationAccessibleDepartmentIdsAction;
 use App\Models\KitchenTicket;
 use App\Models\User;
 
 final class KitchenTicketPolicy
 {
     public function __construct(
-        private readonly ResolveKitchenAccessibleDepartmentIdsAction $resolveKitchenDepartments,
-        private readonly ResolveBarAccessibleDepartmentIdsAction $resolveBarDepartments,
+        private readonly ResolvePreparationAccessibleDepartmentIdsAction $resolveDepartments,
     ) {}
 
     public function viewAny(User $user): bool
     {
-        return $this->resolveKitchenDepartments->userHasAccess($user)
-            || $this->resolveBarDepartments->userHasAccess($user);
+        return $this->resolveDepartments->handle($user)->isNotEmpty();
     }
 
     public function view(User $user, KitchenTicket $kitchenTicket): bool
@@ -30,8 +27,8 @@ final class KitchenTicketPolicy
             return false;
         }
 
-        return $this->resolveKitchenDepartments->handle($user)->contains((int) $departmentId)
-            || $this->resolveBarDepartments->handle($user)->contains((int) $departmentId);
+        return $this->resolveDepartments->handle($user, (int) $kitchenTicket->branch_id)
+            ->contains((int) $departmentId);
     }
 
     public function print(User $user, KitchenTicket $kitchenTicket): bool

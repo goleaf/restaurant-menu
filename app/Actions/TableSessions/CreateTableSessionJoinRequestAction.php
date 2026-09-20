@@ -5,6 +5,7 @@ namespace App\Actions\TableSessions;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
+use App\Models\BranchSetting;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
@@ -138,7 +139,10 @@ class CreateTableSessionJoinRequestAction
     {
         $storedHash = $tableSession->getAttribute('guest_invite_token_hash');
 
-        return is_string($storedHash)
+        $invitesAllowed = BranchSetting::query()->where('branch_id', $tableSession->branch_id)->value('allow_guest_invite_links');
+
+        return ($invitesAllowed === null || (bool) $invitesAllowed)
+            && is_string($storedHash)
             && strlen($inviteToken) === 64
             && $tableSession->guest_invite_expires_at?->isFuture() === true
             && hash_equals($storedHash, hash('sha256', $inviteToken));

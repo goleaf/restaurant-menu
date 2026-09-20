@@ -17,6 +17,7 @@ use App\Models\DraftOrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
+use App\Support\DisplayPreferences;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -242,11 +243,11 @@ class DraftTotals extends Component
                 'guest_id' => $guestTotal['guest_id'],
                 'guest_name' => $guestTotal['guest_name'],
                 'total' => MoneyFormatter::centsToDecimal($guestTotal['total_cents']),
-                'total_label' => MoneyFormatter::formatCents($guestTotal['total_cents'], $this->currency),
+                'total_label' => MoneyFormatter::formatCents($guestTotal['total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'draft_total' => MoneyFormatter::centsToDecimal($guestTotal['draft_total_cents']),
-                'draft_total_label' => MoneyFormatter::formatCents($guestTotal['draft_total_cents'], $this->currency),
+                'draft_total_label' => MoneyFormatter::formatCents($guestTotal['draft_total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'confirmed_total' => MoneyFormatter::centsToDecimal($guestTotal['confirmed_total_cents']),
-                'confirmed_total_label' => MoneyFormatter::formatCents($guestTotal['confirmed_total_cents'], $this->currency),
+                'confirmed_total_label' => MoneyFormatter::formatCents($guestTotal['confirmed_total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'has_draft_total' => $guestTotal['draft_total_cents'] > 0,
                 'has_confirmed_total' => $guestTotal['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestTotal['is_current_guest'],
@@ -258,9 +259,9 @@ class DraftTotals extends Component
         $this->currentDraftTotalAmount = MoneyFormatter::centsToDecimal($openDraftTotalCents);
         $this->confirmedOrdersTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents);
         $this->tableTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents + $openDraftTotalCents);
-        $this->currentDraftTotalLabel = MoneyFormatter::formatCents($openDraftTotalCents, $this->currency);
-        $this->confirmedOrdersTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents, $this->currency);
-        $this->tableTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents + $openDraftTotalCents, $this->currency);
+        $this->currentDraftTotalLabel = MoneyFormatter::formatCents($openDraftTotalCents, $this->currency, preferences: DisplayPreferences::defaults());
+        $this->confirmedOrdersTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents, $this->currency, preferences: DisplayPreferences::defaults());
+        $this->tableTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents + $openDraftTotalCents, $this->currency, preferences: DisplayPreferences::defaults());
         $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = $draftOrder instanceof DraftOrder && $draftOrder->status->isGuestEditable()
             ? $draftItems->count()

@@ -26,6 +26,7 @@ use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -54,6 +55,9 @@ final class IdentityEditor extends Component
     public string $mediaFingerprint;
 
     #[Locked]
+    public string $logoRequestId;
+
+    #[Locked]
     public bool $wasArchived;
 
     public mixed $logo = null;
@@ -78,6 +82,7 @@ final class IdentityEditor extends Component
         $this->form->load($resource);
         $this->fingerprint = $resource->identityFingerprint();
         $this->mediaFingerprint = hash('sha256', (string) $resource->logo_path);
+        $this->logoRequestId = (string) Str::uuid();
         $this->wasArchived = $resource->trashed();
     }
 
@@ -108,10 +113,11 @@ final class IdentityEditor extends Component
         match (true) {
             $resource instanceof Organization => $organization->handle($resource, $validated['logo'], $this->actor(), $this->mediaFingerprint),
             $resource instanceof Brand => $brand->handle($resource, $validated['logo'], $this->actor(), $this->mediaFingerprint),
-            default => $branch->handle($resource, $validated['logo'], $this->actor(), $this->mediaFingerprint),
+            default => $branch->handle($resource, $validated['logo'], $this->actor(), $this->mediaFingerprint, $this->logoRequestId),
         };
         $this->mediaFingerprint = hash('sha256', (string) $resource->logo_path);
         $this->logo = null;
+        $this->logoRequestId = (string) Str::uuid();
         $this->dispatch('restaurant-logo-saved');
         Flux::toast(variant: 'success', text: __('center.logo_saved'));
     }
@@ -123,9 +129,10 @@ final class IdentityEditor extends Component
         match (true) {
             $resource instanceof Organization => $organization->handle($resource, null, $this->actor(), $this->mediaFingerprint),
             $resource instanceof Brand => $brand->handle($resource, null, $this->actor(), $this->mediaFingerprint),
-            default => $branch->handle($resource, null, $this->actor(), $this->mediaFingerprint),
+            default => $branch->handle($resource, null, $this->actor(), $this->mediaFingerprint, $this->logoRequestId),
         };
         $this->mediaFingerprint = hash('sha256', (string) $resource->logo_path);
+        $this->logoRequestId = (string) Str::uuid();
         Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
         Flux::modal('remove-restaurant-logo')->close();
     }

@@ -98,11 +98,11 @@ function fieldTranslationAuditManifest(): array
     return [
         'organization form' => [
             'name' => ['label' => 'center.organization_name', 'attribute' => 'validation.attributes.name'],
-            'logo' => ['label' => 'uploads.labels.logo', 'attribute' => 'validation.attributes.logo'],
+            'logo' => ['label' => 'center.logo', 'attribute' => 'validation.attributes.logo'],
         ],
         'brand form' => [
             'name' => ['label' => 'center.brand_name', 'attribute' => 'validation.attributes.name'],
-            'logo' => ['label' => 'uploads.labels.logo', 'attribute' => 'validation.attributes.logo'],
+            'logo' => ['label' => 'center.logo', 'attribute' => 'validation.attributes.logo'],
         ],
         'branch form' => [
             'name' => ['label' => 'center.restaurant_name', 'attribute' => 'validation.attributes.name'],
@@ -138,16 +138,41 @@ function fieldTranslationAuditManifest(): array
             'pause.untilDate' => ['label' => 'availability.until_date', 'placeholder' => 'availability.choose_date', 'attribute' => 'availability.fields.deadline'],
             'pause.untilTime' => ['label' => 'availability.until_time', 'placeholder' => 'availability.choose_time', 'attribute' => 'availability.fields.deadline'],
         ],
-        'branch settings form' => [
-            'public_name' => ['label' => 'ui.organizations.brands.branches.settings.venue_name', 'attribute' => 'validation.attributes.public_name'],
-            'phone' => ['label' => 'ui.organizations.brands.branches.settings.phone', 'placeholder' => 'fields.placeholders.phone_example', 'attribute' => 'validation.attributes.phone'],
-            'email' => ['label' => 'ui.auth.reset_password.email', 'placeholder' => 'fields.placeholders.branch_email_example', 'attribute' => 'validation.attributes.email'],
-            'website_url' => ['label' => 'guest.table.website', 'placeholder' => 'fields.placeholders.website_url_example', 'attribute' => 'validation.attributes.website_url'],
-            'instagram_url' => ['label' => 'ui.organizations.brands.branches.settings.instagram_link', 'placeholder' => 'fields.placeholders.instagram_url_example', 'attribute' => 'validation.attributes.instagram_url'],
-            'facebook_url' => ['label' => 'ui.organizations.brands.branches.settings.facebook_link', 'placeholder' => 'fields.placeholders.facebook_url_example', 'attribute' => 'validation.attributes.facebook_url'],
-            'tiktok_url' => ['label' => 'ui.organizations.brands.branches.settings.tiktok_link', 'placeholder' => 'fields.placeholders.tiktok_url_example', 'attribute' => 'validation.attributes.tiktok_url'],
-            'service_charge_percent' => ['label' => 'ui.organizations.brands.branches.settings.service_charge_percent', 'attribute' => 'validation.attributes.service_charge_percent'],
-            'polling_interval_seconds' => ['label' => 'ui.organizations.brands.branches.settings.polling_interval_seconds', 'attribute' => 'validation.attributes.polling_interval_seconds'],
+        'public profile form' => [
+            'public_name' => ['label' => 'settings.public_name', 'help' => 'settings.legacy_help', 'attribute' => 'validation.attributes.public_name'],
+            'public_description' => ['label' => 'settings.public_description', 'attribute' => 'validation.attributes.public_description'],
+            'translated_name' => ['label' => 'settings.public_name', 'help' => 'settings.translation_help', 'attribute' => 'validation.attributes.public_name'],
+            'translated_description' => ['label' => 'settings.public_description', 'attribute' => 'validation.attributes.public_description'],
+            'translations' => ['label' => 'settings.content_language', 'attribute' => 'settings.profile.translations'],
+            'phone' => ['label' => 'settings.profile.phone', 'attribute' => 'validation.attributes.phone'],
+            'email' => ['label' => 'settings.profile.email', 'attribute' => 'validation.attributes.email'],
+            'website_url' => ['label' => 'settings.profile.website_url', 'attribute' => 'validation.attributes.website_url'],
+            'instagram_url' => ['label' => 'settings.profile.instagram_url', 'attribute' => 'validation.attributes.instagram_url'],
+            'facebook_url' => ['label' => 'settings.profile.facebook_url', 'attribute' => 'validation.attributes.facebook_url'],
+            'tiktok_url' => ['label' => 'settings.profile.tiktok_url', 'attribute' => 'validation.attributes.tiktok_url'],
+        ],
+        'restaurant profile image forms' => [
+            'logo' => ['label' => 'settings.media.logo', 'help' => 'settings.media.file_help', 'attribute' => 'settings.media.logo'],
+            'cover' => ['label' => 'settings.media.cover', 'help' => 'settings.media.file_help', 'attribute' => 'settings.media.cover'],
+        ],
+        'guest process form' => [
+            'allow_guest_created_sessions' => ['label' => 'settings.fields.allow_guest_created_sessions', 'help' => 'settings.guests.pending_help', 'attribute' => 'settings.fields.allow_guest_created_sessions'],
+            'allow_waiter_opened_sessions' => ['label' => 'settings.fields.allow_waiter_opened_sessions', 'help' => 'settings.guests.waiter_help', 'attribute' => 'settings.fields.allow_waiter_opened_sessions'],
+            'allow_guest_invite_links' => ['label' => 'settings.fields.allow_guest_invite_links', 'help' => 'settings.guests.invite_help', 'attribute' => 'settings.fields.allow_guest_invite_links'],
+        ],
+        'settlement settings form' => [
+            'default_currency' => ['label' => 'settings.fields.default_currency', 'help' => 'settings.currency_help', 'attribute' => 'settings.fields.default_currency'],
+            'service_charge_enabled' => ['label' => 'settings.fields.service_charge_enabled', 'attribute' => 'settings.fields.service_charge_enabled'],
+            'service_charge_percent' => ['label' => 'settings.fields.service_charge_percent', 'help' => 'settings.charge_help', 'attribute' => 'settings.fields.service_charge_percent'],
+            'tips_enabled' => ['label' => 'settings.fields.tips_enabled', 'help' => 'settings.tips_help', 'attribute' => 'settings.fields.tips_enabled'],
+        ],
+        'restaurant locale form' => [
+            'default_language' => ['label' => 'settings.fields.default_language', 'help' => 'settings.language_help', 'attribute' => 'settings.fields.default_language'],
+        ],
+        'advanced restaurant settings form' => [
+            'polling_interval_seconds' => ['label' => 'settings.fields.polling_interval_seconds', 'help' => 'settings.polling_help', 'attribute' => 'settings.fields.polling_interval_seconds'],
+            'inactivity_warning_minutes' => ['label' => 'settings.fields.inactivity_warning_minutes', 'help' => 'settings.inactivity_help', 'attribute' => 'settings.fields.inactivity_warning_minutes'],
+            'pending_session_expire_minutes' => ['label' => 'settings.fields.pending_session_expire_minutes', 'help' => 'settings.inactivity_help', 'attribute' => 'settings.fields.pending_session_expire_minutes'],
         ],
         'area_node form' => [
             'name' => ['label' => 'ui.onboarding.restaurant_setup.nazvanie_zony', 'attribute' => 'validation.attributes.name'],

@@ -25,13 +25,16 @@ use Illuminate\Support\Facades\Schema;
 
 test('menu item label attributes expose string lists for legacy storage shapes', function (mixed $stored, array $expected) {
     $item = MenuItem::factory()->make(['allergens' => $stored, 'dietary_labels' => $stored]);
+    $attributes = $item->getAttributes();
+    $original = $item->getRawOriginal();
 
     expect($item->allergens)->toBe($expected)
         ->and($item->dietary_labels)->toBe($expected)
         ->and($item->allergenCodes())->toBe($expected)
         ->and($item->attributesToArray()['allergens'])->toBe($expected)
         ->and($item->attributesToArray()['dietary_labels'])->toBe($expected)
-        ->and($item->getRawOriginal())->toBe([]);
+        ->and($item->getAttributes())->toBe($attributes)
+        ->and($item->getRawOriginal())->toBe($original);
 })->with([
     'ordinary list' => [['milk'], ['milk']],
     'encoded list' => ['["milk"]', ['milk']],

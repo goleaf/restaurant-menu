@@ -60,7 +60,7 @@ class CreateGuestInviteLinkAction
             ])
             ->with([
                 'branch' => fn ($query) => $query
-                    ->select(['id'])
+                    ->select(['id', 'currency'])
                     ->with([
                         'settings' => fn ($query) => $query->select([
                             'id',
@@ -139,7 +139,7 @@ class CreateGuestInviteLinkAction
             return $branch->settings;
         }
 
-        return $branch->settings()->create(BranchSetting::defaults($branch));
+        return (new BranchSetting)->forceFill(BranchSetting::defaults($branch));
     }
 
     private function newUniqueInviteToken(): string

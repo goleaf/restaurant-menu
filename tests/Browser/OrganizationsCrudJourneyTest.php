@@ -125,7 +125,7 @@ test('demo owner can complete the organization administration browser journey', 
         [route('organizations.staff.permissions', [$organization, $staffMember], false), '[data-page="employee-card"]'],
         [route('organizations.brands.index', [$organization], false), '[data-page="restaurant-center"]'],
         [route('organizations.brands.branches.index', [$organization, $brand], false), '[data-page="restaurant-center"]'],
-        [route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false), '[data-page="branch-settings"]'],
+        [route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false), '[data-page="restaurant-settings"]'],
         [route('organizations.brands.branches.areas.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
         [route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch], false), '[data-page="branch-service-points"]'],
         [$qrShowUrl, '[data-page="branch-service-points"]'],
@@ -166,12 +166,18 @@ test('demo owner can complete the organization administration browser journey', 
         ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray();
     $openingHoursVersion = $branch->fresh()->opening_hours_version;
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false));
-    clickOrganizationsBrowserElement($page, '[wire\\:model\\.live="form.serviceChargeEnabled"]');
-    $page->assertEnabled('input[wire\\:model="form.serviceChargePercent"]');
-    $page->fill('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
-        ->fill('input[wire\\:model="form.serviceChargePercent"]', '12.50');
-    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
-    $page->assertSee(__('ui.livewire.organizations.brands.branches.settings.settings_saved'))
+    clickOrganizationsBrowserElement($page, 'form[data-settings-group="profile"] button[data-flux-accordion-heading]');
+    $page->fill('input[name="profileForm.publicName"]', 'Browser verified restaurant');
+    clickOrganizationsBrowserElement($page, 'form[data-settings-group="profile"] button[type="submit"]');
+    $page->assertSee(__('settings.saved', ['section' => __('settings.section.profile')]))
+        ->assertNoJavaScriptErrors();
+    clickOrganizationsBrowserElement($page, '[data-menu-section="settlement"]');
+    $page->assertVisible('form[data-settings-group="settlement"]')->assertQueryStringHas('section', 'settlement');
+    clickOrganizationsBrowserElement($page, '[id="settlement.serviceChargeEnabled"]');
+    $page->assertEnabled('input[name="settlement.serviceChargePercent"]')
+        ->fill('input[name="settlement.serviceChargePercent"]', '12.50');
+    clickOrganizationsBrowserElement($page, 'form[data-settings-group="settlement"] button[type="submit"]');
+    $page->assertSee(__('settings.saved', ['section' => __('settings.section.settlement')]))
         ->assertNoJavaScriptErrors();
 
     expect($branch->fresh()->public_name)->toBe('Browser verified restaurant')
@@ -181,8 +187,8 @@ test('demo owner can complete the organization administration browser journey', 
             ->orderBy('day_of_week')->orderBy('sort_order')->get()->toArray())->toBe($openingHoursBeforeProfile);
 
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false))
-        ->assertValue('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
-        ->assertValue('input[wire\\:model="form.serviceChargePercent"]', '12.50');
+        ->assertValue('input[wire\\:model="profileForm.publicName"]', 'Browser verified restaurant')
+        ->assertValue('input[wire\\:model="settlement.serviceChargePercent"]', '12.50');
 
     $mondayIntervalCount = $branch->openingHours()->where('day_of_week', 1)->where('is_closed', false)->count();
     $page->navigate(route('organizations.brands.branches.availability.index', [$organization, $brand, $branch, 'section' => 'schedules'], false))

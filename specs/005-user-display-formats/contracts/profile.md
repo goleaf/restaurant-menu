@@ -1,0 +1,7 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
+# Profile formatting UI contract
+
+Existing authenticated /settings/profile contains a separate form below personal information. Three labelled selectors use stable IDs display-date-format, display-time-format, display-number-format, with live server-rendered examples. Selection does not save. Explicit Save persists only the authenticated user's preferences. Reset selects language defaults in the draft and also requires Save. Loading/offline controls prevent accidental submission; invalid payloads show localized field errors and retain the last saved values. Parent name/email draft is independent. Guest/public calls explicitly use language defaults.

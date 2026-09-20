@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Departments\ResolvePreparationAccessibleDepartmentIdsAction;
 use App\Actions\Payments\BuildManualPaymentSummaryAction;
 use App\Actions\Payments\ResolvePaymentAccessibleBranchIdsAction;
 use App\Enums\DraftOrderStatus;
@@ -35,6 +36,7 @@ class BuildWaiterTableDetailAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
         private readonly BuildManualPaymentSummaryAction $buildPaymentSummary,
+        private readonly ResolvePreparationAccessibleDepartmentIdsAction $resolvePreparationDepartments,
     ) {}
 
     /**
@@ -219,7 +221,7 @@ class BuildWaiterTableDetailAction
                                     'status',
                                     'served_at',
                                 ])
-                                ->with(['kitchenTicket:id,department_name']),
+                                ->with(['kitchenTicket:id,branch_id,kitchen_department_id,department_name']),
                         ])])
                     ->orderBy('created_at')
                     ->orderBy('id'),
@@ -258,6 +260,7 @@ class BuildWaiterTableDetailAction
         if ($section === 'fulfilment') {
             return [...$payload, 'orders' => $this->fulfilmentOrdersPayload(
                 $tableSession->orders, $currency, $canCancel, (bool) $tableSession->getAttribute('manual_payments_exists'),
+                $tableSession->orders->isEmpty() ? [] : $this->resolvePreparationDepartments->handle($user, $tableSession->branch_id)->all(),
             )];
         }
 
@@ -391,6 +394,7 @@ class BuildWaiterTableDetailAction
                 currency: $currency,
                 canCancelOrder: $canCancelOrder,
                 hasRecordedPayments: $hasRecordedPayments,
+                preparationDepartmentIds: $tableSession->orders->isEmpty() ? [] : $this->resolvePreparationDepartments->handle($user, $tableSession->branch_id)->all(),
             ),
             'payment' => $this->paymentPayload(
                 summary: $paymentSummary,
@@ -618,6 +622,7 @@ class BuildWaiterTableDetailAction
 
         return [
             'can_view' => true,
+            'settlement_fingerprint' => $summary['settlement_fingerprint'] ?? '',
             'can_manage' => $canManagePayments,
             'can_record_table_payment' => $canRecord,
             'can_close_session' => $canManagePayments && $sessionStatus === TableSessionStatus::Paid,
@@ -670,6 +675,7 @@ class BuildWaiterTableDetailAction
 
     /**
      * @param  Collection<int, Order>  $orders
+     * @param  list<int>  $preparationDepartmentIds
      * @return list<array<string, mixed>>
      */
     private function fulfilmentOrdersPayload(
@@ -677,9 +683,10 @@ class BuildWaiterTableDetailAction
         string $currency,
         bool $canCancelOrder,
         bool $hasRecordedPayments,
+        array $preparationDepartmentIds,
     ): array {
         return $orders
-            ->map(function (Order $order) use ($currency, $canCancelOrder, $hasRecordedPayments): array {
+            ->map(function (Order $order) use ($currency, $canCancelOrder, $hasRecordedPayments, $preparationDepartmentIds): array {
                 $orderCanBeCancelled = $canCancelOrder
                     && ! $hasRecordedPayments
                     && $this->orderCanBeCancelled($order->status);
@@ -696,6 +703,7 @@ class BuildWaiterTableDetailAction
                             item: $item,
                             currency: $currency,
                             canCancel: $orderCanBeCancelled,
+                            preparationDepartmentIds: $preparationDepartmentIds,
                         ))
                         ->values()
                         ->all(),
@@ -706,9 +714,10 @@ class BuildWaiterTableDetailAction
     }
 
     /**
+     * @param  list<int>  $preparationDepartmentIds
      * @return array<string, mixed>
      */
-    private function fulfilmentOrderItemPayload(Order $order, OrderItem $item, string $currency, bool $canCancel): array
+    private function fulfilmentOrderItemPayload(Order $order, OrderItem $item, string $currency, bool $canCancel, array $preparationDepartmentIds): array
     {
         $ticketItem = $item->kitchenTicketItem;
         $itemCancelled = $item->isCancelled();
@@ -725,11 +734,16 @@ class BuildWaiterTableDetailAction
         };
         $orderMetadata = is_array($order->metadata) ? $order->metadata : [];
         $orderCancellationReason = $orderMetadata['cancellation_reason'] ?? null;
+        $ticket = $ticketItem?->kitchenTicket;
 
         return [
             'id' => $item->id,
             'ticket_item_id' => $ticketItem?->id,
             'department_name' => $ticketItem?->kitchenTicket?->department_name,
+            'preparation_url' => $ticket !== null && $ticket->branch_id === $order->branch_id
+                && in_array($ticket->kitchen_department_id, $preparationDepartmentIds, true)
+                ? route('restaurant.preparation.dashboard', ['branch' => $order->branch_id, 'department' => $ticket->kitchen_department_id, 'ticket' => $ticket->id])
+                : null,
             'guest_name' => $item->historicalGuestName(),
             'item_name' => $item->historicalItemName(),
             'variant_name' => $item->variant_name,

@@ -12,8 +12,8 @@ use App\Enums\ServicePointStatus;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class SyncOrderStatusFromTicketItemsAction
 {
@@ -31,28 +31,26 @@ class SyncOrderStatusFromTicketItemsAction
                 return $order;
             }
 
-            $items = $this->ticketItemsFor($order);
-
-            if ($items->isEmpty()) {
+            if ((int) $order->getAttribute('active_item_count') === 0) {
                 return $order;
             }
 
-            $newStatus = $this->statusForItems($items);
+            $newStatus = $this->statusForItems($order);
 
             if (! $order->status->canTransitionTo($newStatus)) {
                 return $order;
             }
 
-            $this->syncServicePointStatus($order, $newStatus);
-
             if ($order->status === $newStatus) {
+                $this->syncServicePointStatus($order);
+
                 return $this->reloadOrder($order);
             }
 
             $previousStatus = $order->status;
             $metadata = $order->metadata ?? [];
 
-            $order
+            $saved = $order
                 ->forceFill([
                     'status' => $newStatus,
                     'metadata' => array_merge($metadata, [
@@ -61,6 +59,12 @@ class SyncOrderStatusFromTicketItemsAction
                     ]),
                 ])
                 ->save();
+
+            if (! $saved) {
+                throw new RuntimeException('The synchronized order status could not be persisted.');
+            }
+
+            $this->syncServicePointStatus($order);
 
             $this->createOrderStatusLog->handle(
                 event: OrderStatusLogEvent::OrderStatusChanged,
@@ -71,13 +75,9 @@ class SyncOrderStatusFromTicketItemsAction
                 statusType: 'order',
                 metadata: [
                     'source' => 'ticket_item_status_sync',
-                    'ticket_items_count' => $items->count(),
-                    'ready_ticket_items_count' => $items->filter(
-                        fn (KitchenTicketItem $item): bool => $this->itemStatus($item) === KitchenTicketItemStatus::Ready,
-                    )->count(),
-                    'served_ticket_items_count' => $items->filter(
-                        fn (KitchenTicketItem $item): bool => $item->served_at !== null,
-                    )->count(),
+                    'ticket_items_count' => (int) $order->getAttribute('active_item_count'),
+                    'ready_ticket_items_count' => (int) $order->getAttribute('ready_item_count'),
+                    'served_ticket_items_count' => (int) $order->getAttribute('served_item_count'),
                 ],
             );
 
@@ -98,7 +98,20 @@ class SyncOrderStatusFromTicketItemsAction
                 'metadata',
             ])
             ->with([
-                'servicePoint' => fn ($query) => $query->select(['id', 'status']),
+                'tableSession' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'service_point_id', 'status'])
+                    ->with(['servicePoint' => fn ($pointQuery) => $pointQuery->select(['id', 'branch_id', 'status'])]),
+            ])
+            ->withCount([
+                'kitchenTicketItems as active_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', '!=', KitchenTicketItemStatus::Cancelled->value),
+                'kitchenTicketItems as ready_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::Ready->value),
+                'kitchenTicketItems as served_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', '!=', KitchenTicketItemStatus::Cancelled->value)
+                    ->whereNotNull('kitchen_ticket_items.served_at'),
+                'kitchenTicketItems as started_item_count' => fn ($query) => $query
+                    ->whereIn('kitchen_ticket_items.status', [KitchenTicketItemStatus::InProgress->value, KitchenTicketItemStatus::Ready->value]),
             ])
             ->whereKey($order->id)
             ->lockForUpdate()
@@ -107,70 +120,58 @@ class SyncOrderStatusFromTicketItemsAction
 
     private function canSync(Order $order): bool
     {
-        return in_array($order->status, [
-            OrderStatus::SentToKitchenBar,
-            OrderStatus::InProgress,
-            OrderStatus::Ready,
-            OrderStatus::Served,
-        ], true);
+        return $order->tableSession !== null
+            && ! $order->tableSession->status->locksOrderChanges()
+            && in_array($order->status, [
+                OrderStatus::SentToKitchenBar,
+                OrderStatus::InProgress,
+                OrderStatus::Ready,
+                OrderStatus::Served,
+            ], true);
     }
 
-    /**
-     * @return Collection<int, KitchenTicketItem>
-     */
-    private function ticketItemsFor(Order $order): Collection
+    private function statusForItems(Order $order): OrderStatus
     {
-        return KitchenTicketItem::query()
-            ->select(['id', 'kitchen_ticket_id', 'status', 'served_at'])
-            ->whereHas('kitchenTicket', function ($query) use ($order): void {
-                $query->where('order_id', $order->id);
-            })
-            ->where('status', '!=', KitchenTicketItemStatus::Cancelled->value)
-            ->orderBy('id')
-            ->limit(1000)
-            ->get();
-    }
+        $total = (int) $order->getAttribute('active_item_count');
 
-    /**
-     * @param  Collection<int, KitchenTicketItem>  $items
-     */
-    private function statusForItems(Collection $items): OrderStatus
-    {
-        if ($items->every(fn (KitchenTicketItem $item): bool => $item->served_at !== null)) {
+        if ((int) $order->getAttribute('served_item_count') === $total) {
             return OrderStatus::Served;
         }
 
-        if ($items->every(fn (KitchenTicketItem $item): bool => $this->itemStatus($item) === KitchenTicketItemStatus::Ready)) {
+        if ((int) $order->getAttribute('ready_item_count') === $total) {
             return OrderStatus::Ready;
         }
 
-        if ($items->contains(fn (KitchenTicketItem $item): bool => in_array($this->itemStatus($item), [
-            KitchenTicketItemStatus::InProgress,
-            KitchenTicketItemStatus::Ready,
-        ], true))) {
+        if ((int) $order->getAttribute('started_item_count') > 0) {
             return OrderStatus::InProgress;
         }
 
         return OrderStatus::SentToKitchenBar;
     }
 
-    private function itemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
+    private function syncServicePointStatus(Order $order): void
     {
-        return $item->status;
-    }
-
-    private function syncServicePointStatus(Order $order, OrderStatus $newStatus): void
-    {
-        $servicePoint = $order->servicePoint;
+        $servicePoint = $order->tableSession?->servicePoint;
 
         if ($servicePoint === null || ! $this->canUpdateServicePoint($servicePoint->status)) {
             return;
         }
 
-        $newServicePointStatus = match ($newStatus) {
-            OrderStatus::Ready => ServicePointStatus::ReadyToServe,
-            OrderStatus::Served => ServicePointStatus::Occupied,
-            default => ServicePointStatus::Cooking,
+        $items = KitchenTicketItem::query()
+            ->whereNull('served_at')
+            ->where('status', '!=', KitchenTicketItemStatus::Cancelled->value)
+            ->whereHas('kitchenTicket', fn ($query) => $query
+                ->where('branch_id', $order->branch_id)
+                ->where('table_session_id', $order->table_session_id)
+                ->whereHas('order', fn ($orderQuery) => $orderQuery->whereIn('status', [
+                    OrderStatus::SentToKitchenBar->value,
+                    OrderStatus::InProgress->value,
+                    OrderStatus::Ready->value,
+                ])));
+        $newServicePointStatus = match (true) {
+            (clone $items)->where('status', KitchenTicketItemStatus::Ready->value)->exists() => ServicePointStatus::ReadyToServe,
+            $items->exists() => ServicePointStatus::Cooking,
+            default => ServicePointStatus::Occupied,
         };
 
         if ($servicePoint->status === $newServicePointStatus) {

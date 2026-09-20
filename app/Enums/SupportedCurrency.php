@@ -71,10 +71,7 @@ enum SupportedCurrency: string
      */
     public static function values(): array
     {
-        return array_map(
-            fn (self $currency): string => $currency->value,
-            self::cases(),
-        );
+        return array_column(self::cases(), 'value');
     }
 
     /**
@@ -82,9 +79,12 @@ enum SupportedCurrency: string
      */
     public static function labels(): array
     {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $currency): array => [$currency->value => $currency->label()])
-            ->all();
+        $labels = [];
+        foreach (self::cases() as $currency) {
+            $labels[$currency->value] = $currency->label();
+        }
+
+        return $labels;
     }
 
     public static function clean(?string $currency): string

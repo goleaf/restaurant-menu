@@ -42,12 +42,12 @@ final class DishQuery
                 $categories->push($selected);
             }
         }
-        $departments = KitchenDepartment::query()->select(['id', 'name', 'is_active'])->where('branch_id', $branch->id)
+        $departments = KitchenDepartment::query()->select(['id', 'type', 'name', 'is_active'])->where('branch_id', $branch->id)
             ->where(fn ($query) => $query->where('is_active', true)->orWhereKey($departmentId))
-            ->when($search['department'] !== '', fn ($query) => $query->where('name', 'like', '%'.$search['department'].'%'))
+            ->when($search['department'] !== '', fn ($query) => $query->matchingDisplayName($search['department']))
             ->orderBy('name')->orderBy('id')->limit(20)->get();
         if ($departmentId !== '' && ! $departments->contains('id', (int) $departmentId)) {
-            $selected = KitchenDepartment::query()->select(['id', 'name', 'is_active'])->where('branch_id', $branch->id)->whereKey($departmentId)->first();
+            $selected = KitchenDepartment::query()->select(['id', 'type', 'name', 'is_active'])->where('branch_id', $branch->id)->whereKey($departmentId)->first();
             if ($selected !== null) {
                 $departments->push($selected);
             }
@@ -58,7 +58,7 @@ final class DishQuery
             'item' => $item,
             'menuOptions' => $menus->map(fn (Menu $menu): array => ['value' => (string) $menu->id, 'label' => $menu->name])->all(),
             'editingItemCategoryOptions' => $categories->map(fn (MenuCategory $category): array => ['value' => (string) $category->id, 'label' => $category->name])->all(),
-            'activeKitchenDepartmentOptions' => $departments->map(fn (KitchenDepartment $department): array => ['value' => (string) $department->id, 'label' => $department->name, 'is_active' => $department->is_active])->all(),
+            'activeKitchenDepartmentOptions' => $departments->map(fn (KitchenDepartment $department): array => ['value' => (string) $department->id, 'label' => $department->localizedName(), 'is_active' => $department->is_active])->all(),
             'languageOptions' => SupportedLocale::labels(), 'allergenOptions' => MenuAllergen::options(), 'dietaryLabelOptions' => MenuDietaryLabel::options(),
         ];
     }

@@ -8,6 +8,7 @@ import { httpForm } from './components/http-form.js';
 import { kitchenTimers } from './components/kitchen-timers.js';
 import { menuImagePicker, menuImagePresentationEditor } from './components/menu-image-picker.js';
 import { menuTranslations } from './components/menu-translations.js';
+import { settingsWorkspace } from './components/settings-workspace.js';
 import { menuWorkspace } from './components/menu-workspace.js';
 import { workspaceNavigation } from './components/navigation-search.js';
 import { notificationPanel } from './components/notification-panel.js';
@@ -30,7 +31,7 @@ export function registerAlpineComponents(Alpine) {
     const providers = {
         availabilityWorkspace, branchPickerDisabled, connectivity, floorWorkspace, guestDishDialog, guestInvite, guestMenu, httpForm,
         invitationClipboard, kitchenTimers, menuImagePicker, menuImagePresentationEditor,
-        menuTranslations, menuWorkspace, notificationPanel, securityClipboard, staffEditor,
+        menuTranslations, menuWorkspace, settingsWorkspace, notificationPanel, securityClipboard, staffEditor,
         staffWorkspace, twoFactorChallenge, waiterSounds, workspaceNavigation,
         catalogTransfer, catalogUpload, recoveryCodes, restaurantDashboard, restoreUpload,
         passkeyRegistration: () => passkeyRegistration(passkeys),

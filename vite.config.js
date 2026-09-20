@@ -14,6 +14,8 @@ export default defineConfig({
                 'resources/scss/availability.scss',
                 'resources/scss/restaurant-center.scss',
                 'resources/scss/qr-print.scss',
+                'resources/scss/preparation.scss',
+                'resources/scss/preparation-print.scss',
                 'resources/js/app.js',
             ],
             refresh: true,

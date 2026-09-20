@@ -50,7 +50,7 @@ final class ApplicationNavigationPresenter
             'workspace' => $workspace,
             'workspaceFallback' => $request->query('workspace_notice') === 'section_unavailable',
             'navigationItems' => $items,
-            'serviceNavigation' => array_values(array_filter($items, fn (array $item): bool => in_array($item['key'], ['waiter', 'kitchen', 'bar'], true))),
+            'serviceNavigation' => array_values(array_filter($items, fn (array $item): bool => in_array($item['key'], ['waiter', 'preparation', 'kitchen', 'bar'], true))),
             'hallNavigation' => $workspace ? $this->hallItems($workspace, $access, $request) : [],
             'canAccessPlatformDashboard' => $platform,
             'canAccessOnboarding' => $onboarding,
@@ -85,6 +85,7 @@ final class ApplicationNavigationPresenter
         $definitions = [
             ['overview', 'squares-2x2', 'restaurant.dashboard', ['branch' => $id], $allows('overview')],
             ['waiter', 'clipboard-document-list', 'restaurant.waiter.dashboard', ['branch' => $id], $allows('waiter')],
+            ['preparation', 'clipboard-document-list', 'restaurant.preparation.dashboard', ['branch' => $id], $allows('preparation')],
             ['kitchen', 'fire', 'restaurant.kitchen.dashboard', ['branch' => $id], $allows('kitchen')],
             ['bar', 'beaker', 'restaurant.bar.dashboard', ['branch' => $id], $allows('bar')],
             ['menu', 'book-open', 'organizations.brands.branches.menu.index', $nested, $allows('menu')],
@@ -139,8 +140,8 @@ final class ApplicationNavigationPresenter
         $key = $preferred !== null && in_array($preferred, $keys, true) ? $preferred : null;
         if ($key === null) {
             $order = in_array($context->branchId, $access['management'] ?? [], true)
-                ? ['overview', 'menu', 'availability', 'team', 'settings', 'reports', 'waiter', 'kitchen', 'bar', 'halls', 'audit']
-                : ['waiter', 'kitchen', 'bar', 'menu', 'availability', 'team', 'settings', 'overview', 'halls', 'reports', 'audit'];
+                ? ['overview', 'menu', 'availability', 'team', 'settings', 'reports', 'waiter', 'kitchen', 'bar', 'preparation', 'halls', 'audit']
+                : ['waiter', 'kitchen', 'bar', 'preparation', 'menu', 'availability', 'team', 'settings', 'overview', 'halls', 'reports', 'audit'];
             foreach ($order as $candidate) {
                 if (in_array($candidate, $keys, true)) {
                     $key = $candidate;

@@ -16,17 +16,24 @@ final class SyncMenuItemTranslationsAction
      */
     public function handle(MenuItem $item, array $translations): void
     {
-        foreach (SupportedLocale::values() as $languageCode) {
-            if (! array_key_exists($languageCode, $translations)) {
-                continue;
-            }
+        $languageCodes = array_values(array_intersect(SupportedLocale::values(), array_keys($translations)));
+        if ($languageCodes === []) {
+            return;
+        }
 
+        $existing = $item->translations()
+            ->select(['id', 'menu_item_id', 'language_code', 'name', 'description', 'created_at', 'updated_at'])
+            ->whereIn('language_code', $languageCodes)
+            ->get()
+            ->keyBy('language_code');
+
+        foreach ($languageCodes as $languageCode) {
             $translation = $translations[$languageCode];
             $name = PlainText::optional($translation['name'] ?? null, 180, squish: true);
             $description = PlainText::optional($translation['description'] ?? null, 1200);
 
             if ($name === null) {
-                $record = $item->translations()->where('language_code', $languageCode)->first();
+                $record = $existing->get($languageCode);
                 if ($record !== null && $record->delete() !== true) {
                     throw new RuntimeException('The menu item translation deletion was cancelled.');
                 }
@@ -34,11 +41,11 @@ final class SyncMenuItemTranslationsAction
                 continue;
             }
 
-            $record = $item->translations()->updateOrCreate(
-                ['language_code' => $languageCode],
-                ['name' => $name, 'description' => $description],
+            $attributes = ['name' => $name, 'description' => $description];
+            $record = $existing->get($languageCode) ?? $item->translations()->createOrFirst(
+                ['language_code' => $languageCode], $attributes,
             );
-            if (! $record->exists || $record->isDirty(['name', 'description'])) {
+            if (! $record->exists || (! $record->wasRecentlyCreated && $record->fill($attributes)->save() !== true)) {
                 throw new RuntimeException('The menu item translation write was cancelled.');
             }
         }

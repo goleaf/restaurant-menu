@@ -30,13 +30,13 @@ enum KitchenDepartmentType: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Kitchen => 'Kitchen',
-            self::Bar => 'Bar',
-            self::Dessert => 'Dessert',
-            self::Hookah => 'Hookah',
-            self::Custom => 'Custom',
-        };
+        return __(match ($this) {
+            self::Kitchen => 'preparation.types.kitchen',
+            self::Bar => 'preparation.types.bar',
+            self::Dessert => 'preparation.types.dessert',
+            self::Hookah => 'preparation.types.hookah',
+            self::Custom => 'preparation.types.custom',
+        });
     }
 
     public function badgeColor(): string
@@ -47,6 +47,17 @@ enum KitchenDepartmentType: string
             self::Dessert => 'pink',
             self::Hookah => 'violet',
             self::Custom => 'zinc',
+        };
+    }
+
+    public function defaultName(): string
+    {
+        return match ($this) {
+            self::Kitchen => 'Kitchen',
+            self::Bar => 'Bar',
+            self::Dessert => 'Dessert',
+            self::Hookah => 'Hookah',
+            self::Custom => 'Custom',
         };
     }
 
@@ -77,10 +88,10 @@ enum KitchenDepartmentType: string
     public static function defaultSeedRows(): array
     {
         return [
-            ['type' => self::Kitchen->value, 'name' => self::Kitchen->label(), 'sort_order' => 10],
-            ['type' => self::Bar->value, 'name' => self::Bar->label(), 'sort_order' => 20],
-            ['type' => self::Dessert->value, 'name' => self::Dessert->label(), 'sort_order' => 30],
-            ['type' => self::Hookah->value, 'name' => self::Hookah->label(), 'sort_order' => 40],
+            ['type' => self::Kitchen->value, 'name' => self::Kitchen->defaultName(), 'sort_order' => 10],
+            ['type' => self::Bar->value, 'name' => self::Bar->defaultName(), 'sort_order' => 20],
+            ['type' => self::Dessert->value, 'name' => self::Dessert->defaultName(), 'sort_order' => 30],
+            ['type' => self::Hookah->value, 'name' => self::Hookah->defaultName(), 'sort_order' => 40],
         ];
     }
 }

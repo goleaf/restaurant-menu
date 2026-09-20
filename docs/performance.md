@@ -2,6 +2,97 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 settings measurements — 2026-09-20
+
+Matched deterministic fixture on actual PHP8.5.8, owned SQLite memory database and separate storage. Original source is the pre-task snapshot of main7a5f3cf plus incoming dirty work; candidate includes all five independent Forms. Harness, raw JSON and source digests are under owned `restaurant-p14-n90kyx55/settings-measurements/`. No latency improvement is claimed; other validation and native compilation ran on this8GiB workstation.
+
+| Metric | Original full form | Independent center |
+|---|---:|---:|
+| Warmed complete GET SQL |66|92|
+| Median HTML bytes |187608|305621|
+| Transient peak memory delta bytes |1326448|2456344|
+| Initial settings snapshot bytes |1992|3564|
+| Serialized Livewire save request equivalent bytes |2383|4197|
+| Save response bytes |76711|194402|
+| Save SQL |35|68|
+| Profile operation allowlisted fields |23 settings/profile (+2 media slots)|9 profile only|
+| Serialized Action operation bytes |716|308|
+
+Initial candidate used106 GET queries; private per-request context reuse removes14 without sharing authorization across requests. Post-write rendering still reloads fresh data. Final local median GET959.76ms and single-save575.39ms are qualified local samples; earlier baseline samples ranged539.5–773.11ms and153.78–210ms. HTML/snapshot costs increase because the single component retains independent drafts for every equally authorized section. Profile save no longer updates Branch.currency or branch_settings; first explicit profile save may initialize an empty translation map. Search opens and focuses its group in one section transition; before/after click counts were not separately instrumented.
+
+Shared dish/availability SCSS and extracted menu/staff history functions remove duplicated assets. The production build passes unchanged per-entry, per-scenario and total budgets (final959083 raw bytes). Existing guest catalogue cold22/warm3 query budgets remain intact; profile/media no longer evict unrelated catalogue/polling entries. Current-generation publication and polling cold-fill races are tested on real file-backed SQLite processes.
+
+
+## HTTP privacy path matching — 2026-09-20
+
+ProtectInvitationResponses now passes its unchanged path patterns to `Str::is` with one `Request::decodedPath()` result. The installed Laravel 13 Request::is implementation constructs a Collection and decodes the same path for each pattern until a match. No classification cache is introduced; route names and Livewire headers retain their earlier short-circuit order.
+
+Matched original/current PHP 8.5.8 measurements use seven alternating rounds of 10000 warmed calls. Response headers match in every measured branch. Median microseconds per middleware call:
+
+| Request | Path decodes before → after | Collections before → after | Time before → after |
+| --- | ---: | ---: | ---: |
+| Ordinary catalogue path | 12 → 1 | 1 → 0 | 9.335 → 5.275 |
+| Last matching path (`email/verify`) | 12 → 1 | 1 → 0 | 19.277 → 15.648 |
+| Invitation path | 2 → 1 | 1 → 0 | 13.948 → 11.122 |
+| Named login on a configured path | 0 → 0 | 0 → 0 | 12.097 → 11.797 |
+| Livewire header | 0 → 0 | 0 → 0 | 9.006 → 9.508 |
+
+Actual Xdebug function monitoring measures per-call deltas, with the original implementation as a positive control; timing runs separately with Xdebug disabled. The unchanged early-exit branches illustrate timing noise on the shared workstation. These are middleware measurements, not end-to-end request or production latency claims. SQL is unchanged. Original source/hash, measurement.json and function-counts.json are retained in owned `restaurant-http-baseline-zijezxc7`. ProtectInvitationResponsesTest guards unchanged response contracts and the single-decode budget.
+
+## Enum projection allocation — 2026-09-20
+
+Six frequently consumed enums now use native value projections and direct label-map construction: TableSessionStatus, McpAbility, SupportedLocale, SupportedCurrency, MenuAllergen and MenuDietaryLabel. Workflow predicates remain the only source of status membership; MCP still excludes every mutation. Label methods run for the current/requested locale on every call, with no new cache or shared helper.
+
+Matched original/current PHP8.5.8 measurements use seven alternating rounds of5000 calls after warm-up. All12 changed method outputs match in EN/LT/RU and after switching back to EN. Representative median microseconds per call:
+
+| Projection | Before | After |
+| --- | ---: | ---: |
+| TableSessionStatus guest-visible values | 2.600 | 1.219 |
+| TableSessionStatus occupying values | 2.374 | 1.152 |
+| TableSessionStatus entry-blocking values | 2.897 | 1.597 |
+| SupportedLocale values | 0.274 | 0.149 |
+| SupportedCurrency values | 0.718 | 0.308 |
+| MenuAllergen values | 0.726 | 0.290 |
+| McpAbility read-only values | 4.030 | 3.640 |
+| SupportedLocale labels | 4.696 | 3.813 |
+
+An actual [Xdebug function monitor](https://xdebug.org/docs/trace#xdebug_start_function_monitor) measures Collection constructor calls after warm-up:4→0 for each of the three session subsets and2→0 for each session/language/currency label map. Counts use per-call deltas because the monitor retains its earlier records; the original implementation provides a positive control. Timing runs separately from monitoring on the shared workstation and is not a production/request-latency or peak-memory claim. SQL is unchanged. Original sources/hashes, all timing samples and collection-counts.json are retained in owned `restaurant-enums-baseline-galt1vtz`. EnumProjectionTest preserves public ordering, caller-copy isolation, allow/deny membership, locale freshness and normalization fallbacks.
+
+## Report period DTO resolution — 2026-09-20
+
+`ReportPeriodInput` derives only missing calendar boundaries; `CalendarDateRange` remains the final strict date/range validator and UTC converter. A complete range no longer parses its dates twice or resolves the unused current date. One-sided ranges use the supplied boundary directly; only an entirely absent range reads the branch-local current day. `MenuItemData` already uses bounded direct projections and retains its absent/null translation semantics.
+
+Matched original/current resolver measurements on PHP8.5.8/Carbon3.13.2 have identical calendar and microsecond UTC outputs:
+
+| Input | Date parses before → after | Median microseconds before → after |
+| --- | ---: | ---: |
+| Both dates | 5 → 2 | 47.99 → 35.54 |
+| Start only | 4 → 3 | 57.18 → 52.11 |
+| End only | 4 → 3 | 56.39 → 45.23 |
+| Neither date | 3 → 3 | 42.57 → 38.52 |
+
+Timing uses seven alternating rounds of2000 calls per resolver after warm-up, in one process on the shared workstation; timing variation is not a production/request-latency guarantee. Counts delegate to Carbon's real parser with temporary instrumentation restored before timing. The initial measurement harness emitted PHP8.5 reflection deprecations outside timed work; the corrected two-argument instrumentation reproduced all counts without warnings. Original source and measurement.json are retained in owned `restaurant-data-baseline-wwesaeh0`. DTO resolution performs no database queries and introduces no cache, schema or dependency change. ReportPeriodInputTest guards defaults, independent clock/timezone calls, malformed/reversed/32-day input, leap/year boundaries, DST and skipped local dates.
+
+## Validation Concern short-circuiting — 2026-09-20
+
+`PasswordValidationRules` checks required/string/confirmation before the configured password rule and stops on the first field failure. For a strong candidate with absent, malformed or mismatched confirmation, breach HTTP work falls from one request to zero. Correctly confirmed strong candidates still perform one check; the production complexity and compromised-password rejection rules remain active. `ProfileValidationRules` checks the existing 255-character limit before email parsing: overlong input resolves the real email parser once before the change and zero times afterward.
+
+SQL counts are unchanged: invalid email performs zero queries and a well-formed address performs one uniqueness query, including self-exclusion on update. Laravel already skips presence rules after earlier field errors. `ValidationConcernsTest` uses isolated SQLite, the application's production password defaults, fake HTTP responses and the real email parser; no live breach-service timing or production latency claim is made. Field validation reports its first failure while unrelated fields continue validation. No indexes, schema or cache changes are needed.
+
+## Translation Action reads — 2026-09-20
+
+`SyncMenuTranslationsAction`, `SyncMenuCategoryTranslationsAction` and `SyncMenuItemTranslationsAction` read only requested supported locales in one fresh owner-scoped projection, bounded to EN/LT/RU by the existing owner+locale unique indexes. They keep individual Eloquent writes/events; missing rows use `createOrFirst` and update a conflicting winner, preserving the installed relationship's unique-conflict recovery. Loaded caller relations are not trusted as current persistence. Empty/unsupported-only input performs no queries.
+
+`MenuTranslationSyncTest` measures the complete Action call, including the existing database-cache observer work, on PHP8.5.8/Laravel13.31.0 with isolated SQLite. The matched three-locale create and update fixtures have identical counts:
+
+| Action | Before | After | Translation lookup reads |
+| --- | ---: | ---: | --- |
+| Menu | 15 | 13 | 3 → 1 |
+| Category | 18 | 16 | 3 → 1 |
+| Dish | 24 | 22 | 3 → 1 |
+
+Unchanged replay performs one read and preserves row attributes/timestamps. Tests also cover partial/foreign/stale relations, a deterministic intervening insert with unique-conflict recovery, required-write veto rollback and optional deletion cache events. Category deletion previously bypassed observers; it now fires them and respects vetoes, so the create/update table does not claim a deletion-query reduction. No production latency, process peak-memory or full-directory speedup is claimed. No schema/dependency change is needed. Current verification and the unrelated global-analysis failures are recorded in PROGRESS.md.
+
 ## Prompt 5 current-baseline measurements — 2026-09-20
 
 Six alternating isolated PHP8.5.10 runs compare clean `ad1cac6` with the current P5 corrections on identical10-room/200-table fixtures,20 visible rows and100 selected QR targets. Reflection proves each copied source root; dependency/asset hashes match. All6 runs pass45 assertions each. The baseline already has one workspace: no invented reduction from the old2255449 catalogues is claimed. Room/table/print paths still require no repeated restaurant choice or second catalogue. New partial-result recovery opens the existing QR panel and retains the same selection.

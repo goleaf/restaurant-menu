@@ -6,6 +6,7 @@ namespace App\Services\Navigation;
 
 use App\Models\Branch;
 use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
@@ -49,10 +50,17 @@ final class WorkspaceContextResolver
             abort_if($objectId === null, 404);
         }
         $queryId = $this->identifier($request->query('branch'));
-        $department = $this->identifier($request->query('department'));
-        if ($department !== null && $request->routeIs('restaurant.kitchen.*', 'restaurant.bar.*')) {
+        $department = in_array($destination, ['kitchen', 'bar', 'preparation'], true) && $request->query('department') === 'all'
+            ? null : $this->identifier($request->query('department'));
+        if ($request->routeIs('restaurant.preparation.*') && $request->query('ticket') !== null) {
+            $ticketId = $this->identifier($request->query('ticket'));
+            $objectId = KitchenTicket::query()->whereKey($ticketId)->value('branch_id');
+            abort_if($objectId === null, 404);
+        }
+        if ($department !== null && $request->routeIs('restaurant.kitchen.*', 'restaurant.bar.*', 'restaurant.preparation.*')) {
             $departmentBranch = KitchenDepartment::query()->whereKey($department)->value('branch_id');
             abort_if($departmentBranch === null, 404);
+            abort_if($objectId !== null && $objectId !== $departmentBranch, 409);
             $objectId = $departmentBranch;
         }
         $ids = array_values(array_unique(array_filter([$objectId, $routeId, $queryId], fn ($id) => $id !== null)));
@@ -78,9 +86,9 @@ final class WorkspaceContextResolver
         if ($request->routeIs('restaurant.qr-lookup.*')) {
             return new WorkspaceContext($user->id, 'aggregate', 'halls');
         }
-        $available = in_array($destination, ['waiter', 'kitchen', 'bar'], true)
+        $available = in_array($destination, ['waiter', 'kitchen', 'bar', 'preparation'], true)
             ? ($access[$destination] ?? []) : $this->access->branchIds($access);
-        abort_if(in_array($destination, ['waiter', 'kitchen', 'bar'], true) && $available === [], 403);
+        abort_if(in_array($destination, ['waiter', 'kitchen', 'bar', 'preparation'], true) && $available === [], 403);
         $preference = $request->hasSession() ? $request->session()->get('workspace.preference', []) : [];
         if ($request->routeIs('dashboard') && is_array($preference) && ($preference['actor'] ?? null) === $user->id
             && ($preference['mode'] ?? null) === 'aggregate' && in_array($preference['destination'] ?? null, ['overview', 'reports', 'audit'], true)
@@ -120,6 +128,7 @@ final class WorkspaceContextResolver
             $request->routeIs('organizations.brands.branches.areas.*', 'organizations.brands.branches.service-points.*', 'organizations.brands.branches.qr.*') => 'halls',
             $request->routeIs('restaurant.qr-lookup.*') => 'halls',
             $request->routeIs('restaurant.waiter.*') => 'waiter',
+            $request->routeIs('restaurant.preparation.*') => 'preparation',
             $request->routeIs('restaurant.kitchen.*') => 'kitchen',
             $request->routeIs('restaurant.bar.*') => 'bar',
             $request->routeIs('restaurant.exports.*') => 'reports',

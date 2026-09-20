@@ -54,6 +54,7 @@ class Profile extends Component
         $this->locale = SupportedLocale::normalize($user->locale);
         App::setLocale($this->locale);
         session()->put('interface_locale', $this->locale);
+        $this->dispatch('profile-locale-updated')->to(DisplayFormats::class);
 
         Flux::toast(variant: 'success', text: __('ui.livewire.settings.profile.profile_updated'));
     }

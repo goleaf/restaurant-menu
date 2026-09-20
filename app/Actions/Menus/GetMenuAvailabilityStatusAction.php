@@ -8,6 +8,7 @@ use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Services\Availability\OpeningIntervalEvaluator;
+use App\Support\DisplayPreferences;
 use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -17,12 +18,12 @@ class GetMenuAvailabilityStatusAction
     public function __construct(private readonly OpeningIntervalEvaluator $evaluator, private readonly GetBranchOpeningStatusAction $branchOpening) {}
 
     /** @return array{is_configured: bool, is_available: bool, label: string, detail: string, tone: string, next_available_at: string|null, available_until: string|null, timezone: string, reason_codes: list<string>, evaluated_at: string, next_change_at: string|null, next_orderable_at: string|null} */
-    public function handle(Menu $menu, ?CarbonInterface $now = null): array
+    public function handle(Menu $menu, ?CarbonInterface $now = null, ?DisplayPreferences $preferences = null): array
     {
         $instant = $now === null ? CarbonImmutable::now() : CarbonImmutable::instance($now);
         $branch = $this->branchFor($menu);
         $timezone = $branch->timezone ?: config('app.timezone', 'UTC');
-        $branchStatus = $this->branchOpening->handle($branch, $instant);
+        $branchStatus = $this->branchOpening->handle($branch, $instant, $preferences);
         $menu->loadMissing('availabilitySchedules:id,menu_id,day_of_week,starts_at,ends_at');
         $scheduleClosed = array_key_exists('schedule_is_closed', $menu->getAttributes())
             ? (bool) $menu->schedule_is_closed
@@ -48,18 +49,18 @@ class GetMenuAvailabilityStatusAction
         if (! $allowed) {
             $label = __('menu.guest.unavailable');
             $detail = $next === null ? __('menu.guest.schedule_unknown')
-                : __('menu.guest.available_from', ['time' => $this->openingLabel($next, $instant->setTimezone($timezone))]);
+                : __('menu.guest.available_from', ['time' => $this->openingLabel($next, $instant->setTimezone($timezone), $preferences)]);
         } elseif (! $configured && ! $branchStatus['is_configured']) {
             $label = __('menu.guest.available_always');
             $detail = __('menu.guest.availability_schedule_missing');
         } else {
             $label = __('menu.guest.available_now');
-            $detail = $closes === null ? __('availability.open_without_deadline') : __('menu.guest.available_until', ['time' => LocalizedDateFormatter::time($closes)]);
+            $detail = $closes === null ? __('availability.open_without_deadline') : __('menu.guest.available_until', ['time' => LocalizedDateFormatter::time($closes, $preferences)]);
         }
 
         return ['is_configured' => $configured, 'is_available' => $allowed, 'label' => $label, 'detail' => $detail,
             'tone' => $allowed ? ($configured ? 'success' : 'muted') : 'warning',
-            'next_available_at' => $next?->toIso8601String(), 'available_until' => $closes === null ? null : LocalizedDateFormatter::time($closes),
+            'next_available_at' => $next?->toIso8601String(), 'available_until' => $closes === null ? null : LocalizedDateFormatter::time($closes, $preferences),
             'timezone' => $timezone, 'reason_codes' => $reasons, 'evaluated_at' => $instant->toIso8601String(),
             'next_change_at' => $result['next_change_at']?->toIso8601String(), 'next_orderable_at' => $result['next_orderable_at']?->toIso8601String()];
     }
@@ -82,15 +83,15 @@ class GetMenuAvailabilityStatusAction
         return $branch;
     }
 
-    private function openingLabel(CarbonImmutable $next, CarbonImmutable $instant): string
+    private function openingLabel(CarbonImmutable $next, CarbonImmutable $instant, ?DisplayPreferences $preferences): string
     {
         if ($next->isSameDay($instant)) {
-            return LocalizedDateFormatter::time($next);
+            return LocalizedDateFormatter::time($next, $preferences);
         }
         $key = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'][$next->isoWeekday() - 1];
 
         $translationKey = 'menu.guest.days.'.$key;
 
-        return __($translationKey).' '.LocalizedDateFormatter::time($next);
+        return __($translationKey).' '.LocalizedDateFormatter::time($next, $preferences);
     }
 }

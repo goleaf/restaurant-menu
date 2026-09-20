@@ -17,6 +17,6 @@ class EnsureBranchSettingsAction
             return $settings;
         }
 
-        return $branch->settings()->create(BranchSetting::defaults($branch));
+        return $branch->settings()->createOrFirst([], BranchSetting::defaults($branch));
     }
 }

@@ -130,6 +130,10 @@
                                     <flux:badge :color="$orderItem['status_color']">{{ __($orderItem['status_label']) }}</flux:badge>
                                 </div>
 
+                                @if ($orderItem['preparation_url'])
+                                    <flux:button :href="$orderItem['preparation_url']" wire:navigate size="sm" variant="subtle" icon="arrow-top-right-on-square">{{ __('preparation.open_from_order') }}</flux:button>
+                                @endif
+
                                 @if ($orderItem['modifiers'] !== [])
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach ($orderItem['modifiers'] as $modifier)

@@ -41,6 +41,8 @@
             </div>
         </form>
 
+        <livewire:settings.display-formats />
+
         <section id="profile-appearance" aria-labelledby="profile-appearance-heading" class="my-6 space-y-6">
             <div>
                 <flux:heading id="profile-appearance-heading" level="2">{{ __('ui.settings.appearance.appearance_settings') }}</flux:heading>

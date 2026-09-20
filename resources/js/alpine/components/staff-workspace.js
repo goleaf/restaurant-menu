@@ -1,3 +1,5 @@
+import { stampWorkspaceHistory, guardWorkspaceHistory } from './workspace-history.js';
+
 export function staffEditor() {
     return {
         destroyed: false,
@@ -266,54 +268,10 @@ export function staffWorkspace() {
             }
         },
         stampHistory() {
-            if (this.destroyed || !ownerRoot.isConnected || this.returningToIndex !== null) return;
-            this.nativeHistoryIndex = window.navigation?.currentEntry?.index ?? null;
-            if (this.historyUrl !== window.location.href) this.historyIndex++;
-            this.historyUrl = window.location.href;
-            window.history.replaceState({
-                ...window.history.state,
-                staffWorkspace: { id: this.historyId, index: this.historyIndex },
-            }, '', window.location.href);
+            stampWorkspaceHistory.call(this, ownerRoot, 'staffWorkspace');
         },
         guardHistory(event) {
-            // Restore committed history before Livewire swaps the page. Cancelling
-            // Navigation API traversals can desynchronize repeated Back in WebKit.
-            if (this.nativeHistoryIndex !== null && window.navigation?.currentEntry) {
-                const index = window.navigation.currentEntry.index;
-                if (this.returningToIndex !== null && index === this.returningToIndex) {
-                    event.stopImmediatePropagation();
-                    this.returningToIndex = null;
-                    return;
-                }
-                const delta = index - this.nativeHistoryIndex;
-                if (delta !== 0 && (this.dirty || this.pendingRequests > 0)) {
-                    event.stopImmediatePropagation();
-                    this.returningToIndex = this.nativeHistoryIndex;
-                    window.history.go(-delta);
-                    this.requestNavigation(() => window.history.go(delta));
-                    return;
-                }
-                this.nativeHistoryIndex = index;
-                this.historyUrl = window.location.href;
-                return;
-            }
-            const entry = event.state?.staffWorkspace;
-            if (entry?.id !== this.historyId) return;
-            if (this.returningToIndex !== null && entry.index === this.returningToIndex) {
-                event.stopImmediatePropagation();
-                this.returningToIndex = null;
-                return;
-            }
-            const delta = entry.index - this.historyIndex;
-            if (delta !== 0 && (this.dirty || this.pendingRequests > 0)) {
-                event.stopImmediatePropagation();
-                this.returningToIndex = this.historyIndex;
-                window.history.go(-delta);
-                this.requestNavigation(() => window.history.go(delta));
-                return;
-            }
-            this.historyIndex = entry.index;
-            this.historyUrl = window.location.href;
+            guardWorkspaceHistory.call(this, event, 'staffWorkspace', this.dirty || this.pendingRequests > 0);
         },
     };
 }

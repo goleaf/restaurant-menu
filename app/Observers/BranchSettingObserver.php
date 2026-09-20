@@ -24,7 +24,12 @@ class BranchSettingObserver
      */
     public function updated(BranchSetting $branchSetting): void
     {
-        $this->forgetBranchCache->handle((int) $branchSetting->branch_id);
+        $guestMenu = $branchSetting->wasChanged('default_language');
+        $polling = $branchSetting->wasChanged('polling_interval_seconds');
+
+        if ($guestMenu || $polling) {
+            $this->forgetBranchCache->handle((int) $branchSetting->branch_id, $guestMenu, $polling);
+        }
     }
 
     /**

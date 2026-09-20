@@ -9,10 +9,9 @@ enum BranchOrderFlowMode: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::WaiterConfirmation => 'Waiter confirmation',
-            self::StaffManaged => 'Staff managed',
-        };
+        $key = 'ui.branch.order_flow_modes.'.$this->value;
+
+        return __($key);
     }
 
     /**

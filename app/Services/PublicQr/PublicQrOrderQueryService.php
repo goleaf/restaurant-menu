@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\DisplayPreferences;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 
@@ -351,7 +352,7 @@ final class PublicQrOrderQueryService
                 'id' => $variant->id,
                 'name' => $variant->name,
                 'price_cents' => $variant->price_cents,
-                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $currency),
+                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $currency, preferences: DisplayPreferences::defaults()),
                 'is_default' => $variant->is_default,
             ])
             ->values()
@@ -376,7 +377,7 @@ final class PublicQrOrderQueryService
                 'id' => $variant->id,
                 'name' => $variant->localizedName($language),
                 'price_cents' => $variant->price_cents,
-                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $currency),
+                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $currency, preferences: DisplayPreferences::defaults()),
             ])
             ->values()
             ->all();

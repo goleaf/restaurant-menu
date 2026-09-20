@@ -16,6 +16,35 @@ test('default translation audit includes the maintained Pro template boundary wi
         ->assertSuccessful();
 });
 
+test('translation audit fails when a used semantic key is missing from every locale', function (): void {
+    $langDir = translationAuditFixturePath('absent/lang');
+    $scanDir = translationAuditFixturePath('absent/app');
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        translationAuditWriteJson($langDir, $locale, ['ui.actions.save' => 'Save']);
+    }
+    File::ensureDirectoryExists($scanDir);
+    File::put($scanDir.'/Example.php', "<?php\n__('ui.actions.save');\n__('ui.actions.missing');\n");
+
+    $this->artisan('translations:audit', ['--lang-dir' => $langDir, '--scan-dir' => [$scanDir]])
+        ->expectsOutputToContain('ui.actions.missing')->assertFailed();
+});
+
+test('translation audit recognizes concatenated semantic prefixes without accepting standalone prefixes', function (): void {
+    $langDir = translationAuditFixturePath('prefix/lang');
+    $scanDir = translationAuditFixturePath('prefix/app');
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        translationAuditWriteJson($langDir, $locale, ['ui.timer.started' => 'Started']);
+    }
+    File::ensureDirectoryExists($scanDir);
+    File::put($scanDir.'/Example.php', <<<'PHP'
+<?php
+__('ui.timer.'.$basis);
+PHP);
+    $this->artisan('translations:audit', ['--lang-dir' => $langDir, '--scan-dir' => [$scanDir]])->assertSuccessful();
+    File::put($scanDir.'/Example.php', "<?php\n__('ui.timer.');\n");
+    $this->artisan('translations:audit', ['--lang-dir' => $langDir, '--scan-dir' => [$scanDir]])->assertFailed();
+});
+
 test('translation audit passes for aligned semantic json keys and clean code scan', function () {
     $langDir = translationAuditFixturePath('clean/lang');
     $scanDir = translationAuditFixturePath('clean/app');

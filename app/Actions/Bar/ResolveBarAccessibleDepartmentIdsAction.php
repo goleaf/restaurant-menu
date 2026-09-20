@@ -19,7 +19,7 @@ class ResolveBarAccessibleDepartmentIdsAction
      * @param  array<string, Collection<int, int>>|null  $permissionBranchIds  Internal decisions freshly resolved for this user in the current read operation.
      * @return Collection<int, int>
      */
-    public function handle(User $user, ?array $permissionBranchIds = null): Collection
+    public function handle(User $user, ?array $permissionBranchIds = null, ?int $branchId = null): Collection
     {
         return $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
@@ -27,6 +27,7 @@ class ResolveBarAccessibleDepartmentIdsAction
             roleCodes: self::accessRules()['roles'],
             permissionCodes: self::accessRules()['permissions'],
             permissionBranchIds: $permissionBranchIds,
+            branchId: $branchId,
         );
     }
 

@@ -35,6 +35,48 @@ beforeEach(function () {
     $this->parameters = ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch, 'item' => $this->item];
 });
 
+test('persisted label lists render without writes and survive explicit dish saves', function (bool $doubleEncoded, array $allergens, array $dietaryLabels): void {
+    $this->item->update([
+        'allergens' => $doubleEncoded ? json_encode($allergens, JSON_THROW_ON_ERROR) : $allergens,
+        'dietary_labels' => $doubleEncoded ? json_encode($dietaryLabels, JSON_THROW_ON_ERROR) : $dietaryLabels,
+    ]);
+    $before = $this->item->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+
+    $this->actingAs($this->actor)->get(route('organizations.brands.branches.menu.index', [
+        $this->organization, $this->brand, $this->branch,
+    ]))->assertOk();
+
+    $card = Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters)
+        ->assertSet('editingItemForm.itemAllergens', $allergens)
+        ->assertSet('editingItemForm.itemDietaryLabels', $dietaryLabels);
+
+    $fresh = $this->item->fresh();
+    expect(countDatabaseQueries(fn (): array => $fresh->only(['allergens', 'dietary_labels'])))->toBe(0);
+    expect($fresh->only(['allergens', 'dietary_labels']))->toBe([
+        'allergens' => $allergens,
+        'dietary_labels' => $dietaryLabels,
+    ])->and($fresh->isDirty())->toBeFalse()
+        ->and($fresh->getAttributes())->toBe($before)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+
+    $card->set('editingItemForm.itemTranslations.en.name', 'Dish with retained labels')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
+        ->call('saveItem')->assertHasNoErrors();
+
+    $saved = $this->item->fresh();
+    expect($saved->allergens)->toBe($allergens)
+        ->and($saved->dietary_labels)->toBe($dietaryLabels)
+        ->and(json_decode($saved->getRawOriginal('allergens'), true, flags: JSON_THROW_ON_ERROR))->toBe($allergens)
+        ->and(json_decode($saved->getRawOriginal('dietary_labels'), true, flags: JSON_THROW_ON_ERROR))->toBe($dietaryLabels);
+})->with([
+    'canonical populated lists' => [false, ['gluten', 'milk'], ['vegetarian']],
+    'double encoded populated lists' => [true, ['gluten', 'milk'], ['vegetarian']],
+    'canonical empty lists' => [false, [], []],
+    'double encoded empty lists' => [true, [], []],
+]);
+
 test('dish main save stays in its scoped card and uses original English content', function () {
     Livewire::actingAs($this->actor)->test(Dish::class, $this->parameters)
         ->set('editingItemForm.itemName', 'Obsolete base')

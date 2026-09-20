@@ -7,10 +7,7 @@ namespace App\Actions\Branches;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\User;
-use App\Services\Branches\BranchSettingsQueryService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * @phpstan-type ConfigurationData array{
@@ -49,47 +46,12 @@ use Illuminate\Support\Facades\Gate;
  */
 final class SaveBranchConfigurationAction
 {
-    public function __construct(
-        private readonly BranchSettingsQueryService $settingsQueries,
-        private readonly UpdateBranchSettingsAction $updateSettings,
-        private readonly UpdateBranchPublicProfileAction $updateProfile,
-        private readonly UpdateBranchLogoAction $updateLogo,
-        private readonly UpdateBranchCoverImageAction $updateCover,
-    ) {}
-
     /**
      * @param  ConfigurationData  $data
      * @return array{branch: Branch, settings: BranchSetting}
      */
     public function handle(User $actor, Branch $branch, int $settingsId, array $data): array
     {
-        return DB::transaction(function () use ($actor, $branch, $settingsId, $data): array {
-            $branch = Branch::query()
-                ->select([
-                    'id', 'organization_id', 'brand_id', 'name', 'public_name', 'public_description',
-                    'logo_path', 'cover_image_path', 'address', 'phone', 'email', 'website_url',
-                    'instagram_url', 'facebook_url', 'tiktok_url', 'city', 'country', 'timezone',
-                    'currency', 'is_active', 'is_temporarily_closed', 'temporary_closed_reason',
-                    'temporary_closed_until', 'created_at', 'updated_at', 'deleted_at',
-                ])
-                ->whereKey($branch->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            Gate::forUser($actor)->authorize('manageSettings', $branch);
-            $settings = $this->settingsQueries->find($branch, $settingsId);
-            $settings = $this->updateSettings->handle($settings, $data['settings']);
-
-            if ($data['logo'] instanceof UploadedFile) {
-                $this->updateLogo->handle($branch, $data['logo']);
-            }
-
-            if ($data['cover'] instanceof UploadedFile) {
-                $this->updateCover->handle($branch, $data['cover']);
-            }
-
-            $branch = $this->updateProfile->handle($branch, $data['profile']);
-
-            return ['branch' => $branch, 'settings' => $settings];
-        });
+        throw new \LogicException('Use independent versioned profile, media and settings operations.');
     }
 }

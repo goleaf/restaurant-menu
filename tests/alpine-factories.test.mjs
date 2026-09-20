@@ -4,6 +4,7 @@ import test from 'node:test';
 test('feature modules export factories without accessing a browser or registering handlers on import', async () => {
     const groups = {
         'menu-workspace': ['menuWorkspace'],
+        'settings-workspace': ['settingsWorkspace'],
         'menu-translations': ['menuTranslations'],
         'menu-image-picker': ['menuImagePicker', 'menuImagePresentationEditor'],
         'staff-workspace': ['staffWorkspace', 'staffEditor', 'invitationClipboard'],

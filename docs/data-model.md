@@ -2,6 +2,25 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 settings persistence
+
+Additive migrations introduce nullable `branches.public_translations` JSON and `branch_settings_changes`. Legacy public strings remain unchanged; no guessed locale/backfill is performed. Receipts contain actor/branch/group, unique request UUID, a payload digest and a bounded operation result. UUID/digest are hidden from model serialization. Settings, audit and receipt commit together. No settings GET creates a row; first authorized save initializes shared model defaults with the existing unique branch constraint and SQLite IMMEDIATE transaction.
+
+
+## Account display preferences — 2026-09-20
+
+The additive `2026_09_20_154344_add_display_formats_to_users_table` migration adds nullable varchar20 `date_format`, `time_format` and `number_format` to users. Null means active-language default. These are allowlisted presentation preferences, not timezone/currency or calculation settings. No index is added because no query filters by them; the existing users primary key identifies the current actor's update. Unknown stored values fall back safely on read. The dedicated save Action reloads only id and these three columns, persists only its fields in a transaction and rejects a model-save veto. Concurrent unrelated profile edits are preserved. Down removes only these columns; rollback/reapply is tested exclusively in isolated SQLite.
+
+
+## Prompt 10 preparation event metadata
+
+No migration or new order/ticket entity is introduced. Production status events in the existing `order_status_logs.metadata` retain the ticket-item identity, expected status/version and database notification delivery state. This durable pending receipt survives a lost response or delivery exception; delivery and database notification inserts are committed together, independently of the already committed production transition. `served_at` remains waiter-owned. Historical variant/modifier/comment/allergen and department snapshots remain the preparation/print source; current service location is separate from original order location.
+
+
+## Department presentation names — 2026-09-20
+
+KitchenDepartment retains canonical type codes and original name storage. `localizedName()` recognizes exact standard names for that type (canonical EN or supported localized defaults) and prepares an interface label without mutating the model; custom-type and renamed departments stay literal. Selectors include type in their existing selected columns, and `matchingDisplayName` groups localized default-name alternatives inside the branch-scoped query. Historical order/ticket department snapshots are unchanged. No translation table, migration or read-time backfill is added.
+
 ## Prompt 5 — Existing floor identities, no schema change
 
 AreaNode parent_id, ServicePoint area_node_id/internal_code/display_number/type, QrCode public_token/short_code and direct/merged TableSession identities remain distinct. The64-node valid path includes the selected node. Reparent validates affected descendants; restore includes archived descendants. There is no artificial No room row, geometric coordinate model or new readiness flag.
@@ -114,6 +133,8 @@ Structure lifecycle is intentionally reversible. Organization, brand, branch, ar
 
 ## Value conventions
 
+- Branch service modes retain the native JSON-array write cast. `BranchSetting::serviceModes` also reads one legacy JSON-string wrapper and exposes a string list without changing raw attributes or stored rows. The existing enum still owns allowed modes, ordering and the dine-in fallback; the Form still rejects JSON strings and other invalid incoming selections before persistence. Only an explicit validated save writes the canonical array.
+- Menu-item allergen and dietary-label columns retain the native JSON-array write cast. Read-only model accessors also decode one legacy JSON-string wrapper and return string lists consistently for catalogue, editor, guest and snapshot consumers. Null/non-list values become empty lists and non-string members are omitted, preserving the existing allergen-code filtering contract. Reading does not mutate raw attributes, versions or stored rows; an explicit validated main save writes canonical JSON arrays. No migration or bulk data rewrite is required.
 - Money: validated decimal input is converted to integer cents for persistence and arithmetic; percentage rates use integer basis points. Binary float never crosses a domain boundary. Display formatting is locale/currency aware and never feeds persistence.
 - Time: application timestamps are written in UTC; branch timezone defines report calendar boundaries and branch/user locale formats presentation.
 - State: backed enum values persisted as canonical lowercase snake-case strings.

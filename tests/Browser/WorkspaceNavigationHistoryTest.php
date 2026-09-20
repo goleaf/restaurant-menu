@@ -32,14 +32,14 @@ test('pending restaurant settings keep their address and resource through Back a
         JS);
     foreach ($paths as $index => $path) {
         $page->script('Livewire.navigate('.json_encode($path, JSON_THROW_ON_ERROR).')');
-        $page->assertPathIs($path)->assertVisible('[data-page="branch-settings"]');
+        $page->assertPathIs($path)->assertVisible('[data-page="restaurant-settings"]');
         if ($index === 0) {
             $page->script('location.hash = "main-content"');
             $page->assertScript('location.hash', '#main-content');
         }
     }
     $page->script('history.back()');
-    $page->assertPathIs($paths[1])->assertValue('input[wire\\:model="form.publicName"]', 'Original B');
+    $page->assertPathIs($paths[1])->assertValue('input[wire\\:model="profileForm.publicName"]', 'Original B');
     $page->script(<<<'JS'
         window.workspaceHistoryRequests = 0;
         window.workspaceHistoryResponseReady = false;
@@ -47,7 +47,7 @@ test('pending restaurant settings keep their address and resource through Back a
         window.fetch = async (...args) => {
             const save = typeof args[1]?.body === 'string' && JSON.parse(args[1].body).components?.some(component =>
                 JSON.parse(component.snapshot).memo.name === 'organizations.brands.branches.settings'
-                && component.calls.some(call => call.method === 'save'));
+                && component.calls.some(call => call.method === 'saveProfile'));
             if (save) window.workspaceHistoryRequests++;
             const response = await window.workspaceHistoryOriginalFetch(...args);
             if (save) {
@@ -58,8 +58,9 @@ test('pending restaurant settings keep their address and resource through Back a
         };
         void 0;
         JS);
-    $page->fill('input[wire\\:model="form.publicName"]', 'Saved B')->click('form[wire\\:submit="save"] button[type="submit"]')
-        ->assertScript('window.workspaceHistoryResponseReady === true');
+    $page->click('[data-settings-group="profile"] button[data-flux-accordion-heading]')->assertVisible('input[name="profileForm.publicName"]')->fill('input[wire\\:model="profileForm.publicName"]', 'Saved B');
+    $page->assertVisible('form[wire\\:submit="saveProfile"] button[type="submit"]')->assertEnabled('form[wire\\:submit="saveProfile"] button[type="submit"]')->click('form[wire\\:submit="saveProfile"] button[type="submit"]');
+    $page->assertScript('window.workspaceHistoryResponseReady === true');
     try {
         foreach ([-2, 1] as $distance) {
             $page->script('window.workspaceHistoryEvents = 0; history.go('.$distance.')');
@@ -67,8 +68,10 @@ test('pending restaurant settings keep their address and resource through Back a
                 ->assertPathIs($paths[1])
                 ->assertSee($second->name)
                 ->assertAttribute('[data-navigation-key="settings"]', 'aria-current', 'page')
-                ->assertValue('input[wire\\:model="form.publicName"]', 'Saved B')
-                ->assertScript('Alpine.$data(document.body).pending', 1);
+                ->assertValue('input[wire\\:model="profileForm.publicName"]', 'Saved B')
+                ->assertScript('Alpine.$data(document.body).pending', 1)
+                ->assertScript('window.workspaceHistoryEvents >= 2', true)
+                ->assertScript('Alpine.$data(document.body).returningToPosition === null', true);
         }
     } finally {
         $page->script('window.releaseWorkspaceHistoryResponse?.(); window.fetch = window.workspaceHistoryOriginalFetch; void 0;');
@@ -79,8 +82,8 @@ test('pending restaurant settings keep their address and resource through Back a
         ->and($second->fresh()->public_name)->toBe('Saved B')
         ->and($third->fresh()->public_name)->toBe('Original C');
     $page->script('history.back()');
-    $page->assertPathIs($paths[0])->assertValue('input[wire\\:model="form.publicName"]', 'Original A');
+    $page->assertPathIs($paths[0])->assertValue('input[wire\\:model="profileForm.publicName"]', 'Original A');
     $page->script('history.forward()');
-    $page->assertPathIs($paths[1])->assertValue('input[wire\\:model="form.publicName"]', 'Saved B')
+    $page->assertPathIs($paths[1])->assertValue('input[wire\\:model="profileForm.publicName"]', 'Saved B')
         ->assertScript('window.workspaceHistoryRequests', 1)->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 })->with(['native index' => false, 'fallback index' => true]);

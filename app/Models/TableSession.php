@@ -91,6 +91,17 @@ class TableSession extends Model
         return $query->whereIn('status', TableSessionStatus::guestViewableValues());
     }
 
+    public function scopeWithInactivityActivity(Builder $query): Builder
+    {
+        return $query
+            ->withMax('guests', 'joined_at')
+            ->withMax('guests', 'left_at')
+            ->withMax('guests', 'ready_at')
+            ->withMax('joinRequests', 'created_at')
+            ->withMax('waiterCalls', 'requested_at')
+            ->withMax('waiterCalls', 'handled_at');
+    }
+
     public function scopeForQrServicePoint(Builder $query, ServicePoint $servicePoint): Builder
     {
         return $query

@@ -11,6 +11,7 @@ use App\Models\ManualPayment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
+use App\Support\DisplayPreferences;
 use App\Support\MoneyFormatter;
 use App\Support\Reports\BranchReportPeriod;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,7 +27,7 @@ class BranchReportQuery
      * @param  Collection<int, Branch>  $authorizedBranches
      * @return array{orders_count: int, order_total_cents: int|null, single_currency: string|null, default_currency: string, currency_totals: list<array{currency: string, total_cents: int, total: string, order_count: int, average_check: string|null}>, payment_currency_totals: list<array{currency: string, total_cents: int, total: string, payment_count: int}>, popular_items: list<array{item_name: string, quantity: int, total_cents: int|null, total: string}>, active_tables_count: int, closed_sessions_count: int, cancelled_orders_count: int}
      */
-    public function handle(Collection $authorizedBranches, BranchReportPeriod $period): array
+    public function handle(Collection $authorizedBranches, BranchReportPeriod $period, ?DisplayPreferences $preferences = null): array
     {
         $branchIds = $authorizedBranches->pluck('id')->unique()->sort()->values()->all();
 
@@ -34,7 +35,7 @@ class BranchReportQuery
             throw new InvalidArgumentException('Report periods must match the authorized branches.');
         }
 
-        $currencyTotals = $this->orderCurrencyTotals($period);
+        $currencyTotals = $this->orderCurrencyTotals($period, $preferences);
         $defaultCurrency = $authorizedBranches->first()?->currency ?: 'EUR';
         $singleCurrency = count($currencyTotals) <= 1 ? ($currencyTotals[0]['currency'] ?? $defaultCurrency) : null;
 
@@ -44,8 +45,8 @@ class BranchReportQuery
             'single_currency' => $singleCurrency,
             'default_currency' => $defaultCurrency,
             'currency_totals' => $currencyTotals,
-            'payment_currency_totals' => $this->paymentCurrencyTotals($period),
-            'popular_items' => $this->popularItems($period, $singleCurrency),
+            'payment_currency_totals' => $this->paymentCurrencyTotals($period, $preferences),
+            'popular_items' => $this->popularItems($period, $singleCurrency, $preferences),
             'active_tables_count' => TableSession::query()
                 ->whereIn('branch_id', $branchIds)
                 ->whereIn('status', [
@@ -64,7 +65,7 @@ class BranchReportQuery
     /**
      * @return list<array{currency: string, total_cents: int, total: string, order_count: int, average_check: string|null}>
      */
-    private function orderCurrencyTotals(BranchReportPeriod $period): array
+    private function orderCurrencyTotals(BranchReportPeriod $period, ?DisplayPreferences $preferences = null): array
     {
         $matchingOrders = static fn (Builder $query): Builder => $query->scopes(['forReportPeriod' => [$period]]);
 
@@ -88,10 +89,10 @@ class BranchReportQuery
         return collect($currencies)->sortKeys()->map(fn (array $currency): array => [
             'currency' => $currency['currency'],
             'total_cents' => $currency['total_cents'],
-            'total' => MoneyFormatter::formatCents($currency['total_cents'], $currency['currency']),
+            'total' => MoneyFormatter::formatCents($currency['total_cents'], $currency['currency'], $preferences),
             'order_count' => $currency['order_count'],
             'average_check' => $currency['order_count'] > 0
-                ? MoneyFormatter::formatCents(MoneyFormatter::roundedDivide($currency['total_cents'], $currency['order_count']), $currency['currency'])
+                ? MoneyFormatter::formatCents(MoneyFormatter::roundedDivide($currency['total_cents'], $currency['order_count']), $currency['currency'], $preferences)
                 : null,
         ])->values()->all();
     }
@@ -99,7 +100,7 @@ class BranchReportQuery
     /**
      * @return list<array{currency: string, total_cents: int, total: string, payment_count: int}>
      */
-    private function paymentCurrencyTotals(BranchReportPeriod $period): array
+    private function paymentCurrencyTotals(BranchReportPeriod $period, ?DisplayPreferences $preferences = null): array
     {
         $matchingPayments = static fn (Builder $query): Builder => $query->scopes(['forReportPeriod' => [$period]]);
 
@@ -114,7 +115,7 @@ class BranchReportQuery
             ->map(fn (ManualPayment $payment): array => [
                 'currency' => $payment->currency,
                 'total_cents' => (int) $payment->getAttribute('report_total'),
-                'total' => MoneyFormatter::formatCents((int) $payment->getAttribute('report_total'), $payment->currency),
+                'total' => MoneyFormatter::formatCents((int) $payment->getAttribute('report_total'), $payment->currency, $preferences),
                 'payment_count' => (int) $payment->getAttribute('report_count'),
             ])->all();
     }
@@ -122,7 +123,7 @@ class BranchReportQuery
     /**
      * @return list<array{item_name: string, quantity: int, total_cents: int|null, total: string}>
      */
-    private function popularItems(BranchReportPeriod $period, ?string $singleCurrency): array
+    private function popularItems(BranchReportPeriod $period, ?string $singleCurrency, ?DisplayPreferences $preferences): array
     {
         $orders = Order::query()->select('id')->forReportPeriod($period);
         $matchingItems = function (Builder $query) use ($orders): void {
@@ -164,7 +165,7 @@ class BranchReportQuery
             ->map(fn (array $item): array => [
                 ...$item,
                 'total' => $singleCurrency !== null
-                    ? MoneyFormatter::formatCents((int) $item['total_cents'], $singleCurrency)
+                    ? MoneyFormatter::formatCents((int) $item['total_cents'], $singleCurrency, $preferences)
                     : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
             ])->values()->all();
     }

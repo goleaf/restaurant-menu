@@ -130,10 +130,16 @@ test('superadmin bypasses organization branch restrictions', function () {
 
     Livewire::actingAs($superadmin)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('Branch settings')
-        ->assertSet('branch.id', $branch->id)
-        ->call('runSessionInactivityCleanup')
-        ->assertSet('cleanupMessage', fn (mixed $message): bool => is_string($message) && $message !== '');
+        ->assertSee(__('settings.title'))
+        ->assertSet('branchId', $branch->id)
+        ->call('previewCleanup')
+        ->assertHasNoErrors()
+        ->assertSet('cleanupPreview.branch_id', $branch->id)
+        ->assertSet('cleanupResult', [])
+        ->call('confirmCleanup')
+        ->assertHasNoErrors()
+        ->assertSet('cleanupResult.pending_cancelled', 0)
+        ->assertSet('cleanupResult.preview_checked', 0);
 });
 
 function createSuperadminUser(): User

@@ -93,6 +93,7 @@ export function workspaceNavigation() {
                 event.returnValue = '';
             }, { signal: this.abortController.signal });
             document.addEventListener('livewire:navigate', (event) => {
+                if (!event.detail?.history) this.stampHistory();
                 if (this.pending === 0 || (event.detail?.history && this.allowsDishHistory(event.detail.url.toString()))) return;
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -136,23 +137,24 @@ export function workspaceNavigation() {
         },
         stampHistory() {
             if (this.destroyed || this.returningToPosition !== null || !window.history || !window.location) return;
+            const url = window.location.href;
+            if (historyPosition(window.history.state) === null && this.historyUrl !== url && this.sameResource(this.historyUrl, url)) {
+                const previous = this.historyState?.alpine?.workspaceNavigation;
+                const marker = previous && window.history.length === this.historyLength + 1
+                    ? { position: previous.position + 1, segment: previous.segment }
+                    : { position: 0, segment: newHistorySegment() };
+                // A native hash entry exists before hashchange arrives. Preserve its snapshot
+                // before a synchronous Livewire navigation or request can replace that entry.
+                const state = { ...this.historyState, alpine: { ...this.historyState?.alpine, url, workspaceNavigation: marker } };
+                historyTracking?.replace.call(window.history, state, '', url);
+            }
             this.historyPosition = window.navigation?.currentEntry?.index ?? historyPosition(window.history.state);
-            this.historyUrl = window.location.href;
+            this.historyUrl = url;
             this.historyLength = window.history.length;
             this.historyState = window.history.state;
         },
         trackHash(event) {
-            if (this.destroyed || this.returningToPosition !== null || event.newURL !== window.location.href) return;
-            if (historyPosition(window.history.state) !== null) return this.stampHistory();
-            if (event.oldURL !== this.historyUrl || !this.sameResource(event.oldURL, event.newURL)) return;
-            const previous = this.historyState?.alpine?.workspaceNavigation;
-            const marker = previous && window.history.length === this.historyLength + 1
-                ? { position: previous.position + 1, segment: previous.segment }
-                : { position: 0, segment: newHistorySegment() };
-            // Native hash writes bypass pushState; retain the source page's cached snapshot.
-            const state = { ...this.historyState, alpine: { ...this.historyState?.alpine, url: event.newURL, workspaceNavigation: marker } };
-            historyTracking?.replace.call(window.history, state, '', event.newURL);
-            this.stampHistory();
+            if (event.newURL === window.location.href && event.oldURL === this.historyUrl) this.stampHistory();
         },
         sameResource(left, right) {
             if (!left || !right) return false;

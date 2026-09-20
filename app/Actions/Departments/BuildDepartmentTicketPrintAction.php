@@ -7,6 +7,7 @@ namespace App\Actions\Departments;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\MenuAllergen;
+use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\KitchenTicket;
@@ -41,8 +42,9 @@ class BuildDepartmentTicketPrintAction
         }
 
         $timezone = $ticket->branch->timezone ?: config('app.timezone');
+        $servicePoint = $ticket->tableSession->servicePoint ?? $ticket->servicePoint;
         $items = $ticket->items
-            ->map(fn (KitchenTicketItem $item): array => $this->itemPayload($item))
+            ->map(fn (KitchenTicketItem $item): array => $this->itemPayload($item, $ticket, $timezone))
             ->values()
             ->all();
 
@@ -63,22 +65,24 @@ class BuildDepartmentTicketPrintAction
                 'country' => $ticket->branch->country,
             ],
             'service_point' => [
-                'id' => $ticket->service_point_id,
-                'name' => $ticket->servicePoint->name,
-                'display_number' => $ticket->servicePoint->display_number,
+                'id' => $servicePoint?->id,
+                'original_id' => $ticket->service_point_id,
+                'original_label' => $this->servicePointLabel((string) ($ticket->servicePoint->display_number ?? ''), (string) ($ticket->servicePoint->name ?? '')),
+                'name' => $servicePoint?->name,
+                'display_number' => $servicePoint?->display_number,
                 'label' => $this->servicePointLabel(
-                    (string) ($ticket->servicePoint->display_number ?? ''),
-                    (string) $ticket->servicePoint->name,
+                    (string) ($servicePoint->display_number ?? ''),
+                    (string) $servicePoint?->name,
                 ),
-                'zone_name' => $ticket->servicePoint->area_node_id === null
+                'zone_name' => $servicePoint?->area_node_id === null
                     ? null
-                    : $ticket->servicePoint->areaNode->name,
+                    : $servicePoint->areaNode?->name,
             ],
             'department' => [
                 'id' => $ticket->kitchen_department_id,
                 'name' => $ticket->department_name,
                 'type' => $ticket->department_type,
-                'type_label' => $ticket->kitchenDepartment?->type?->label() ?? $ticket->department_type,
+                'type_label' => KitchenDepartmentType::tryFrom($ticket->department_type)?->label() ?? $ticket->department_type,
             ],
             'items' => $items,
         ];
@@ -112,6 +116,7 @@ class BuildDepartmentTicketPrintAction
                 'created_at',
             ])
             ->with([
+                'order:id,status,metadata',
                 'branch' => fn ($query) => $query->select([
                     'id',
                     'organization_id',
@@ -121,7 +126,12 @@ class BuildDepartmentTicketPrintAction
                     'country',
                     'timezone',
                 ]),
-                'servicePoint' => fn ($query) => $query
+                'tableSession' => fn ($query) => $query->select(['id', 'service_point_id'])->with([
+                    'servicePoint' => fn ($pointQuery) => $pointQuery->withTrashed()
+                        ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status'])
+                        ->with(['areaNode:id,branch_id,name']),
+                ]),
+                'servicePoint' => fn ($query) => $query->withTrashed()
                     ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status'])
                     ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
                 'kitchenDepartment' => fn ($query) => $query->select([
@@ -139,7 +149,6 @@ class BuildDepartmentTicketPrintAction
                         'order_item_id',
                         'table_session_guest_id',
                         'menu_item_id',
-                        'guest_name',
                         'item_name',
                         'quantity',
                         'status',
@@ -149,6 +158,7 @@ class BuildDepartmentTicketPrintAction
                         'served_at',
                         'created_at',
                     ])
+                    ->with(['orderItem:id,variant_name,cancellation_reason,cancelled_at'])
                     ->orderBy('created_at')
                     ->orderBy('id'),
             ])
@@ -183,17 +193,20 @@ class BuildDepartmentTicketPrintAction
     /**
      * @return array<string, mixed>
      */
-    private function itemPayload(KitchenTicketItem $item): array
+    private function itemPayload(KitchenTicketItem $item, KitchenTicket $ticket, string $timezone): array
     {
-        $status = $this->itemStatus($item->status);
+        $orderCancelled = $ticket->order->status === OrderStatus::Cancelled;
+        $status = $orderCancelled ? KitchenTicketItemStatus::Cancelled : $this->itemStatus($item->status);
         $allergens = $this->allergenSummary($item->allergens_snapshot ?? []);
 
         return [
             'id' => $item->id,
-            'guest_name' => $item->guest_name,
             'item_name' => $item->item_name,
+            'variant_name' => $item->orderItem?->variant_name,
+            'cancellation_reason' => $item->orderItem->cancellation_reason ?? ($orderCancelled ? $ticket->order->metadata['cancellation_reason'] ?? null : null),
+            'served_at' => $this->formatTime($item->served_at, $timezone),
             'quantity' => $item->quantity,
-            'status_key' => match ($status) {
+            'status_key' => ! $orderCancelled && $item->served_at !== null ? 'ui.departments.dashboard.completed' : match ($status) {
                 KitchenTicketItemStatus::New => 'statuses.kitchen_ticket_item.new',
                 KitchenTicketItemStatus::Accepted => 'statuses.kitchen_ticket_item.accepted',
                 KitchenTicketItemStatus::InProgress => 'statuses.kitchen_ticket_item.in_progress',

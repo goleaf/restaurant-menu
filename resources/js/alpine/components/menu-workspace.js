@@ -1,3 +1,5 @@
+import { stampWorkspaceHistory, guardWorkspaceHistory } from './workspace-history.js';
+
 export function menuWorkspace(configuration = {}) {
     let ownerRoot, ownerAddress;
     return {
@@ -22,13 +24,14 @@ export function menuWorkspace(configuration = {}) {
             this.abortController = new AbortController();
             const options = { signal: this.abortController.signal };
             if (configuration.invalidEvent) {
-                window.addEventListener(configuration.invalidEvent, () => {
+                window.addEventListener(configuration.invalidEvent, event => {
                     this.$nextTick(() => {
                         if (this.destroyed) return;
                         if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
                         this.focusFrame = requestAnimationFrame(() => {
                             this.focusFrame = null;
-                            if (!this.destroyed && ownerRoot.isConnected) ownerRoot.querySelector(configuration.invalidSelector)?.focus();
+                            const selector = event.detail?.target ? `#${CSS.escape(event.detail.target)}` : configuration.invalidSelector;
+                            if (!this.destroyed && ownerRoot.isConnected) ownerRoot.querySelector(selector)?.focus();
                         });
                     });
                 }, options);
@@ -163,14 +166,7 @@ export function menuWorkspace(configuration = {}) {
             form.dispatchEvent(new CustomEvent('menu-form-discarded'));
         },
         stampHistory() {
-            if (this.destroyed || !ownerRoot.isConnected || this.returningToIndex !== null) return;
-            this.nativeHistoryIndex = window.navigation?.currentEntry?.index ?? null;
-            if (this.historyUrl !== window.location.href) this.historyIndex++;
-            this.historyUrl = window.location.href;
-            window.history.replaceState({
-                ...window.history.state,
-                menuWorkspace: { id: this.historyId, index: this.historyIndex },
-            }, '', window.location.href);
+            stampWorkspaceHistory.call(this, ownerRoot, 'menuWorkspace');
         },
         guardHistory(event) {
             if (this.returningToIndex === null && configuration.retainSectionDrafts && this.retainsDraftsAt(window.location.href)) {
@@ -179,48 +175,11 @@ export function menuWorkspace(configuration = {}) {
                 this.historyUrl = window.location.href;
                 return;
             }
-            // Restore committed history before Livewire swaps the page. Cancelling
-            // Navigation API traversals can desynchronize repeated Back in WebKit.
-            if (this.nativeHistoryIndex !== null && window.navigation?.currentEntry) {
-                const index = window.navigation.currentEntry.index;
-                if (this.returningToIndex !== null && index === this.returningToIndex) {
-                    event.stopImmediatePropagation();
-                    this.returningToIndex = null;
-                    return;
-                }
-                const delta = index - this.nativeHistoryIndex;
-                if (delta !== 0 && this.hasUnsavedChanges()) {
-                    event.stopImmediatePropagation();
-                    this.returningToIndex = this.nativeHistoryIndex;
-                    window.history.go(-delta);
-                    this.requestNavigation(() => window.history.go(delta));
-                    return;
-                }
-                this.nativeHistoryIndex = index;
-                this.historyUrl = window.location.href;
-                return;
-            }
-            const entry = event.state?.menuWorkspace;
-            if (entry?.id !== this.historyId) return;
-            if (this.returningToIndex !== null && entry.index === this.returningToIndex) {
-                event.stopImmediatePropagation();
-                this.returningToIndex = null;
-                return;
-            }
-            const delta = entry.index - this.historyIndex;
-            if (delta !== 0 && this.hasUnsavedChanges()) {
-                event.stopImmediatePropagation();
-                this.returningToIndex = this.historyIndex;
-                window.history.go(-delta);
-                this.requestNavigation(() => window.history.go(delta));
-                return;
-            }
-            this.historyIndex = entry.index;
-            this.historyUrl = window.location.href;
+            guardWorkspaceHistory.call(this, event, 'menuWorkspace', this.hasUnsavedChanges());
         },
         retainsDraftsAt(address) {
             const previous = new URL(ownerAddress), next = new URL(address);
-            for (const key of ['section', 'language']) {
+            for (const key of configuration.retainedParameters ?? ['section', 'language']) {
                 previous.searchParams.delete(key);
                 next.searchParams.delete(key);
             }

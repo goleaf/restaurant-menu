@@ -84,8 +84,10 @@ class GuestEntry extends Component
         }
 
         $this->message = $context['message'];
+        $this->title = $context['title'];
 
         foreach ([
+            'venue_name',
             'default_language_label',
             'public_description',
             'opening_status_label',

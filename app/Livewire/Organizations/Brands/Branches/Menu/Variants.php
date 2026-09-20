@@ -17,6 +17,7 @@ use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
 use App\Services\Menus\CatalogData;
 use App\Services\Menus\DishConfigurationData;
+use App\Support\LocalizedNumberFormatter;
 use App\Support\MoneyFormatter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -278,7 +279,9 @@ final class Variants extends BranchMenuComponent
                 'name' => $variant->name,
                 'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $this->branch->currency),
                 'weight' => $variant->weight,
+                'weight_label' => $variant->weight === null ? null : LocalizedNumberFormatter::decimal((float) $variant->weight, 2),
                 'volume' => $variant->volume,
+                'volume_label' => $variant->volume === null ? null : LocalizedNumberFormatter::decimal((float) $variant->volume, 2),
                 'is_default' => $variant->is_default,
                 'is_available' => $variant->is_available,
                 'sort_order' => $variant->sort_order,

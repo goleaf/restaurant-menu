@@ -163,7 +163,7 @@ class KitchenDepartments extends BranchMenuComponent
         return view('livewire.organizations.brands.branches.menu.kitchen-departments', [
             'kitchenDepartmentRows' => $this->departments->map(fn (KitchenDepartment $department): array => [
                 'id' => $department->id,
-                'name' => $department->name,
+                'name' => $department->localizedName(),
                 'type_color' => $department->type->badgeColor(),
                 'localized_type' => __($department->type->label()),
                 'is_active' => $department->is_active,

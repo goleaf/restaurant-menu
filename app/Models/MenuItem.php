@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\MenuItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -79,6 +80,39 @@ class MenuItem extends Model
             'hidden_until' => 'immutable_datetime',
             'sort_order' => 'integer',
         ];
+    }
+
+    /** @return Attribute<list<string>, never> */
+    protected function allergens(): Attribute
+    {
+        return Attribute::get(fn (?string $value): array => $this->decodeLabelList($value));
+    }
+
+    /** @return Attribute<list<string>, never> */
+    protected function dietaryLabels(): Attribute
+    {
+        return Attribute::get(fn (?string $value): array => $this->decodeLabelList($value));
+    }
+
+    /**
+     * Legacy rows may wrap the JSON list in a second JSON string. Reading must
+     * preserve those selections without changing stored attributes or versions.
+     *
+     * @return list<string>
+     */
+    private function decodeLabelList(?string $value): array
+    {
+        $labels = $this->fromJson($value);
+
+        if (is_string($labels)) {
+            $labels = $this->fromJson($labels);
+        }
+
+        if (! is_array($labels)) {
+            return [];
+        }
+
+        return array_values(array_filter($labels, is_string(...)));
     }
 
     /**
@@ -201,16 +235,7 @@ class MenuItem extends Model
      */
     public function allergenCodes(): array
     {
-        $allergens = $this->getAttribute('allergens');
-
-        if (! is_array($allergens)) {
-            return [];
-        }
-
-        return collect($allergens)
-            ->filter(fn (mixed $allergen): bool => is_string($allergen))
-            ->values()
-            ->all();
+        return $this->allergens;
     }
 
     public function isTemporarilyHidden(?CarbonInterface $at = null): bool

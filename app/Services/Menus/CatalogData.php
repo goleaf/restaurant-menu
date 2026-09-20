@@ -26,6 +26,8 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\Availability\AvailabilityEvaluator;
 use App\Support\LocalImageVariants;
+use App\Support\LocalizedDateFormatter;
+use App\Support\LocalizedNumberFormatter;
 use App\Support\MenuImagePresentation;
 use App\Support\MenuItemMediaState;
 use App\Support\MoneyFormatter;
@@ -331,7 +333,7 @@ final readonly class CatalogData
                 ])
                 ->with([
                     'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name']),
-                    'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'name']),
+                    'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'type', 'name']),
                 ])
                 ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
             ->orderBy('sort_order')->orderBy('name')->orderBy('id')
@@ -665,7 +667,7 @@ final readonly class CatalogData
             ->when($activeOnly, fn ($rows) => $rows->where('is_active', true))
             ->map(fn (KitchenDepartment $department): array => [
                 'value' => (string) $department->id,
-                'label' => $department->name,
+                'label' => $department->localizedName(),
                 'is_active' => $department->is_active,
             ])->values()->all();
     }
@@ -806,10 +808,11 @@ final readonly class CatalogData
                 : __('ui.livewire.organizations.brands.branches.menu.index.no_category'),
             'has_department' => $department !== null,
             'department_color' => $department?->type->badgeColor() ?? 'zinc',
-            'department_name' => $department?->name,
+            'department_name' => $department?->localizedName(),
             'is_available' => $item->is_available,
             'is_temporarily_hidden' => $item->isTemporarilyHidden(),
             'hidden_until' => $item->hidden_until?->setTimezone($branch->timezone)->format('Y-m-d\TH:i'),
+            'hidden_until_label' => LocalizedDateFormatter::dateTime($item->hidden_until?->setTimezone($branch->timezone)),
             'description' => $item->description,
             'description_excerpt' => Str::limit((string) $item->description, 130),
             'quality_issues' => array_filter([
@@ -824,8 +827,11 @@ final readonly class CatalogData
             'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options()),
             'sort_order' => $item->sort_order,
             'weight' => $item->weight ?? '—',
+            'weight_label' => $item->weight === null ? '—' : LocalizedNumberFormatter::decimal((float) $item->weight, 2),
             'volume' => $item->volume ?? '—',
+            'volume_label' => $item->volume === null ? '—' : LocalizedNumberFormatter::decimal((float) $item->volume, 2),
             'calories' => $item->calories ?? '—',
+            'calories_label' => $item->calories === null ? '—' : LocalizedNumberFormatter::decimal((float) $item->calories, 0),
             'modifier_groups' => ($withDetails && $evaluateAvailability ? $item->modifierGroups : new EloquentCollection)->map(
                 fn (ModifierGroup $group): array => ['id' => $group->id, 'name' => $group->name],
             )->all(),

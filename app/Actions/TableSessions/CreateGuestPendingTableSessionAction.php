@@ -315,7 +315,7 @@ class CreateGuestPendingTableSessionAction
             return $branch->settings;
         }
 
-        return $branch->settings()->create(BranchSetting::defaults($branch));
+        return (new BranchSetting)->forceFill(BranchSetting::defaults($branch));
     }
 
     private function createActiveGuest(

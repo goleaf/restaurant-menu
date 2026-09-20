@@ -4,18 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Branches;
 
-use App\Enums\BranchServiceMode;
-use App\Enums\SupportedCurrency;
 use App\Models\BranchSetting;
-use App\Support\MoneyFormatter;
-use Illuminate\Support\Facades\DB;
 
 class UpdateBranchSettingsAction
 {
-    public function __construct(
-        private readonly ForgetBranchCacheAction $forgetBranchCache,
-    ) {}
-
     /**
      * @param  array{
      *     require_waiter_confirmation_for_orders: bool,
@@ -37,22 +29,6 @@ class UpdateBranchSettingsAction
      */
     public function handle(BranchSetting $settings, array $data): BranchSetting
     {
-        return DB::transaction(function () use ($settings, $data): BranchSetting {
-            $data['default_currency'] = SupportedCurrency::normalize($data['default_currency']);
-            $data['service_charge_basis_points'] = MoneyFormatter::decimalToBasisPoints($data['service_charge_percent'] ?? '0.00');
-            unset($data['service_charge_percent']);
-            $data['service_modes'] = BranchServiceMode::normalizeList($data['service_modes'] ?? null);
-
-            $settings->fill($data);
-            $settings->save();
-
-            $settings->branch()
-                ->select(['id', 'currency'])
-                ->update(['currency' => $data['default_currency']]);
-
-            $this->forgetBranchCache->handle((int) $settings->branch_id);
-
-            return $settings->refresh();
-        });
+        throw new \LogicException('Use a versioned settings group operation.');
     }
 }

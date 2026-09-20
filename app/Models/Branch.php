@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\HasLocalLogo;
+use App\Support\Branches\BranchPublicContent;
 use Carbon\CarbonInterface;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
     'name',
     'public_name',
     'public_description',
+    'public_translations',
     'logo_path',
     'cover_image_path',
     'address',
@@ -57,6 +59,7 @@ class Branch extends Model
     protected function casts(): array
     {
         return [
+            'public_translations' => 'array',
             'pause_version' => 'integer',
             'opening_hours_version' => 'integer',
             'is_active' => 'boolean',
@@ -135,15 +138,10 @@ class Branch extends Model
         return $this->hasMany(BranchScheduleException::class)->orderBy('local_date');
     }
 
-    public function publicDisplayName(): string
+    public function publicDisplayName(?string $language = null, string $defaultLanguage = 'en'): string
     {
-        $publicName = $this->getAttribute('public_name');
-
-        if (is_string($publicName) && filled($publicName)) {
-            return $publicName;
-        }
-
-        return (string) $this->getAttribute('name');
+        return BranchPublicContent::text($this, 'name', $language ?? app()->getLocale(), $defaultLanguage)
+            ?? (string) $this->getAttribute('name');
     }
 
     public function coverImageUrl(): ?string

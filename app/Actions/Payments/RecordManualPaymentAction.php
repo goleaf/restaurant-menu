@@ -46,6 +46,7 @@ class RecordManualPaymentAction
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
         string|int|null $tipsAmount = null,
+        ?string $expectedSettlementFingerprint = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -55,6 +56,7 @@ class RecordManualPaymentAction
             guest: null,
             note: $note,
             tipsAmount: $tipsAmount,
+            expectedSettlementFingerprint: $expectedSettlementFingerprint,
         );
     }
 
@@ -65,6 +67,7 @@ class RecordManualPaymentAction
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
         string|int|null $tipsAmount = null,
+        ?string $expectedSettlementFingerprint = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -74,6 +77,7 @@ class RecordManualPaymentAction
             guest: $guest,
             note: $note,
             tipsAmount: $tipsAmount,
+            expectedSettlementFingerprint: $expectedSettlementFingerprint,
         );
     }
 
@@ -85,14 +89,18 @@ class RecordManualPaymentAction
         ?TableSessionGuest $guest,
         ?string $note,
         string|int|null $tipsAmount,
+        ?string $expectedSettlementFingerprint,
     ): ManualPayment {
-        return DB::transaction(function () use ($tableSession, $recordedBy, $paymentMethod, $scope, $guest, $note, $tipsAmount): ManualPayment {
+        return DB::transaction(function () use ($tableSession, $recordedBy, $paymentMethod, $scope, $guest, $note, $tipsAmount, $expectedSettlementFingerprint): ManualPayment {
             $tableSession = $this->reloadTableSession($tableSession);
             $method = $this->normalizePaymentMethod($paymentMethod);
 
             $this->ensureCanRecord($tableSession, $recordedBy);
 
             $summary = $this->buildPaymentSummary->handle($tableSession);
+            if ($expectedSettlementFingerprint !== null && ! hash_equals((string) $summary['settlement_fingerprint'], $expectedSettlementFingerprint)) {
+                throw ValidationException::withMessages(['manual_payment' => __('settings.errors.settlement_changed')]);
+            }
             $breakdown = $this->paymentBreakdownCents($summary, $scope, $guest, $tipsAmount);
 
             $manualPayment = new ManualPayment;

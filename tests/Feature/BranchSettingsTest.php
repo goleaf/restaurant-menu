@@ -1,27 +1,81 @@
 <?php
 
 use App\Actions\Branches\CreateBranchAction;
-use App\Actions\Branches\UpdateBranchPublicProfileAction;
+use App\Actions\Branches\SaveBranchSettingsGroupAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Availability\Index as AvailabilityIndex;
 use App\Livewire\Organizations\Brands\Branches\Settings;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\BranchOpeningHour;
+use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Branches\BranchSettingsGroup;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
+
+test('branch service modes expose stored lists without changing raw attributes', function (mixed $stored, array $expected): void {
+    $settings = BranchSetting::factory()->make(['service_modes' => $stored]);
+    $attributes = $settings->getAttributes();
+    $original = $settings->getRawOriginal();
+
+    expect(countDatabaseQueries(fn (): array => $settings->only(['service_modes'])))->toBe(0);
+    expect($settings->service_modes)->toBe($expected)
+        ->and($settings->attributesToArray()['service_modes'])->toBe($expected)
+        ->and($settings->getAttributes())->toBe($attributes)
+        ->and($settings->getRawOriginal())->toBe($original);
+})->with([
+    'canonical list' => [['pickup', 'delivery'], ['pickup', 'delivery']],
+    'double encoded list' => ['["pickup","delivery"]', ['pickup', 'delivery']],
+    'empty list' => [[], []],
+    'double encoded empty list' => ['[]', []],
+    'null' => [null, []],
+    'invalid JSON' => ['[invalid', []],
+    'scalar' => ['pickup', []],
+    'boolean' => [true, []],
+    'mixed list' => [['pickup', null, 1, ['delivery']], ['pickup']],
+]);
+
+test('stored branch service modes survive opening and saving settings', function (bool $doubleEncoded): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $modes = ['pickup', 'delivery'];
+    $settings = $branch->settings()->firstOrFail();
+    $settings->update(['service_modes' => $doubleEncoded ? json_encode($modes, JSON_THROW_ON_ERROR) : $modes]);
+    $before = $settings->fresh()->getAttributes();
+    $auditCount = AuditLog::query()->count();
+
+    $this->actingAs($owner)->get(route('organizations.brands.branches.settings.index', [
+        $organization, $brand, $branch,
+    ]))->assertOk();
+
+    $form = Livewire::actingAs($owner)->test(Settings::class, [
+        'organization' => $organization, 'brand' => $brand, 'branch' => $branch,
+    ])->assertSet('advanced.pollingIntervalSeconds', 1);
+
+    expect($settings->fresh()->getAttributes())->toBe($before)
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+
+    $form->set('advanced.pollingIntervalSeconds', 5)->call('saveAdvanced')->assertHasNoErrors();
+
+    $saved = $settings->fresh();
+    expect($saved->service_modes)->toBe($modes)
+        ->and($saved->polling_interval_seconds)->toBe(5)
+        ->and($saved->getRawOriginal('service_modes'))->toBe($before['service_modes']);
+})->with(['canonical list' => false, 'double encoded list' => true]);
 
 test('branch settings table has safe operational fields', function () {
     expect(Schema::hasTable('branch_settings'))->toBeTrue();
@@ -80,59 +134,42 @@ test('branch settings page requires authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-test('owner can update branch settings', function () {
+test('owner can update independent settings without enabling unsupported service modes', function () {
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('form.requireWaiterConfirmationForOrders', true)
-        ->assertSet('form.allowGuestCreatedSessions', true)
-        ->assertSet('form.allowWaiterOpenedSessions', true)
-        ->assertSet('form.allowGuestInviteLinks', true)
-        ->assertSet('form.guestJoinRequiresApproval', true)
-        ->assertSet('form.pollingIntervalSeconds', 1)
-        ->assertSet('form.serviceChargePercent', '0.00')
-        ->assertSet('form.serviceModes', ['dine_in'])
-        ->assertSeeText('Service modes')
-        ->set('form.allowGuestCreatedSessions', true)
-        ->set('form.allowWaiterOpenedSessions', true)
-        ->set('form.allowGuestInviteLinks', true)
-        ->set('form.guestJoinRequiresApproval', false)
-        ->set('form.pollingIntervalSeconds', 5)
-        ->set('form.defaultLanguage', 'lt')
-        ->set('form.defaultCurrency', 'usd')
-        ->set('form.serviceChargeEnabled', true)
-        ->set('form.serviceChargePercent', '12.50')
-        ->set('form.tipsEnabled', true)
-        ->set('form.orderFlowMode', BranchOrderFlowMode::StaffManaged->value)
-        ->set('form.serviceModes', ['pickup', 'delivery', 'hotel_room_service', 'bar_only', 'custom'])
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertSee('Settings saved.');
+        ->assertSet('guests.allowGuestCreatedSessions', true)
+        ->assertSet('guests.allowWaiterOpenedSessions', true)
+        ->assertSet('guests.allowGuestInviteLinks', true)
+        ->assertSet('advanced.pollingIntervalSeconds', 1)
+        ->assertSet('settlement.serviceChargePercent', '0.00')
+        ->set('guests.allowGuestInviteLinks', false)->call('saveGuests')->assertHasNoErrors()
+        ->set('advanced.pollingIntervalSeconds', 5)->call('saveAdvanced')->assertHasNoErrors()
+        ->set('locale.defaultLanguage', 'lt')->call('saveLocale')->assertHasNoErrors()
+        ->set('settlement.defaultCurrency', 'USD')
+        ->set('settlement.serviceChargeEnabled', true)
+        ->set('settlement.serviceChargePercent', '12.50')
+        ->set('settlement.tipsEnabled', true)
+        ->call('saveSettlement')->assertHasNoErrors()->call('confirmCurrency')->assertHasNoErrors();
 
     $settings = $branch->settings()->firstOrFail();
-
-    expect($settings->allow_guest_created_sessions)->toBeTrue();
-    expect($settings->allow_guest_invite_links)->toBeTrue();
-    expect($settings->guest_join_requires_approval)->toBeFalse();
-    expect($settings->polling_interval_seconds)->toBe(5);
-    expect($settings->default_language)->toBe('lt');
-    expect($settings->default_currency)->toBe('USD');
-    expect($branch->fresh()->currency)->toBe('USD');
-    expect($settings->service_charge_enabled)->toBeTrue();
-    expect($settings->service_charge_basis_points)->toBe(1250);
-    expect($settings->tips_enabled)->toBeTrue();
-    expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::StaffManaged);
-    expect($settings->service_modes)->toBe([
-        'pickup',
-        'delivery',
-        'hotel_room_service',
-        'bar_only',
-        'custom',
-    ]);
+    expect($settings->allow_guest_created_sessions)->toBeTrue()
+        ->and($settings->allow_guest_invite_links)->toBeFalse()
+        ->and($settings->guest_join_requires_approval)->toBeTrue()
+        ->and($settings->require_waiter_confirmation_for_orders)->toBeTrue()
+        ->and($settings->polling_interval_seconds)->toBe(5)
+        ->and($settings->default_language)->toBe('lt')
+        ->and($settings->default_currency)->toBe('USD')
+        ->and($branch->fresh()->currency)->toBe('USD')
+        ->and($settings->service_charge_enabled)->toBeTrue()
+        ->and($settings->service_charge_basis_points)->toBe(1250)
+        ->and($settings->tips_enabled)->toBeTrue()
+        ->and($settings->order_flow_mode)->toBe(BranchOrderFlowMode::WaiterConfirmation)
+        ->and($settings->service_modes)->toBe(['dine_in']);
 });
 
-test('settings page creates missing settings for existing branch', function () {
+test('settings page reads defaults and initializes a missing row only on explicit settings save', function () {
     [$organization, $brand, , $owner] = createOrganizationBrandBranchForSettings(createSettings: false);
 
     $branch = Branch::query()
@@ -141,13 +178,14 @@ test('settings page creates missing settings for existing branch', function () {
 
     expect($branch->settings()->exists())->toBeFalse();
 
-    Livewire::actingAs($owner)
+    $component = Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('form.requireWaiterConfirmationForOrders', true)
-        ->assertSet('form.guestJoinRequiresApproval', true)
-        ->assertSet('form.pollingIntervalSeconds', 1);
+        ->assertSet('guests.allowGuestCreatedSessions', true)
+        ->assertSet('advanced.pollingIntervalSeconds', 1);
 
-    expect($branch->settings()->exists())->toBeTrue();
+    expect($branch->settings()->exists())->toBeFalse();
+    $component->set('advanced.pollingIntervalSeconds', 5)->call('saveAdvanced')->assertHasNoErrors();
+    expect($branch->settings()->sole()->polling_interval_seconds)->toBe(5);
 });
 
 test('member without branch management cannot access settings', function () {
@@ -179,28 +217,22 @@ test('branch must belong to route brand and organization', function () {
         ->assertForbidden();
 });
 
-test('settings validation keeps polling and order flow safe', function () {
+test('settings validation keeps polling finance and guest entry safe independently', function () {
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('form.pollingIntervalSeconds', 0)
-        ->set('form.defaultCurrency', 'EURO')
-        ->set('form.orderFlowMode', 'guest_direct')
-        ->set('form.serviceChargeEnabled', true)
-        ->set('form.serviceChargePercent', '100.01')
-        ->set('form.serviceModes', ['maps_and_couriers'])
-        ->call('save')
-        ->assertHasErrors([
-            'form.pollingIntervalSeconds' => ['min'],
-            'form.defaultCurrency' => ['size', 'in'],
-            'form.orderFlowMode' => ['in'],
-            'form.serviceChargePercent' => ['max'],
-            'form.serviceModes.0' => ['in'],
-        ]);
+        ->set('advanced.pollingIntervalSeconds', 0)->call('saveAdvanced')
+        ->assertHasErrors(['advanced.pollingIntervalSeconds' => ['min']])
+        ->set('settlement.defaultCurrency', 'EURO')
+        ->set('settlement.serviceChargeEnabled', true)
+        ->set('settlement.serviceChargePercent', '100.01')->call('saveSettlement')
+        ->assertHasErrors(['settlement.defaultCurrency' => ['in'], 'settlement.serviceChargePercent' => ['max'], 'advanced.pollingIntervalSeconds'])
+        ->set('guests.allowGuestCreatedSessions', 'guest_direct')->call('saveGuests')
+        ->assertHasErrors(['guests.allowGuestCreatedSessions' => ['boolean']]);
 });
 
-test('a failed branch configuration save preserves settings profile schedule and original images', function (bool $withImages): void {
+test('a failed profile save preserves already saved settings and independent images', function (bool $withImages): void {
     Storage::fake('public');
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
     $directory = "media/organizations/{$organization->id}/brands/{$brand->id}/branches/{$branch->id}";
@@ -211,62 +243,60 @@ test('a failed branch configuration save preserves settings profile schedule and
     $branch->update(['public_name' => 'Original restaurant', 'logo_path' => $originalLogo, 'cover_image_path' => $originalCover]);
     $settings = $branch->settings()->firstOrFail();
     $originalHours = BranchOpeningHour::factory()->for($branch)->create();
-    $originalBranch = $branch->refresh()->getRawOriginal();
-    $originalSettings = $settings->getRawOriginal();
-    $component = Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.pollingIntervalSeconds', 5)
-        ->set('form.publicName', 'Changed restaurant')
-        ->set('form.defaultCurrency', 'USD');
-
+    $component = Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'))
+        ->set('profileForm.publicName', 'Changed restaurant')
+        ->set('advanced.pollingIntervalSeconds', 5)->call('saveAdvanced')->assertHasNoErrors();
     if ($withImages) {
-        $component->set('form.publicLogo', UploadedFile::fake()->image('new-logo.png'))
-            ->set('form.coverImage', UploadedFile::fake()->image('new-cover.jpg'));
+        $component->set('logo', UploadedFile::fake()->image('new-logo.png'))->call('saveLogo')->assertHasNoErrors()
+            ->set('cover', UploadedFile::fake()->image('new-cover.jpg'))->call('saveCover')->assertHasNoErrors();
     }
+    $savedBranch = $branch->fresh()->getRawOriginal();
+    $savedFiles = Storage::disk('public')->allFiles($directory);
+    $rejectProfile = true;
+    Branch::updating(static function (Branch $branch) use (&$rejectProfile): ?bool {
+        return $rejectProfile && $branch->isDirty('public_name') ? false : null;
+    });
+    expect(fn () => $component->call('saveProfile'))->toThrow(RuntimeException::class, 'The restaurant public profile could not be saved.');
+    expect($settings->fresh()->polling_interval_seconds)->toBe(5)
+        ->and($branch->fresh()->getRawOriginal())->toBe($savedBranch)
+        ->and($branch->openingHours()->sole()->id)->toBe($originalHours->id)
+        ->and(Storage::disk('public')->allFiles($directory))->toBe($savedFiles);
 
-    $this->mock(UpdateBranchPublicProfileAction::class)
-        ->shouldReceive('handle')->once()->andThrow(new RuntimeException('Profile persistence failed.'));
-
-    expect(fn () => $component->call('save'))->toThrow(RuntimeException::class, 'Profile persistence failed.');
-
-    expect($settings->refresh()->getRawOriginal())->toBe($originalSettings)
-        ->and($branch->refresh()->getRawOriginal())->toBe($originalBranch)
-        ->and($branch->openingHours()->sole()->id)->toBe($originalHours->id);
-    expect(Storage::disk('public')->allFiles($directory))->toEqualCanonicalizing([$originalLogo, $originalCover]);
-    Storage::disk('public')->assertExists([$originalLogo, $originalCover]);
-
-    app()->forgetInstance(UpdateBranchPublicProfileAction::class);
-    $component->call('save')->assertHasNoErrors();
-
-    expect($settings->refresh()->polling_interval_seconds)->toBe(5)
-        ->and($branch->refresh()->public_name)->toBe('Changed restaurant')
-        ->and($branch->currency)->toBe('USD')
-        ->and($branch->is_temporarily_closed)->toBeFalse();
-
+    $rejectProfile = false;
+    $component->call('saveProfile')->assertHasNoErrors();
+    expect($settings->fresh()->polling_interval_seconds)->toBe(5)
+        ->and($branch->fresh()->public_name)->toBe('Changed restaurant')
+        ->and($branch->fresh()->currency)->toBe('EUR')
+        ->and($branch->fresh()->is_temporarily_closed)->toBeFalse();
     if ($withImages) {
         Storage::disk('public')->assertMissing([$originalLogo, $originalCover]);
-        Storage::disk('public')->assertExists([$branch->logo_path, $branch->cover_image_path]);
+        Storage::disk('public')->assertExists([$branch->fresh()->logo_path, $branch->fresh()->cover_image_path]);
         expect(Storage::disk('public')->allFiles($directory))->toHaveCount(2);
+    } else {
+        Storage::disk('public')->assertExists([$originalLogo, $originalCover]);
     }
 })->with(['database changes' => false, 'database and image changes' => true]);
 
-test('branch settings reject malformed transport values without changing persistence', function (string $field, mixed $value): void {
+test('branch settings reject malformed transport values without changing persistence', function (string $group, string $field, mixed $value): void {
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
-    $original = $branch->settings()->firstOrFail()->getRawOriginal();
-
-    Livewire::actingAs($owner)
-        ->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.'.$field, $value)
-        ->call('save')
-        ->assertHasErrors('form.'.$field);
-
+    $settings = $branch->settings()->firstOrFail();
+    $original = $settings->getRawOriginal();
+    if ($field === 'serviceModes') {
+        expect(fn () => app(SaveBranchSettingsGroupAction::class)->handle($owner, $branch, 'guest_process', [
+            'allow_guest_created_sessions' => true, 'allow_waiter_opened_sessions' => true, 'allow_guest_invite_links' => true, 'service_modes' => $value,
+        ], BranchSettingsGroup::fingerprint($branch, $settings, 'guest_process'), (string) Str::uuid()))->toThrow(ValidationException::class);
+    } else {
+        Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'))
+            ->set($group.'.'.$field, $value)->call('save'.ucfirst($group))->assertHasErrors($group.'.'.$field);
+    }
     expect($branch->settings()->firstOrFail()->getRawOriginal())->toBe($original);
 })->with([
-    'float money' => ['serviceChargePercent', 12.5],
-    'array money' => ['serviceChargePercent', ['12.50']],
-    'array currency' => ['defaultCurrency', ['EUR']],
-    'null polling' => ['pollingIntervalSeconds', null],
-    'scalar modes' => ['serviceModes', 'dine_in'],
+    'float money' => ['settlement', 'serviceChargePercent', 12.5],
+    'array money' => ['settlement', 'serviceChargePercent', ['12.50']],
+    'array currency' => ['settlement', 'defaultCurrency', ['EUR']],
+    'null polling' => ['advanced', 'pollingIntervalSeconds', null],
+    'scalar modes' => ['guests', 'serviceModes', 'dine_in'],
+    'encoded modes' => ['guests', 'serviceModes', '["pickup","delivery"]'],
 ]);
 
 test('availability form rejects malformed schedule and pause transport without persistence', function (string $field, mixed $value, string $editor, string $preview): void {
@@ -284,9 +314,9 @@ test('settings metadata saves ignore forged schedule and pause fields', function
     [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
     $hour = BranchOpeningHour::factory()->for($branch)->create();
     Livewire::actingAs($owner)->test(Settings::class, compact('organization', 'brand', 'branch'))
-        ->set('form.publicName', 'Metadata only')->set('form.temporarilyClosed', true)
-        ->set('form.temporaryClosedReason', 'Forged hidden operation')->set('form.openingHoursConfigured', false)
-        ->set('form.openingHours', [])->call('save')->assertHasNoErrors();
+        ->set('profileForm.publicName', 'Metadata only')->set('profileForm.temporarilyClosed', true)
+        ->set('profileForm.temporaryClosedReason', 'Forged hidden operation')->set('profileForm.openingHoursConfigured', false)
+        ->set('profileForm.openingHours', [])->call('saveProfile')->assertHasNoErrors();
     expect($branch->fresh()->public_name)->toBe('Metadata only')->and($branch->fresh()->is_temporarily_closed)->toBeFalse()
         ->and($branch->fresh()->pause_version)->toBe(0)->and($branch->openingHours()->sole()->id)->toBe($hour->id);
 });

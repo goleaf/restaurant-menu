@@ -16,6 +16,7 @@ use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
+use App\Support\DisplayPreferences;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\Menus\ModifierRules;
 use App\Support\Validation\TableSessions\GuestRules;
@@ -341,7 +342,7 @@ class GuestMenu extends Component
 
         $this->configuredItems[$item['id']] = [
             'name' => $draftOrderItem->item_name,
-            'total_price' => MoneyFormatter::formatCents($draftOrderItem->total_price_cents, $this->currency),
+            'total_price' => MoneyFormatter::formatCents($draftOrderItem->total_price_cents, $this->currency, preferences: DisplayPreferences::defaults()),
             'modifier_summary' => $this->selectedConfigurationSummary($item),
             'comment' => $draftOrderItem->comment,
         ];
@@ -396,7 +397,7 @@ class GuestMenu extends Component
             'canConfigureSelectedItem' => $selectedItem !== null && $this->canConfigureItem($selectedItem),
             'canReviewItemComment' => $hasPendingItemConfiguration || ($selectedItem !== null && $this->canConfigureItem($selectedItem)),
             'selectedItemGallery' => $selectedItem === null ? [] : $this->selectedItemGallery,
-            'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::formatCents(0, $this->currency) : $this->selectedItemTotal($selectedItem),
+            'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::formatCents(0, $this->currency, preferences: DisplayPreferences::defaults()) : $this->selectedItemTotal($selectedItem),
             'dietaryOptions' => MenuDietaryLabel::options($this->language),
             'allergenOptions' => MenuAllergen::options($this->language),
             'categoryOptions' => $categoryOptions,
@@ -560,7 +561,7 @@ class GuestMenu extends Component
             }
         }
 
-        return MoneyFormatter::formatCents(max(0, $totalCents), $this->currency);
+        return MoneyFormatter::formatCents(max(0, $totalCents), $this->currency, preferences: DisplayPreferences::defaults());
     }
 
     /**
@@ -680,7 +681,7 @@ class GuestMenu extends Component
     {
         $item['variants'] = collect($item['variants'] ?? [])
             ->map(function (array $variant): array {
-                $variant['formatted_price'] = MoneyFormatter::formatCents((int) $variant['price_cents'], $this->currency);
+                $variant['formatted_price'] = MoneyFormatter::formatCents((int) $variant['price_cents'], $this->currency, preferences: DisplayPreferences::defaults());
 
                 return $variant;
             })
@@ -690,6 +691,7 @@ class GuestMenu extends Component
         $formattedPrice = MoneyFormatter::formatCents(
             is_numeric($lowestPriceCents) ? (int) $lowestPriceCents : (int) $item['price_cents'],
             $this->currency,
+            preferences: DisplayPreferences::defaults(),
         );
         $item['formatted_price'] = $item['variants'] === []
             ? $formattedPrice
@@ -701,6 +703,7 @@ class GuestMenu extends Component
                         $modifierOption['formatted_price_delta'] = MoneyFormatter::formatSignedCents(
                             (int) $modifierOption['price_delta_cents'],
                             $this->currency,
+                            preferences: DisplayPreferences::defaults(),
                         );
 
                         return $modifierOption;

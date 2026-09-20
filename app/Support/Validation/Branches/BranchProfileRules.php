@@ -72,11 +72,65 @@ final class BranchProfileRules
             'publicDescription' => ['nullable', 'string', 'max:1200'],
             'phone' => ['nullable', 'string', 'max:80'],
             'email' => ['nullable', 'email:rfc', 'max:255'],
-            'websiteUrl' => ['nullable', 'url', 'max:2048'],
-            'instagramUrl' => ['nullable', 'url', 'max:2048'],
-            'facebookUrl' => ['nullable', 'url', 'max:2048'],
-            'tiktokUrl' => ['nullable', 'url', 'max:2048'],
+            'websiteUrl' => ['nullable', 'url:http,https', 'max:2048'],
+            'instagramUrl' => ['nullable', 'url:http,https', 'max:2048'],
+            'facebookUrl' => ['nullable', 'url:http,https', 'max:2048'],
+            'tiktokUrl' => ['nullable', 'url:http,https', 'max:2048'],
         ];
+    }
+
+    /** @return array<string, list<mixed>> */
+    public static function publicTranslations(string $field = 'translations'): array
+    {
+        $rules = [$field => ['sometimes', 'array:en,lt,ru']];
+
+        foreach (['en', 'lt', 'ru'] as $language) {
+            $rules[$field.'.'.$language] = ['sometimes', 'array:name,description'];
+            $rules[$field.'.'.$language.'.name'] = ['sometimes', 'nullable', 'string', 'max:160'];
+            $rules[$field.'.'.$language.'.description'] = ['sometimes', 'nullable', 'string', 'max:1200'];
+        }
+
+        return $rules;
+    }
+
+    /** @return array<string, string> */
+    public static function publicProfileFields(): array
+    {
+        return [
+            'publicName' => 'public_name', 'publicDescription' => 'public_description',
+            'phone' => 'phone', 'email' => 'email', 'websiteUrl' => 'website_url',
+            'instagramUrl' => 'instagram_url', 'facebookUrl' => 'facebook_url', 'tiktokUrl' => 'tiktok_url',
+        ];
+    }
+
+    /** @return array<string, list<mixed>> */
+    public static function publicProfilePayload(): array
+    {
+        $rules = [];
+        foreach (self::branchProfile() as $field => $fieldRules) {
+            $rules[self::publicProfileFields()[$field]] = ['sometimes', ...$fieldRules];
+        }
+
+        return [...$rules, ...self::publicTranslations('public_translations')];
+    }
+
+    /** @return array<string, string> */
+    public static function publicProfileAttributes(string $prefix = '', bool $payload = false): array
+    {
+        $attributes = [];
+        foreach (self::publicProfileFields() as $property => $column) {
+            $attributes[$prefix.($payload ? $column : $property)] = __('validation.attributes.'.$column);
+        }
+        $translations = $payload ? 'public_translations' : 'translations';
+        $attributes[$prefix.$translations] = __('settings.profile.translations');
+        foreach (['en', 'lt', 'ru'] as $language) {
+            $attributes[$prefix.$translations.'.'.$language] = __('ui.languages.'.$language);
+            foreach (['name' => 'public_name', 'description' => 'public_description'] as $field => $attribute) {
+                $attributes[$prefix.$translations.'.'.$language.'.'.$field] = __('validation.attributes.'.$attribute).' ('.strtoupper($language).')';
+            }
+        }
+
+        return $attributes;
     }
 
     /**

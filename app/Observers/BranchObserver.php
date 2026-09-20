@@ -25,20 +25,6 @@ class BranchObserver
     public function updated(Branch $branch): void
     {
         if ($branch->wasChanged([
-            'public_name',
-            'public_description',
-            'logo_path',
-            'cover_image_path',
-            'address',
-            'phone',
-            'email',
-            'website_url',
-            'instagram_url',
-            'facebook_url',
-            'tiktok_url',
-            'city',
-            'country',
-            'currency',
             'is_active',
             'timezone',
             'opening_hours_version',
@@ -46,7 +32,7 @@ class BranchObserver
             'temporary_closed_reason',
             'temporary_closed_until',
         ])) {
-            $this->forgetBranchCache->handle((int) $branch->id);
+            $this->forgetBranchCache->handle((int) $branch->id, polling: false);
         }
     }
 

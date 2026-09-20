@@ -6,6 +6,7 @@ namespace App\Actions\Branches;
 
 use App\Models\Branch;
 use App\Services\Availability\OpeningIntervalEvaluator;
+use App\Support\DisplayPreferences;
 use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -16,7 +17,7 @@ class GetBranchOpeningStatusAction
     public function __construct(private readonly OpeningIntervalEvaluator $evaluator) {}
 
     /** @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string, reason_codes: list<string>, evaluated_at: string, next_change_at: string|null, next_orderable_at: string|null} */
-    public function handle(Branch $branch, ?CarbonInterface $now = null): array
+    public function handle(Branch $branch, ?CarbonInterface $now = null, ?DisplayPreferences $preferences = null): array
     {
         $instant = $now === null ? CarbonImmutable::now() : CarbonImmutable::instance($now);
         $timezone = $branch->timezone ?: config('app.timezone', 'UTC');
@@ -35,23 +36,23 @@ class GetBranchOpeningStatusAction
             $detail = trim((string) $branch->temporary_closed_reason);
             $detail .= ($detail === '' ? '' : '. ').($until === null
                 ? __('ui.actions.branches.getbranchopeningstatusaction.otkroemsia_pozze')
-                : __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => LocalizedDateFormatter::dateTime($until->setTimezone($timezone))]));
+                : __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => LocalizedDateFormatter::dateTime($until->setTimezone($timezone), $preferences)]));
         } elseif (! $configured) {
             $label = __('ui.actions.branches.getbranchopeningstatusaction.casy_raboty_ne_ukazany');
             $detail = __('ui.actions.branches.getbranchopeningstatusaction.mozno_smotret_meniu_zakaz');
         } elseif ($allowed) {
             $label = __('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto');
-            $detail = $closes === null ? __('availability.open_without_deadline') : __('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => LocalizedDateFormatter::time($closes)]);
+            $detail = $closes === null ? __('availability.open_without_deadline') : __('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => LocalizedDateFormatter::time($closes, $preferences)]);
         } else {
             $label = __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto');
             $detail = $next === null ? __('ui.actions.branches.getbranchopeningstatusaction.segodnia_zakryto')
-                : __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $this->openingLabel($next, $instant->setTimezone($timezone))]);
+                : __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $this->openingLabel($next, $instant->setTimezone($timezone), $preferences)]);
         }
 
         return ['is_configured' => $paused || $configured, 'is_open' => ! $paused && $configured && $allowed,
             'can_accept_orders' => $allowed, 'label' => $label, 'detail' => $detail,
             'tone' => $paused ? 'danger' : (! $configured ? 'muted' : ($allowed ? 'success' : 'warning')),
-            'next_opens_at' => $next?->toIso8601String(), 'closes_at' => $closes === null ? null : LocalizedDateFormatter::time($closes),
+            'next_opens_at' => $next?->toIso8601String(), 'closes_at' => $closes === null ? null : LocalizedDateFormatter::time($closes, $preferences),
             'timezone' => $timezone, 'reason_codes' => $reason === null ? [] : [$reason],
             'evaluated_at' => $instant->toIso8601String(), 'next_change_at' => $result['next_change_at']?->toIso8601String(),
             'next_orderable_at' => $result['next_orderable_at']?->toIso8601String()];
@@ -78,16 +79,16 @@ class GetBranchOpeningStatusAction
         return ['weekly' => $weekly, 'exceptions' => $exceptions, 'empty_allows' => $branch->openingHours->isEmpty()];
     }
 
-    private function openingLabel(CarbonImmutable $next, CarbonImmutable $instant): string
+    private function openingLabel(CarbonImmutable $next, CarbonImmutable $instant, ?DisplayPreferences $preferences): string
     {
         if ($next->isSameDay($instant)) {
-            return LocalizedDateFormatter::time($next);
+            return LocalizedDateFormatter::time($next, $preferences);
         }
         $key = ['pn', 'vt', 'sr', 'ct', 'pt', 'sb', 'vs'][$next->isoWeekday() - 1];
 
         $translationKey = 'ui.actions.branches.getbranchopeningstatusaction.'.$key;
 
-        return __($translationKey).' '.LocalizedDateFormatter::time($next);
+        return __($translationKey).' '.LocalizedDateFormatter::time($next, $preferences);
     }
 
     public static function dayLabels(): array

@@ -90,10 +90,7 @@ test('localized catalogs do not silently retain english prose or foreign-script 
 function translationStandardEnglishIdentityAllowlist(): array
 {
     $shared = [
-        'fields.placeholders.branch_email_example',
         'fields.placeholders.email_example',
-        'fields.placeholders.phone_example',
-        'fields.placeholders.website_url_example',
         'guest.cart.separator',
         'mcp.cli.id',
         'menu.guest.unit_grams',
@@ -115,9 +112,6 @@ function translationStandardEnglishIdentityAllowlist(): array
         ],
         'ru' => [
             ...$shared,
-            'fields.placeholders.facebook_url_example',
-            'fields.placeholders.instagram_url_example',
-            'fields.placeholders.tiktok_url_example',
         ],
     ];
 }

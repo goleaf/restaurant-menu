@@ -38,6 +38,8 @@ T001–T003 precede new behavior. Domain T004–T006, center T007–T009 and UI 
 
 ## Phase 6: Convergence — verified additional gaps
 
+- [x] T034 [US3] Repair double-encoded persisted branch service modes at the BranchSetting read boundary; retain configured choices, GET/mount immutability, strict incoming array validation and canonical explicit-save storage. Fix the originating DemoTenantPortfolioSeeder factory-value transfer for settings, dishes and room/table metadata. Exact TypeError and initial/repeated raw JSON failures reproduced before fixes; BranchSettings33/207, portfolio2/2, preservation/orchestration12/151, scoped Pint/Larastan and isolated Chrome settings HTTP200 pass on PHP8.5. Broader verification limitations are recorded in docs/PROGRESS.md.
+
 - [x] T018 [US2] Prevent parent restoration from silently reactivating restaurants/prior non-owner staff access in app/Actions/Organizations/RestoreOrganizationAction.php and app/Actions/Brands/RestoreBrandAction.php; prove atomic consequences/history/no-op and rights in tests/Feature/RestaurantStructureRestoreSafetyTest.php.
 - [x] T019 [US3] Prove QR image failure after real database commit retains permanent identities and safely retries in tests/Feature/RestaurantPreparationConnectionsTest.php using owned isolated file SQLite.
 - [x] T020 [US2] Remove the three unreachable legacy structure list/editor PHP classes and their three Blade views. Migrate the 50 direct/helper-mediated test declarations in 14 files to the canonical Center, IdentityEditor, StructureCreate and setup contracts without dropping authorization, media, subscription or lifecycle cases. Assigned to center owner; root retains shared translations/routes.

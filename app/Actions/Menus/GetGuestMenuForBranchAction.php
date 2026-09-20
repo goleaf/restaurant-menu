@@ -20,12 +20,15 @@ use App\Services\Availability\AvailabilityEvaluator;
 use App\Services\Menus\GuestMenuItemPresenter;
 use App\Support\Availability\AvailabilityResult;
 use App\Support\BranchReportCacheVersion;
+use App\Support\DisplayPreferences;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class GetGuestMenuForBranchAction
 {
@@ -52,14 +55,16 @@ class GetGuestMenuForBranchAction
      */
     public function handle(int $branchId, ?string $languageCode = null): array
     {
+        $cache = self::cache();
+        $generation = $cache instanceof Repository
+            ? BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branchId]))
+            : '';
         $defaultLanguage = $this->defaultLanguageForBranch($branchId);
         $languageCode = self::normalizeLanguageCode($languageCode, $defaultLanguage);
-        $cache = self::cache();
         $at = CarbonImmutable::now();
         if (! $cache instanceof Repository) {
             return $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage, $at);
         }
-        $generation = BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branchId]));
         $cacheKey = self::cacheKey($branchId, $languageCode);
         $cachedPayload = $this->cachedPayload($cache, $cacheKey, $generation, $at);
 
@@ -183,8 +188,14 @@ class GetGuestMenuForBranchAction
 
         $payload = $this->buildMenuPayload($branchId, $languageCode, $defaultLanguage, $at);
 
-        if ($this->cacheUntil->greaterThan($at)) {
-            $cache->put($cacheKey, ['generation' => $generation, 'valid_until' => $this->cacheUntil->toIso8601String(), 'payload' => $payload], $this->cacheUntil);
+        if ($this->cacheUntil->greaterThan($at) && $cache instanceof Repository
+            && $cache->getStore() instanceof DatabaseStore
+            && $cache->getStore()->getConnection() === DB::connection()) {
+            DB::transaction(function () use ($cache, $cacheKey, $branchId, $generation, $payload): void {
+                if (hash_equals($generation, BranchReportCacheVersion::fingerprint($cache, 'guest-menu', collect([$branchId])))) {
+                    $cache->put($cacheKey, ['generation' => $generation, 'valid_until' => $this->cacheUntil->toIso8601String(), 'payload' => $payload], $this->cacheUntil);
+                }
+            }, attempts: 3);
         }
 
         return $payload;
@@ -197,11 +208,6 @@ class GetGuestMenuForBranchAction
     {
         $this->evaluatedAt = $at;
         $this->cacheUntil = $at->addSeconds(self::CACHE_SECONDS);
-        $hiddenUntil = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId)->where('status', MenuStatus::Active->value))
-            ->where('hidden_until', '>', $at)->min('hidden_until');
-        if (is_string($hiddenUntil)) {
-            $this->includeBoundary(CarbonImmutable::parse($hiddenUntil));
-        }
         $availabilityResult = $this->availableMenusForBranch($branchId, $languageCode);
         /** @var EloquentCollection<int, Menu> $availableMenus */
         $availableMenus = $availabilityResult['available_menus'];
@@ -445,6 +451,7 @@ class GetGuestMenuForBranchAction
                     ->where('language_code', $languageCode)
                     ->limit(1),
             ])
+            ->withMin(['items as next_item_visibility_change' => fn ($query) => $query->where('hidden_until', '>', $this->evaluatedAt)], 'hidden_until')
             ->with([
                 'branch' => fn ($query) => $query->select(AvailabilityEvaluator::branchColumns()),
                 'branch.openingHours', 'branch.scheduleExceptions',
@@ -466,7 +473,11 @@ class GetGuestMenuForBranchAction
             ->get();
 
         foreach ($menus as $menu) {
-            $availability = $this->getMenuAvailabilityStatus->handle($menu, $this->evaluatedAt);
+            $hiddenUntil = $menu->getAttribute('next_item_visibility_change');
+            if (is_string($hiddenUntil)) {
+                $this->includeBoundary(CarbonImmutable::parse($hiddenUntil));
+            }
+            $availability = $this->getMenuAvailabilityStatus->handle($menu, $this->evaluatedAt, DisplayPreferences::defaults());
             foreach (['next_change_at', 'next_available_at'] as $key) {
                 if (is_string($availability[$key] ?? null)) {
                     $this->includeBoundary(CarbonImmutable::parse($availability[$key]));

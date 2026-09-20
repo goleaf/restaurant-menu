@@ -159,6 +159,11 @@ class ScanTranslationsCommand extends Command
             );
 
             foreach ($matches[2] as [$key, $offset]) {
+                if (preg_match('/\A[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.\z/', $key) === 1
+                    && str_starts_with(ltrim(substr($contents, $offset + strlen($key) + 1)), '.')) {
+                    continue;
+                }
+
                 $this->recordTranslationUsage($usages, $key, $file, $contents, $offset);
             }
 

@@ -47,7 +47,7 @@ function historyWorkspace(t, native, configure = () => {}) {
         }
         return pop;
     }
-    function hash(url, replace = false) {
+    function hash(url, replace = false, deferred = false) {
         const oldURL = app.window.location.href;
         if (replace) entries[index] = { state: null, url };
         else {
@@ -56,8 +56,12 @@ function historyWorkspace(t, native, configure = () => {}) {
             index++;
         }
         app.window.location.href = url;
-        app.window.dispatchEvent(event({ type: 'popstate', state: null }));
-        app.window.dispatchEvent(event({ type: 'hashchange', oldURL, newURL: url }));
+        const dispatch = () => {
+            app.window.dispatchEvent(event({ type: 'popstate', state: null }));
+            app.window.dispatchEvent(event({ type: 'hashchange', oldURL, newURL: url }));
+        };
+        if (!deferred) dispatch();
+        return dispatch;
     }
     configure(app);
     mount();
@@ -128,6 +132,45 @@ test('fallback counts a proven native hash entry before another page and restore
     await Promise.resolve();
     assert.equal(app.window.location.href, 'https://menu.test/restaurant?branch=2');
     assert.deepEqual(app.traversals, [2]);
+    request.finish();
+});
+
+test('fallback retains a hash entry when Livewire navigation starts before its queued hashchange', async t => {
+    const app = historyWorkspace(t, false), departures = [];
+    app.window.location.assign = url => departures.push(url);
+    const hashAddress = 'https://menu.test/restaurant?branch=1#main-content';
+    const dispatchHash = app.hash(hashAddress, false, true);
+    const second = 'https://menu.test/restaurant?branch=2';
+    app.document.dispatchEvent(event({ type: 'livewire:navigate', detail: { history: false, url: new URL(second) } }));
+    assert.equal(app.window.history.state?.alpine?.snapshotIdx, 'first');
+    app.push(second);
+    dispatchHash();
+    app.push('https://menu.test/restaurant?branch=3');
+    app.traverse(-1);
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    for (const distance of [-2, 1]) {
+        app.traverse(distance);
+        await Promise.resolve();
+        assert.equal(app.window.location.href, second);
+        assert.equal(app.shell.pending, 1);
+    }
+    assert.deepEqual(departures, []);
+    assert.deepEqual(app.traversals, [2, -1]);
+    request.finish();
+    app.traverse(-1);
+    assert.equal(app.swaps.at(-1), hashAddress);
+});
+
+test('a request sent before hashchange preserves the source snapshot and fallback position', async t => {
+    const app = historyWorkspace(t, false);
+    const dispatchHash = app.hash('https://menu.test/restaurant?branch=1#main-content', false, true);
+    const request = app.message({ el: new Element() }, [{ name: 'save' }]);
+    request.send();
+    assert.equal(app.window.history.state?.alpine?.snapshotIdx, 'first');
+    assert.equal(app.shell.historyPosition, 1);
+    dispatchHash();
+    assert.equal(app.shell.historyPosition, 1);
     request.finish();
 });
 

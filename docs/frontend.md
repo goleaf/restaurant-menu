@@ -2,6 +2,11 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Profile date, time and number formats — 2026-09-20
+
+The existing Profile page includes a separate form between profile information and appearance. Three labelled Flux selectors update an aria-live preview; only Save persists. Reset chooses language defaults in the draft. The fieldset disables during requests and offline, with a localized offline explanation. Profile language save refreshes this child via a targeted event without clearing its unsaved choices. No second theme store or client formatting runtime is added. The initial scope keeps native business-date/time inputs and CSV conventions intact; see localization.md and Spec Kit005 for the consumer inventory.
+
+
 ## Prompt 5 — Rooms, tables and QR
 
 The current restaurant stays in the shared workspace header. Exact room selection, search, filters, cards/list and editor use one Livewire page. The `view` URL parameter identifies the mobile rooms/tables region; a selected panel takes precedence. Container queries show one mobile region and the desktop composition without duplicate active forms. Returning from an editor preserves filters and focuses the visible region, including a directly bookmarked room editor. The named unsaved Flux dialog reuses the shared actor/dirty/history/offline lifecycle.

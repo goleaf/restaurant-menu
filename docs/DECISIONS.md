@@ -2,6 +2,25 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 — scoped writes and unchanged history (2026-09-20)
+
+Use one settings page with independent Forms and exact Actions, with fingerprints derived from raw owned fields rather than Branch.updated_at. Durable request receipts bind actor, branch, operation and payload; replay still authorizes current access. Database and file lifecycles remain separate. Branch.currency is canonical, and any monetary/unfinished-visit blocker forbids ordinary currency change. Guest mode enums stay informational where no real workflow exists; staff confirmation is an invariant. Public EN/LT/RU content preserves legacy fallback without guessing its language. Preview is pure; cleanup requires bounded signed evidence and transactional activity rechecks.
+
+Reuse the existing SCSS dish navigation and availability form compositions rather than duplicating another screen stylesheet. All five Forms share the current manageSettings permission; their drafts remain in the same component snapshot. This improves save isolation, not an unmeasured claim of smaller hydration payload. Prior-stage acceptance remains separate.
+
+
+## Prompt 10 — unified preparation decisions (2026-09-20)
+
+- Reuse the existing shared Departments Dashboard; canonical Preparation and compatibility Kitchen/Bar entries share one implementation. Union separately authorized IDs, never broaden role/type input arrays. Existing view/update/print permissions remain operational; there is no invented observer mode.
+- Keep persisted statuses unchanged. Active excludes ready-unserved; Ready is waiting for service; History distinguishes served/cancelled. Complete database aggregates determine ticket/order truth, independently of filtered/paginated rows. All-cancelled work is not normal successful readiness.
+- Retain existing CAS/transitions and real event authors. Explicit review is limited to24 visible rows of one ticket and reports per-row outcomes; no queue-wide Ready command or partial-portion fiction.
+- Use existing production-event metadata for durable database-notification retry. Business changes survive delivery failure; retries do not create another transition. This is not an external exactly-once claim.
+- Preserve snapshot content and original/current serving identity. Reject unsafe department lifecycle changes; show scoped legacy routing problems without auto-reactivation or reassignment.
+- One visible3-second polling queue freezes during selection/review. Offline and session failures disable commands; reconnect refreshes rights before allowing new commands and never replays writes. Dedicated preparation/print SCSS avoids charging unrelated screens for the new layout.
+
+Implementation evidence belongs to PROGRESS.md; aggregate acceptance and delivery remain separate open gates until current-source results exist.
+
+
 ## Prompt 5 current-source convergence — 2026-09-20
 
 Preserve the already delivered unified workspace and subsequent dish-card implementation. Reauthorization now applies to editor reads as well as writes: branch visibility does not preserve a revoked zone/table editing capability. Create, update and restore use their existing resource Policies; bulk creation uses its existing branch capability. The nullable area icon is passed through a narrowly optional Form rule, leaving other AreaRules consumers unchanged. Print display-number fallback tests presence rather than PHP truthiness, preserving `0` as text.

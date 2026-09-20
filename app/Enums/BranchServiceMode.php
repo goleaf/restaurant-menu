@@ -13,26 +13,16 @@ enum BranchServiceMode: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::DineIn => 'Dine-in',
-            self::Pickup => 'Pickup',
-            self::Delivery => 'Delivery',
-            self::HotelRoomService => 'Hotel room service',
-            self::BarOnly => 'Bar only',
-            self::Custom => 'Custom',
-        };
+        $key = 'ui.branch.service_modes.'.$this->value.'.label';
+
+        return __($key);
     }
 
     public function description(): string
     {
-        return match ($this) {
-            self::DineIn => 'Use QR codes for tables, rooms, bar seats, and other on-site service points.',
-            self::Pickup => 'Prepare this branch for pickup windows or pickup points.',
-            self::Delivery => 'Keep delivery as a future-ready option without maps, couriers, or payments.',
-            self::HotelRoomService => 'Allow hotel room service scenarios for hotel branches later.',
-            self::BarOnly => 'Use this branch mainly for bar seats or counter service.',
-            self::Custom => 'Reserve a custom local service mode for unusual branch operations.',
-        };
+        $key = 'ui.branch.service_modes.'.$this->value.'.description';
+
+        return __($key);
     }
 
     /**

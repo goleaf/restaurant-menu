@@ -26,6 +26,7 @@ use App\Models\ModifierOption;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
+use App\Support\DisplayPreferences;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\Menus\ModifierRules;
 use App\Support\Validation\Orders\OrderInputRules;
@@ -366,9 +367,9 @@ class DraftOrder extends Component
                     'unit_price' => MoneyFormatter::centsToDecimal($item->unit_price_cents),
                     'modifier_total' => MoneyFormatter::centsToDecimal($item->modifier_total_cents),
                     'unit_total_price' => MoneyFormatter::centsToDecimal($unitTotalCents),
-                    'unit_total_price_label' => MoneyFormatter::formatCents($unitTotalCents, $this->currency),
+                    'unit_total_price_label' => MoneyFormatter::formatCents($unitTotalCents, $this->currency, preferences: DisplayPreferences::defaults()),
                     'total_price' => MoneyFormatter::centsToDecimal($item->total_price_cents),
-                    'total_price_label' => MoneyFormatter::formatCents($item->total_price_cents, $this->currency),
+                    'total_price_label' => MoneyFormatter::formatCents($item->total_price_cents, $this->currency, preferences: DisplayPreferences::defaults()),
                     'modifiers' => $this->modifierSummary($item->selected_modifiers),
                     'comment' => $item->comment,
                     'is_current_guest' => $isCurrentGuest,
@@ -387,11 +388,11 @@ class DraftOrder extends Component
                 'guest_id' => $guestSection['guest_id'],
                 'guest_name' => $guestSection['guest_name'],
                 'total' => MoneyFormatter::centsToDecimal($guestSection['total_cents']),
-                'total_label' => MoneyFormatter::formatCents($guestSection['total_cents'], $this->currency),
+                'total_label' => MoneyFormatter::formatCents($guestSection['total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'draft_total' => MoneyFormatter::centsToDecimal($guestSection['draft_total_cents']),
-                'draft_total_label' => MoneyFormatter::formatCents($guestSection['draft_total_cents'], $this->currency),
+                'draft_total_label' => MoneyFormatter::formatCents($guestSection['draft_total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'confirmed_total' => MoneyFormatter::centsToDecimal($guestSection['confirmed_total_cents']),
-                'confirmed_total_label' => MoneyFormatter::formatCents($guestSection['confirmed_total_cents'], $this->currency),
+                'confirmed_total_label' => MoneyFormatter::formatCents($guestSection['confirmed_total_cents'], $this->currency, preferences: DisplayPreferences::defaults()),
                 'has_draft_total' => $guestSection['draft_total_cents'] > 0,
                 'has_confirmed_total' => $guestSection['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestSection['is_current_guest'],
@@ -412,9 +413,9 @@ class DraftOrder extends Component
         $this->totalAmount = MoneyFormatter::centsToDecimal($totalCents);
         $this->confirmedOrdersTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents);
         $this->tableTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents));
-        $this->totalLabel = MoneyFormatter::formatCents($totalCents, $this->currency);
-        $this->confirmedOrdersTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents, $this->currency);
-        $this->tableTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents), $this->currency);
+        $this->totalLabel = MoneyFormatter::formatCents($totalCents, $this->currency, preferences: DisplayPreferences::defaults());
+        $this->confirmedOrdersTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents, $this->currency, preferences: DisplayPreferences::defaults());
+        $this->tableTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents), $this->currency, preferences: DisplayPreferences::defaults());
         $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = count($this->items);
         $this->canSendDraftToWaiter = $this->canSendDraftToWaiter && $this->itemCount > 0;
@@ -739,7 +740,7 @@ class DraftOrder extends Component
         $this->applyLocale();
 
         return view('livewire.public-qr.draft-order', [
-            'editingItemTotalLabel' => MoneyFormatter::format($this->editingItemTotal, $this->currency),
+            'editingItemTotalLabel' => MoneyFormatter::format($this->editingItemTotal, $this->currency, preferences: DisplayPreferences::defaults()),
         ]);
     }
 
@@ -934,7 +935,7 @@ class DraftOrder extends Component
                         'id' => $modifierOption->id,
                         'name' => $modifierOption->name,
                         'price_delta_cents' => $modifierOption->price_delta_cents,
-                        'formatted_price_delta' => MoneyFormatter::formatSignedCents($modifierOption->price_delta_cents, $this->currency),
+                        'formatted_price_delta' => MoneyFormatter::formatSignedCents($modifierOption->price_delta_cents, $this->currency, preferences: DisplayPreferences::defaults()),
                     ])
                     ->values()
                     ->all(),

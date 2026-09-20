@@ -97,6 +97,55 @@ test('cleanup command can be run manually for shared hosting without cron', func
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Cancelled);
 });
 
+test('cleanup rechecks activity after the initial candidate read', function (): void {
+    $branch = Branch::factory()->create();
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $session = oldTableSession($branch, $servicePoint, TableSessionStatus::Pending, 46);
+    $builder = new BuildTableSessionInactivityStateAction;
+    $first = true;
+    $mock = Mockery::mock(BuildTableSessionInactivityStateAction::class);
+    $mock->shouldReceive('handle')->andReturnUsing(function (TableSession $candidate) use ($builder, $session, &$first): array {
+        $state = $builder->handle($candidate);
+        if ($first) {
+            $first = false;
+            $session->forceFill(['updated_at' => now()])->save();
+        }
+
+        return $state;
+    });
+    app()->instance(BuildTableSessionInactivityStateAction::class, $mock);
+
+    $result = app(CleanupInactiveTableSessionsAction::class)->handle($branch->id);
+
+    expect($result['pending_cancelled'])->toBe(0)
+        ->and($session->fresh()->status)->toBe(TableSessionStatus::Pending);
+});
+
+test('cleanup rechecks the current inactivity threshold before cancellation', function (): void {
+    $branch = Branch::factory()->create();
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $settings = BranchSetting::factory()->for($branch)->create(['pending_session_expire_minutes' => 30]);
+    $session = oldTableSession($branch, $servicePoint, TableSessionStatus::Pending, 46);
+    $builder = new BuildTableSessionInactivityStateAction;
+    $first = true;
+    $mock = Mockery::mock(BuildTableSessionInactivityStateAction::class);
+    $mock->shouldReceive('handle')->andReturnUsing(function (TableSession $candidate) use ($builder, $settings, &$first): array {
+        $state = $builder->handle($candidate);
+        if ($first) {
+            $first = false;
+            $settings->forceFill(['pending_session_expire_minutes' => 120])->save();
+        }
+
+        return $state;
+    });
+    app()->instance(BuildTableSessionInactivityStateAction::class, $mock);
+
+    $result = app(CleanupInactiveTableSessionsAction::class)->handle($branch->id);
+
+    expect($result['pending_cancelled'])->toBe(0)
+        ->and($session->fresh()->status)->toBe(TableSessionStatus::Pending);
+});
+
 function oldTableSession(
     Branch $branch,
     ServicePoint $servicePoint,

@@ -543,11 +543,20 @@ test('reports ui uses semantic json translation keys in every locale', function 
 
 test('upload ui uses semantic json translation keys in every locale', function () {
     $uploadKeys = [
-        'uploads.actions.choose_file',
+        'center.choose_logo',
+        'settings.media.choose',
+        'settings.media.file_help',
+        'settings.media.save_logo',
+        'settings.media.save_cover',
+        'settings.media.remove_own',
+        'settings.media.saved',
+        'settings.media.selection_preview',
         'uploads.actions.upload',
         'uploads.actions.remove',
         'center.save_logo',
-        'uploads.labels.logo',
+        'center.logo',
+        'settings.media.logo',
+        'settings.media.cover',
         'uploads.labels.image',
         'uploads.labels.gallery',
         'uploads.labels.max_size',

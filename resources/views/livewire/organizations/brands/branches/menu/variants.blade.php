@@ -116,8 +116,8 @@
                                     </div>
 
                                     <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        @if ($variant['weight']) <span>{{ $variant['weight'] }} {{ __('menu.guest.unit_grams') }}</span> @endif
-                                        @if ($variant['volume']) <span>{{ $variant['volume'] }} {{ __('menu.guest.unit_liters') }}</span> @endif
+                                        @if ($variant['weight']) <span>{{ $variant['weight_label'] }} {{ __('menu.guest.unit_grams') }}</span> @endif
+                                        @if ($variant['volume']) <span>{{ $variant['volume_label'] }} {{ __('menu.guest.unit_liters') }}</span> @endif
                                         <span>{{ __('ui.departments.dashboard.sort') }}: {{ $variant['sort_order'] }}</span>
                                     </div>
 

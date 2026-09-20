@@ -4,20 +4,36 @@ declare(strict_types=1);
 
 namespace App\Actions\Branches;
 
+use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Models\Branch;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 final class UpdateBranchCoverImageAction
 {
     public function __construct(
         private readonly ReplaceLocalImageAction $replaceLocalImage,
+        private readonly RemoveLocalImageAction $removeLocalImage,
+        private readonly SaveBranchMediaAction $saveMedia,
     ) {}
 
-    public function handle(Branch $branch, UploadedFile $file): Branch
+    public function handle(Branch $branch, ?UploadedFile $file, ?User $actor = null, ?string $expectedMediaFingerprint = null, ?string $requestId = null): Branch
     {
+        if ($actor !== null) {
+            if ($expectedMediaFingerprint === null) {
+                throw ValidationException::withMessages(['cover' => __('settings.errors.conflict')]);
+            }
+            $result = $this->saveMedia->handle($actor, $branch, 'cover', $file, $expectedMediaFingerprint, $requestId ?? (string) Str::uuid());
+            $branch->forceFill(['cover_image_path' => $result['path']])->syncOriginalAttributes(['cover_image_path']);
+
+            return $branch;
+        }
+
         $current = DB::transaction(function () use ($branch, $file): Branch {
             $current = Branch::query()
                 ->select(['id', 'organization_id', 'brand_id', 'cover_image_path', 'updated_at'])
@@ -25,6 +41,16 @@ final class UpdateBranchCoverImageAction
                 ->where('brand_id', $branch->getRawOriginal('brand_id'))
                 ->lockForUpdate()
                 ->findOrFail($branch->getKey());
+
+            if ($file === null) {
+                $this->removeLocalImage->handle($current->cover_image_path, function () use ($current): void {
+                    if ($current->forceFill(['cover_image_path' => null])->save() !== true) {
+                        throw new RuntimeException('The image reference could not be saved.');
+                    }
+                });
+
+                return $current;
+            }
 
             $this->replaceLocalImage->handle(
                 file: $file,

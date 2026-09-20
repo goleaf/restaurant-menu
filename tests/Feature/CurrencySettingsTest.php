@@ -1,8 +1,7 @@
 <?php
 
 use App\Actions\Branches\CreateBranchAction;
-use App\Actions\Branches\UpdateBranchSettingsAction;
-use App\Enums\BranchOrderFlowMode;
+use App\Actions\Branches\SaveBranchSettingsGroupAction;
 use App\Enums\MenuStatus;
 use App\Enums\SupportedCurrency;
 use App\Livewire\PublicQr\GuestMenu;
@@ -16,9 +15,11 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
+use App\Support\Branches\BranchSettingsGroup;
 use App\Support\MoneyFormatter;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -50,19 +51,10 @@ test('branch settings default currency syncs to branch currency without exchange
     $branch = createCurrencySettingsBranch('EUR');
     $settings = $branch->settings()->firstOrFail();
 
-    app(UpdateBranchSettingsAction::class)->handle($settings, [
-        'require_waiter_confirmation_for_orders' => true,
-        'allow_guest_created_sessions' => true,
-        'allow_waiter_opened_sessions' => true,
-        'allow_guest_invite_links' => true,
-        'guest_join_requires_approval' => true,
-        'polling_interval_seconds' => 1,
-        'default_language' => 'en',
-        'default_currency' => 'usd',
-        'service_charge_enabled' => false,
-        'tips_enabled' => false,
-        'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,
-    ]);
+    app(SaveBranchSettingsGroupAction::class)->handle($branch->organization->owner, $branch, 'settlement', [
+        'default_currency' => 'usd', 'service_charge_enabled' => false,
+        'service_charge_percent' => '0.00', 'tips_enabled' => false,
+    ], BranchSettingsGroup::fingerprint($branch, $settings, 'settlement'), (string) Str::uuid());
 
     expect($settings->fresh()->default_currency)->toBe('USD')
         ->and($branch->fresh()->currency)->toBe('USD');

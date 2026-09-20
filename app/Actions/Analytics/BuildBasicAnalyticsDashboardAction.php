@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Reports\BranchReportQuery;
 use App\Support\BranchReportCacheVersion;
+use App\Support\DisplayPreferences;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use App\Support\Reports\BranchReportPeriod;
@@ -60,13 +61,14 @@ class BuildBasicAnalyticsDashboardAction
             ->get();
         $period = BranchReportPeriod::fromSelection($branches, $preset, $dateFrom, $dateTo);
         $cache = self::cache();
-        $cacheKey = self::cacheKeyForBranchIds($branchIds).':period:'.$period->fingerprint()
+        $preferences = DisplayPreferences::forUser($user);
+        $cacheKey = self::cacheKeyForBranchIds($branchIds, preferences: $preferences).':period:'.$period->fingerprint()
             .':generation:'.BranchReportCacheVersion::fingerprint($cache, 'analytics', $branchIds);
         $locale = App::currentLocale();
         $analytics = $cache->flexible(
             $cacheKey,
             [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
-            fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branches, $period, $cacheKey)),
+            fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branches, $period, $cacheKey, $preferences)),
             lock: ['seconds' => 30],
         );
 
@@ -119,7 +121,7 @@ class BuildBasicAnalyticsDashboardAction
     /**
      * @param  Collection<int, covariant int>  $branchIds
      */
-    public static function cacheKeyForBranchIds(Collection $branchIds, ?CarbonImmutable $date = null): string
+    public static function cacheKeyForBranchIds(Collection $branchIds, ?CarbonImmutable $date = null, ?DisplayPreferences $preferences = null): string
     {
         $normalizedBranchIds = $branchIds
             ->map(fn (mixed $branchId): int => (int) $branchId)
@@ -133,7 +135,7 @@ class BuildBasicAnalyticsDashboardAction
         return 'analytics:dashboard:v5:branches:'
             .sha1($normalizedBranchIds->implode(','))
             .':today:'.$date->toDateString()
-            .':locale:'.App::currentLocale();
+            .':locale:'.App::currentLocale().':formats:'.($preferences ?? DisplayPreferences::current())->fingerprint();
     }
 
     private static function cache(): CacheRepository
@@ -170,28 +172,28 @@ class BuildBasicAnalyticsDashboardAction
      * @param  Collection<int, Branch>  $branches
      * @return array<string, mixed>
      */
-    private function buildAnalytics(Collection $branches, BranchReportPeriod $period, string $cacheKey): array
+    private function buildAnalytics(Collection $branches, BranchReportPeriod $period, string $cacheKey, DisplayPreferences $preferences): array
     {
         (new PruneExpiredReportCacheEntriesAction)->handle(self::cache());
 
-        $report = $this->reportQuery->handle($branches, $period);
+        $report = $this->reportQuery->handle($branches, $period, $preferences);
         $singleCurrency = $report['single_currency'];
         $ordersCount = $report['orders_count'];
         $totalCents = $report['order_total_cents'];
 
         return [
             'cache_key' => $cacheKey,
-            'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now()),
-            'period_label' => $period->label(),
+            'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now(), $preferences),
+            'period_label' => $period->label($preferences),
             'branch_count' => $branches->count(),
             'branch_names' => $branches->pluck('name')->values()->all(),
             'orders_today_count' => $ordersCount,
             'orders_today_total' => $singleCurrency !== null
-                ? MoneyFormatter::formatCents((int) $totalCents, $singleCurrency)
+                ? MoneyFormatter::formatCents((int) $totalCents, $singleCurrency, $preferences)
                 : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies'),
             'average_check' => $singleCurrency !== null && $ordersCount > 0
-                ? MoneyFormatter::formatCents(MoneyFormatter::roundedDivide((int) $totalCents, $ordersCount), $singleCurrency)
-                : ($ordersCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : MoneyFormatter::formatCents(0, $report['default_currency'])),
+                ? MoneyFormatter::formatCents(MoneyFormatter::roundedDivide((int) $totalCents, $ordersCount), $singleCurrency, $preferences)
+                : ($ordersCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : MoneyFormatter::formatCents(0, $report['default_currency'], $preferences)),
             'currency_totals' => $report['currency_totals'],
             'payment_currency_totals' => $report['payment_currency_totals'],
             'popular_items' => $report['popular_items'],

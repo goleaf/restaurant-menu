@@ -10,7 +10,7 @@ use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -19,11 +19,22 @@ final class UpdateBranchLogoAction
     public function __construct(
         private readonly ReplaceLocalImageAction $replaceLocalImage,
         private readonly RemoveLocalImageAction $removeLocalImage,
+        private readonly SaveBranchMediaAction $saveMedia,
     ) {}
 
-    public function handle(Branch $branch, ?UploadedFile $file, ?User $actor = null, ?string $expectedMediaFingerprint = null): Branch
+    public function handle(Branch $branch, ?UploadedFile $file, ?User $actor = null, ?string $expectedMediaFingerprint = null, ?string $requestId = null): Branch
     {
-        $current = DB::transaction(function () use ($branch, $file, $actor, $expectedMediaFingerprint): Branch {
+        if ($actor !== null) {
+            if ($expectedMediaFingerprint === null) {
+                throw ValidationException::withMessages(['logo' => __('settings.errors.conflict')]);
+            }
+            $result = $this->saveMedia->handle($actor, $branch, 'logo', $file, $expectedMediaFingerprint, $requestId ?? (string) Str::uuid());
+            $branch->forceFill(['logo_path' => $result['path']])->syncOriginalAttributes(['logo_path']);
+
+            return $branch;
+        }
+
+        $current = DB::transaction(function () use ($branch, $file, $expectedMediaFingerprint): Branch {
             $current = Branch::query()
                 ->select(['id', 'organization_id', 'brand_id', 'logo_path', 'updated_at', 'deleted_at'])
                 ->where('organization_id', $branch->getRawOriginal('organization_id'))
@@ -31,9 +42,6 @@ final class UpdateBranchLogoAction
                 ->lockForUpdate()
                 ->findOrFail($branch->getKey());
 
-            if ($actor !== null) {
-                Gate::forUser(User::query()->whereKey($actor->id)->firstOrFail())->authorize('update', $current);
-            }
             if ($expectedMediaFingerprint !== null && ! hash_equals($expectedMediaFingerprint, hash('sha256', (string) $current->logo_path))) {
                 throw ValidationException::withMessages(['logo' => __('center.conflict')]);
             }

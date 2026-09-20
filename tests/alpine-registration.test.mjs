@@ -14,6 +14,7 @@ test('one bootstrap registers all providers and reusable bindings exactly once p
         assert.equal(typeof providers.get(name), 'function', name);
     }
     assert.equal(providers.has('onboardingFocus'), false, 'The retired wizard must not register a second focus owner.');
+    assert.equal(typeof providers.get('settingsWorkspace'), 'function');
     assert.equal(typeof providers.get('passkeyRegistration')().register, 'function');
     assert.equal(typeof providers.get('passkeyVerification')().verify, 'function');
     for (const name of ['dialogLabel', 'focusInput', 'focusSelf', 'printDocument']) assert.equal(typeof bindings.get(name), 'function', name);

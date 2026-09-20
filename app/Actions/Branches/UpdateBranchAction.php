@@ -13,12 +13,14 @@ use App\Support\Validation\Common\AuditReasonRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class UpdateBranchAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly EnsureBranchCurrencyCanChangeAction $ensureCurrency,
     ) {}
 
     /**
@@ -42,7 +44,9 @@ class UpdateBranchAction
             }
             $oldName = $branch->name;
 
-            $currency = SupportedCurrency::normalize($data['currency']);
+            $currency = SupportedCurrency::clean($data['currency']);
+            Validator::make(['currency' => $currency], ['currency' => ['required', Rule::in(SupportedCurrency::values())]], attributes: ['currency' => __('settings.fields.default_currency')])->validate();
+            $this->ensureCurrency->handle($branch, $currency, 'form.currency');
             $wasActive = (bool) $branch->is_active;
             if ($wasActive && ! $data['is_active']) {
                 $reason = Validator::make(['form' => ['suspensionReason' => trim((string) $reason)]], AuditReasonRules::auditReason('form.suspensionReason'), attributes: ['form.suspensionReason' => __('validation.attributes.suspension_reason')])->validate()['form']['suspensionReason'];

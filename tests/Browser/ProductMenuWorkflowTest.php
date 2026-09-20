@@ -117,7 +117,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     $page->screenshot(false, 'product-owner-390x844-dark');
 
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $branch->brand, $branch], false))
-        ->assertPresent('[data-page="branch-settings"]');
+        ->assertPresent('[data-page="restaurant-settings"]');
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $page->screenshot(false, "product-settings-{$width}x{$height}-dark");

@@ -6,6 +6,9 @@ namespace App\Enums;
 
 enum AuditLogAction: string
 {
+    case BranchSettingsChanged = 'branch_settings_changed';
+    case TableSessionInactivityCleanup = 'table_session_inactivity_cleanup';
+
     case AreaNodeChanged = 'area_node_changed';
     case ServicePointChanged = 'service_point_changed';
 
@@ -53,6 +56,8 @@ enum AuditLogAction: string
     public function label(): string
     {
         return match ($this) {
+            self::BranchSettingsChanged => __('settings.audit.changed'),
+            self::TableSessionInactivityCleanup => __('settings_center.audit.session_cleanup'),
             self::AreaNodeChanged => __('floor.audit.area_changed'),
             self::ServicePointChanged => __('floor.audit.point_changed'),
             self::McpTokenIssued => __('mcp.audit.token_issued'),

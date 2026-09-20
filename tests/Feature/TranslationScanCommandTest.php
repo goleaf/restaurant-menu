@@ -123,6 +123,24 @@ test('translation scanner can return json output', function () {
         ->and($payload['legacy_phrase_keys'])->toContain('Missing phrase');
 });
 
+test('translation scanner recognizes a concatenated prefix as a family rather than a missing literal', function (): void {
+    $langDir = translationScanFixturePath('prefix/lang');
+    $scanDir = translationScanFixturePath('prefix/app');
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        translationScanWriteJson($langDir, $locale, ['ui.timer.started' => 'Started']);
+    }
+    File::ensureDirectoryExists($scanDir);
+    File::put($scanDir.'/Example.php', <<<'PHP'
+<?php
+__('ui.timer.'.$basis);
+PHP);
+    Artisan::call('translations:scan', ['--lang-dir' => $langDir, '--scan-dir' => [$scanDir], '--json' => true]);
+    $report = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+    expect($report['used_keys'])->toBe(['ui.timer.started'])
+        ->and($report['missing_keys'])->toBe([])
+        ->and($report['phrase_used_keys'])->toBe([]);
+});
+
 test('translation scanner finds indirect javascript and bounded dynamic key usage', function () {
     $langDir = translationScanFixturePath('extended/lang');
     $scanDir = translationScanFixturePath('extended/resources');

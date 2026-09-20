@@ -10,6 +10,7 @@ use App\Models\TableSessionGuest;
 use App\Support\Validation\Payments\PaymentRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 
 final class Payment extends TableDetailSection
 {
@@ -17,6 +18,9 @@ final class Payment extends TableDetailSection
      * @var array<string, mixed>
      */
     public array $payment = [];
+
+    #[Locked]
+    public string $settlementFingerprint = '';
 
     public string $paymentFeedbackMessage = '';
 
@@ -38,11 +42,14 @@ final class Payment extends TableDetailSection
         $this->payment = $initialPayment === []
             ? $this->paymentPayload($this->freshViewableTablePayload())
             : $initialPayment;
+        $this->settlementFingerprint = (string) ($this->payment['settlement_fingerprint'] ?? '');
     }
 
     public function refreshPayment(): void
     {
+        $this->resetValidation('manual_payment');
         $this->payment = $this->paymentPayload($this->freshViewableTablePayload());
+        $this->settlementFingerprint = (string) ($this->payment['settlement_fingerprint'] ?? '');
     }
 
     public function recordTablePayment(RecordManualPaymentAction $recordManualPayment): void
@@ -59,6 +66,7 @@ final class Payment extends TableDetailSection
                 paymentMethod: (string) $validated['paymentMethod'],
                 note: (string) ($validated['paymentNote'] ?? ''),
                 tipsAmount: (string) $validated['tipsAmount'],
+                expectedSettlementFingerprint: $this->settlementFingerprint,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -95,6 +103,7 @@ final class Payment extends TableDetailSection
                 paymentMethod: (string) $validated['paymentMethod'],
                 note: (string) ($validated['paymentNote'] ?? ''),
                 tipsAmount: (string) $validated['tipsAmount'],
+                expectedSettlementFingerprint: $this->settlementFingerprint,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);

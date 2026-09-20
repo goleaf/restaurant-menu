@@ -5,35 +5,30 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\SupportedCurrency;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Number;
 use InvalidArgumentException;
+use NumberFormatter;
 use OverflowException;
 
 final class MoneyFormatter
 {
-    public static function format(string|int|null $amount, ?string $currency = null): string
+    public static function format(string|int|null $amount, ?string $currency = null, ?DisplayPreferences $preferences = null): string
     {
-        return self::formatCents(self::decimalToCents($amount), $currency);
+        return self::formatCents(self::decimalToCents($amount), $currency, $preferences);
     }
 
-    public static function formatSigned(string|int|null $amount, ?string $currency = null): string
+    public static function formatSigned(string|int|null $amount, ?string $currency = null, ?DisplayPreferences $preferences = null): string
     {
         $cents = self::decimalToCents($amount);
         $sign = $cents > 0 ? '+' : ($cents < 0 ? '-' : '');
 
-        return $sign.self::formatCents(self::absolute($cents), $currency);
+        return $sign.self::formatCents(self::absolute($cents), $currency, $preferences);
     }
 
-    public static function formatCents(int $cents, ?string $currency = null): string
+    public static function formatCents(int $cents, ?string $currency = null, ?DisplayPreferences $preferences = null): string
     {
         $currency = SupportedCurrency::normalize($currency);
-        $formatted = Number::currency(
-            $cents / 100,
-            in: $currency,
-            locale: App::currentLocale(),
-            precision: 2,
-        );
+        $formatted = LocalizedNumberFormatter::formatter(NumberFormatter::CURRENCY, 2, $preferences)
+            ->formatCurrency($cents / 100, $currency);
 
         if (! is_string($formatted)) {
             throw new InvalidArgumentException('The money value could not be formatted for the selected locale.');
@@ -42,11 +37,11 @@ final class MoneyFormatter
         return $formatted;
     }
 
-    public static function formatSignedCents(int $cents, ?string $currency = null): string
+    public static function formatSignedCents(int $cents, ?string $currency = null, ?DisplayPreferences $preferences = null): string
     {
         $sign = $cents > 0 ? '+' : '';
 
-        return $sign.self::formatCents($cents, $currency);
+        return $sign.self::formatCents($cents, $currency, $preferences);
     }
 
     public static function decimalToCents(string|int|null $amount): int

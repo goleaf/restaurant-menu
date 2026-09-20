@@ -308,7 +308,7 @@
                                                 <div class="col-span-full flex flex-wrap items-center gap-2 sm:col-auto sm:max-w-56 sm:justify-end">
                                                     @if ($item['is_available'])<flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
                                                     @else<flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>@endif
-                                                    @if ($item['is_temporarily_hidden'])<flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until']]) }}</flux:badge>@endif
+                                                    @if ($item['is_temporarily_hidden'])<flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until_label']]) }}</flux:badge>@endif
                                                     <flux:button :href="$item['edit_url']" icon="pencil" variant="primary" wire:navigate>{{ __('guest.cart.edit_item') }}</flux:button>
                                                 </div>
                                             </div>
@@ -330,7 +330,7 @@
                                                         @endforelse
                                                     </dl>
                                                     <x-menu.item-labels :allergens="$item['allergens']" :dietary-labels="$item['dietary_labels']" />
-                                                    <p class="text-xs text-text-muted">{{ $item['department_name'] ?: __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }} · {{ __('reports.csv.weight') }}: {{ $item['weight'] }} · {{ __('reports.csv.volume') }}: {{ $item['volume'] }} · {{ __('reports.csv.calories') }}: {{ $item['calories'] }}</p>
+                                                    <p class="text-xs text-text-muted">{{ $item['department_name'] ?: __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }} · {{ __('reports.csv.weight') }}: {{ $item['weight_label'] }} · {{ __('reports.csv.volume') }}: {{ $item['volume_label'] }} · {{ __('reports.csv.calories') }}: {{ $item['calories_label'] }}</p>
                                                     <div class="flex flex-wrap gap-2">
                                                         @if ($canChangeAvailability)
                                                             <flux:button :href="route('organizations.brands.branches.availability.index', [$organizationId, $brandId, $branchId, 'section' => 'stoplist', 'item' => $item['id']])" wire:navigate>{{ __('availability.explain_edit') }}</flux:button>

@@ -8,6 +8,7 @@ use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
+use App\Models\BranchSetting;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionServicePoint;
@@ -110,6 +111,11 @@ class OpenTableSessionForServicePointAction
                 throw ValidationException::withMessages([
                     'service_point' => __('table_sessions.errors.not_available'),
                 ]);
+            }
+
+            $waiterOpeningsAllowed = BranchSetting::query()->where('branch_id', $servicePoint->branch_id)->value('allow_waiter_opened_sessions');
+            if ($waiterOpeningsAllowed !== null && ! (bool) $waiterOpeningsAllowed) {
+                throw ValidationException::withMessages(['service_point' => __('settings.errors.waiter_opening_disabled')]);
             }
 
             $activeTableSession = $servicePoint->tableSessions()->make([

@@ -2,6 +2,11 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Restaurant settings boundary — Prompt14
+
+Each read and mutation scopes the locked restaurant through current organization/brand and manageSettings policy; actor identity must match the current authenticated user. Section URL/search contains no form input. Exact allowlists reject forged financial/admission fields in profile writes. Media uses current actor and expected own-file fingerprint, preserving inherited files. Passive public links require HTTP(S); no external retrieval is introduced. Cleanup evidence is signed, actor-bound, bounded and rechecked at confirmation; receipt replay never bypasses revoked access. Platform credentials, role assignment, account MFA and full database restore are outside this center.
+
+
 ## Prompt 5 — Physical structure and QR boundaries
 
 Every AreaEditor, PointEditor, BulkCreate and SelectionOperations response now repeats the existing create/update/restore/table/QR capability before preparing options or object data. Retaining branch-view permission does not retain an editor after its mutation capability is revoked. Bulk QR IDs, outcome maps and per-target operation UUIDs are locked; actions still reauthorize. Only failed image targets are explicitly retried, with their original receipts and permanent QR identity. Disabled/revoked codes require the separate authorized QR panel and explicit reissue confirmation. Permission failures propagate as denied responses rather than being reported as successful or retryable file work.
@@ -165,6 +170,8 @@ Guest share links follow the same bearer rule without pretending to be account i
 ## Input and output
 
 Server validation covers type, boundary, ownership, enum, nested keys, dates, money and file content. Validation does not replace authorization or database constraints. Blade escapes user data by default; raw HTML/SVG/JSON is allowed only from a named, tested trusted-data boundary. There is no first-party raw SQL, command execution, remote URL fetch or direct model access in Blade.
+
+Shared password validation stops at failed required/string/confirmation checks before running the configured complexity and breach rules; properly confirmed candidates still undergo the complete configured password policy. Shared profile email validation checks type and length before parsing and uniqueness. These fields report the first failure without stopping validation of other fields; trusted user-ID self-exclusion, locale validation and consumer authorization remain unchanged. `ValidationConcernsTest` covers the production password policy with faked breach responses and profile validation against isolated SQLite.
 
 Shared monetary validation rules reject floats, booleans, malformed decimal strings and integer-cent overflow before invoking a write Action. The reusable `DecimalMoney` rule shares the exact parser used during persistence, so incomplete inputs such as `.50` and `1.` produce localized field errors instead of conversion exceptions.
 

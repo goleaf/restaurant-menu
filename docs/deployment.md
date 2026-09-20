@@ -2,6 +2,11 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt14 additive schema gate
+
+The settings center requires the additive public_translations and branch_settings_changes migrations. They preserve legacy fields and existing financial/visit data; no mass default reset or demo seed is part of installation. They have been exercised only in owned test databases during this stage. This task does not migrate the working Herd database or deploy. Existing PHP>=8.5<8.6, SQLite, local files and optional scheduler contracts remain unchanged.
+
+
 ## Prompt 5 floor release boundary
 
 Prompt5 adds no migration, dependency, scheduler, queue worker or persistent service. Its normal release needs the existing Vite/Sass build, including generated static PDF styles; browser and PDF geometry come from first-party Sass. QR repair needs writable configured local storage and atomic replacement in the same disk directory. Public QR links use the configured app.url, so that value must be the intended public application origin/path. Keep existing PHP8.5, session/CSRF and private prepared-download controls. This local task does not deploy or alter the working database or application key; actual verification and delivery are recorded separately.

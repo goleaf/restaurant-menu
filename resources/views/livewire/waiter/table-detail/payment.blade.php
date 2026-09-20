@@ -52,7 +52,8 @@
             <h2 class="text-base font-semibold text-text-primary">{{ __('payments.title') }}</h2>
 
             @error('manual_payment')
-                <p class="mt-3 rounded-md bg-danger-surface px-3 py-2 text-sm font-medium text-danger">{{ $message }}</p>
+                <p class="mt-3 rounded-md bg-danger-surface px-3 py-2 text-sm font-medium text-danger" role="alert">{{ $message }}</p>
+                <flux:button wire:click="refreshPayment" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('settings.actions.refresh_settlement') }}</flux:button>
             @enderror
 
             <p class="mt-4 text-xs font-medium uppercase text-text-muted">{{ __('payments.summary') }}</p>

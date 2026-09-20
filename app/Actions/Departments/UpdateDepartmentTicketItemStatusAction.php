@@ -7,7 +7,6 @@ namespace App\Actions\Departments;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
-use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenDepartmentType;
@@ -16,27 +15,41 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Enums\TableSessionGuestStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
-use App\Models\TableSessionGuest;
+use App\Models\OrderStatusLog;
 use App\Models\User;
-use App\Notifications\KitchenItemCookingNotification;
-use App\Notifications\KitchenItemReadyNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class UpdateDepartmentTicketItemStatusAction
 {
     public function __construct(
         private readonly ResolveAccessibleDepartmentIdsAction $resolveAccessibleDepartmentIds,
         private readonly SyncOrderStatusFromTicketItemsAction $syncOrderStatus,
-        private readonly ResolveWaiterNotificationRecipientsAction $resolveWaiterRecipients,
+        private readonly DeliverDepartmentTicketItemNotificationsAction $deliverNotifications,
+        private readonly ResolvePreparationAccessibleDepartmentIdsAction $resolvePreparationDepartments,
         private readonly RecordAuditLogAction $recordAuditLog,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
+
+    public function handlePreparation(
+        int $itemId,
+        KitchenTicketItemStatus $status,
+        User $user,
+        int $branchId,
+        KitchenTicketItemStatus $expectedStatus,
+        string $expectedUpdatedAt,
+        int $expectedTicketId,
+    ): KitchenTicketItem {
+        return $this->update(
+            $itemId, $status, $user, [], [], [], $branchId,
+            $expectedStatus, $expectedUpdatedAt, $expectedTicketId, true,
+        );
+    }
 
     /**
      * @param  list<KitchenDepartmentType>  $departmentTypes
@@ -52,7 +65,28 @@ class UpdateDepartmentTicketItemStatusAction
         array $permissionCodes,
         ?int $branchId = null,
     ): KitchenTicketItem {
-        $previousStatus = null;
+        return $this->update($itemId, $status, $user, $departmentTypes, $roleCodes, $permissionCodes, $branchId);
+    }
+
+    /**
+     * @param  list<KitchenDepartmentType>  $departmentTypes
+     * @param  list<SystemRole>  $roleCodes
+     * @param  list<SystemPermission>  $permissionCodes
+     */
+    private function update(
+        int $itemId,
+        KitchenTicketItemStatus $status,
+        User $user,
+        array $departmentTypes,
+        array $roleCodes,
+        array $permissionCodes,
+        ?int $branchId,
+        ?KitchenTicketItemStatus $expectedStatus = null,
+        ?string $expectedUpdatedAt = null,
+        ?int $expectedTicketId = null,
+        bool $preparationWorkspace = false,
+    ): KitchenTicketItem {
+        $transitionEvent = null;
 
         $item = DB::transaction(function () use (
             $itemId,
@@ -62,15 +96,21 @@ class UpdateDepartmentTicketItemStatusAction
             $roleCodes,
             $permissionCodes,
             $branchId,
-            &$previousStatus,
+            $expectedStatus,
+            $expectedUpdatedAt,
+            $expectedTicketId,
+            $preparationWorkspace,
+            &$transitionEvent,
         ): KitchenTicketItem {
+            $transitionEvent = null;
             $item = KitchenTicketItem::query()
                 ->select(['id', 'kitchen_ticket_id', 'order_item_id', 'item_name', 'quantity', 'status', 'served_at', 'updated_at'])
                 ->with([
                     'kitchenTicket' => fn ($query) => $query
-                        ->select(['id', 'branch_id', 'kitchen_department_id', 'department_name', 'order_id'])
+                        ->select(['id', 'branch_id', 'kitchen_department_id', 'department_name', 'order_id', 'table_session_id'])
                         ->with([
                             'branch:id,organization_id',
+                            'tableSession:id,branch_id,status',
                             'order' => fn ($orderQuery) => $orderQuery->select([
                                 'id',
                                 'branch_id',
@@ -88,12 +128,14 @@ class UpdateDepartmentTicketItemStatusAction
 
             abort_if($branchId !== null && $item->kitchenTicket->branch_id !== $branchId, 403);
             $departmentId = $item->kitchenTicket->kitchen_department_id;
-            $accessibleDepartmentIds = $this->resolveAccessibleDepartmentIds->handle(
-                user: $user,
-                departmentTypes: $departmentTypes,
-                roleCodes: $roleCodes,
-                permissionCodes: $permissionCodes,
-            );
+            $accessibleDepartmentIds = $preparationWorkspace
+                ? $this->resolvePreparationDepartments->handle($user, $branchId)
+                : $this->resolveAccessibleDepartmentIds->handle(
+                    user: $user,
+                    departmentTypes: $departmentTypes,
+                    roleCodes: $roleCodes,
+                    permissionCodes: $permissionCodes,
+                );
 
             if ($departmentId === null || ! $accessibleDepartmentIds->contains((int) $departmentId)) {
                 throw ValidationException::withMessages([
@@ -133,7 +175,30 @@ class UpdateDepartmentTicketItemStatusAction
                 );
             }
 
+            if ($item->kitchenTicket->tableSession->status->locksOrderChanges()
+                || in_array($order->status, [OrderStatus::Served, OrderStatus::PaymentRequested, OrderStatus::Paid, OrderStatus::Closed], true)) {
+                throw ValidationException::withMessages(['ticket_item_status' => __('preparation.errors.order_finished')]);
+            }
+
+            if ($item->kitchenTicket->tableSession->branch_id !== $item->kitchenTicket->branch_id
+                || $order->branch_id !== $item->kitchenTicket->branch_id
+                || $order->table_session_id !== $item->kitchenTicket->table_session_id
+                || ($expectedTicketId !== null && $item->kitchen_ticket_id !== $expectedTicketId)) {
+                throw ValidationException::withMessages(['ticket_item_status' => __('preparation.errors.stale_item')]);
+            }
+
             $previousStatus = $item->status;
+            $previousUpdatedAt = (string) $item->getRawOriginal('updated_at');
+
+            if ($previousStatus === $status) {
+                $transitionEvent = $this->transitionEvent($item, $status);
+            }
+
+            if ($expectedStatus !== null
+                && ($expectedStatus !== $previousStatus || $expectedUpdatedAt !== $previousUpdatedAt)
+                && ! $this->isExactReplay($transitionEvent, $expectedStatus, $expectedUpdatedAt, $user)) {
+                throw ValidationException::withMessages(['ticket_item_status' => __('preparation.errors.stale_item')]);
+            }
 
             if ($previousStatus === $status) {
                 return $item;
@@ -148,29 +213,20 @@ class UpdateDepartmentTicketItemStatusAction
             $updatedRows = KitchenTicketItem::query()
                 ->whereKey($item->id)
                 ->where('status', $previousStatus->value)
+                ->where('updated_at', $previousUpdatedAt)
+                ->where('kitchen_ticket_id', $item->kitchen_ticket_id)
                 ->whereNull('served_at')
                 ->update(['status' => $status]);
 
             if ($updatedRows === 0) {
-                $currentItem = KitchenTicketItem::query()
-                    ->select(['id', 'status', 'served_at', 'updated_at'])
-                    ->whereKey($item->id)
-                    ->firstOrFail();
-
-                if ($currentItem->served_at === null && $currentItem->status === $status) {
-                    $previousStatus = $status;
-
-                    return $currentItem;
-                }
-
                 throw ValidationException::withMessages([
-                    'ticket_item_status' => __('errors.types.order_invalid_transition.message'),
+                    'ticket_item_status' => __('preparation.errors.stale_item'),
                 ]);
             }
 
             $item->forceFill(['status' => $status]);
 
-            $this->createOrderStatusLog->handle(
+            $transitionEvent = $this->createOrderStatusLog->handle(
                 event: OrderStatusLogEvent::TicketItemStatusChanged,
                 order: $order,
                 actorUser: $user,
@@ -182,8 +238,14 @@ class UpdateDepartmentTicketItemStatusAction
                     'kitchen_ticket_item_id' => $item->id,
                     'order_item_id' => $item->order_item_id,
                     'department_name' => $item->kitchenTicket->department_name,
+                    'command' => ['expected_status' => $previousStatus->value, 'expected_updated_at' => $previousUpdatedAt],
+                    'notifications' => ['state' => in_array($status, [KitchenTicketItemStatus::InProgress, KitchenTicketItemStatus::Ready], true) ? 'pending' : 'not_required'],
                 ],
             );
+
+            if (! $transitionEvent->exists) {
+                throw new RuntimeException('Preparation transition history was not persisted.');
+            }
 
             $this->syncOrderStatus->handle($order, $user);
 
@@ -212,139 +274,40 @@ class UpdateDepartmentTicketItemStatusAction
             return $item->refresh();
         }, attempts: 3);
 
-        if ($previousStatus instanceof KitchenTicketItemStatus && $previousStatus !== $status) {
-            $this->notifyWaiterRecipientsForReadyItem($item, $previousStatus, $status);
-            $this->notifyGuestRecipientForTicketItem($item, $previousStatus, $status);
+        $notificationPending = false;
+        if ($transitionEvent instanceof OrderStatusLog && data_get($transitionEvent->metadata, 'notifications.state') === 'pending') {
+            try {
+                $this->deliverNotifications->handle($transitionEvent->id);
+            } catch (Throwable $exception) {
+                report($exception);
+                $notificationPending = true;
+            }
         }
 
-        return $item->refresh();
+        return $item->refresh()->setAttribute('notification_delivery_pending', $notificationPending);
     }
 
-    private function notifyWaiterRecipientsForReadyItem(
-        KitchenTicketItem $item,
-        KitchenTicketItemStatus $previousStatus,
-        KitchenTicketItemStatus $newStatus,
-    ): void {
-        if ($newStatus !== KitchenTicketItemStatus::Ready || $previousStatus === KitchenTicketItemStatus::Ready) {
-            return;
-        }
-
-        $item = KitchenTicketItem::query()
-            ->select([
-                'id',
-                'kitchen_ticket_id',
-                'order_item_id',
-                'table_session_guest_id',
-                'menu_item_id',
-                'guest_name',
-                'item_name',
-                'quantity',
-                'status',
-                'selected_modifiers',
-                'comment',
-                'updated_at',
-            ])
-            ->with([
-                'kitchenTicket' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'order_id',
-                        'branch_id',
-                        'service_point_id',
-                        'table_session_id',
-                        'kitchen_department_id',
-                        'department_type',
-                        'department_name',
-                    ])
-                    ->with([
-                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
-                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
-                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
-                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                    ]),
-            ])
-            ->whereKey($item->id)
-            ->firstOrFail();
-        $branch = $item->kitchenTicket->branch;
-
-        $recipients = $this->resolveWaiterRecipients->handle($branch);
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
-        Notification::send($recipients, new KitchenItemReadyNotification($item));
+    private function transitionEvent(KitchenTicketItem $item, KitchenTicketItemStatus $status): ?OrderStatusLog
+    {
+        return OrderStatusLog::query()
+            ->select(['id', 'order_id', 'actor_user_id', 'new_status', 'previous_status', 'metadata', 'occurred_at'])
+            ->where('order_id', $item->kitchenTicket->order_id)
+            ->where('event', OrderStatusLogEvent::TicketItemStatusChanged->value)
+            ->where('metadata->kitchen_ticket_item_id', $item->id)
+            ->where('new_status', $status->value)
+            ->latest('id')
+            ->first();
     }
 
-    private function notifyGuestRecipientForTicketItem(
-        KitchenTicketItem $item,
-        KitchenTicketItemStatus $previousStatus,
-        KitchenTicketItemStatus $newStatus,
-    ): void {
-        if ($previousStatus === $newStatus || ! in_array($newStatus, [
-            KitchenTicketItemStatus::InProgress,
-            KitchenTicketItemStatus::Ready,
-        ], true)) {
-            return;
-        }
-
-        $item = KitchenTicketItem::query()
-            ->select([
-                'id',
-                'kitchen_ticket_id',
-                'order_item_id',
-                'table_session_guest_id',
-                'menu_item_id',
-                'guest_name',
-                'item_name',
-                'quantity',
-                'status',
-                'selected_modifiers',
-                'comment',
-                'updated_at',
-            ])
-            ->with([
-                'guest' => fn ($query) => $query->select([
-                    'id',
-                    'table_session_id',
-                    'guest_name',
-                    'guest_token',
-                    'status',
-                    'joined_at',
-                    'left_at',
-                ]),
-                'kitchenTicket' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'order_id',
-                        'branch_id',
-                        'service_point_id',
-                        'table_session_id',
-                        'kitchen_department_id',
-                        'department_type',
-                        'department_name',
-                    ])
-                    ->with([
-                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
-                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
-                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
-                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                    ]),
-            ])
-            ->whereKey($item->id)
-            ->firstOrFail();
-        $guest = $item->guest;
-
-        if (! $guest instanceof TableSessionGuest || $guest->status !== TableSessionGuestStatus::Active) {
-            return;
-        }
-
-        if ($newStatus === KitchenTicketItemStatus::InProgress) {
-            $guest->notify(new KitchenItemCookingNotification($item));
-
-            return;
-        }
-
-        $guest->notify(new KitchenItemReadyNotification($item));
+    private function isExactReplay(
+        ?OrderStatusLog $event,
+        KitchenTicketItemStatus $expectedStatus,
+        ?string $expectedUpdatedAt,
+        User $user,
+    ): bool {
+        return $event instanceof OrderStatusLog
+            && $event->actor_user_id === $user->id
+            && data_get($event->metadata, 'command.expected_status') === $expectedStatus->value
+            && data_get($event->metadata, 'command.expected_updated_at') === $expectedUpdatedAt;
     }
 }

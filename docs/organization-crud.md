@@ -14,7 +14,7 @@ Current acceptance is in PROGRESS.md and testing.md. The dated completion figure
 
 ## Atomic branch configuration
 
-Rows 4–7 share one Save operation. `BranchSettingsForm` validates all fields and `SaveBranchConfigurationAction` reloads/authorizes the branch and composes the existing Actions in one transaction. Late failure restores settings, profile, closure, schedule and original media; filesystem replacements follow commit/rollback. Separate forms are not required for independent controls that already have focused validation boundaries.
+Restaurant settings now use independent profile, media, admission, settlement, locale and advanced operations (Prompt14). Each group validates and versions only its owned fields; failure cannot roll back another already saved group or overwrite another draft. Availability and structural identity keep their canonical separate editors. See `specs/006-restaurant-settings/contracts/settings.md`.
 
 This document is an implementation and test-evidence view of canonical requirement `sys-admin-crud-001`. It does not redefine product requirements. The executable inventory is `Tests\Support\OrganizationCrudMatrix`; focused feature tests remain authoritative for behavior, authorization, validation and tenant isolation.
 

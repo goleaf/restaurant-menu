@@ -29,6 +29,14 @@
         "resources/scss/restaurant-center.scss": {
             "raw": 3500,
             "gzip": 1000
+        },
+        "resources/scss/preparation.scss": {
+            "raw": 3300,
+            "gzip": 1100
+        },
+        "resources/scss/preparation-print.scss": {
+            "raw": 800,
+            "gzip": 400
         }
     },
     "scenarios": {
@@ -81,7 +89,8 @@
             "entries": [
                 "resources/css/app.css",
                 "resources/scss/app.scss",
-                "resources/js/app.js"
+                "resources/js/app.js",
+                "resources/scss/preparation.scss"
             ],
             "limits": {
                 "raw": 955700,
@@ -134,20 +143,32 @@
                 "raw": 959700,
                 "gzip": 395700
             }
+        },
+        "preparation-print": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js",
+                "resources/scss/preparation-print.scss"
+            ],
+            "limits": {
+                "raw": 959700,
+                "gzip": 395700
+            }
         }
     },
     "totals": {
         "css": {
-            "raw": 378400,
-            "gzip": 53600
+            "raw": 379630,
+            "gzip": 54750
         },
         "js": {
-            "raw": 355000,
+            "raw": 356180,
             "gzip": 110000
         },
         "fonts": {
-            "raw": 226000,
-            "gzip": 225000
+            "raw": 223890,
+            "gzip": 223800
         },
         "all": {
             "raw": 959700,

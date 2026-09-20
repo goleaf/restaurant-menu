@@ -1,5 +1,7 @@
 export function kitchenTimers() {
     const timerBaselines = new WeakMap();
+    let ownerRoot;
+    let revalidationVersion = 0;
 
     function parseSeconds(value) {
         const seconds = Number.parseInt(value ?? '', 10);
@@ -64,10 +66,12 @@ export function kitchenTimers() {
     }
 
     function updateTimer(timer) {
+        const known = timer.dataset.timerKnown !== 'false';
+        const productionPhase = !['awaiting_service', 'completed'].includes(timer.dataset.timerPhase);
         const elapsed = elapsedSeconds(timer);
         const attentionAfter = parseSeconds(timer.dataset.attentionAfterSeconds);
         const delayedAfter = Math.max(attentionAfter, parseSeconds(timer.dataset.delayedAfterSeconds));
-        const state = delayState(elapsed, attentionAfter, delayedAfter);
+        const state = known && productionPhase ? delayState(elapsed, attentionAfter, delayedAfter) : 'on-track';
         const value = timer.querySelector('[data-kitchen-delay-value]');
         const status = timer.querySelector('[data-kitchen-delay-status]');
         const overrun = timer.querySelector('[data-kitchen-delay-overrun]');
@@ -75,13 +79,13 @@ export function kitchenTimers() {
         timer.dataset.delayState = state;
         timer.dataset.kitchenDelayTimerReady = 'true';
 
-        if (value instanceof HTMLTimeElement) {
+        if (known && value instanceof HTMLTimeElement) {
             value.textContent = formatDuration(elapsed);
             value.dateTime = `PT${elapsed}S`;
         }
 
         if (status instanceof HTMLElement) {
-            const label = statusLabel(timer, state);
+            const label = known && productionPhase ? statusLabel(timer, state) : '';
 
             if (status.textContent?.trim() !== label) {
                 status.textContent = label;
@@ -100,15 +104,45 @@ export function kitchenTimers() {
         }
     }
 
-
     return {
         timerInterval: null,
         abortController: null,
         unsubscribe: null,
         suspended: false,
+        online: true,
+        revalidating: false,
+        refreshFailed: false,
+        pendingRequests: 0,
+        destroyed: false,
+        get commandsDisabled() {
+            return !this.online || this.revalidating || this.refreshFailed || this.pendingRequests > 0;
+        },
         init() {
+            ownerRoot = this.$el;
+            this.online = navigator.onLine;
             this.abortController = new AbortController();
             const options = { signal: this.abortController.signal };
+            window.addEventListener('offline', () => {
+                this.online = false;
+                this.refreshFailed = true;
+                this.revalidating = false;
+                revalidationVersion++;
+            }, options);
+            window.addEventListener('online', () => {
+                this.online = true;
+                this.refreshContext();
+            }, options);
+            ownerRoot.addEventListener('click', event => {
+                if (!this.commandsDisabled || !event.target.closest('[data-preparation-transition], [data-preparation-selection-apply]')) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }, { ...options, capture: true });
+            ownerRoot.addEventListener('preparation-action-finished', () => this.$nextTick(() => {
+                if (!this.destroyed && ownerRoot.isConnected) {
+                    const destination = ownerRoot.querySelector('[data-preparation-feedback]') ?? ownerRoot.querySelector('[data-preparation-ticket-heading]');
+                    destination?.focus();
+                }
+            }), options);
             document.addEventListener('visibilitychange', () => this.synchronize(), options);
             document.addEventListener('livewire:navigating', () => this.suspend(), options);
             window.addEventListener('pagehide', () => this.suspend(), options);
@@ -116,15 +150,44 @@ export function kitchenTimers() {
                 this.suspended = false;
                 this.synchronize();
             }, options);
-            this.unsubscribe = window.Livewire.interceptMessage(({ message, onSuccess }) => {
-                if (message.component.el !== this.$el && !this.$el.contains(message.component.el)) return;
-                onSuccess(({ onRender }) => onRender(() => this.synchronize()));
+            this.unsubscribe = window.Livewire.interceptMessage(({ message, onSend, onFinish, onSuccess }) => {
+                if (message.component.el !== ownerRoot && !ownerRoot.contains(message.component.el)) return;
+                let pending = false;
+                const release = () => {
+                    if (!pending) return;
+                    pending = false;
+                    this.pendingRequests = Math.max(0, this.pendingRequests - 1);
+                };
+                onSend(() => { if (!pending) { pending = true; this.pendingRequests++; } });
+                onFinish(() => {
+                    if (pending) this.refreshFailed = true;
+                    release();
+                });
+                onSuccess(({ onSync, onRender }) => {
+                    onSync(release);
+                    onRender(() => this.synchronize());
+                });
             });
             this.synchronize();
         },
+        async refreshContext() {
+            if (!this.online || this.revalidating || this.destroyed || this.pendingRequests > 0) return;
+            const version = ++revalidationVersion;
+            this.revalidating = true;
+            this.refreshFailed = false;
+            try {
+                await this.$wire.refreshQueue();
+                if (this.destroyed || version !== revalidationVersion || !ownerRoot.isConnected) return;
+                this.refreshFailed = !this.online;
+            } catch {
+                if (!this.destroyed && version === revalidationVersion) this.refreshFailed = true;
+            } finally {
+                if (version === revalidationVersion) this.revalidating = false;
+            }
+        },
         synchronize() {
-            const timers = this.$el.querySelectorAll('[data-kitchen-delay-timer]');
-            if (this.suspended || !this.$el.isConnected || document.hidden || timers.length === 0) {
+            const timers = ownerRoot.querySelectorAll('[data-kitchen-delay-timer]');
+            if (this.suspended || !ownerRoot.isConnected || document.hidden || timers.length === 0) {
                 this.stop();
                 return;
             }
@@ -140,6 +203,8 @@ export function kitchenTimers() {
             this.stop();
         },
         destroy() {
+            this.destroyed = true;
+            revalidationVersion++;
             this.suspend();
             this.abortController?.abort();
             this.unsubscribe?.();

@@ -300,7 +300,7 @@ final class DemoTenantPortfolioSeeder extends Seeder
         $settings = $this->ensureBranchSettings->handle($branch);
         if ($settings->wasRecentlyCreated) {
             $settings->forceFill(
-                BranchSetting::factory()->demoReadyForService($branch)->make()->getAttributes(),
+                BranchSetting::factory()->demoReadyForService($branch)->make()->attributesToArray(),
             )->save();
         }
     }
@@ -330,7 +330,7 @@ final class DemoTenantPortfolioSeeder extends Seeder
             $area->restore();
         }
 
-        $area->forceFill($factory->make()->getAttributes())->save();
+        $area->forceFill($factory->make()->attributesToArray())->save();
 
         return $area->refresh();
     }
@@ -368,7 +368,7 @@ final class DemoTenantPortfolioSeeder extends Seeder
                 $table->restore();
             }
 
-            $table->forceFill($factory->make()->getAttributes())->save();
+            $table->forceFill($factory->make()->attributesToArray())->save();
         }
     }
 
@@ -496,7 +496,7 @@ final class DemoTenantPortfolioSeeder extends Seeder
                 $item->restore();
             }
 
-            $item->forceFill($factory->make()->getAttributes())->save();
+            $item->forceFill($factory->make()->attributesToArray())->save();
         }
 
         foreach ($profile['item'] as $locale => $name) {

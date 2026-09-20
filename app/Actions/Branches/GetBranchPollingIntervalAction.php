@@ -3,8 +3,11 @@
 namespace App\Actions\Branches;
 
 use App\Models\BranchSetting;
+use Illuminate\Cache\DatabaseStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 
 class GetBranchPollingIntervalAction
@@ -19,14 +22,19 @@ class GetBranchPollingIntervalAction
             return 1;
         }
 
-        $interval = self::cache()->remember(
-            self::cacheKey($branchId),
-            self::CACHE_SECONDS,
-            fn (): int => (int) BranchSetting::query()
+        $cache = self::cache();
+        $key = self::cacheKey($branchId);
+        $interval = $cache->get($key);
+        if (! is_int($interval)) {
+            $read = fn (): int => (int) BranchSetting::query()
                 ->select(['branch_id', 'polling_interval_seconds'])
                 ->where('branch_id', $branchId)
-                ->value('polling_interval_seconds'),
-        );
+                ->value('polling_interval_seconds');
+            $interval = $cache instanceof Repository && $cache->getStore() instanceof DatabaseStore
+                && $cache->getStore()->getConnection() === DB::connection()
+                ? DB::transaction(fn (): mixed => $cache->remember($key, self::CACHE_SECONDS, $read), attempts: 3)
+                : $read();
+        }
 
         return self::normalize($interval);
     }

@@ -12,6 +12,8 @@ Current Prompt 3 offline lifecycle: a response already received before disconnec
 
 Floor selection uses one locked server ID set across cards/list/page/filter changes; the Flux checked property reflects this set after server updates, and pointer/Space both call the same authorized selection action. Clear/page-selection and restored DOM state are exercised in the actual browser. Closing an online editor restores focus after confirmed Livewire rendering; offline close remains local without replay on reconnect.
 
+Bulk QR results show each target's name, area, saved short code or missing code, completion or localized failure/skip reason. Continue attempts the next five unprocessed targets; Retry unfinished codes is an explicit action retaining the same request receipts. Exceptions use a warning, never the all-success callout. Manage QR returns to the selected table without clearing the selection. Optional room icons have an explicit No icon choice. Current create/update/restore/QR capabilities are rechecked before editor data is returned.
+
 The legacy areas address opens the room region through `view=zones`, preserving its existing filters. Table and QR links continue to select their own canonical region/object. These are authorized compatibility entries, not additional editors or catalogues.
 
 ## Prompt 4 center interaction boundary (2026-09-18)

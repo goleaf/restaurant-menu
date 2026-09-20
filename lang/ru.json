@@ -2927,7 +2927,7 @@
     "floor.qr.batch_help": "За шаг подготавливается до пяти столов. Повтор восстанавливает тот же код и сохраняет выполненные результаты.",
     "floor.qr.continue": "Подготовить следующие коды",
     "floor.qr.progress": "Подготовлено: :done из :total",
-    "floor.qr.partial_failure": "Часть кодов подготовлена. Текущее изображение не удалось сохранить; повтор сохранит идентичность QR.",
+    "floor.qr.partial_failure": "Не удалось подготовить QR этого стола. Повтор сохранит уже записанный код.",
     "floor.print.preset": "Шаблон наклейки",
     "floor.print.locale": "Язык наклейки",
     "floor.print.number": "Показывать номер стола",
@@ -3169,5 +3169,13 @@
     "dish.availability.not_evaluated": "Полная доступность ещё не проверена. Предпросмотр проверяет часы ресторана, варианты и обязательные опции.",
     "dish.availability.check_preview": "Проверить в предпросмотре",
     "dish.availability.enabled": "Блюдо включено",
-    "dish.availability.stopped": "Блюдо выключено"
+    "dish.availability.stopped": "Блюдо выключено",
+    "floor.no_icon": "Без значка",
+    "floor.qr.result.reissue_required": "Пропущено: QR отключён или отозван. Проверьте его перед отдельным перевыпуском.",
+    "floor.qr.result.archived": "Пропущено: стол в архиве.",
+    "floor.qr.result.changed": "Пропущено: QR изменился во время подготовки. Проверьте актуальное состояние.",
+    "floor.qr.result.counts": "Пропущено: :skipped. Ошибок: :failed.",
+    "floor.qr.retry_failed": "Повторить незавершённые коды",
+    "floor.qr.result.partial": "Подготовка завершена с исключениями",
+    "floor.qr.manage": "Управление QR"
 }

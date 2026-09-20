@@ -138,6 +138,36 @@ test('room bulk creation recovers missing QR and downloads only the chosen subse
     expect(QrCode::query()->whereIn('service_point_id', $points->modelKeys())->pluck('public_token', 'id')->all())->toBe($identities);
 });
 
+test('mixed QR generation shows every outcome and opens the same selected table for recovery', function (string $locale): void {
+    $this->actor->update(['locale' => $locale]);
+    $this->qr->forceFill(['status' => QrCodeStatus::Disabled])->save();
+    $point = ServicePoint::factory()->for($this->branch)->create(['name' => 'Garden — Sodas — Сад', 'display_number' => '0']);
+    $page = floorBrowserLogin($this->actor, $locale);
+    $page->navigate(route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $this->branch], false))
+        ->click('[aria-label="'.__('floor.select_table_named', ['name' => $this->point->name], $locale).'"]')
+        ->assertSee(__('floor.selected_count', ['count' => 1], $locale))
+        ->click('[aria-label="'.__('floor.select_table_named', ['name' => $point->name], $locale).'"]')
+        ->assertSee(__('floor.selected_count', ['count' => 2], $locale))
+        ->click('button[wire\:click="openSelection(\'generate\')"]')
+        ->click('button[wire\:click="generateNext"]')
+        ->assertSee(__('floor.qr.result.partial', [], $locale))
+        ->assertSee(__('floor.qr.result.reissue_required', [], $locale))
+        ->assertSee(__('floor.qr.progress', ['done' => 1, 'total' => 2], $locale))
+        ->assertNotPresent('button[wire\:click="generateNext"]');
+    expect($this->qr->fresh()->status)->toBe(QrCodeStatus::Disabled)
+        ->and(QrCode::query()->where('service_point_id', $point->id)->count())->toBe(1);
+    foreach ([320, 390, 768, 1024, 1440] as $width) {
+        $page->resize($width, 900)->assertScript('document.documentElement.scrollWidth <= innerWidth', true);
+    }
+    $page->screenshot(true, 'floor-qr-partial-'.$locale.'-1440')->resize(390, 844)
+        ->screenshot(true, 'floor-qr-partial-'.$locale.'-390')
+        ->click('button[wire\:click="openQr('.$this->point->id.')"]')->assertVisible('[data-floor-qr-panel]')
+        ->assertSee($this->qr->short_code)
+        ->click('[aria-label="'.__('floor.close_editor', [], $locale).'"]')->assertNotPresent('[data-floor-editor-shell]')
+        ->assertSee(__('floor.selected_count', ['count' => 2], $locale))
+        ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+})->with(['en', 'lt', 'ru']);
+
 test('floor QR and print remain usable across localized themes widths and accessibility media', function (string $locale): void {
     $this->actor->update(['locale' => $locale]);
     $this->point->update(['name' => 'Window table — Stalas prie lango — Стол у большого окна']);

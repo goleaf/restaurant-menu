@@ -12,6 +12,8 @@ Bulk creation retains200 targets, archived-code reservation and actor/payload-bo
 
 QR image repair and reprint preserve the permanent code. Public URLs come from trusted application configuration. Partial/corrupt file output is not readiness; recovery must use the existing record. Print accounts for every selected target, names unavailable codes, and opens their canonical QR controls without losing selection. Preview/browser/PDF use one reviewed bounded snapshot and physical template geometry; stale labels/QR require new preparation. A prepared file or browser print dialog is not physical scan/placement evidence. No new service dashboard, booking/floorplan entity, controller, worker, global switcher or working-database mutation belongs to this stage.
 
+Bulk QR preparation accounts separately for completed, skipped and failed targets. Each explicit request attempts at most five targets; a disabled/revoked QR or archived table is skipped with a reason without blocking later targets. File failure retains the existing receipt and saved QR identity. Continuation excludes previously processed targets; an explicit retry selects only failed targets, and any partial result remains visibly incomplete. Recovery opens the same selected table's canonical QR panel. Every editor response repeats its resource capability, including after a permission revocation. An absent optional room icon and textual table number `0` must survive ordinary editing and printing.
+
 # Canonical requirements catalogue
 
 ## Prompt 4 — One restaurant management and preparation process

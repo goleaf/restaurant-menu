@@ -40,6 +40,14 @@ class SelectionOperations extends Component
     #[Locked]
     public array $completedIds = [];
 
+    /** @var array<int, string> */
+    #[Locked]
+    public array $skippedIds = [];
+
+    /** @var array<int, string> */
+    #[Locked]
+    public array $failedIds = [];
+
     #[Locked]
     public bool $finished = false;
 
@@ -93,25 +101,46 @@ class SelectionOperations extends Component
 
     public function generateNext(): void
     {
+        abort_unless($this->operation === 'generate', 422);
         $this->resetValidation();
         $branch = $this->branch();
         Gate::forUser($this->actor())->authorize('generateQr', $branch);
-        $pending = array_slice(array_values(array_diff($this->ids, $this->completedIds)), 0, 5);
+        $pending = array_slice(array_values(array_diff($this->ids, $this->completedIds, array_keys($this->skippedIds), array_keys($this->failedIds))), 0, 5);
         foreach ($pending as $id) {
             try {
-                $point = $this->points->findForBranch($branch, $id);
+                $point = $this->points->findForBranch($branch, $id, withTrashed: true);
+                if ($point->trashed()) {
+                    $this->skippedIds[$id] = 'archived';
+
+                    continue;
+                }
                 $this->qr->handle($this->actor(), $branch, $point, 'generate', null, null, $this->qrRequests[$id]);
                 $this->completedIds[] = $id;
+            } catch (ValidationException $exception) {
+                $this->skippedIds[$id] = array_key_exists('operation', $exception->errors()) ? 'reissue_required' : 'changed';
             } catch (RuntimeException $exception) {
                 report($exception);
-                $this->addError('generation', __('floor.qr.partial_failure'));
-                $this->saved();
-
-                return;
+                $this->failedIds[$id] = 'retry_required';
             }
         }
-        $this->finished = count($this->completedIds) === count($this->ids);
+        $this->finished = count($this->completedIds) + count($this->skippedIds) + count($this->failedIds) === count($this->ids);
         $this->saved();
+    }
+
+    public function retryFailed(): void
+    {
+        abort_unless($this->operation === 'generate', 422);
+        Gate::forUser($this->actor())->authorize('generateQr', $this->branch());
+        $this->failedIds = [];
+        $this->generateNext();
+    }
+
+    public function openQr(int $id): void
+    {
+        abort_unless($this->operation === 'generate' && in_array($id, $this->ids, true), 403);
+        Gate::forUser($this->actor())->authorize('generateQr', $this->branch());
+        $this->points->findForBranch($this->branch(), $id);
+        $this->dispatch('floor-print-recover-qr', pointId: $id);
     }
 
     public function updatedForm(): void
@@ -124,10 +153,21 @@ class SelectionOperations extends Component
     public function render(): View
     {
         $branch = $this->branch();
+        Gate::forUser($this->actor())->authorize($this->operation === 'move' ? 'manageServicePoints' : 'generateQr', $branch);
         $rows = $this->points->selected($branch, $this->ids)->map(fn ($point): array => ['id' => $point->id, 'name' => $point->name, 'area' => $point->areaNode->name ?? __('floor.no_area'),
-            'qr' => $point->activeQrCode?->short_code, 'done' => in_array($point->id, $this->completedIds, true)])->all();
+            'qr' => $point->activeQrCode?->short_code, 'done' => in_array($point->id, $this->completedIds, true),
+            'issue' => match ($this->skippedIds[$point->id] ?? $this->failedIds[$point->id] ?? null) {
+                'reissue_required' => __('floor.qr.result.reissue_required'),
+                'archived' => __('floor.qr.result.archived'),
+                'changed' => __('floor.qr.result.changed'),
+                'retry_required' => __('floor.qr.partial_failure'),
+                default => null,
+            },
+            'canReview' => ! $point->trashed() && (isset($this->skippedIds[$point->id]) || isset($this->failedIds[$point->id])),
+        ])->all();
 
         return view('livewire.organizations.brands.branches.service-points.selection-operations', ['rows' => $rows, 'completedCount' => count($this->completedIds), 'totalCount' => count($this->ids),
-            'areas' => $this->areaOptions($this->areaSearch, $this->form->targetAreaId)]);
+            'skippedCount' => count($this->skippedIds), 'failedCount' => count($this->failedIds),
+            'areas' => $this->operation === 'move' ? $this->areaOptions($this->areaSearch, $this->form->targetAreaId) : []]);
     }
 }

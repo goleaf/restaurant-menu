@@ -4,7 +4,15 @@
     <flux:text>{{ __('floor.selected_count', ['count' => $totalCount]) }}</flux:text>
     <div class="rm-floor__preview-list" tabindex="0">
         @forelse ($rows as $row)
-            <p wire:key="selected-{{ $row['id'] }}">{{ $row['name'] }} · {{ $row['area'] }} · {{ $row['done'] ? __('floor.completed') : ($row['qr'] ?? __('floor.qr.missing')) }}</p>
+            <div wire:key="selected-{{ $row['id'] }}">
+                <p>{{ $row['name'] }} · {{ $row['area'] }} · {{ $row['done'] ? __('floor.completed') : ($row['qr'] ?? __('floor.qr.missing')) }}</p>
+                @if ($row['issue'] !== null)
+                    <flux:text>{{ $row['issue'] }}</flux:text>
+                    @if ($row['canReview'])
+                        <flux:button wire:click="openQr({{ $row['id'] }})" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('floor.qr.manage') }}</flux:button>
+                    @endif
+                @endif
+            </div>
         @empty
         @endforelse
     </div>
@@ -28,11 +36,21 @@
     @else
         <flux:text>{{ __('floor.qr.batch_help') }}</flux:text>
         <flux:text role="status">{{ __('floor.qr.progress', ['done' => $completedCount, 'total' => $totalCount]) }}</flux:text>
+        @if ($skippedCount > 0 || $failedCount > 0)
+            <flux:text role="status">{{ __('floor.qr.result.counts', ['skipped' => $skippedCount, 'failed' => $failedCount]) }}</flux:text>
+        @endif
         @if (! $finished)
             <flux:button wire:click="generateNext" variant="primary" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('floor.qr.continue') }}</flux:button>
         @endif
+        @if ($failedCount > 0)
+            <flux:button wire:click="retryFailed" wire:loading.attr="disabled" wire:offline.attr="disabled">{{ __('floor.qr.retry_failed') }}</flux:button>
+        @endif
     @endif
     @if ($finished)
-        <flux:callout variant="success" :heading="__('floor.completed')" role="status" />
+        @if ($skippedCount > 0 || $failedCount > 0)
+            <flux:callout variant="warning" :heading="__('floor.qr.result.partial')" role="status" />
+        @else
+            <flux:callout variant="success" :heading="__('floor.completed')" role="status" />
+        @endif
     @endif
 </div>

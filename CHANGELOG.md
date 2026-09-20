@@ -2,6 +2,10 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 — Current-source convergence (2026-09-20)
+
+Preserve the existing unified rooms/tables/QR workspace and subsequent dish-card changes. Reauthorize editor reads after capability revocation, retain absent room icons and the printed text number `0`. Report each bulk QR result, continue later targets after a recoverable failure, and explicitly retry only unfinished images using the original receipts and tokens. Keep QR recovery inside the same selected workspace. Fresh browser, decoded document, runtime and matched performance evidence is recorded in PROGRESS.md; full acceptance and delivery remain distinct.
+
 ## Prompt 6 — Dish-card continuation (2026-09-18, acceptance in progress)
 
 Preserve the existing single class-based Livewire card and its four sections. Repair legacy original-language values, intentionally blank guest-preview descriptions, retained child context after menu changes, archived/retargeted variant/modifier writes and stale prepared previews. Initial Main avoids hydrating full variants/options; full availability is explicitly checked through the existing preview. Fix create-and-continue redirect timing while retaining later input, saved version and offline baseline. Preserve separate media/configuration confirmations, shared group scope, historical orders and publication state. Current acceptance, measurements and runtime limitations are in PROGRESS.md; historical results are not reused as current proof.

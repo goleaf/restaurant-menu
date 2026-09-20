@@ -2,6 +2,27 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 current-baseline measurements — 2026-09-20
+
+Six alternating isolated PHP8.5.10 runs compare clean `ad1cac6` with the current P5 corrections on identical10-room/200-table fixtures,20 visible rows and100 selected QR targets. Reflection proves each copied source root; dependency/asset hashes match. All6 runs pass45 assertions each. The baseline already has one workspace: no invented reduction from the old2255449 catalogues is claimed. Room/table/print paths still require no repeated restaurant choice or second catalogue. New partial-result recovery opens the existing QR panel and retains the same selection.
+
+| Operation / metric | Baseline median | Candidate median |
+| --- | ---: | ---: |
+| Main HTTP SQL / models |88 /140|88 /140|
+| Main HTTP HTML bytes |331385|331418|
+| Livewire mount SQL / models |41 /57|41 /57|
+| Search SQL / models |41 /16|41 /16|
+| Search component response bytes |124075|124090|
+| QR100 refresh SQL / models |40 /223|46 /213|
+| QR100 refresh response bytes |20848|32749|
+| QR100 snapshot bytes |5381|5440|
+| QR100 refresh incremental peak bytes |877744|903768|
+| Five real same-code image repairs SQL / models |227 /283|233 /273|
+
+Repeated capability authorization costs6 queries; avoiding irrelevant move-area options hydrates10 fewer models. Per-target feedback adds11901 response bytes at100 targets. Main-list SQL/models remain unchanged; final count copy adds33 HTTP bytes and15 search response bytes against baseline. Allocator peaks differ by one2MiB allocation step: QR refresh78118912→80216064bytes, first repair batch80216064→82313216bytes; these are distinct from the smaller incremental heap differences above. These are Testable response-body/heap observations, not network-compressed bytes or speed guarantees; concurrent local work prevents a latency claim. Final evidence: `restaurant-p5-refresh-elqmgwhx/matched-performance-ynnz8hs_/final-catalogs-n89s03ud/{php-summary.json,deltas.tsv,current-production-equality.json}`. The first measurement fixture used an incorrect image_path assumption; it was corrected to the existing image Action's pathFor contract on both sides. The final-copy refresh also synchronized the already-tested two browser checkbox waits before proving source equality. Failed preparation diagnostics and all earlier samples are retained; all six reported final runs pass afterward.
+
+Fresh four-document rasterization decodes121/121 expected URLs across31 pages. Long100-label PDF:231383bytes, prepared snapshot835602bytes,3.073seconds, peak105381888bytes. Separate actual Livewire download:210614 PDF bytes,280820 Base64 bytes,938-byte component snapshot,3.054seconds, peak109576192bytes. EN/LT/RU page images were inspected; physical printer/phone acceptance is not inferred. Evidence: `restaurant-p5-qr-refresh-qbJuRN`.
+
 ## Prompt 5 matched floor measurements — 2026-09-18
 
 Six alternating owned processes compare baseline`5e2987c` with final candidate`4209f986ec7a8ca0d4c3af7a027939a19b5406e11d987b2fd050e8a66a52752a`, including the legacy `/areas` entry and visible100-target limit corrections. The same factory fixture, final assets and test execute on PHP8.5.10 without Xdebug/PCOV; all6 tests/174 assertions pass. Seven reflected source paths prove the intended root is loaded. These are application response-body observations; the separate actual browser network samples below measure wire responses. The prepared measurement copy has digest`c6c91fc756694ceab921fc80d7e5a39baaa2a39813f62ccc1a7f8d6cb58f08a7`; all1205 production files and12 asset files match the final working source.

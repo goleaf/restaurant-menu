@@ -23,6 +23,26 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
+test('menu item label attributes expose string lists for legacy storage shapes', function (mixed $stored, array $expected) {
+    $item = MenuItem::factory()->make(['allergens' => $stored, 'dietary_labels' => $stored]);
+
+    expect($item->allergens)->toBe($expected)
+        ->and($item->dietary_labels)->toBe($expected)
+        ->and($item->allergenCodes())->toBe($expected)
+        ->and($item->attributesToArray()['allergens'])->toBe($expected)
+        ->and($item->attributesToArray()['dietary_labels'])->toBe($expected)
+        ->and($item->getRawOriginal())->toBe([]);
+})->with([
+    'ordinary list' => [['milk'], ['milk']],
+    'encoded list' => ['["milk"]', ['milk']],
+    'empty encoded list' => ['[]', []],
+    'null' => [null, []],
+    'invalid json' => ['[invalid', []],
+    'scalar' => ['milk', []],
+    'boolean' => [true, []],
+    'mixed list' => [['milk', null, 1, ['eggs']], ['milk']],
+]);
+
 test('menu tables expose the required columns', function () {
     expect(Schema::hasTable('menus'))->toBeTrue()
         ->and(Schema::hasColumns('menus', [

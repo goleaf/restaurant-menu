@@ -2,6 +2,14 @@
 > GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
+## Prompt 5 current-source runtime verification — 2026-09-20
+
+Supported CLI checks use actual PHP8.5.10 and Composer2.10.3, with strict manifest, installed/locked platform checks and Composer audit passing. Node24.21.0 and existing owned npm12.0.2 pass the declared engines. Installed Laravel13.31.0, Livewire4.4.1, FluxFree2.17.0 and local FluxPro0.1.1 remain unchanged; Pro's upstream version is unknown. Official Packagist metadata currently offers13.32.0/4.4.5/2.20.0 in those respective major lines; this does not prove compatibility with the local Pro adaptation or authorize another stack upgrade. Current official npm versions remain Tailwind4.3.3/Vite8.3.0/sass-embedded1.104.1. No lock or dependency is changed.
+
+The actual installed PHP8.6.0beta2 passes all1367 first-party non-Blade PHP syntax checks. Both real Composer platform gates fail; application/browser/coverage acceptance on8.6 is unperformed, with no requirement bypass. The historical owned Beta3 executable is absent. Supported production remains `>=8.5.0 <8.6.0`.
+
+A fresh runtime-only request to the configured Herd85 FastCGI socket reports8.5.8/fpm-fcgi/500M; its owned probe was removed without Laravel bootstrap or database access. Browser functional tests use their own isolated responder, recorded in the final browser evidence. Boost returns stale `https://ruflo.test` (TLS name mismatch and HTTP Herd404), while configured `https://restaurant-menu.test/build/manifest.json` passes both isolated Chrome DevTools and Playwright MCP navigation/read smoke tests with11 entries on Chrome153.0.0.0. Only a static-page favicon404 is observed. No runtime, site mapping, application URL or working data was changed.
+
 ## Prompt 6 current runtime verification — 2026-09-18
 
 Fresh stable PHP8.5.10 / Composer2.10.3 capability, strict manifest and installed/locked platform checks pass. Canonical coverage uses Xdebug3.5.0 with explicit4GiB coordinator and512MiB isolated workers. Node24.21.0 and the preserved owned npm12.0.2 prefix are selected; no global/Herd selection or dependency lock changes. Complete browser HTTP runtime evidence is recorded separately in PROGRESS.md.
@@ -18,7 +26,7 @@ The final immutable candidate `4209f986ec7a8ca0d4c3af7a027939a19b5406e11d987b2fd
 
 # Current version baseline
 
-Current execution stage is Prompt 6 dish-card continuation on existing `main`, starting at clean `b3c7f81`. Prompts 4 and 5 delivery is preserved. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify this refresh.
+Current execution stage is the September20 Prompt 5 convergence on existing `main`, starting at clean `ad1cac6`. Earlier Prompt4/5 delivery and the separate unfinished September18 Prompt6 acceptance are preserved. Dependencies and locks remain unchanged: Laravel 13.31.0, Livewire 4.4.1, Flux Free 2.17.0 and local Flux Pro 0.1.1 (unknown upstream version). Current acceptance is owned by PROGRESS.md; historical accepted snapshots do not certify this refresh.
 
 ## Prompt 4 continuation runtime evidence — 2026-09-18
 

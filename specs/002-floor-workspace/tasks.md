@@ -49,7 +49,10 @@ T001–T004 establish the first vertical slice. T008–T013 area/table work can 
 
 ## Phase 2: Convergence (2026-09-20)
 
-- [ ] T027 [US3] Report a bounded per-target QR outcome and continue past a disabled/revoked code or image failure in SelectionOperations; explicitly retry only unfinished targets and preserve completed identities (partial: US3/US4, Constitution III/V).
-- [ ] T028 [US4] Preserve the valid display number `0` in the shared QR print snapshot and prove matching labels/identity with a failing regression (partial: US4, permanent identity/text display-number contract).
-- [ ] T029 Recheck current editor read authorization after capability revocation, area hierarchy/concurrency, table/bulk safety and workspace entry/return paths; add tasks for reproduced gaps only (Constitution II/III).
+- [x] T027 [US3] Report a bounded per-target QR outcome and continue past a disabled/revoked code or image failure in SelectionOperations; explicitly retry only unfinished targets and preserve completed identities (partial: US3/US4, Constitution III/V).
+- [x] T028 [US4] Preserve the valid display number `0` in the shared QR print snapshot and prove matching labels/identity with a failing regression (partial: US4, permanent identity/text display-number contract).
+- [x] T029 Recheck current editor read authorization after capability revocation, area hierarchy/concurrency, table/bulk safety and workspace entry/return paths; add tasks for reproduced gaps only (Constitution II/III).
 - [ ] T030 Execute fresh final-source integration, browser/document/coverage/build/runtime evidence and independent review; update canonical ledgers and deliver only verified attributable changes (partial: current-source acceptance, Constitution V).
+- [x] T031 Reauthorize AreaEditor/PointEditor/BulkCreate/SelectionOperations reads using their existing resource capabilities and test revoked create/update/restore/QR contexts (contradicts: Constitution III).
+- [x] T032 Preserve absent optional area icons with a narrow nullable Form rule and explicit No icon choice; test rename, clearing in EN/LT/RU and malformed input (partial: US2).
+- [x] T033 Correct existing EN/LT floor quantity labels exposed by the real screenshot (`1 tables`, `1 stalų`) using the existing RU-style label-before-count format; preserve keys/placeholders and verify the unchanged locale/viewport scenarios (partial: US3/US4, Constitution IV).

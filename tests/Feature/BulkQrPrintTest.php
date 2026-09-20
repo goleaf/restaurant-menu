@@ -24,6 +24,7 @@ use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -112,7 +113,7 @@ test('bulk QR generation accounts for a nonactive QR and continues with later se
         ->assertSet('skippedIds', [$blocked->id => 'reissue_required'])
         ->assertSet('finished', true)
         ->assertSee(__('floor.qr.result.reissue_required'))
-        ->assertDontSee('variant="success"', false);
+        ->assertSee(__('floor.qr.result.partial'));
 
     $component->call('generateNext')->assertHasNoErrors()->assertSet('completedIds', [$missing->id]);
     expect($qr->fresh()->public_token)->toBe($token)
@@ -154,14 +155,14 @@ test('bulk QR file failure does not block later targets and explicit retry repai
         'branchId' => $branch->id, 'ids' => [$first->id, $second->id], 'operation' => 'generate',
     ])->call('generateNext')->assertHasNoErrors()
         ->assertSet('completedIds', [$second->id])
-        ->assertSet('failedIds', [$first->id => 'image_failed'])
+        ->assertSet('failedIds', [$first->id => 'retry_required'])
         ->assertSet('finished', true)
-        ->assertSee(__('floor.qr.result.image_failed'));
+        ->assertSee(__('floor.qr.partial_failure'));
     $firstQr = QrCode::query()->where('service_point_id', $first->id)->sole();
     $secondQr = QrCode::query()->where('service_point_id', $second->id)->sole();
     expect($writes)->toBe(2)->and($actual->allFiles('qr'))->toHaveCount(1);
 
-    $component->call('generateNext')->assertSet('failedIds', [$first->id => 'image_failed']);
+    $component->call('generateNext')->assertSet('failedIds', [$first->id => 'retry_required']);
     expect($writes)->toBe(2);
     $component->call('retryFailed')->assertHasNoErrors()->assertSet('failedIds', [])->assertSet('finished', true);
     expect($component->get('completedIds'))->toEqualCanonicalizing([$first->id, $second->id]);
@@ -169,6 +170,51 @@ test('bulk QR file failure does not block later targets and explicit retry repai
         ->and(QrCode::query()->where('service_point_id', $first->id)->sole()->public_token)->toBe($firstQr->public_token)
         ->and(QrCode::query()->where('service_point_id', $second->id)->sole()->public_token)->toBe($secondQr->public_token);
 });
+
+test('bulk QR generation limits each request and reports localized skipped totals without retrying them', function (string $locale, int $blockedCount): void {
+    app()->setLocale($locale);
+    [$organization, , $branch, , , , $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $archived = ServicePoint::factory()->for($branch)->count($blockedCount)->create(['deleted_at' => now()]);
+    $new = ServicePoint::factory()->for($branch)->count(6)->create();
+    $ids = [...$archived->modelKeys(), ...$new->modelKeys()];
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => $ids, 'operation' => 'generate'])
+        ->call('generateNext')->assertHasNoErrors()->assertSet('finished', false)
+        ->assertSee(__('floor.qr.result.counts', ['skipped' => $blockedCount, 'failed' => 0]));
+    expect(count($component->get('completedIds')))->toBe(5 - $blockedCount)
+        ->and($component->get('skippedIds'))->toBe(array_fill_keys($archived->modelKeys(), 'archived'));
+    $component->call('generateNext')->assertHasNoErrors()->assertSet('finished', true);
+    expect($component->get('completedIds'))->toEqualCanonicalizing($new->modelKeys())
+        ->and(QrCode::query()->whereIn('service_point_id', $archived->modelKeys())->count())->toBe(0);
+})->with([['en', 1], ['lt', 2], ['ru', 3]]);
+
+test('bulk QR outcomes and pending work are unavailable after QR access is revoked', function (string $method): void {
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => [$points['mainWithoutQr']->id], 'operation' => 'generate']);
+    $membership = OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $manager->id)->sole();
+    $permission = Permission::query()->where('code', SystemPermission::GenerateQr->value)->sole();
+    $membership->role->permissions()->updateExistingPivot($permission->id, ['enabled' => false]);
+    $component->call($method)->assertForbidden();
+    expect(QrCode::query()->where('service_point_id', $points['mainWithoutQr']->id)->count())->toBe(0);
+})->with(['$refresh', 'generateNext', 'retryFailed']);
+
+test('bulk QR recovery opens only a selected table in the canonical panel', function (): void {
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => [$points['mainWithoutQr']->id], 'operation' => 'generate']);
+    $component->call('openQr', $points['mainWithoutQr']->id)->assertDispatched('floor-print-recover-qr', pointId: $points['mainWithoutQr']->id);
+    $component->call('openQr', $points['mainWithQr']->id)->assertForbidden();
+});
+
+test('bulk QR outcome maps cannot be supplied by the browser', function (string $property): void {
+    [$organization, , $branch, , , $points, $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+    $component = Livewire::actingAs($manager)->test(SelectionOperations::class, ['branchId' => $branch->id, 'ids' => [$points['mainWithoutQr']->id], 'operation' => 'generate']);
+    expect(fn () => $component->set($property, [$points['mainWithoutQr']->id => 'retry_required']))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+    expect(QrCode::query()->where('service_point_id', $points['mainWithoutQr']->id)->count())->toBe(0);
+})->with(['completedIds', 'skippedIds', 'failedIds', 'qrRequests']);
 
 function createPrompt27QrContext(): array
 {

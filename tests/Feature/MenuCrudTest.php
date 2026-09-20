@@ -32,6 +32,7 @@ use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Menus\CatalogData;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -471,6 +472,43 @@ test('menu item image gallery translations keep en lt and ru placeholders aligne
 
         expect($placeholderSets->unique()->count())->toBe(1, $key.' placeholders must match.');
     }
+});
+
+test('catalogue and dish editor preserve double encoded label lists until an explicit save', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create([
+        'allergens' => json_encode(['gluten', 'milk'], JSON_THROW_ON_ERROR),
+        'dietary_labels' => json_encode(['vegetarian'], JSON_THROW_ON_ERROR),
+    ]);
+    $storedLabels = $item->getRawOriginal('allergens');
+    $storedDietaryLabels = $item->getRawOriginal('dietary_labels');
+
+    $catalogue = app(CatalogData::class)->for($branch, '', '', '');
+    $row = $catalogue['menuRows'][0]['items'][0];
+    expect(array_column($row['allergens'], 'value'))->toBe(['gluten', 'milk'])
+        ->and(array_column($row['dietary_labels'], 'value'))->toBe(['vegetarian']);
+
+    $component = Livewire::actingAs($manager)
+        ->test(Dish::class, compact('organization', 'brand', 'branch', 'item'))
+        ->assertOk()
+        ->assertSet('editingItemForm.itemAllergens', ['gluten', 'milk'])
+        ->assertSet('editingItemForm.itemDietaryLabels', ['vegetarian']);
+
+    expect($item->fresh()->getRawOriginal('allergens'))->toBe($storedLabels)
+        ->and($item->fresh()->getRawOriginal('dietary_labels'))->toBe($storedDietaryLabels);
+
+    $component
+        ->set('editingItemForm.itemTranslations.en.name', 'Dish')
+        ->set('editingItemForm.itemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemForm.itemTranslations.ru.name', 'Блюдо')
+        ->call('saveItem')
+        ->assertHasNoErrors();
+
+    expect(json_decode($item->fresh()->getRawOriginal('allergens'), true, flags: JSON_THROW_ON_ERROR))->toBe(['gluten', 'milk'])
+        ->and(json_decode($item->fresh()->getRawOriginal('dietary_labels'), true, flags: JSON_THROW_ON_ERROR))->toBe(['vegetarian']);
 });
 
 test('menu item allergen and dietary selections reject unknown values and normalize updates', function () {
